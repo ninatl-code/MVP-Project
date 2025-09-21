@@ -30,6 +30,10 @@ export default function ParticularHomeMenu() {
   const [showReservations, setShowReservations] = useState(true)
   const [showCommandes, setShowCommandes] = useState(true)
   const [selectedDevis, setSelectedDevis] = useState(null);
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  const [selectedCommande, setSelectedCommande] = useState(null);
+  const [commandeQuantities, setCommandeQuantities] = useState({});
+  const [loadingDevisAction, setLoadingDevisAction] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -103,6 +107,26 @@ export default function ParticularHomeMenu() {
     }
     fetchReservations()
   }, [statusFilter, prestationFilter, dateFilter])
+
+  // Récupérer les quantités pour chaque commande
+  useEffect(() => {
+    async function fetchQuantities() {
+      if (commandes.length === 0) return;
+      const commandeIds = commandes.map(c => c.id);
+      const { data: lignes } = await supabase
+        .from("commande_modeles")
+        .select("commande_id, quantite")
+        .in("commande_id", commandeIds);
+      const quantities = {};
+      commandeIds.forEach(id => {
+        quantities[id] = lignes
+          ? lignes.filter(l => l.commande_id === id).reduce((sum, l) => sum + (l.quantite || 0), 0)
+          : 0;
+      });
+      setCommandeQuantities(quantities);
+    }
+    fetchQuantities();
+  }, [commandes]);
 
   function MiniCalendar({ onSelect }) {
     const [calendarDate, setCalendarDate] = useState(() => {
@@ -245,6 +269,105 @@ export default function ParticularHomeMenu() {
     )
   }
 
+  // Actions pour accepter/refuser un devis
+  async function handleAcceptDevis(devis) {
+    setLoadingDevisAction(true);
+    try {
+      // 1. Changer le statut du devis à "accepted"
+      const { error: devisError } = await supabase
+        .from('devis')
+        .update({ status: 'accepted' })
+        .eq('id', devis.id);
+
+      if (devisError) {
+        alert("Erreur lors de l'acceptation du devis :\n" + (devisError.message || JSON.stringify(devisError)));
+        setLoadingDevisAction(false);
+        return;
+      }
+
+      // 2. Créer une nouvelle réservation liée au devis avec tous les champs demandés
+      const { data: reservationData, error: reservationError } = await supabase
+        .from('reservations')
+        .insert([{
+          status: 'TBC',
+          devis_id: devis.id,
+          montant: devis.montant,
+          montant_acompte: devis.montant_acompte,
+          particulier_id: devis.particulier_id,
+          prestataire_id: devis.prestataire_id,
+          annonce_id: devis.annonce_id,
+          duree: devis.duree,
+          endroit: devis.endroit,
+          ville: devis.ville,
+          participants: devis.participants || devis.nb_personnes,
+          photos: devis.photos || [],
+          unit_tarif: devis.unit_tarif,
+          date: devis.date,
+          client_nom: devis.client_nom || "",
+          client_email: devis.client_email || ""
+        }])
+        .select()
+        .single();
+
+      if (reservationError || !reservationData) {
+        alert("Erreur lors de la création de la réservation :\n" + (reservationError?.message || "Aucune donnée retournée."));
+        setLoadingDevisAction(false);
+        return;
+      }
+
+      // 3. Envoyer une notification
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert([{
+          user_id: devis.prestataire_id,
+          type: 'devis',
+          contenu: 'votre devis a été accepté'
+        }]);
+
+      if (notifError) {
+        alert("Erreur lors de l'envoi de la notification :\n" + (notifError.message || JSON.stringify(notifError)));
+        // On continue quand même la redirection
+      }
+
+      setLoadingDevisAction(false);
+      setSelectedDevis(null);
+
+      // 4. Rediriger vers la page reservations.js de l'annonce avec l'id de la réservation créée
+      router.push(`/annonces/${devis.annonce_id}/reservations?reservation_id=${reservationData.id}`);
+    } catch (err) {
+      alert("Erreur inattendue :\n" + (err.message || JSON.stringify(err)));
+      setLoadingDevisAction(false);
+    }
+  }
+
+  async function handleRefuseDevis(devis) {
+    setLoadingDevisAction(true);
+    // 1. Changer le statut du devis à "refused"
+    const { error: devisError } = await supabase
+      .from('devis')
+      .update({ status: 'refused' })
+      .eq('id', devis.id);
+
+    if (devisError) {
+      alert("Erreur lors du refus du devis.");
+      setLoadingDevisAction(false);
+      return;
+    }
+
+    // 2. Envoyer une notification
+    await supabase
+      .from('notifications')
+      .insert([{
+        user_id: devis.prestataire_id,
+        type: 'devis',
+        contenu: 'votre devis a été refusé'
+      }]);
+
+    setLoadingDevisAction(false);
+    setSelectedDevis(null);
+    // Optionnel: rafraîchir la liste des devis
+  }
+
   // Pop-up pour afficher les infos du devis
   function DevisInfoModal({ devis, onClose }) {
     if (!devis) return null;
@@ -263,10 +386,14 @@ export default function ParticularHomeMenu() {
           borderRadius: 18,
           boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
           padding: '32px 28px',
-          minWidth: 320,
-          maxWidth: 500,
+          minWidth: 600,
+          maxWidth: 900,
           textAlign: 'left',
-          position: 'relative'
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '80vh',
+          overflowY: 'auto'
         }}>
           <button
             style={{
@@ -281,59 +408,354 @@ export default function ParticularHomeMenu() {
             onClick={onClose}
             aria-label="Fermer"
           >×</button>
-          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Informations du devis</h2>
+          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18, textAlign: 'center' }}>Informations du devis</h2>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 48,
+            minWidth: 500,
+            maxWidth: 900,
+            justifyContent: 'space-between'
+          }}>
+            {/* Colonne gauche : infos client */}
+            <div style={{flex:1, borderRight:'1px solid #eee', paddingRight:24}}>
+              <div style={{marginBottom:14}}>
+                <strong>Prestataire :</strong><br />
+                <span>{devis.nom_prestataire || devis.prestataire_nom || devis.prestataire || 'Non renseigné'}</span>
+              </div>
+              <div style={{marginBottom:14}}>
+                <strong>Titre annonce :</strong><br />
+                <span>{devis.annonces?.titre || devis.titre || 'Non renseigné'}</span>
+              </div>
+              <div style={{marginBottom:14}}>
+                <strong>Endroit :</strong><br />
+                <span>{devis.endroit || 'Non renseigné'}</span>
+              </div>
+              <div style={{marginBottom:14}}>
+                <strong>Date :</strong><br />
+                <span>{devis.date ? new Date(devis.date).toLocaleDateString('fr-FR') : ''}</span>
+              </div>
+              <div style={{marginBottom:14}}>
+                <strong>Participants :</strong><br />
+                <span>{devis.participants || devis.nb_personnes || 'Non renseigné'}</span>
+              </div>
+              <div style={{marginBottom:14}}>
+                <strong>Durée en  {devis.unit_tarif} : </strong><br />
+                <span>{devis.duree || 'Non renseigné'}</span>
+              </div>
+              <div style={{marginBottom:14}}>
+                <strong>Commentaire client :</strong><br />
+                <span>{devis.comment_client || 'Non renseigné'}</span>
+              </div>
+              {devis.status === 'accepted' && (
+                <div style={{marginBottom:14}}>
+                  <strong>Date confirmation :</strong><br />
+                  <span>{devis.date_confirmation ? new Date(devis.date_confirmation).toLocaleDateString('fr-FR') : ''}</span>
+                </div>
+              )}
+              {devis.status === 'refused' && (
+                <>
+                  <div style={{marginBottom:14}}>
+                    <strong>Date refus :</strong><br />
+                    <span>{devis.date_refus ? new Date(devis.date_refus).toLocaleDateString('fr-FR') : ''}</span>
+                  </div>
+                  <div style={{marginBottom:14}}>
+                    <strong>Motif refus :</strong><br />
+                    <span>{devis.motif_refus || 'Non renseigné'}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            {/* Colonne droite : réponses du prestataire, élargie */}
+            <div style={{flex:1.5, paddingLeft:32}}>
+              <div style={{marginBottom:18}}>
+                <strong>Commentaire prestataire :</strong><br />
+                <span>{devis.comment_presta || 'Non renseigné'}</span>
+              </div>
+              {(devis.status === 'answered' || devis.status === 'refused' || devis.status === 'accepted') && (
+                <div style={{marginBottom:14}}>
+                  <strong>Date réponse :</strong><br />
+                  <span>{devis.date_reponse ? new Date(devis.date_reponse).toLocaleDateString('fr-FR') : ''}</span>
+                </div>
+              )}
+              <div style={{marginBottom:18}}>
+                <strong>Montant :</strong><br />
+                <span style={{fontSize:16}}>{devis.montant || 'Non renseigné'}</span>
+              </div>
+              <div style={{marginBottom:18}}>
+                <strong>Acompte :</strong><br />
+                <span style={{fontSize:16}}>{devis.montant_acompte || 'Non renseigné'}</span>
+              </div>
+            </div>
+          </div>
+          {/* Boutons Accepter/Refuser si status = answered */}
+          {devis.status === 'answered' && (
+            <div style={{marginTop:24, display:'flex', gap:16, justifyContent:'flex-end'}}>
+              <button
+                style={{
+                  background:'#6bbf7b',
+                  color:'#fff',
+                  border:'none',
+                  borderRadius:8,
+                  padding:'10px 22px',
+                  fontWeight:600,
+                  fontSize:16,
+                  cursor:'pointer'
+                }}
+                disabled={loadingDevisAction}
+                onClick={() => handleAcceptDevis(devis)}
+              >
+                {loadingDevisAction ? "Traitement..." : "Accepter le devis"}
+              </button>
+              <button
+                style={{
+                  background:'#e67c73',
+                  color:'#fff',
+                  border:'none',
+                  borderRadius:8,
+                  padding:'10px 22px',
+                  fontWeight:600,
+                  fontSize:16,
+                  cursor:'pointer'
+                }}
+                disabled={loadingDevisAction}
+                onClick={() => handleRefuseDevis(devis)}
+              >
+                {loadingDevisAction ? "Traitement..." : "Refuser le devis"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Pop-up pour afficher les infos de la réservation
+  function ReservationInfoModal({ reservation, onClose }) {
+    if (!reservation) return null;
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.18)',
+        zIndex: 3000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 18,
+          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
+          padding: '32px 28px',
+          minWidth: 320,
+          maxWidth: 500,
+          textAlign: 'left',
+          position: 'relative',
+          maxHeight: '80vh',
+          overflowY: 'auto'
+        }}>
+          <button
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 18,
+              background: 'none',
+              border: 'none',
+              fontSize: 22,
+              cursor: 'pointer'
+            }}
+            onClick={onClose}
+            aria-label="Fermer"
+          >×</button>
+          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la réservation</h2>
           <div style={{marginBottom:10}}>
-            <strong>Prestataire :</strong> {devis.nom_prestataire || devis.prestataire_nom || devis.prestataire || 'Non renseigné'}
+            <strong>Date de la réservation :</strong> {reservation.created_at ? new Date(reservation.created_at).toLocaleDateString('fr-FR') : ''}
           </div>
           <div style={{marginBottom:10}}>
-            <strong>Titre annonce :</strong> {devis.annonces?.titre || devis.titre || 'Non renseigné'}
+            <strong>Nom du prestataire :</strong> {reservation.profiles?.nom || reservation.prestataire_nom || 'Non renseigné'}
           </div>
           <div style={{marginBottom:10}}>
-            <strong>Endroit :</strong> {devis.endroit || 'Non renseigné'}
+            <strong>Annonce concernée :</strong> {reservation.annonces?.titre || 'Non renseigné'}
           </div>
           <div style={{marginBottom:10}}>
-            <strong>Date :</strong> {devis.date ? new Date(devis.date).toLocaleDateString('fr-FR') : ''}
+            <strong>Date de la prestation :</strong> {reservation.date ? new Date(reservation.date).toLocaleDateString('fr-FR') : ''}
           </div>
           <div style={{marginBottom:10}}>
-            <strong>Participants :</strong> {devis.participants || devis.nb_personnes || 'Non renseigné'}
+            <strong>Durée de la prestation :</strong> {reservation.duree || 'Non renseigné'}
           </div>
           <div style={{marginBottom:10}}>
-            <strong>Durée :</strong> {devis.duree || 'Non renseigné'}
+            <strong>En :</strong> {reservation.unit_tarif || 'Non renseigné'}
           </div>
           <div style={{marginBottom:10}}>
-            <strong>Commentaire client :</strong> {devis.comment_client || 'Non renseigné'}
+            <strong>Endroit de la prestation :</strong> {reservation.endroit || 'Non renseigné'}
           </div>
-          {(devis.status === 'answered' || devis.status === 'refused' || devis.status === 'accepted') && (
+          <div style={{marginBottom:10}}>
+            <strong>Votre commentaire :</strong> {reservation.commentaire || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Montant :</strong> {reservation.montant || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Montant acompte payé :</strong> {reservation.montant_acompte || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Photos :</strong>
+            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
+              {Array.isArray(reservation.photos) && reservation.photos.length > 0 ? (
+                reservation.photos.map((b64, idx) => (
+                  <img
+                    key={idx}
+                    src={`data:image/*;base64,${b64}`}
+                    alt="photo"
+                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
+                  />
+                ))
+              ) : (
+                <span style={{color:'#888'}}>Aucune photo</span>
+              )}
+            </div>
+          </div>
+          {reservation.nb_personnes > 1 && (
+            <div style={{marginBottom:10}}>
+              <strong>Nb de participants :</strong> {reservation.nb_personnes}
+            </div>
+          )}
+          {reservation.status === 'confirmed' && (
+            <div style={{marginBottom:10}}>
+              <strong>Date confirmation :</strong> {reservation.date_confirmation ? new Date(reservation.date_confirmation).toLocaleDateString('fr-FR') : ''}
+            </div>
+          )}
+          {reservation.status === 'cancelled' && (
             <>
               <div style={{marginBottom:10}}>
-                <strong>Date réponse :</strong> {devis.date_reponse ? new Date(devis.date_reponse).toLocaleDateString('fr-FR') : ''}
+                <strong>Date annulation :</strong> {reservation.date_annulation ? new Date(reservation.date_annulation).toLocaleDateString('fr-FR') : ''}
               </div>
               <div style={{marginBottom:10}}>
-                <strong>Commentaire prestataire :</strong> {devis.comment_presta || 'Non renseigné'}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Montant :</strong> {devis.montant || 'Non renseigné'}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Acompte :</strong> {devis.montant_acompte || 'Non renseigné'}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Unité tarif :</strong> {devis.unit_tarif || 'Non renseigné'}
+                <strong>Motif annulation :</strong> {reservation.motif_annulation || 'Non renseigné'}
               </div>
             </>
           )}
-          {devis.status === 'accepted' && (
-            <div style={{marginBottom:10}}>
-              <strong>Date confirmation :</strong> {devis.date_confirmation ? new Date(devis.date_confirmation).toLocaleDateString('fr-FR') : ''}
-            </div>
-          )}
-          {devis.status === 'refused' && (
+          {reservation.status === 'refused' && (
             <>
               <div style={{marginBottom:10}}>
-                <strong>Date refus :</strong> {devis.date_refus ? new Date(devis.date_refus).toLocaleDateString('fr-FR') : ''}
+                <strong>Date refus :</strong> {reservation.date_refus ? new Date(reservation.date_refus).toLocaleDateString('fr-FR') : ''}
               </div>
               <div style={{marginBottom:10}}>
-                <strong>Motif refus :</strong> {devis.motif_refus || 'Non renseigné'}
+                <strong>Motif refus :</strong> {reservation.motif_refus || 'Non renseigné'}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Pop-up pour afficher les infos de la commande
+  function CommandeInfoModal({ commande, onClose, quantity }) {
+    if (!commande) return null;
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.18)',
+        zIndex: 3000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 18,
+          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
+          padding: '32px 28px',
+          minWidth: 320,
+          maxWidth: 500,
+          textAlign: 'left',
+          position: 'relative',
+          maxHeight: '80vh',
+          overflowY: 'auto'
+        }}>
+          <button
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 18,
+              background: 'none',
+              border: 'none',
+              fontSize: 22,
+              cursor: 'pointer'
+            }}
+            onClick={onClose}
+            aria-label="Fermer"
+          >×</button>
+          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la commande</h2>
+          <div style={{marginBottom:10}}>
+            <strong>Date de la commande :</strong> {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : ''}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Nom du prestataire :</strong> {commande.prestataire_nom || commande.nom_prestataire || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Annonce concernée :</strong> {commande.annonces?.titre || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Quantité commandée :</strong> {quantity || 0}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Montant :</strong> {commande.montant || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Frais de livraison :</strong> {commande.frais_livraison || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Votre commentaire :</strong> {commande.commentaire || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Adresse de livraison :</strong> {commande.adresse_livraison || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Mode de livraison :</strong> {commande.mode_livraison || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Photos :</strong>
+            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
+              {Array.isArray(commande.photos) && commande.photos.length > 0 ? (
+                commande.photos.map((b64, idx) => (
+                  <img
+                    key={idx}
+                    src={`data:image/*;base64,${b64}`}
+                    alt="photo"
+                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
+                  />
+                ))
+              ) : (
+                <span style={{color:'#888'}}>Aucune photo</span>
+              )}
+            </div>
+          </div>
+          {commande.status === 'confirmed' && (
+            <div style={{marginBottom:10}}>
+              <strong>Date confirmation :</strong> {commande.date_confirmation ? new Date(commande.date_confirmation).toLocaleDateString('fr-FR') : ''}
+            </div>
+          )}
+          {commande.status === 'cancelled' && (
+            <>
+              <div style={{marginBottom:10}}>
+                <strong>Date annulation :</strong> {commande.date_annulation ? new Date(commande.date_annulation).toLocaleDateString('fr-FR') : ''}
+              </div>
+              <div style={{marginBottom:10}}>
+                <strong>Motif annulation :</strong> {commande.motif_annulation || 'Non renseigné'}
+              </div>
+            </>
+          )}
+          {commande.status === 'refused' && (
+            <>
+              <div style={{marginBottom:10}}>
+                <strong>Date refus :</strong> {commande.date_refus ? new Date(commande.date_refus).toLocaleDateString('fr-FR') : ''}
+              </div>
+              <div style={{marginBottom:10}}>
+                <strong>Motif refus :</strong> {commande.motif_refus || 'Non renseigné'}
               </div>
             </>
           )}
@@ -393,6 +815,239 @@ export default function ParticularHomeMenu() {
       </div>
     )
   }
+  // Pop-up pour afficher les infos de la réservation
+  function ReservationInfoModal({ reservation, onClose }) {
+    if (!reservation) return null;
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.18)',
+        zIndex: 3000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 18,
+          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
+          padding: '32px 28px',
+          minWidth: 320,
+          maxWidth: 500,
+          textAlign: 'left',
+          position: 'relative',
+          maxHeight: '80vh',
+          overflowY: 'auto'
+        }}>
+          <button
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 18,
+              background: 'none',
+              border: 'none',
+              fontSize: 22,
+              cursor: 'pointer'
+            }}
+            onClick={onClose}
+            aria-label="Fermer"
+          >×</button>
+          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la réservation</h2>
+          <div style={{marginBottom:10}}>
+            <strong>Date de la réservation :</strong> {reservation.created_at ? new Date(reservation.created_at).toLocaleDateString('fr-FR') : ''}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Nom du prestataire :</strong> {reservation.profiles?.nom || reservation.prestataire_nom || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Annonce concernée :</strong> {reservation.annonces?.titre || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Date de la prestation :</strong> {reservation.date ? new Date(reservation.date).toLocaleDateString('fr-FR') : ''}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Durée de la prestation :</strong> {reservation.duree || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>En :</strong> {reservation.unit_tarif || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Endroit de la prestation :</strong> {reservation.endroit || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Votre commentaire :</strong> {reservation.commentaire || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Montant :</strong> {reservation.montant || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Montant acompte payé :</strong> {reservation.montant_acompte || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Photos :</strong>
+            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
+              {Array.isArray(reservation.photos) && reservation.photos.length > 0 ? (
+                reservation.photos.map((b64, idx) => (
+                  <img
+                    key={idx}
+                    src={`data:image/*;base64,${b64}`}
+                    alt="photo"
+                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
+                  />
+                ))
+              ) : (
+                <span style={{color:'#888'}}>Aucune photo</span>
+              )}
+            </div>
+          </div>
+          {reservation.nb_personnes > 1 && (
+            <div style={{marginBottom:10}}>
+              <strong>Nb de participants :</strong> {reservation.nb_personnes}
+            </div>
+          )}
+          {reservation.status === 'confirmed' && (
+            <div style={{marginBottom:10}}>
+              <strong>Date confirmation :</strong> {reservation.date_confirmation ? new Date(reservation.date_confirmation).toLocaleDateString('fr-FR') : ''}
+            </div>
+          )}
+          {reservation.status === 'cancelled' && (
+            <>
+              <div style={{marginBottom:10}}>
+                <strong>Date annulation :</strong> {reservation.date_annulation ? new Date(reservation.date_annulation).toLocaleDateString('fr-FR') : ''}
+              </div>
+              <div style={{marginBottom:10}}>
+                <strong>Motif annulation :</strong> {reservation.motif_annulation || 'Non renseigné'}
+              </div>
+            </>
+          )}
+          {reservation.status === 'refused' && (
+            <>
+              <div style={{marginBottom:10}}>
+                <strong>Date refus :</strong> {reservation.date_refus ? new Date(reservation.date_refus).toLocaleDateString('fr-FR') : ''}
+              </div>
+              <div style={{marginBottom:10}}>
+                <strong>Motif refus :</strong> {reservation.motif_refus || 'Non renseigné'}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Pop-up pour afficher les infos de la commande
+  function CommandeInfoModal({ commande, onClose, quantity }) {
+    if (!commande) return null;
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.18)',
+        zIndex: 3000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 18,
+          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
+          padding: '32px 28px',
+          minWidth: 320,
+          maxWidth: 500,
+          textAlign: 'left',
+          position: 'relative',
+          maxHeight: '80vh',
+          overflowY: 'auto'
+        }}>
+          <button
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 18,
+              background: 'none',
+              border: 'none',
+              fontSize: 22,
+              cursor: 'pointer'
+            }}
+            onClick={onClose}
+            aria-label="Fermer"
+          >×</button>
+          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la commande</h2>
+          <div style={{marginBottom:10}}>
+            <strong>Date de la commande :</strong> {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : ''}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Nom du prestataire :</strong> {commande.prestataire_nom || commande.nom_prestataire || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Annonce concernée :</strong> {commande.annonces?.titre || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Quantité commandée :</strong> {quantity || 0}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Montant :</strong> {commande.montant || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Frais de livraison :</strong> {commande.frais_livraison || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Votre commentaire :</strong> {commande.commentaire || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Adresse de livraison :</strong> {commande.adresse_livraison || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Mode de livraison :</strong> {commande.mode_livraison || 'Non renseigné'}
+          </div>
+          <div style={{marginBottom:10}}>
+            <strong>Photos :</strong>
+            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
+              {Array.isArray(commande.photos) && commande.photos.length > 0 ? (
+                commande.photos.map((b64, idx) => (
+                  <img
+                    key={idx}
+                    src={`data:image/*;base64,${b64}`}
+                    alt="photo"
+                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
+                  />
+                ))
+              ) : (
+                <span style={{color:'#888'}}>Aucune photo</span>
+              )}
+            </div>
+          </div>
+          {commande.status === 'confirmed' && (
+            <div style={{marginBottom:10}}>
+              <strong>Date confirmation :</strong> {commande.date_confirmation ? new Date(commande.date_confirmation).toLocaleDateString('fr-FR') : ''}
+            </div>
+          )}
+          {commande.status === 'cancelled' && (
+            <>
+              <div style={{marginBottom:10}}>
+                <strong>Date annulation :</strong> {commande.date_annulation ? new Date(commande.date_annulation).toLocaleDateString('fr-FR') : ''}
+              </div>
+              <div style={{marginBottom:10}}>
+                <strong>Motif annulation :</strong> {commande.motif_annulation || 'Non renseigné'}
+              </div>
+            </>
+          )}
+          {commande.status === 'refused' && (
+            <>
+              <div style={{marginBottom:10}}>
+                <strong>Date refus :</strong> {commande.date_refus ? new Date(commande.date_refus).toLocaleDateString('fr-FR') : ''}
+              </div>
+              <div style={{marginBottom:10}}>
+                <strong>Motif refus :</strong> {commande.motif_refus || 'Non renseigné'}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Bloc Commandes
   function CommandeCard({ r }) {
@@ -434,10 +1089,9 @@ export default function ParticularHomeMenu() {
               fontSize:15,
               cursor:'pointer'
             }}
-            // À adapter pour afficher une pop-up commande si besoin
-            onClick={() => alert('Informations commande à afficher ici')}
+            onClick={() => setSelectedCommande(r)}
           >
-            Afficher les informations
+            Afficher les détails
           </button>
         </div>
       </div>
@@ -506,10 +1160,9 @@ export default function ParticularHomeMenu() {
               fontSize:15,
               cursor:'pointer'
             }}
-            // À adapter pour afficher une pop-up réservation si besoin
-            onClick={() => alert('Informations réservation à afficher ici')}
+            onClick={() => setSelectedReservation(r)}
           >
-            Afficher les informations
+            Afficher les détails
           </button>
         </div>
         {r.status === 'pending' && (
@@ -752,6 +1405,7 @@ export default function ParticularHomeMenu() {
                     {reservationsSorted.map(r => (
                       <ReservationCard key={r.id} r={r} />
                     ))}
+                    <ReservationInfoModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
                     {showConfirm && (
                       <ConfirmCancelModal
                         onConfirm={() => handleUpdate(pendingCancelId, 'cancelled')}
@@ -788,6 +1442,11 @@ export default function ParticularHomeMenu() {
                   </div>
                 )}
               </div>
+              <CommandeInfoModal
+                commande={selectedCommande}
+                onClose={() => setSelectedCommande(null)}
+                quantity={selectedCommande ? commandeQuantities[selectedCommande.id] : 0}
+              />
             </section>
           )}
         </div>

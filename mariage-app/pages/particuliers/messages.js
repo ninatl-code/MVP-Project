@@ -22,7 +22,7 @@ export default function MessagesParticulier() {
       const { data: conversationsData, error: convError } = await supabase
         .from('conversations')
         .select('id, artist_id, client_id, annonce_id, last_message, created_at, updated, deletion_dateParti, lu')
-        .or(`artist_id.eq.${authData.user.id},client_id.eq.${authData.user.id}`)
+        .eq('artist_id', authData.user.id)
         .is('deletion_dateParti', null)
         .order('updated', { ascending: false });
       if (convError || !conversationsData) return;
@@ -64,13 +64,18 @@ export default function MessagesParticulier() {
       // Regroupe les messages par conversation
       const convMap = {};
       conversationsData.forEach(conv => {
+        // Ajout de la photo du prestataire (artist_id) en base64
+        const prestataireProfile = profileMap[conv.artist_id];
+        const prestatairePhoto = prestataireProfile?.photos && prestataireProfile.photos.length > 0
+          ? prestataireProfile.photos[0]
+          : null;
         convMap[conv.id] = {
           conversation: conv,
           user: profileMap[conv.artist_id === authData.user.id ? conv.client_id : conv.artist_id],
           userId: conv.artist_id === authData.user.id ? conv.client_id : conv.artist_id,
           annonceId: conv.annonce_id,
           messages: [],
-          prestatairePhoto: profileMap[conv.artist_id]?.photos || null // Ajout de la photo du prestataire
+          prestatairePhoto // base64
         };
       });
       messages.forEach(msg => {
@@ -94,7 +99,6 @@ export default function MessagesParticulier() {
           .update({ lu: true })
           .eq('conversation_id', conv.conversation.id)
           .eq('receiver_id', authData.user.id);
-        // Marquer la conversation comme lue
         await supabase
           .from('conversations')
           .update({ lu: true })
@@ -306,8 +310,10 @@ export default function MessagesParticulier() {
                   const lastPreview = lastMsg?.contenu ? lastMsg.contenu.slice(0, 40) + (lastMsg.contenu.length > 40 ? "..." : "") : '';
                   const isRead = conv.conversation.lu;
                   const annonceTitre = conv.annonceId ? annonceTitles[conv.annonceId] : '';
-                  // Utilise la photo du prestataire
-                  const photoUrl = conv.prestatairePhoto || 'https://via.placeholder.com/40';
+                  // Affiche la photo du prestataire (base64) ou un avatar par défaut
+                  const photoUrl = conv.prestatairePhoto
+                    ? `data:image/*;base64,${conv.prestatairePhoto}`
+                    : 'https://via.placeholder.com/40';
                   return (
                     <li
                       key={conv.userId}
@@ -336,9 +342,7 @@ export default function MessagesParticulier() {
                         <div className="flex-1 min-w-0" onClick={() => handleSelectConv(conv)}>
                           <div className="font-semibold text-slate-700 truncate">{conv.user?.nom || 'Utilisateur'}</div>
                           <div className="text-xs text-slate-400 truncate">{conv.user?.role || ''}</div>
-                          {/* Titre de l'annonce */}
                           {annonceTitre && <div className="text-xs text-blue-700 truncate">{annonceTitre}</div>}
-                          {/* Aperçu du dernier message */}
                           <div className="text-xs text-slate-500 truncate">{lastPreview}</div>
                         </div>
                         <div className="text-xs text-slate-400 min-w-[60px] text-right">{lastMsg ? new Date(lastMsg.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}</div>

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../../lib/supabaseClient";
 
 export default function ReservationPage() {
   const router = useRouter();
   const annonceId = router.query.id;
+  const reservationId = router.query.reservation_id;
   const [form, setForm] = useState({
     date: "",
     heure: "",
@@ -13,7 +14,7 @@ export default function ReservationPage() {
     ville: "",
     participants: "",
     commentaire: "",
-    fichier: null,
+    fichiers: [], // <-- tableau de fichiers
   });
   const [annonce, setAnnonce] = useState(null);
   const [tarifUnitaire, setTarifUnitaire] = useState(0);
@@ -27,6 +28,53 @@ export default function ReservationPage() {
   const [client, setClient] = useState({ nom: "", email: "" });
   const [prestataireId, setPrestataireId] = useState("");
   const [particulierId, setParticulierId] = useState("");
+  const [reservationMontant, setReservationMontant] = useState(null);
+  const [reservationAcompte, setReservationAcompte] = useState(null);
+
+  // Pour garder les valeurs initiales du client
+  const initialClient = useRef({ nom: "", email: "" });
+
+  // Si reservationId présent, charge la réservation existante
+  useEffect(() => {
+    async function fetchReservation() {
+      if (!reservationId) return;
+      setLoading(true);
+      const { data: reservationData, error: reservationError } = await supabase
+        .from("reservations")
+        .select("*")
+        .eq("id", reservationId)
+        .single();
+      if (reservationData) {
+        setForm({
+          date: reservationData.date ? reservationData.date.split("T")[0] : "",
+          heure: reservationData.date ? reservationData.date.split("T")[1]?.slice(0,5) : "",
+          duree: reservationData.duree || "",
+          lieu: reservationData.endroit?.split(",")[0] || "",
+          ville: reservationData.endroit?.split(",")[1] || "",
+          participants: reservationData.participants || "",
+          commentaire: reservationData.commentaire || "",
+          fichiers: [],
+        });
+        setTarifUnitaire(reservationData.tarif_unit || 0);
+        setUnitTarif(reservationData.unit_tarif || "");
+        setPrestataireId(reservationData.prestataire_id || "");
+        setParticulierId(reservationData.particulier_id || "");
+        // On garde les valeurs initiales
+        initialClient.current = {
+          nom: reservationData.client_nom || "",
+          email: reservationData.client_email || ""
+        };
+        setClient({
+          nom: reservationData.client_nom || "",
+          email: reservationData.client_email || ""
+        });
+        setReservationMontant(reservationData.montant || null);
+        setReservationAcompte(reservationData.montant_acompte || null);
+      }
+      setLoading(false);
+    }
+    fetchReservation();
+  }, [reservationId]);
 
   // Récupère l'annonce et le tarif
   useEffect(() => {
@@ -40,10 +88,10 @@ export default function ReservationPage() {
         .single();
       setAnnonce(annonceData);
       setPrixFixe(!!annonceData?.prix_fixe);
-      setTarifUnitaire(annonceData?.tarif_unit || 0);
-      setUnitTarif(annonceData?.unit_tarif || "");
-      setAcomptePercent(Number(annonceData?.acompte_percent || 0));
-      setPrestataireId(annonceData?.prestataire || "");
+      setTarifUnitaire(annonceData?.tarif_unit || tarifUnitaire);
+      setUnitTarif(annonceData?.unit_tarif || unitTarif);
+      setAcomptePercent(Number(annonceData?.acompte_percent || acomptePercent));
+      setPrestataireId(annonceData?.prestataire || prestataireId);
       setLoading(false);
 
       // Si pas prix fixe, récupère le devis lié
@@ -56,22 +104,28 @@ export default function ReservationPage() {
           .limit(1)
           .single();
         setDevisTarif(devisData?.tarif_unit || 0);
-        setTarifUnitaire(devisData?.tarif_unit || 0);
+        setTarifUnitaire(devisData?.tarif_unit || tarifUnitaire);
       }
-      // Récupère infos client (particulier)
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      setParticulierId(userId || "");
-      if (userId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("nom, prenom, email")
-          .eq("id", userId)
-          .single();
-        setClient({
-          nom: [profile?.nom, profile?.prenom].filter(Boolean).join(" ") || "",
-          email: profile?.email || ""
-        });
+      // Récupère infos client (particulier) si pas déjà chargé
+      if (!initialClient.current.nom || !initialClient.current.email) {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        setParticulierId(userId || particulierId);
+        if (userId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("nom, prenom, email")
+            .eq("id", userId)
+            .single();
+          initialClient.current = {
+            nom: [profile?.nom, profile?.prenom].filter(Boolean).join(" ") || "",
+            email: profile?.email || ""
+          };
+          setClient({
+            nom: [profile?.nom, profile?.prenom].filter(Boolean).join(" ") || "",
+            email: profile?.email || ""
+          });
+        }
       }
     }
     fetchAnnonce();
@@ -82,10 +136,15 @@ export default function ReservationPage() {
     const { name, value, files } = e.target;
     if (name === "client_nom" || name === "client_email") {
       setClient({ ...client, [name === "client_nom" ? "nom" : "email"]: value });
+    } else if (name === "fichiers") {
+      setForm({
+        ...form,
+        fichiers: files ? Array.from(files) : [],
+      });
     } else {
       setForm({
         ...form,
-        [name]: files ? files[0] : value,
+        [name]: value,
       });
     }
   };
@@ -96,19 +155,21 @@ export default function ReservationPage() {
     setError("");
     setSuccess(false);
 
-    // Upload fichier si présent
-    let fichierUrl = null;
-    if (form.fichier) {
-      const fileExt = form.fichier.name.split(".").pop();
-      const fileName = `${Date.now()}_${annonceId}.${fileExt}`;
-      const { data, error: uploadError } = await supabase.storage
-        .from("reservations-fichiers")
-        .upload(fileName, form.fichier);
-      if (!uploadError && data) {
-        const { publicUrl } = supabase.storage
-          .from("reservations-fichiers")
-          .getPublicUrl(data.path);
-        fichierUrl = publicUrl;
+    // Encodage des fichiers en base64 si présents
+    let photosArray = [];
+    if (form.fichiers && form.fichiers.length > 0) {
+      const toBase64 = file =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = error => reject(error);
+        });
+      try {
+        photosArray = await Promise.all(form.fichiers.map(file => toBase64(file)));
+      } catch (err) {
+        setError("Erreur lors de l'encodage des fichiers : " + err.message);
+        return;
       }
     }
 
@@ -120,30 +181,65 @@ export default function ReservationPage() {
     // Assemblage adresse
     const endroit = [form.lieu, form.ville].filter(Boolean).join(", ");
 
-    // Calcul montant total et acompte
-    const montant = Number(form.duree) * Number(tarifUnitaire);
-    const montant_acompte = Math.round(montant * (acomptePercent / 100));
+    // Calcul montant total et acompte (si prix fixe)
+    const montant = prixFixe
+      ? Number(form.duree) * Number(tarifUnitaire)
+      : reservationMontant !== null
+        ? reservationMontant
+        : 0;
+    const montant_acompte = prixFixe
+      ? Math.round(montant * (acomptePercent / 100))
+      : reservationAcompte !== null
+        ? reservationAcompte
+        : 0;
 
-    // Insertion dans reservations
-    const { error: insertError } = await supabase
-      .from("reservations")
-      .insert({
-        annonce_id: annonceId,
-        date: dateTime,
-        duree: form.duree,
-        unit_tarif: unitTarif,
-        endroit,
-        participants: form.participants,
-        commentaire: form.commentaire,
-        photos: fichierUrl ? [fichierUrl] : [],
-        tarif_unit: tarifUnitaire,
-        client_nom: client.nom,
-        client_email: client.email,
-        prestataire_id: prestataireId,
-        particulier_id: particulierId,
-        montant,
-        montant_acompte,
-      });
+    // Mise à jour de la réservation existante si reservationId présent
+    let insertError = null;
+    if (reservationId) {
+      const { error: updateError } = await supabase
+        .from("reservations")
+        .update({
+          annonce_id: annonceId,
+          date: dateTime,
+          duree: form.duree,
+          unit_tarif: unitTarif,
+          endroit,
+          participants: form.participants,
+          commentaire: form.commentaire,
+          photos: photosArray, // <-- tableau base64
+          tarif_unit: tarifUnitaire,
+          client_nom: client.nom,
+          client_email: client.email,
+          prestataire_id: prestataireId,
+          particulier_id: particulierId,
+          montant,
+          montant_acompte,
+        })
+        .eq("id", reservationId);
+      insertError = updateError;
+    } else {
+      // Insertion dans reservations si pas d'id
+      const { error: newInsertError } = await supabase
+        .from("reservations")
+        .insert({
+          annonce_id: annonceId,
+          date: dateTime,
+          duree: form.duree,
+          unit_tarif: unitTarif,
+          endroit,
+          participants: form.participants,
+          commentaire: form.commentaire,
+          photos: photosArray, // <-- tableau base64
+          tarif_unit: tarifUnitaire,
+          client_nom: client.nom,
+          client_email: client.email,
+          prestataire_id: prestataireId,
+          particulier_id: particulierId,
+          montant,
+          montant_acompte,
+        });
+      insertError = newInsertError;
+    }
 
     if (insertError) {
       setError("Erreur lors de la réservation : " + insertError.message);
@@ -153,9 +249,21 @@ export default function ReservationPage() {
     }
   };
 
-  // Calcul total et acompte
-  const total = Number(form.duree) * Number(tarifUnitaire);
-  const montant_acompte = Math.round(total * (acomptePercent / 100));
+  // Calcul total et acompte pour affichage
+  const total = prixFixe
+    ? Number(form.duree) * Number(tarifUnitaire)
+    : reservationMontant !== null
+      ? reservationMontant
+      : "-";
+  const montant_acompte_affichage = prixFixe
+    ? Math.round(total * (acomptePercent / 100))
+    : reservationAcompte !== null
+      ? reservationAcompte
+      : "-";
+
+  // Correction : garder le nom/email affichés même si pas modifiés
+  const displayedNom = client.nom || initialClient.current.nom;
+  const displayedEmail = client.email || initialClient.current.email;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-6">
@@ -195,7 +303,7 @@ export default function ReservationPage() {
             {/* Durée */}
             <div className="flex items-center gap-2">
               <div className="flex-1">
-                <label className="block text-gray-700 mb-2">Durée (heures)</label>
+                <label className="block text-gray-700 mb-2">Durée </label>
                 <input
                   type="number"
                   name="duree"
@@ -265,10 +373,11 @@ export default function ReservationPage() {
 
             {/* Fichier optionnel */}
             <div>
-              <label className="block text-gray-700 mb-2">Fichier (optionnel)</label>
+              <label className="block text-gray-700 mb-2">Fichiers (optionnel, plusieurs possibles)</label>
               <input
                 type="file"
-                name="fichier"
+                name="fichiers"
+                multiple
                 onChange={handleChange}
                 className="w-full"
               />
@@ -299,7 +408,7 @@ export default function ReservationPage() {
                 <input
                   type="text"
                   name="client_nom"
-                  value={client.nom}
+                  value={displayedNom}
                   onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 mb-2"
                   required
@@ -310,7 +419,7 @@ export default function ReservationPage() {
                 <input
                   type="email"
                   name="client_email"
-                  value={client.email}
+                  value={displayedEmail}
                   onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 mb-2"
                   required
@@ -318,33 +427,51 @@ export default function ReservationPage() {
               </div>
               <hr className="my-4" />
               <h2 className="text-xl font-bold text-gray-800 mb-4">Tarif proposé</h2>
-              <div className="mb-2">
-                <span className="font-semibold">Prix unitaire :</span>{" "}
-                <span className="text-pink-600 font-bold">
-                  {tarifUnitaire} MAD
-                </span>
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold">Durée souhaitée :</span>{" "}
-                <span>{form.duree || "-"} {unitTarif}</span>
-              </div>
-              <div className="mb-2 font-bold">
-                Total :{" "}
-                <span className="text-pink-600">
-                  {form.duree ? total : "-"} MAD
-                </span>
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold">Acompte à verser :</span>{" "}
-                <span>{acomptePercent}%</span>
-              </div>
-              <div className="mb-2 font-bold">
-                Montant acompte : <span className="text-pink-600">{form.duree ? montant_acompte : "-"} MAD</span>
-              </div>
-              {!prixFixe && (
-                <div className="mt-4 text-sm text-gray-500">
-                  <span>Tarif issu du devis</span>
-                </div>
+              {prixFixe ? (
+                <>
+                  <div className="mb-2">
+                    <span className="font-semibold">Prix unitaire :</span>{" "}
+                    <span className="text-pink-600 font-bold">
+                      {tarifUnitaire} MAD
+                    </span>
+                  </div>
+                  <div className="mb-2">
+                    <span className="font-semibold">Durée souhaitée :</span>{" "}
+                    <span>{form.duree || "-"} {unitTarif}</span>
+                  </div>
+                  <div className="mb-2 font-bold">
+                    Total :{" "}
+                    <span className="text-pink-600">
+                      {total} MAD
+                    </span>
+                  </div>
+                  <div className="mb-2">
+                    <span className="font-semibold">Acompte à verser :</span>{" "}
+                    <span>{acomptePercent}%</span>
+                  </div>
+                  <div className="mb-2 font-bold">
+                    Montant acompte : <span className="text-pink-600">{montant_acompte_affichage} MAD</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-2">
+                    <span className="font-semibold">Durée souhaitée :</span>{" "}
+                    <span>{form.duree || "-"} {unitTarif}</span>
+                  </div>
+                  <div className="mb-2 font-bold">
+                    Total :{" "}
+                    <span className="text-pink-600">
+                      {total} MAD
+                    </span>
+                  </div>
+                  <div className="mb-2 font-bold">
+                    Montant acompte : <span className="text-pink-600">{montant_acompte_affichage} MAD</span>
+                  </div>
+                  <div className="mt-4 text-sm text-gray-500">
+                    <span>Tarif issu du devis</span>
+                  </div>
+                </>
               )}
             </>
           )}
