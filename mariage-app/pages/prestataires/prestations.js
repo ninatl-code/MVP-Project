@@ -20,7 +20,7 @@ export default function PrestationsPrestataire() {
         // Récupérer les annonces actives liées à ce prestataire
         const { data, error } = await supabase
           .from('annonces')
-          .select('id, titre, description, photos, tarification, equipement, prestation, ville, actif, prestataire')
+          .select('id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, acompte_percent, equipement, prestation, ville, actif, prestataire')
           .eq('actif', true)
           .eq('prestataire', user.id)
         if (!error) setPrestations(data || [])
@@ -135,10 +135,26 @@ export default function PrestationsPrestataire() {
           position: 'relative',
           opacity: prestation.actif === false ? 0.6 : 1
         }}
-        onClick={e => {
-          if (e.target.type === 'checkbox') return
-          setSelectedPrestation(prestation)
-          setShowModal(true)
+        onClick={async e => {
+          if (e.target.type === 'checkbox') return;
+          // Recherche les infos complètes de l'annonce dans la table annonces
+          const { data: annonceDetails, error } = await supabase
+            .from('annonces')
+            .select('*, prestations(*), villes(*)')
+            .eq('id', prestation.id)
+            .single();
+          if (!error && annonceDetails) {
+            setSelectedPrestation({
+              ...annonceDetails,
+              prestation: annonceDetails.prestations?.nom || '',
+              prestationType: annonceDetails.prestations?.type || '',
+              ville: annonceDetails.villes?.ville || '',
+              // Ajoute les autres champs nécessaires ici
+            });
+            setShowModal(true);
+          } else {
+            alert("Impossible de charger les détails de l'annonce.");
+          }
         }}
       >
         {/* Case à cocher en haut à droite */}
@@ -199,7 +215,13 @@ export default function PrestationsPrestataire() {
             {prestation.description}
           </div>
           <div style={{fontSize:15, color:'#444', marginBottom:6}}>
-            <b>Tarification :</b> {prestation.tarification}
+            <b>Tarif unitaire :</b> {prestation.tarif_unit} {prestation.unit_tarif}
+          </div>
+          <div style={{fontSize:15, color:'#444', marginBottom:6}}>
+            <b>Prix fixe :</b> {prestation.prix_fixe ? "Oui" : "Non"}
+          </div>
+          <div style={{fontSize:15, color:'#444', marginBottom:6}}>
+            <b>Acompte à la réservation :</b> {prestation.acompte_percent ? `${prestation.acompte_percent}%` : "Non renseigné"}
           </div>
           <div style={{fontSize:15, color:'#444'}}>
             <b>Équipements :</b> {prestation.equipement}
@@ -222,77 +244,77 @@ export default function PrestationsPrestataire() {
 
   // Pop-up d'ajout/modification/aperçu de prestation
   function AddPrestationModal({ open, onClose, prestation }) {
-    const isEdit = false
-    // Formulaire avec type de prestation (service ou produit)
-    const [form, setForm] = useState(
-      prestation
-        ? {
-            titre: prestation.titre || '',
-            type: prestation.type || '', // type: 'service' ou 'produit'
-            categorie: prestation.categorie || '',
-            ville: prestation.ville || '',
-            description: prestation.description || '',
-            prix: prestation.prix || '',
-            photos: prestation.photos || [],
-            modeles: [],
-            conditions: prestation.conditions || '',
-            categories: prestation.categories || []
-          }
-        : {
-            titre: '',
-            type: '',
-            categorie: '',
-            ville: '',
-            description: '',
-            prix: '',
-            photos: [],
-            modeles: [],
-            conditions: '',
-            categories: []
-          }
-    )
+    const isEdit = !!prestation;
+    const [form, setForm] = useState({
+      titre: '',
+      type: '',
+      categorie: '',
+      ville: '',
+      description: '',
+      tarif_unit: '',
+      unit_tarif: '',
+      prix_fixe: false,
+      acompte_percent: '',
+      photos: [],
+      modeles: [],
+      conditions: '',
+      categories: []
+    });
 
-    const [categoriesList, setCategoriesList] = useState([])
-    const [villesList, setVillesList] = useState([])
+    const [categoriesList, setCategoriesList] = useState([]);
+    const [villesList, setVillesList] = useState([]);
 
     useEffect(() => {
       const fetchCategories = async () => {
         const { data, error } = await supabase
           .from('prestations')
           .select('nom')
-          .neq('nom', null)
+          .neq('nom', null);
         if (!error && data) {
-          const uniques = [...new Set(data.map(d => d.nom).filter(Boolean))]
-          setCategoriesList(uniques)
+          const uniques = [...new Set(data.map(d => d.nom).filter(Boolean))];
+          setCategoriesList(uniques);
         }
-      }
+      };
       const fetchVilles = async () => {
         const { data, error } = await supabase
           .from('villes')
-          .select('ville')
+          .select('ville');
         if (!error && data) {
-          setVillesList(data.map(v => v.ville))
+          setVillesList(data.map(v => v.ville));
         }
-      }
-      
-      fetchCategories()
-      fetchVilles()
-      
-    }, [])
+      };
+      fetchCategories();
+      fetchVilles();
+    }, []);
 
     useEffect(() => {
       if (isEdit && prestation) {
         setForm({
           titre: prestation.titre || '',
-          categories: prestation.prestation ? [prestation.prestation] : [],
+          type: prestation.prestationType || prestation.type || '',
+          categorie: prestation.categorie || '',
           ville: prestation.ville || '',
           description: prestation.description || '',
-          tarification: prestation.tarification || '',
-          equipements: prestation.equipement || '',
-          photos: prestation.photos || []
-        })
+          tarif_unit: prestation.tarif_unit || '',
+          unit_tarif: prestation.unit_tarif || '',
+          prix_fixe: prestation.prix_fixe || false,
+          acompte_percent: prestation.acompte_percent || '',
+          photos: prestation.photos || [],
+          modeles: prestation.modeles || [],
+          conditions: prestation.conditions || '',
+          categories: prestation.categories || []
+        });
       }
-    }, [prestation, isEdit])
+    }, [prestation, isEdit]);
+
+    // Conversion fichier en base64
+    const fileToBase64 = file =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
 
     const handleCheckbox = (cat) => {
       setForm(f => ({
@@ -316,14 +338,16 @@ export default function PrestationsPrestataire() {
           padding: 38,
           minWidth: 680,
           maxWidth: 900,
+          maxHeight: '90vh',
           boxShadow: '0 2px 24px rgba(0,0,0,0.10)',
           position: 'relative',
-          fontSize: 13
+          fontSize: 13,
+          overflowY: 'auto' // Ajout du curseur vertical
         }}>
           <button
             onClick={() => {
-              setSelectedPrestation(null)
-              onClose()
+              setSelectedPrestation(null);
+              onClose();
             }}
             style={{
               position: 'absolute', top: 18, right: 18, background: 'none', border: 'none',
@@ -360,9 +384,23 @@ export default function PrestationsPrestataire() {
               <option key={nom} value={nom}>{nom}</option>
             ))}
           </select>
+
           {/* Champs dynamiques selon le type sélectionné */}
           {form.type === 'service' && (
             <>
+              {/* Prix fixe */}
+              <div style={{marginBottom: 12}}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={form.prix_fixe}
+                    onChange={e => setForm(f => ({ ...f, prix_fixe: e.target.checked }))}
+                    disabled={isEdit}
+                    style={{marginRight: 8}}
+                  />
+                  Prix fixe ?
+                </label>
+              </div>
               {/* Bloc ville pour service */}
               <div style={{display:'flex', gap:10, marginBottom:12}}>
                 <select
@@ -385,12 +423,37 @@ export default function PrestationsPrestataire() {
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1px solid #ddd', fontSize: 13, marginBottom: 12, background: '#fff', minHeight: 40, resize: 'vertical' }}
                 disabled={isEdit}
               />
-              {/* Bloc tarification pour service */}
+              {/* Tarification et unité si prix fixe */}
+              {form.prix_fixe && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Tarif unitaire"
+                    value={form.tarif_unit}
+                    onChange={e => setForm(f => ({ ...f, tarif_unit: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1px solid #ddd', fontSize: 13, marginBottom: 10, background: '#fff' }}
+                    required
+                    disabled={isEdit}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Unité du tarif (ex: heure, jour, prestation...)"
+                    value={form.unit_tarif}
+                    onChange={e => setForm(f => ({ ...f, unit_tarif: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1px solid #ddd', fontSize: 13, marginBottom: 10, background: '#fff' }}
+                    required
+                    disabled={isEdit}
+                  />
+                </>
+              )}
+              {/* Pourcentage acompte */}
               <input
-                type="text"
-                placeholder="Tarification"
-                value={form.tarification}
-                onChange={e => setForm(f => ({ ...f, tarification: e.target.value }))}
+                type="number"
+                min="0"
+                max="100"
+                placeholder="Pourcentage d'acompte à la réservation (%)"
+                value={form.acompte_percent}
+                onChange={e => setForm(f => ({ ...f, acompte_percent: e.target.value }))}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1px solid #ddd', fontSize: 13, marginBottom: 10, background: '#fff' }}
                 disabled={isEdit}
               />
@@ -404,12 +467,34 @@ export default function PrestationsPrestataire() {
                 disabled={isEdit}
               />
               {/* Bloc photos pour service */}
-              {/* ...existing code pour photos... */}
+              <div style={{marginBottom: 10}}>
+                <label>Photos</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={async e => {
+                    const files = Array.from(e.target.files);
+                    const base64Photos = [];
+                    for (let file of files) {
+                      const base64 = await fileToBase64(file);
+                      base64Photos.push(base64);
+                    }
+                    setForm(f => ({ ...f, photos: base64Photos }));
+                  }}
+                  disabled={isEdit}
+                />
+                <div style={{display:'flex', gap:6, marginTop:8}}>
+                  {form.photos && form.photos.map((b64, idx) => (
+                    <img key={idx} src={`data:image/*;base64,${b64}`} alt="photo" style={{width:48, height:48, objectFit:'cover', borderRadius:8}} />
+                  ))}
+                </div>
+              </div>
             </>
           )}
           {form.type === 'produit' && (
             <>
-              {/* Bloc ville pour service */}
+              {/* Bloc ville pour produit */}
               <div style={{display:'flex', gap:10, marginBottom:12}}>
                 <select
                   value={form.ville}
@@ -433,7 +518,29 @@ export default function PrestationsPrestataire() {
                 disabled={isEdit}
               />
               {/* Photos du produit */}
-              {/* ...existing code pour photos... */}
+              <div style={{marginBottom: 10}}>
+                <label>Photos (base64)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={async e => {
+                    const files = Array.from(e.target.files);
+                    const base64Photos = [];
+                    for (let file of files) {
+                      const base64 = await fileToBase64(file);
+                      base64Photos.push(base64);
+                    }
+                    setForm(f => ({ ...f, photos: base64Photos }));
+                  }}
+                  disabled={isEdit}
+                />
+                <div style={{display:'flex', gap:6, marginTop:8}}>
+                  {form.photos && form.photos.map((b64, idx) => (
+                    <img key={idx} src={`data:image/*;base64,${b64}`} alt="photo" style={{width:48, height:48, objectFit:'cover', borderRadius:8}} />
+                  ))}
+                </div>
+              </div>
               {/* Modèles proposés */}
               <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>
                 Modèles proposés ({form.modeles && form.modeles.length ? `${form.modeles.length} créé${form.modeles.length > 1 ? 's' : ''}` : 'aucun'})
@@ -640,65 +747,56 @@ export default function PrestationsPrestataire() {
                 }}
                 onClick={async () => {
                   // Récupérer l'id de la prestation (type)
-                  let prestationId = null
+                  let prestationId = null;
                   if (form.categories.length > 0) {
                     const { data: prestationData } = await supabase
                       .from('prestations')
                       .select('id')
                       .eq('nom', form.categories[0])
-                      .single()
-                    prestationId = prestationData?.id || null
+                      .single();
+                    prestationId = prestationData?.id || null;
                   }
 
                   // Récupérer l'id de la ville
-                  let villeId = null
+                  let villeId = null;
                   if (form.ville) {
                     const { data: villeData } = await supabase
                       .from('villes')
                       .select('id')
                       .eq('ville', form.ville)
-                      .single()
-                    villeId = villeData?.id || null
+                      .single();
+                    villeId = villeData?.id || null;
                   }
 
-                  // Upload des photos (stockage Supabase)
-                  let photoUrls = []
-                  for (let i = 0; i < form.photos.length; i++) {
-                    const file = form.photos[i]
-                    if (file && typeof file !== 'string') {
-                      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name}`
-                      const { data, error } = await supabase.storage
-                        .from('photos')
-                        .upload(fileName, file)
-                      if (!error && data) {
-                        const { publicUrl } = supabase
-                          .storage
-                          .from('photos')
-                          .getPublicUrl(fileName).data
-                        photoUrls.push(publicUrl)
-                      }
-                    } else if (typeof file === 'string') {
-                      photoUrls.push(file)
+                  // Ajout dans la table annonces avec les nouveaux champs
+                  if (!prestationId) {
+                    alert("Erreur : aucune prestation sélectionnée.");
+                    return;
+                  }
+
+                  // Validation des champs obligatoires si prix_fixe
+                  if (form.type === 'service' && form.prix_fixe) {
+                    if (!form.tarif_unit || !form.unit_tarif) {
+                      alert("Veuillez renseigner le tarif unitaire et son unité.");
+                      return;
                     }
                   }
 
-                  // Ajout dans la table annonces avec l'id du prestataire et le code prestation
-                  if (!prestationId) {
-                    alert("Erreur : aucune prestation sélectionnée.")
-                    return
-                  }
                   const { error: insertError } = await supabase
                     .from('annonces')
                     .insert([{
                       titre: form.titre,
-                      prestation: prestationId, // <-- ici on envoie l'id à Supabase
+                      prestation: prestationId,
                       ville: villeId,
                       description: form.description,
-                      photos: photoUrls,
-                      tarification: form.tarification,
+                      photos: form.photos, // tableau de base64
+                      tarif_unit: form.tarif_unit,
+                      unit_tarif: form.unit_tarif,
+                      prix_fixe: form.prix_fixe,
+                      acompte_percent: form.acompte_percent,
                       equipement: form.equipements,
                       prestataire: userId
-                    }])
+                    }]);
 
                   if (!insertError) {
                     setForm({
@@ -706,13 +804,16 @@ export default function PrestationsPrestataire() {
                       categories: [],
                       ville: '',
                       description: '',
-                      tarification: '',
+                      tarif_unit: '',
+                      unit_tarif: '',
+                      prix_fixe: false,
+                      acompte_percent: '',
                       equipements: '',
                       photos: []
-                    })
-                    onClose()
+                    });
+                    onClose();
                   } else {
-                    alert("Erreur lors de l'ajout : " + insertError.message)
+                    alert("Erreur lors de l'ajout : " + insertError.message);
                   }
                 }}
               >Ajouter</button>
@@ -836,8 +937,10 @@ export default function PrestationsPrestataire() {
               borderRadius: 16,
               padding: 32,
               minWidth: 340,
+              maxHeight: '90vh',
               boxShadow: '0 2px 24px rgba(0,0,0,0.10)',
-              textAlign: 'center'
+              textAlign: 'center',
+              overflowY: 'auto' // Ajout du curseur vertical
             }}>
               <div style={{fontSize:22, fontWeight:600, marginBottom:18}}>
                 Voulez-vous vraiment supprimer {selectedIds.length > 1 ? 'ces annonces' : 'cette annonce'} ?
@@ -892,8 +995,10 @@ export default function PrestationsPrestataire() {
               borderRadius: 16,
               padding: 32,
               minWidth: 340,
+              maxHeight: '90vh',
               boxShadow: '0 2px 24px rgba(0,0,0,0.10)',
-              textAlign: 'center'
+              textAlign: 'center',
+              overflowY: 'auto' // Ajout du curseur vertical
             }}>
               <div style={{fontSize:22, fontWeight:600, marginBottom:18}}>
                 {selectedIds.length > 0 && selectedIds.every(id => {

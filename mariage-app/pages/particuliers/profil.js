@@ -1,17 +1,15 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
-import { Mail, Phone, MapPin, Heart, Calendar } from "lucide-react";
+import { Mail, Phone, MapPin, Heart } from "lucide-react";
 import Header from '../../components/HeaderParti';
 
 const DEFAULT_ANNONCE_IMG = "/shutterstock_2502519999.jpg";
 
 export default function UserProfile() {
   const [user, setUser] = useState(null);
-  const [reservations, setReservations] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [villeNom, setVilleNom] = useState("");
-  const [annonceTitles, setAnnonceTitles] = useState({});
-  const [prestataireNames, setPrestataireNames] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [bioEdit, setBioEdit] = useState("");
   const [emailEdit, setEmailEdit] = useState("");
@@ -19,6 +17,11 @@ export default function UserProfile() {
   const [villeEdit, setVilleEdit] = useState("");
   const [photoEdit, setPhotoEdit] = useState("");
   const [villesList, setVillesList] = useState([]);
+  const [nbReservations, setNbReservations] = useState(0);
+  const [nbCommandes, setNbCommandes] = useState(0);
+  const [nbDevis, setNbDevis] = useState(0);
+  const [favoriteAnnonces, setFavoriteAnnonces] = useState([]);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -73,87 +76,49 @@ export default function UserProfile() {
         .select("id, ville");
       setVillesList(villesData || []);
 
-      // Récupère les réservations
-      const { data: resaData } = await supabase
-        .from("reservations")
-        .select("id, annonce_id, prestataire_id, date, status, montant_acompte, date_confirmation, date_annulation, motif_annulation, date_refus, motif_refus")
+      // Récupère le nombre de réservations
+      const { count: reservationsCount } = await supabase
+        .from('reservations')
+        .select('id', { count: 'exact', head: true })
+        .eq('particulier_id', authUser.id);
+      setNbReservations(reservationsCount || 0);
+
+      // Récupère le nombre de commandes
+      const { count: commandesCount } = await supabase
+        .from('commandes')
+        .select('id', { count: 'exact', head: true })
+        .eq('particulier_id', authUser.id);
+      setNbCommandes(commandesCount || 0);
+
+      // Récupère le nombre de devis
+      const { count: devisCount } = await supabase
+        .from('devis')
+        .select('id', { count: 'exact', head: true })
+        .eq('particulier_id', authUser.id);
+      setNbDevis(devisCount || 0);
+
+      // Récupère les annonces favorites du particulier
+      const { data: favAnnonceData } = await supabase
+        .from("favoris")
+        .select("id, annonce_id")
         .eq("particulier_id", authUser.id);
 
-      // Récupère les titres des annonces et noms des prestataires + photos
-      const annonceIds = [...new Set((resaData || []).map(r => r.annonce_id).filter(Boolean))];
-      const prestataireIds = [...new Set((resaData || []).map(r => r.prestataire_id).filter(Boolean))];
-
-      let annonceTitleMap = {};
-      let annoncePhotoMap = {};
-      if (annonceIds.length > 0) {
-        const { data: annoncesData } = await supabase
-          .from("annonces")
-          .select("id, titre, photos")
-          .in("id", annonceIds);
-        annoncesData?.forEach(a => {
-          annonceTitleMap[a.id] = a.titre;
-          annoncePhotoMap[a.id] = a.photos && a.photos.length > 0 ? a.photos[0] : DEFAULT_ANNONCE_IMG;
-        });
+      let annoncesList = [];
+      if (favAnnonceData && favAnnonceData.length > 0) {
+        const annonceIds = favAnnonceData.map(f => f.annonce_id).filter(Boolean);
+        if (annonceIds.length > 0) {
+          const { data: annoncesData } = await supabase
+            .from("annonces")
+            .select("id, titre, photos")
+            .in("id", annonceIds);
+          annoncesList = (annoncesData || []).map(a => ({
+            id: a.id,
+            titre: a.titre,
+            photo: Array.isArray(a.photos) && a.photos.length > 0 ? a.photos[0] : DEFAULT_ANNONCE_IMG
+          }));
+        }
       }
-      setAnnonceTitles(annonceTitleMap);
-
-      let prestataireNameMap = {};
-      if (prestataireIds.length > 0) {
-        const { data: prestatairesData } = await supabase
-          .from("profiles")
-          .select("id, nom")
-          .in("id", prestataireIds);
-        prestatairesData?.forEach(p => { prestataireNameMap[p.id] = p.nom; });
-      }
-      setPrestataireNames(prestataireNameMap);
-
-      setReservations(
-        (resaData || []).map((resa) => ({
-          id: resa.id,
-          title: annonceTitleMap[resa.annonce_id] || "Annonce",
-          provider: prestataireNameMap[resa.prestataire_id] || "Prestataire",
-          date: resa.date
-            ? new Date(resa.date).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })
-            : "",
-          city: villeLabel,
-          cover: annoncePhotoMap[resa.annonce_id] || DEFAULT_ANNONCE_IMG,
-          statut: resa.status || "Statut inconnu",
-          montant_acompte: resa.montant_acompte || null,
-          date_confirmation: resa.date_confirmation
-            ? new Date(resa.date_confirmation).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          date_annulation: resa.date_annulation
-            ? new Date(resa.date_annulation).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          motif_annulation: resa.motif_annulation || null,
-          date_refus: resa.date_refus
-            ? new Date(resa.date_refus).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          motif_refus: resa.motif_refus || null,
-        }))
-      );
+      setFavoriteAnnonces(annoncesList);
 
       // Récupère les favoris
       const { data: favData } = await supabase
@@ -314,9 +279,9 @@ export default function UserProfile() {
           {/* Infos perso */}
           <section className="grid md:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl shadow p-5 space-y-2">
-              <h3 className="font-semibold text-gray-800 mb-3">
+              <h2 className="font-semibold text-gray-800 mb-3">
                 Informations personnelles
-              </h3>
+              </h2>
               {!editMode ? (
                 <>
                   <p className="flex items-center gap-2 text-gray-600">
@@ -367,93 +332,41 @@ export default function UserProfile() {
             </div>
           </section>
 
-          {/* Reservations */}
+          {/* Statistiques */}
           <section>
             <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              Mes réservations
+              Mes statistiques
             </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {reservations.map((resa) => (
-                <div
-                  key={resa.id}
-                  className="bg-white rounded-2xl shadow overflow-hidden"
-                >
-                  <img
-                    src={resa.cover}
-                    alt={resa.title}
-                    className="h-40 w-full object-cover"
-                  />
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-800">{resa.title}</h3>
-                    <p className="text-sm text-gray-500">
-                      {resa.provider} – {resa.city}
-                    </p>
-                    <p className="text-sm text-gray-500">{resa.date}</p>
-                    <p className="text-sm font-semibold mt-2">
-                      Statut : <span className={
-                        resa.statut === "confirmed" ? "text-green-600" :
-                        resa.statut === "cancelled" ? "text-red-600" :
-                        resa.statut === "refused" ? "text-orange-600" :
-                        resa.statut === "pending" ? "text-orange-600" :
-                        "text-gray-600"
-                      }>
-                        {resa.statut === "confirmed"
-                          ? "Confirmée"
-                          : resa.statut === "cancelled"
-                          ? "Annulée"
-                          : resa.statut === "refused"
-                          ? "Refusée"
-                          : resa.statut === "pending"
-                          ? "En attente"
-                          : resa.statut}
-                      </span>
-                    </p>
-                    {resa.montant_acompte && (
-                      <p className="text-sm text-black-700">
-                        <span className="font-bold"> Acompte : </span> {resa.montant_acompte !== null ? resa.montant_acompte : 0} MAD
-                      </p>
-                    )}
-                    {resa.statut === "confirmed" && resa.date_confirmation && (
-                      <p className="text-sm text-black-700">
-                       <span className="font-bold"> Confirmée le : </span> {resa.date_confirmation}
-                      </p>
-                    )}
-                    {resa.statut === "cancelled" && (
-                      <>
-                        {resa.date_annulation && (
-                          <p className="text-sm text-black-700">
-                            <span className="font-bold"> Annulée le : </span>{resa.date_annulation}
-                          </p>
-                        )}
-                        {resa.motif_annulation && (
-                          <p className="text-sm text-black-700">
-                           <span className="font-bold"> Motif : </span>{resa.motif_annulation}
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {resa.statut === "refused" && (
-                      <>
-                        {resa.date_refus && (
-                          <p className="text-sm text-gray-700">
-                            <span className="font-bold"> Refusée le : </span>{resa.date_refus}
-                          </p>
-                        )}
-                        {resa.motif_refus && (
-                          <p className="text-sm text-gray-700">
-                            <span className="font-bold"> Motif : </span>{resa.motif_refus}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {reservations.length === 0 && (
-                <div className="text-gray-400 text-center py-8">
-                  Aucune réservation pour le moment.
+            <div className="flex gap-8 mb-10">
+              {nbReservations > 0 && (
+                <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center min-w-[180px]">
+                  <span className="text-4xl font-bold text-pink-600">{nbReservations}</span>
+                  <span className="mt-2 text-lg text-gray-700">Réservations</span>
                 </div>
               )}
+              {nbCommandes > 0 && (
+                <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center min-w-[180px]">
+                  <span className="text-4xl font-bold text-blue-600">{nbCommandes}</span>
+                  <span className="mt-2 text-lg text-gray-700">Commandes</span>
+                </div>
+              )}
+              {nbDevis > 0 && (
+                <div className="bg-white rounded-xl shadow p-6 flex flex-col items-center min-w-[180px]">
+                  <span className="text-4xl font-bold text-green-600">{nbDevis}</span>
+                  <span className="mt-2 text-lg text-gray-700">Demandes de devis</span>
+                </div>
+              )}
+            </div>
+            <div className="text-center mb-8 text-gray-700">
+              Pour voir vos réservations, commandes ou demandes de devis, allez dans votre menu.
+            </div>
+            <div className="flex justify-center">
+              <button
+                className="bg-pink-600 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-pink-700 transition"
+                onClick={() => router.push('/particuliers/menu')}
+              >
+                Menu
+              </button>
             </div>
           </section>
 
@@ -475,7 +388,7 @@ export default function UserProfile() {
                   />
                   <div className="p-4 flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-gray-800">{fav.title}</h3>
+                      <h2 className="font-semibold text-gray-800">{fav.title}</h2>
                       <p className="text-sm text-gray-500">{fav.city}</p>
                     </div>
                     <Heart className="w-6 h-6 text-pink-500" />
@@ -489,6 +402,35 @@ export default function UserProfile() {
               )}
             </div>
           </section>
+
+          {/* Annonces favorites */}
+          {favoriteAnnonces.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-gray-800 mb-3">
+                Annonces favorites
+              </h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                {favoriteAnnonces.map(a => (
+                  <a
+                    key={a.id}
+                    href={`/annonces/${a.id}`}
+                    className="bg-white rounded-2xl shadow overflow-hidden block hover:shadow-lg transition"
+                  >
+                    <img
+                      src={a.photo}
+                      alt={a.titre}
+                      className="h-32 w-full object-cover"
+                    />
+                    <div className="p-4">
+                      <h2 className="font-semibold text-gray-800">{a.titre}</h2>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ...rest unchanged... */}
         </div>
       </div>
     </>

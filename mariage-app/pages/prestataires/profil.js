@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Mail, Phone, MapPin, Heart, Calendar } from "lucide-react";
 import Header from '../../components/HeaderPresta';
+import { useRouter } from "next/router";
 
 const DEFAULT_ANNONCE_IMG = "/shutterstock_2502519999.jpg"; // Place l'image PJ dans public/
 
@@ -20,6 +21,7 @@ export default function UserProfile() {
   const [villeEdit, setVilleEdit] = useState("");
   const [photoEdit, setPhotoEdit] = useState("");
   const [villesList, setVillesList] = useState([]);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -228,6 +230,39 @@ export default function UserProfile() {
     }
   };
 
+  // Fonction pour configurer les paiements Stripe
+  const handleStripeSetup = async () => {
+    try {
+      // Récupère l'id et l'email du prestataire depuis le profil
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", authUser.id)
+        .single();
+      const email = profile?.email || "";
+
+      // Appel API avec les deux champs
+      const res = await fetch("/api/stripe/create-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prestataire_id: authUser.id,
+          email: email
+        })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("Erreur lors de la configuration Stripe.");
+      }
+    } catch (err) {
+      alert("Erreur réseau lors de la configuration Stripe.");
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -290,26 +325,7 @@ export default function UserProfile() {
 
         {/* Main */}
         <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
-          {/* About */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              À propos de moi
-            </h2>
-            {!editMode ? (
-              <p className="text-gray-600 bg-white rounded-2xl shadow p-4">
-                {user.about}
-              </p>
-            ) : (
-              <textarea
-                className="w-full text-gray-600 bg-white rounded-2xl shadow p-4"
-                value={bioEdit}
-                onChange={e => setBioEdit(e.target.value)}
-                rows={4}
-              />
-            )}
-          </section>
-
-          {/* Infos perso */}
+          {/* Infos perso + Infos bancaires */}
           <section className="grid md:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl shadow p-5 space-y-2">
               <h2 className="font-semibold text-gray-800 mb-3">
@@ -363,6 +379,36 @@ export default function UserProfile() {
                 </>
               )}
             </div>
+            <div className="bg-white rounded-2xl shadow p-5 space-y-2 flex flex-col items-center justify-center">
+              <h2 className="font-semibold text-gray-800 mb-3">
+                Informations bancaires
+              </h2>
+              <button
+                className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow hover:bg-blue-700 transition"
+                onClick={handleStripeSetup}
+              >
+                Configurer mes paiements
+              </button>
+            </div>
+          </section>
+
+          {/* About */}
+          <section>
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+              À propos de moi
+            </h2>
+            {!editMode ? (
+              <p className="text-gray-600 bg-white rounded-2xl shadow p-4">
+                {user.about}
+              </p>
+            ) : (
+              <textarea
+                className="w-full text-gray-600 bg-white rounded-2xl shadow p-4"
+                value={bioEdit}
+                onChange={e => setBioEdit(e.target.value)}
+                rows={4}
+              />
+            )}
           </section>
 
           {/* Reservations */}

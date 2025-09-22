@@ -92,11 +92,15 @@ export default function ArtistProfilePreview() {
 
   // Add to favoris
   const handleAddFavori = async () => {
-    if (!userId || !annonce?.prestataire?.id) return;
+    if (!userId || !annonce?.prestataire?.id || !annonceId) return;
     setFavorisLoading(true);
     const { error, data } = await supabase
       .from("favoris")
-      .insert({ particulier_id: userId, prestataire_id: annonce.prestataire.id })
+      .insert({
+        particulier_id: userId,
+        prestataire_id: annonce.prestataire.id,
+        annonce_id: annonceId // <-- Ajout de l'annonce_id ici
+      })
       .select()
       .single();
     if (!error && data) {
