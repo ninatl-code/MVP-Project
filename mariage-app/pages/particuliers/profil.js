@@ -371,43 +371,10 @@ export default function UserProfile() {
           </section>
 
           {/* Favoris */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              Mes favoris
-            </h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {favorites.map((fav) => (
-                <div
-                  key={fav.id}
-                  className="bg-white rounded-2xl shadow overflow-hidden"
-                >
-                  <img
-                    src={fav.cover}
-                    alt={fav.title}
-                    className="h-32 w-full object-cover"
-                  />
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <h2 className="font-semibold text-gray-800">{fav.title}</h2>
-                      <p className="text-sm text-gray-500">{fav.city}</p>
-                    </div>
-                    <Heart className="w-6 h-6 text-pink-500" />
-                  </div>
-                </div>
-              ))}
-              {favorites.length === 0 && (
-                <div className="text-gray-400 text-center py-8">
-                  Aucun favori pour le moment.
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Annonces favorites */}
           {favoriteAnnonces.length > 0 && (
             <section>
               <h2 className="text-lg font-semibold text-gray-800 mb-3">
-                Annonces favorites
+                Mes favoris
               </h2>
               <div className="grid md:grid-cols-3 gap-6">
                 {favoriteAnnonces.map(a => (
@@ -429,6 +396,7 @@ export default function UserProfile() {
               </div>
             </section>
           )}
+
 
           {/* ...rest unchanged... */}
         </div>
