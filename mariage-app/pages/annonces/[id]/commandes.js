@@ -141,6 +141,32 @@ export default function PasserCommande() {
     return "";
   };
 
+  // Nouvelle fonction pour paiement Stripe
+  const handleStripeCheckout = async (commandeId, montantTotal) => {
+    try {
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          annonce_id: annonceId,
+          montant_acompte: montantTotal, // ou le montant de l'acompte si tu en as un
+          user_id: user.id,
+          email: clientEmail,
+        }),
+      });
+      const data = await res.json();
+      if (data.session && data.session.url) {
+        window.location.href = data.session.url;
+      } else if (data.error) {
+        setError(data.error); // Affiche le message explicite renvoyé par l'API
+      } else {
+        setError("Erreur lors de la création du paiement Stripe.");
+      }
+    } catch (err) {
+      setError("Erreur réseau lors de la création du paiement Stripe.");
+    }
+  };
+
   // Envoi commande multi-modèles
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -213,7 +239,10 @@ export default function PasserCommande() {
       return;
     }
     setSuccess(true);
-    setTimeout(() => router.push("/annonces/confirmation"), 1200);
+
+    // Appel Stripe checkout et redirection
+    await handleStripeCheckout(commandeId, montantTotal);
+    // Ne pas faire de setTimeout/redirect ici, la redirection Stripe prend le relais
   };
 
   const getModeleTitre = (id) =>

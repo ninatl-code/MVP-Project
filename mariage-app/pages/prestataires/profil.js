@@ -21,6 +21,7 @@ export default function UserProfile() {
   const [villeEdit, setVilleEdit] = useState("");
   const [photoEdit, setPhotoEdit] = useState("");
   const [villesList, setVillesList] = useState([]);
+  const [stripeAccountId, setStripeAccountId] = useState(null); // Ajouté
   const router = useRouter();
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function UserProfile() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("nom, photos, ville_id, email, telephone, bio")
+        .select("nom, photos, ville_id, email, telephone, bio, stripe_account_id")
         .eq("id", authUser.id)
         .single();
 
@@ -63,6 +64,7 @@ export default function UserProfile() {
       setPhoneEdit(profile?.telephone || "");
       setVilleEdit(villeLabel);
       setPhotoEdit(profile?.photos || "");
+      setStripeAccountId(profile?.stripe_account_id || null); // Ajouté
 
       // Récupère la liste des villes
       const { data: villesData } = await supabase
@@ -383,12 +385,24 @@ export default function UserProfile() {
               <h2 className="font-semibold text-gray-800 mb-3">
                 Informations bancaires
               </h2>
-              <button
-                className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow hover:bg-blue-700 transition"
-                onClick={handleStripeSetup}
-              >
-                Configurer mes paiements
-              </button>
+              {stripeAccountId ? (
+                <>
+                  <div className="mb-2 text-green-600 font-semibold">Compte paramétré</div>
+                  <button
+                    className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow hover:bg-blue-700 transition"
+                    onClick={handleStripeSetup}
+                  >
+                    Modifier mon compte
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow hover:bg-blue-700 transition"
+                  onClick={handleStripeSetup}
+                >
+                  Configurer mes paiements
+                </button>
+              )}
             </div>
           </section>
 

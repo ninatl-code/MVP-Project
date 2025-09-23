@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { supabase } from "../../lib/supabaseClient";
+import { supabase } from '../../../lib/supabaseClient';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
@@ -26,8 +26,9 @@ export default async function handler(req, res) {
       .eq("id", prestataire_id);
 
     if (supabaseError) {
+      console.error("Erreur Supabase:", supabaseError);
       throw new Error(
-        "Erreur lors de la mise à jour du compte Stripe dans Supabase"
+        "Erreur lors de la mise à jour du compte Stripe dans Supabase" + supabaseError.message
       );
     }
 
