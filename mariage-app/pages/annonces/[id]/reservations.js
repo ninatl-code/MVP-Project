@@ -149,6 +149,33 @@ export default function ReservationPage() {
     }
   };
 
+  // Nouvelle fonction pour paiement Stripe (réservations)
+  const handleStripeCheckout = async (reservationId, montantAcompte) => {
+    try {
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          annonce_id: annonceId,
+          montant_acompte: montantAcompte,
+          user_id: particulierId,
+          email: client.email,
+          reservation_id: reservationId, // ✅ AJOUT : passer l'ID de la réservation
+        }),
+      });
+      const data = await res.json();
+      if (data.session && data.session.url) {
+        window.location.href = data.session.url;
+      } else if (data.error) {
+        setError(data.error);
+      } else {
+        setError("Erreur lors de la création du paiement Stripe.");
+      }
+    } catch (err) {
+      setError("Erreur réseau lors de la création du paiement Stripe.");
+    }
+  };
+
   // Envoi du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -218,8 +245,8 @@ export default function ReservationPage() {
         .eq("id", reservationId);
       insertError = updateError;
     } else {
-      // Insertion dans reservations si pas d'id
-      const { error: newInsertError } = await supabase
+      // Insertion dans reservations si pas d'id et récupérer l'ID
+      const { data: reservationData, error: newInsertError } = await supabase
         .from("reservations")
         .insert({
           annonce_id: annonceId,
@@ -237,15 +264,29 @@ export default function ReservationPage() {
           particulier_id: particulierId,
           montant,
           montant_acompte,
-        });
+        })
+        .select();
+      
       insertError = newInsertError;
+      
+      // Si création réussie et qu'il y a un acompte à payer, rediriger vers Stripe
+      if (!newInsertError && reservationData && reservationData[0]?.id && montant_acompte > 0) {
+        const newReservationId = reservationData[0].id;
+        setSuccess(true);
+        // Appel Stripe checkout pour l'acompte
+        await handleStripeCheckout(newReservationId, montant_acompte);
+        return; // Stripe prend le relais pour la redirection
+      }
     }
 
     if (insertError) {
       setError("Erreur lors de la réservation : " + insertError.message);
     } else {
       setSuccess(true);
-      setTimeout(() => router.push(`/annonces/${annonceId}`), 1500);
+      // Si pas de paiement (acompte = 0), redirection normale
+      if (montant_acompte === 0) {
+        setTimeout(() => router.push(`/annonces/${annonceId}`), 1500);
+      }
     }
   };
 

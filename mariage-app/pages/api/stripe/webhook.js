@@ -5,19 +5,32 @@ import { supabase } from "../../../lib/supabaseClient";
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
+  console.log("🔔 Webhook reçu:", req.method, new Date().toISOString());
+  
   const sig = req.headers["stripe-signature"];
   const buf = await buffer(req);
+
+  // Vérification de la variable d'environnement
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error("❌ STRIPE_WEBHOOK_SECRET non définie");
+    return res.status(500).send("Configuration manquante");
+  }
 
   let event;
   try {
     event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    console.log("✅ Signature webhook validée, type:", event.type);
   } catch (err) {
-    console.error("Webhook signature verification failed.", err.message);
+    console.error("❌ Échec vérification signature webhook:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   if (event.type === "checkout.session.completed") {
+    console.log("💳 Traitement paiement checkout.session.completed");
     const session = event.data.object;
+
+    // Log des métadonnées pour diagnostic
+    console.log("📊 Métadonnées reçues:", JSON.stringify(session.metadata, null, 2));
 
     // Récupère les métadonnées utiles
     const sessionId = session.id;
@@ -30,47 +43,69 @@ export default async function handler(req, res) {
     const reservationId = session.metadata?.reservation_id || null;
     const prestataireId = session.metadata?.prestataire_id || null;
 
+    console.log("🔍 IDs extraits:", { annonceId, commandeId, reservationId, userId, prestataireId });
+
     // 1. Insère le paiement dans la table paiements
-    const { error: paiementError } = await supabase.from("paiements").insert({
+    console.log("💾 Insertion paiement en base:", { sessionId, amount, email });
+    
+    // Validation des UUIDs (pour éviter les erreurs de format)
+    const isValidUUID = (uuid) => {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      return uuid && uuidRegex.test(uuid);
+    };
+    
+    const { data: paiementData, error: paiementError } = await supabase.from("paiements").insert({
       stripe_session_id: sessionId,
       stripe_payment_intent_id: paymentIntent,
       montant: amount,
-      statut: "payé",
+      statut: "succeeded", // Valeur autorisée par la contrainte
       email: email,
       commande_id: commandeId,
       reservation_id: reservationId,
-      particulier_id: userId,
-      prestataire_id: prestataireId,
+      particulier_id: isValidUUID(userId) ? userId : null, // Null si UUID invalide
+      prestataire_id: isValidUUID(prestataireId) ? prestataireId : null, // Null si UUID invalide
       stripe_response: session // pour debug, tu peux retirer plus tard
-    });
+    }).select();
+    
     if (paiementError) {
-      console.error("Erreur insertion paiement:", paiementError);
+      console.error("❌ Erreur insertion paiement:", paiementError);
+      return res.status(500).json({ error: "Erreur insertion paiement", details: paiementError });
+    } else {
+      console.log("✅ Paiement inséré avec succès:", paiementData);
     }
 
     // 2. Met à jour la commande (si applicable)
     if (commandeId) {
+      console.log("📝 Mise à jour commande:", commandeId);
       const { error: commandeError } = await supabase
         .from("commandes")
-        .update({ status: "payée", paiement_id: sessionId })
+        .update({ status: "paid" }) // ✅ Corrigé : on retire paiement_id pour éviter l'erreur UUID
         .eq("id", commandeId);
       if (commandeError) {
-        console.error("Erreur update commande:", commandeError);
+        console.error("❌ Erreur update commande:", commandeError);
+      } else {
+        console.log("✅ Commande mise à jour avec succès");
       }
     }
 
     // 3. Met à jour la réservation (si applicable)
     if (reservationId) {
+      console.log("📅 Mise à jour réservation:", reservationId);
       const { error: resaError } = await supabase
         .from("reservations")
-        .update({ status: "confirmée", paiement_id: sessionId })
+        .update({ status: "paid" }) // ✅ Corrigé : on retire paiement_id pour éviter l'erreur UUID
         .eq("id", reservationId);
       if (resaError) {
-        console.error("Erreur update réservation:", resaError);
+        console.error("❌ Erreur update réservation:", resaError);
+      } else {
+        console.log("✅ Réservation mise à jour avec succès");
       }
     }
 
-    console.log("✅ Paiement confirmé et tables mises à jour:", sessionId);
+    console.log("🎉 Paiement confirmé et tables mises à jour:", sessionId);
+  } else {
+    console.log("ℹ️ Événement webhook ignoré:", event.type);
   }
 
-  res.json({ received: true });
+  res.json({ received: true, timestamp: new Date().toISOString() });
 }

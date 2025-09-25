@@ -18,7 +18,7 @@ export default function PasserCommande() {
   const [prestataireId, setPrestataireId] = useState("");
   const [clientNom, setClientNom] = useState("");
   const [clientEmail, setClientEmail] = useState("");
-  const [status] = useState("en attente");
+  const [status] = useState("pending");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -152,6 +152,7 @@ export default function PasserCommande() {
           montant_acompte: montantTotal, // ou le montant de l'acompte si tu en as un
           user_id: user.id,
           email: clientEmail,
+          commande_id: commandeId, // ✅ AJOUT : passer l'ID de la commande
         }),
       });
       const data = await res.json();
