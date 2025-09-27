@@ -160,6 +160,8 @@ export default function ProviderHomeMenu() {
   const [nbActivePrestations, setNbActivePrestations] = useState(0);
   const [nbDevisPending, setNbDevisPending] = useState(0);
   const [nbDevisAccepted, setNbDevisAccepted] = useState(0);
+  const [nbCommandesPending, setNbCommandesPending] = useState(0);
+  const [nbCommandesShipped, setNbCommandesShipped] = useState(0);
   const router = useRouter();
 
   // Déconnexion
@@ -213,17 +215,6 @@ export default function ProviderHomeMenu() {
         .eq("status", "accepted");
       setNbDevisAccepted(devisAccepted || 0);
 
-      // Nb messages non lus (conversations non lues)
-      const { data: unreadConvs, error: unreadError } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("artist_id", user.id) // <-- correction ici
-        .eq("lu", false);
-      if (!unreadError && unreadConvs) {
-        setNbUnread(unreadConvs.length);
-      } else {
-        setNbUnread(0);
-      }
 
       // Nb prestations actives
       const { count: activeCount } = await supabase
@@ -231,6 +222,22 @@ export default function ProviderHomeMenu() {
         .select("*", { count: "exact", head: true })
         .eq("actif", true);
       setNbActivePrestations(activeCount || 0);
+
+      // Nb commandes en attente
+      const { count: commandesPending } = await supabase
+        .from("commandes")
+        .select("*", { count: "exact", head: true })
+        .eq("prestataire_id", user.id)
+        .in("status", ["paid", "confirmed"]);
+      setNbCommandesPending(commandesPending || 0);
+
+      // Nb commandes expédiées
+      const { count: commandesShipped } = await supabase
+        .from("commandes")
+        .select("*", { count: "exact", head: true })
+        .eq("prestataire_id", user.id)
+        .eq("status", "shipped");
+      setNbCommandesShipped(commandesShipped || 0);
     };
     fetchProfileAndStats();
   }, []);
@@ -243,12 +250,6 @@ export default function ProviderHomeMenu() {
       onClick: () => router.push("/prestataires/prestations"),
     },
     {
-      title: "Messages",
-      desc: "Gérer vos messages",
-      icon: MessageCircle,
-      onClick: () => router.push("/prestataires/messages"),
-    },
-    {
       title: "Devis",
       desc: "Gérer vos devis",
       icon: ClipboardList,
@@ -259,6 +260,12 @@ export default function ProviderHomeMenu() {
       desc: "Gérer vos réservations",
       icon: ClipboardList,
       onClick: () => router.push("/prestataires/reservations"),
+    },
+    {
+      title: "Commandes",
+      desc: "Gérer vos commandes",
+      icon: ClipboardList,
+      onClick: () => router.push("/prestataires/commandes"),
     },
   ];
 
@@ -300,7 +307,7 @@ export default function ProviderHomeMenu() {
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 18,
+              gap: 24,
               marginBottom: 36,
             }}
           >
@@ -308,7 +315,7 @@ export default function ProviderHomeMenu() {
               <CardContent
                 className="p-5 flex items-center justify-between"
                 style={{
-                  padding: 24,
+                  padding: 28,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -326,25 +333,7 @@ export default function ProviderHomeMenu() {
               <CardContent
                 className="p-5 flex items-center justify-between"
                 style={{
-                  padding: 24,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <p style={{ fontSize: 15, color: "#888" }}>Messages non lus</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>
-                    {nbUnread}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent
-                className="p-5 flex items-center justify-between"
-                style={{
-                  padding: 24,
+                  padding: 28,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -363,7 +352,7 @@ export default function ProviderHomeMenu() {
               <CardContent
                 className="p-5 flex items-center justify-between"
                 style={{
-                  padding: 24,
+                  padding: 28,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -378,14 +367,33 @@ export default function ProviderHomeMenu() {
                 </div>
               </CardContent>
             </Card>
+            <Card>
+              <CardContent
+                className="p-5 flex items-center justify-between"
+                style={{
+                  padding: 28,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: 15, color: "#888" }}>Commandes expédiées</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>
+                    {nbCommandesShipped}
+                  </p>
+                  <p style={{ fontSize: 15, color: "#888", marginTop: 8 }}>Commandes en attente : <b>{nbCommandesPending}</b></p>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           {/* Tiles (boutons) */}
           <section
             style={{
               display: "grid",
-              gap: 20,
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: 24,
+              gridTemplateColumns: "repeat(2, 1fr)",
               marginBottom: 36,
             }}
           >
@@ -402,10 +410,10 @@ export default function ProviderHomeMenu() {
                   <CardContent
                     className="p-5 flex items-start gap-4"
                     style={{
-                      padding: 24,
+                      padding: 32,
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: 16,
+                      gap: 20,
                     }}
                   >
                     <div

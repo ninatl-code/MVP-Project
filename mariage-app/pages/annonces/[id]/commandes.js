@@ -124,21 +124,20 @@ export default function PasserCommande() {
     fetchUserAndAnnonce();
   }, [annonceId]);
 
-  // Upload image pour chaque modèle
-  const handleImageUpload = async (imageFile, idx) => {
+  // Convertir image en base64 pour chaque modèle
+  const handleImageUpload = async (imageFile) => {
     if (!imageFile) return "";
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `${Date.now()}_${user.id}_${idx}.${fileExt}`;
-    const { data, error: uploadError } = await supabase.storage
-      .from("commandes-images")
-      .upload(fileName, imageFile);
-    if (!uploadError && data) {
-      const { publicUrl } = supabase.storage
-        .from("commandes-images")
-        .getPublicUrl(data.path);
-      return publicUrl;
-    }
-    return "";
+    
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Récupère seulement la partie base64 (sans le préfixe data:image/...)
+        const base64String = reader.result.split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(imageFile);
+    });
   };
 
   // Nouvelle fonction pour paiement Stripe
@@ -175,21 +174,14 @@ export default function PasserCommande() {
     setError("");
     setSuccess(false);
 
+    // Convertir toutes les images en base64
     const uploads = await Promise.all(
-      commandeModeles.map((cm, idx) => handleImageUpload(cm.imageFile, idx))
+      commandeModeles.map((cm) => handleImageUpload(cm.imageFile))
     );
 
     const montantTotal =
       commandeModeles.reduce((sum, cm) => sum + cm.prix * cm.quantite, 0) +
       fraisLivraison;
-
-    const modelesCommande = commandeModeles.map((cm, idx) => ({
-      modele_id: cm.modeleId,
-      quantite: cm.quantite,
-      prix: cm.prix,
-      commentaire: cm.commentaire,
-      photo: uploads[idx]
-    }));
 
     // 1. Créer la commande et récupérer son id
     const { data: commandeData, error: insertError } = await supabase
@@ -218,14 +210,14 @@ export default function PasserCommande() {
     }
     const commandeId = commandeData[0].id;
 
-    // 2. Insérer chaque modèle dans commande_modeles
+    // 2. Insérer chaque modèle dans commande_modeles avec les images en base64
     const modelesRows = commandeModeles.map((cm, idx) => ({
       commande_id: commandeId,
       modele_id: cm.modeleId,
       quantite: cm.quantite,
       prix_unitaire: cm.prix,
       message_client: cm.commentaire,
-      photo_client: uploads[idx]
+      photo_client: uploads[idx] // Base64 string directement dans la colonne
     }));
     const { error: modelesError } = await supabase
       .from("commande_modeles")
@@ -239,6 +231,24 @@ export default function PasserCommande() {
       );
       return;
     }
+
+    // 3. Envoyer une notification au prestataire
+    const { error: notificationError } = await supabase
+      .from('notifications')
+      .insert([
+        {
+          user_id: prestataireId,
+          type: 'commande',
+          contenu: `Nouvelle commande reçue de ${clientNom} pour un montant de ${montantTotal} MAD. La commande sera confirmée après paiement.`,
+          lu: false
+        }
+      ]);
+
+    if (notificationError) {
+      console.error('Erreur lors de l\'envoi de la notification:', notificationError);
+      // On continue quand même, ce n'est pas bloquant
+    }
+
     setSuccess(true);
 
     // Appel Stripe checkout et redirection

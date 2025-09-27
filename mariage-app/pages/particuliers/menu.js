@@ -19,6 +19,7 @@ export default function ParticularHomeMenu() {
   const [devis, setDevis] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [commandes, setCommandes] = useState([]);
+  const [livraisons, setLivraisons] = useState([]);
   const [prestations, setPrestations] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [prestationFilter, setPrestationFilter] = useState('all')
@@ -66,6 +67,16 @@ export default function ParticularHomeMenu() {
         .select("*, annonces!commandes_annonce_id_fkey(titre)")
         .eq("particulier_id", user.id);
       setCommandes(commandesData || []);
+
+      // Récupérer les données de livraisons
+      if (commandesData && commandesData.length > 0) {
+        const commandeIds = commandesData.map(c => c.id);
+        const { data: livraisonsData } = await supabase
+          .from("livraisons")
+          .select("*")
+          .in("commande_id", commandeIds);
+        setLivraisons(livraisonsData || []);
+      }
     };
     fetchData();
   }, []);
@@ -368,125 +379,209 @@ export default function ParticularHomeMenu() {
     // Optionnel: rafraîchir la liste des devis
   }
 
-  // Pop-up pour afficher les infos du devis
+  // Pop-up pour afficher les infos du devis - Version moderne
   function DevisInfoModal({ devis, onClose }) {
     if (!devis) return null;
     return (
       <div style={{
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.18)',
+        background: 'rgba(0,0,0,0.5)',
         zIndex: 3000,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        padding: '20px'
       }}>
         <div style={{
           background: '#fff',
-          borderRadius: 18,
-          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
-          padding: '32px 28px',
+          borderRadius: 20,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           minWidth: 600,
           maxWidth: 900,
+          width: '100%',
           textAlign: 'left',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '80vh',
+          maxHeight: '90vh',
           overflowY: 'auto'
         }}>
           <button
             style={{
               position: 'absolute',
-              top: 12,
-              right: 18,
-              background: 'none',
+              top: 16,
+              right: 20,
+              background: '#f5f5f5',
               border: 'none',
-              fontSize: 22,
-              cursor: 'pointer'
+              borderRadius: '50%',
+              width: 32,
+              height: 32,
+              fontSize: 18,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+              transition: 'background 0.2s'
             }}
             onClick={onClose}
             aria-label="Fermer"
+            onMouseOver={(e) => e.target.style.background = '#e5e5e5'}
+            onMouseOut={(e) => e.target.style.background = '#f5f5f5'}
           >×</button>
-          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18, textAlign: 'center' }}>Informations du devis</h2>
+          
+          {/* En-tête */}
           <div style={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: 48,
-            minWidth: 500,
-            maxWidth: 900,
-            justifyContent: 'space-between'
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            padding: '32px',
+            borderRadius: '20px 20px 0 0',
+            color: 'white'
           }}>
-            {/* Colonne gauche : infos client */}
-            <div style={{flex:1, borderRight:'1px solid #eee', paddingRight:24}}>
-              <div style={{marginBottom:14}}>
-                <strong>Prestataire :</strong><br />
-                <span>{devis.nom_prestataire || devis.prestataire_nom || devis.prestataire || 'Non renseigné'}</span>
-              </div>
-              <div style={{marginBottom:14}}>
-                <strong>Titre annonce :</strong><br />
-                <span>{devis.annonces?.titre || devis.titre || 'Non renseigné'}</span>
-              </div>
-              <div style={{marginBottom:14}}>
-                <strong>Endroit :</strong><br />
-                <span>{devis.endroit || 'Non renseigné'}</span>
-              </div>
-              <div style={{marginBottom:14}}>
-                <strong>Date :</strong><br />
-                <span>{devis.date ? new Date(devis.date).toLocaleDateString('fr-FR') : ''}</span>
-              </div>
-              <div style={{marginBottom:14}}>
-                <strong>Participants :</strong><br />
-                <span>{devis.participants || devis.nb_personnes || 'Non renseigné'}</span>
-              </div>
-              <div style={{marginBottom:14}}>
-                <strong>Durée en  {devis.unit_tarif} : </strong><br />
-                <span>{devis.duree || 'Non renseigné'}</span>
-              </div>
-              <div style={{marginBottom:14}}>
-                <strong>Commentaire client :</strong><br />
-                <span>{devis.comment_client || 'Non renseigné'}</span>
-              </div>
-              {devis.status === 'accepted' && (
-                <div style={{marginBottom:14}}>
-                  <strong>Date confirmation :</strong><br />
-                  <span>{devis.date_confirmation ? new Date(devis.date_confirmation).toLocaleDateString('fr-FR') : ''}</span>
+            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+              📋 Informations du devis
+            </h2>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: 16 }}>
+              Devis créé le {devis.created_at ? new Date(devis.created_at).toLocaleDateString('fr-FR') : 'N/A'}
+            </p>
+          </div>
+
+          {/* Contenu */}
+          <div style={{ padding: '32px' }}>
+            {/* Informations principales en grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: 32,
+              marginBottom: 32
+            }}>
+              {/* Section Prestataire et Service */}
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  👤 Prestataire & Service
+                </h2>
+                <div style={{ fontSize: 16, color: '#555', marginBottom: 12 }}>
+                  <strong>{devis.nom_prestataire || devis.prestataire_nom || devis.prestataire || 'Non renseigné'}</strong>
                 </div>
-              )}
-              {devis.status === 'refused' && (
-                <>
-                  <div style={{marginBottom:14}}>
-                    <strong>Date refus :</strong><br />
-                    <span>{devis.date_refus ? new Date(devis.date_refus).toLocaleDateString('fr-FR') : ''}</span>
-                  </div>
-                  <div style={{marginBottom:14}}>
-                    <strong>Motif refus :</strong><br />
-                    <span>{devis.motif_refus || 'Non renseigné'}</span>
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Colonne droite : réponses du prestataire, élargie */}
-            <div style={{flex:1.5, paddingLeft:32}}>
-              <div style={{marginBottom:18}}>
-                <strong>Commentaire prestataire :</strong><br />
-                <span>{devis.comment_presta || 'Non renseigné'}</span>
-              </div>
-              {(devis.status === 'answered' || devis.status === 'refused' || devis.status === 'accepted') && (
-                <div style={{marginBottom:14}}>
-                  <strong>Date réponse :</strong><br />
-                  <span>{devis.date_reponse ? new Date(devis.date_reponse).toLocaleDateString('fr-FR') : ''}</span>
+                <div style={{ fontSize: 14, color: '#888', marginBottom: 16 }}>
+                  Service : {devis.annonces?.titre || devis.titre || 'Non renseigné'}
                 </div>
-              )}
-              <div style={{marginBottom:18}}>
-                <strong>Montant :</strong><br />
-                <span style={{fontSize:16}}>{devis.montant || 'Non renseigné'}</span>
+                
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>📍 Lieu :</strong> {devis.endroit || 'Non renseigné'}
+                </div>
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>📅 Date :</strong> {devis.date ? new Date(devis.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Non définie'}
+                </div>
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>👥 Participants :</strong> {devis.participants || devis.nb_personnes || 'Non renseigné'}
+                </div>
+                <div style={{ fontSize: 14, color: '#555' }}>
+                  <strong>⏱️ Durée :</strong> {devis.duree || 'Non renseigné'} {devis.unit_tarif || ''}
+                </div>
               </div>
-              <div style={{marginBottom:18}}>
-                <strong>Acompte :</strong><br />
-                <span style={{fontSize:16}}>{devis.montant_acompte || 'Non renseigné'}</span>
+
+              {/* Section Réponse du prestataire */}
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  💼 Réponse du prestataire
+                </h2>
+                
+                {(devis.status === 'answered' || devis.status === 'refused' || devis.status === 'accepted') && devis.date_reponse && (
+                  <div style={{ fontSize: 14, color: '#555', marginBottom: 12 }}>
+                    <strong>Répondu le :</strong> {new Date(devis.date_reponse).toLocaleDateString('fr-FR')}
+                  </div>
+                )}
+                
+                {devis.comment_presta && (
+                  <div style={{
+                    background: '#e3f2fd',
+                    border: '1px solid #bbdefb',
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 16,
+                    fontSize: 14,
+                    color: '#1565c0',
+                    fontStyle: 'italic'
+                  }}>
+                    "{devis.comment_presta}"
+                  </div>
+                )}
+                
+                {/* Montants */}
+                <div style={{
+                  background: '#f8f9fa',
+                  borderRadius: 12,
+                  padding: 16
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 14, color: '#555' }}>Montant total :</span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{devis.montant || 'Non renseigné'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, color: '#555' }}>Acompte demandé :</span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: '#f39c12' }}>{devis.montant_acompte || 'Non renseigné'}</span>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Commentaire client */}
+            {devis.comment_client && (
+              <div style={{
+                background: '#fff3cd',
+                border: '1px solid #ffeaa7',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 24
+              }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#856404', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  💬 Votre demande
+                </h4>
+                <p style={{ margin: 0, fontSize: 14, color: '#856404', fontStyle: 'italic' }}>
+                  "{devis.comment_client}"
+                </p>
+              </div>
+            )}
+
+            {/* Informations de statut */}
+            {(devis.status === 'accepted' || devis.status === 'refused') && (
+              <div style={{
+                background: devis.status === 'accepted' ? '#d4edda' : '#f8d7da',
+                border: `1px solid ${devis.status === 'accepted' ? '#c3e6cb' : '#f5c6cb'}`,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: devis.status === 'answered' ? 24 : 0
+              }}>
+                <h4 style={{ 
+                  fontSize: 14, 
+                  fontWeight: 600, 
+                  marginBottom: 8, 
+                  color: devis.status === 'accepted' ? '#155724' : '#721c24' 
+                }}>
+                  {devis.status === 'accepted' ? '✅ Devis accepté' : '🚫 Devis refusé'}
+                </h4>
+                {devis.status === 'accepted' && devis.date_confirmation && (
+                  <p style={{ margin: 0, fontSize: 14, color: '#155724' }}>
+                    Accepté le {new Date(devis.date_confirmation).toLocaleDateString('fr-FR')}
+                  </p>
+                )}
+                {devis.status === 'refused' && (
+                  <>
+                    {devis.date_refus && (
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                        Refusé le {new Date(devis.date_refus).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                    {devis.motif_refus && (
+                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                        Motif : {devis.motif_refus}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
           {/* Boutons Accepter/Refuser si status = answered */}
           {devis.status === 'answered' && (
@@ -537,228 +632,228 @@ export default function ParticularHomeMenu() {
       <div style={{
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.18)',
+        background: 'rgba(0,0,0,0.5)',
         zIndex: 3000,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        padding: '20px'
       }}>
         <div style={{
           background: '#fff',
-          borderRadius: 18,
-          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
-          padding: '32px 28px',
-          minWidth: 320,
-          maxWidth: 500,
+          borderRadius: 20,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+          padding: 0,
+          width: '100%',
+          maxWidth: 650,
           textAlign: 'left',
           position: 'relative',
-          maxHeight: '80vh',
+          maxHeight: '90vh',
           overflowY: 'auto'
         }}>
-          <button
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: 18,
-              background: 'none',
-              border: 'none',
-              fontSize: 22,
-              cursor: 'pointer'
-            }}
-            onClick={onClose}
-            aria-label="Fermer"
-          >×</button>
-          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la réservation</h2>
-          <div style={{marginBottom:10}}>
-            <strong>Date de la réservation :</strong> {reservation.created_at ? new Date(reservation.created_at).toLocaleDateString('fr-FR') : ''}
+          {/* Header avec couleur */}
+          <div style={{
+            background: 'linear-gradient(135deg, #6bbf7b 0%, #5aa169 100%)',
+            padding: '24px 32px',
+            borderRadius: '20px 20px 0 0',
+            color: '#fff',
+            position: 'relative'
+          }}>
+            <button
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 24,
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                borderRadius: '50%',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                color: '#fff',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onClick={onClose}
+              onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
+              onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+              aria-label="Fermer"
+            >×</button>
+            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, margin: 0 }}>🎉 Réservation</h2>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: 16 }}>{reservation.annonces?.titre || 'Service'}</p>
           </div>
-          <div style={{marginBottom:10}}>
-            <strong>Nom du prestataire :</strong> {reservation.profiles?.nom || reservation.prestataire_nom || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Annonce concernée :</strong> {reservation.annonces?.titre || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Date de la prestation :</strong> {reservation.date ? new Date(reservation.date).toLocaleDateString('fr-FR') : ''}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Durée de la prestation :</strong> {reservation.duree || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>En :</strong> {reservation.unit_tarif || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Endroit de la prestation :</strong> {reservation.endroit || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Votre commentaire :</strong> {reservation.commentaire || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Montant :</strong> {reservation.montant || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Montant acompte payé :</strong> {reservation.montant_acompte || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Photos :</strong>
-            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
-              {Array.isArray(reservation.photos) && reservation.photos.length > 0 ? (
-                reservation.photos.map((b64, idx) => (
-                  <img
-                    key={idx}
-                    src={`data:image/*;base64,${b64}`}
-                    alt="photo"
-                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
-                  />
-                ))
-              ) : (
-                <span style={{color:'#888'}}>Aucune photo</span>
-              )}
-            </div>
-          </div>
-          {reservation.nb_personnes > 1 && (
-            <div style={{marginBottom:10}}>
-              <strong>Nb de participants :</strong> {reservation.nb_personnes}
-            </div>
-          )}
-          {reservation.status === 'confirmed' && (
-            <div style={{marginBottom:10}}>
-              <strong>Date confirmation :</strong> {reservation.date_confirmation ? new Date(reservation.date_confirmation).toLocaleDateString('fr-FR') : ''}
-            </div>
-          )}
-          {reservation.status === 'cancelled' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date annulation :</strong> {reservation.date_annulation ? new Date(reservation.date_annulation).toLocaleDateString('fr-FR') : ''}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif annulation :</strong> {reservation.motif_annulation || 'Non renseigné'}
-              </div>
-            </>
-          )}
-          {reservation.status === 'refused' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date refus :</strong> {reservation.date_refus ? new Date(reservation.date_refus).toLocaleDateString('fr-FR') : ''}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif refus :</strong> {reservation.motif_refus || 'Non renseigné'}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
 
-  // Pop-up pour afficher les infos de la commande
-  function CommandeInfoModal({ commande, onClose, quantity }) {
-    if (!commande) return null;
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.18)',
-        zIndex: 3000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{
-          background: '#fff',
-          borderRadius: 18,
-          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
-          padding: '32px 28px',
-          minWidth: 320,
-          maxWidth: 500,
-          textAlign: 'left',
-          position: 'relative',
-          maxHeight: '80vh',
-          overflowY: 'auto'
-        }}>
-          <button
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: 18,
-              background: 'none',
-              border: 'none',
-              fontSize: 22,
-              cursor: 'pointer'
-            }}
-            onClick={onClose}
-            aria-label="Fermer"
-          >×</button>
-          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la commande</h2>
-          <div style={{marginBottom:10}}>
-            <strong>Date de la commande :</strong> {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : ''}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Nom du prestataire :</strong> {commande.prestataire_nom || commande.nom_prestataire || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Annonce concernée :</strong> {commande.annonces?.titre || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Quantité commandée :</strong> {quantity || 0}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Montant :</strong> {commande.montant || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Frais de livraison :</strong> {commande.frais_livraison || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Votre commentaire :</strong> {commande.commentaire || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Adresse de livraison :</strong> {commande.adresse_livraison || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Mode de livraison :</strong> {commande.mode_livraison || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Photos :</strong>
-            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
-              {Array.isArray(commande.photos) && commande.photos.length > 0 ? (
-                commande.photos.map((b64, idx) => (
-                  <img
-                    key={idx}
-                    src={`data:image/*;base64,${b64}`}
-                    alt="photo"
-                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
-                  />
-                ))
-              ) : (
-                <span style={{color:'#888'}}>Aucune photo</span>
+          {/* Contenu */}
+          <div style={{ padding: '32px' }}>
+            {/* Informations principales */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: 24,
+              marginBottom: 32
+            }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  👤 Prestataire
+                </h2>
+                <div style={{ fontSize: 16, color: '#555', marginBottom: 8 }}>
+                  <strong>{reservation.profiles?.nom || reservation.prestataire_nom || 'Non renseigné'}</strong>
+                </div>
+                <div style={{ fontSize: 14, color: '#888' }}>
+                  {reservation.profiles?.email || 'Email non disponible'}
+                </div>
+              </div>
+
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  📅 Planning
+                </h2>
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>Date :</strong> {reservation.date ? new Date(reservation.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Non définie'}
+                </div>
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>Durée :</strong> {reservation.duree || 'Non renseignée'} {reservation.unit_tarif || ''}
+                </div>
+                <div style={{ fontSize: 14, color: '#555' }}>
+                  <strong>Lieu :</strong> {reservation.endroit || 'Non renseigné'}
+                </div>
+              </div>
+            </div>
+
+            {/* Détails financiers */}
+            <div style={{
+              background: '#f8f9fa',
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 24
+            }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                💰 Facturation
+              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontSize: 14, color: '#555' }}>Montant total :</span>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{reservation.montant || 0} MAD</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, color: '#555' }}>Acompte payé :</span>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#6bbf7b' }}>{reservation.montant_acompte || 0} MAD</span>
+              </div>
+              {reservation.nb_personnes && (
+                <div style={{ marginTop: 12, fontSize: 14, color: '#555' }}>
+                  <strong>Participants :</strong> {reservation.nb_personnes} personne{reservation.nb_personnes > 1 ? 's' : ''}
+                </div>
               )}
             </div>
+
+            {/* Commentaire */}
+            {reservation.commentaire && (
+              <div style={{
+                background: '#fff3cd',
+                border: '1px solid #ffeaa7',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 24
+              }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#856404', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  💬 Votre message
+                </h4>
+                <p style={{ margin: 0, fontSize: 14, color: '#856404', fontStyle: 'italic' }}>
+                  "{reservation.commentaire}"
+                </p>
+              </div>
+            )}
+
+            {/* Photos */}
+            {Array.isArray(reservation.photos) && reservation.photos.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  📸 Photos jointes
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 12 }}>
+                  {reservation.photos.map((b64, idx) => (
+                    <img
+                      key={idx}
+                      src={`data:image/*;base64,${b64}`}
+                      alt={`Photo ${idx + 1}`}
+                      style={{
+                        width: '100%',
+                        height: 80,
+                        objectFit: 'cover',
+                        borderRadius: 8,
+                        border: '2px solid #e5e7eb',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s'
+                      }}
+                      onClick={() => {
+                        const modal = document.createElement('div');
+                        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+                        modal.innerHTML = `<img src="data:image/*;base64,${b64}" style="max-width:90%;max-height:90%;border-radius:8px">`;
+                        modal.onclick = () => document.body.removeChild(modal);
+                        document.body.appendChild(modal);
+                      }}
+                      onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                      onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Informations de statut */}
+            {(reservation.status === 'confirmed' || reservation.status === 'cancelled' || reservation.status === 'refused') && (
+              <div style={{
+                background: reservation.status === 'confirmed' ? '#d4edda' : '#f8d7da',
+                border: `1px solid ${reservation.status === 'confirmed' ? '#c3e6cb' : '#f5c6cb'}`,
+                borderRadius: 12,
+                padding: 16
+              }}>
+                <h4 style={{ 
+                  fontSize: 14, 
+                  fontWeight: 600, 
+                  marginBottom: 8, 
+                  color: reservation.status === 'confirmed' ? '#155724' : '#721c24' 
+                }}>
+                  {reservation.status === 'confirmed' ? '✅ Confirmée' : reservation.status === 'cancelled' ? '❌ Annulée' : '🚫 Refusée'}
+                </h4>
+                {reservation.status === 'confirmed' && reservation.date_confirmation && (
+                  <p style={{ margin: 0, fontSize: 14, color: '#155724' }}>
+                    Confirmée le {new Date(reservation.date_confirmation).toLocaleDateString('fr-FR')}
+                  </p>
+                )}
+                {reservation.status === 'cancelled' && (
+                  <>
+                    {reservation.date_annulation && (
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                        Annulée le {new Date(reservation.date_annulation).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                    {reservation.motif_annulation && (
+                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                        Motif : {reservation.motif_annulation}
+                      </p>
+                    )}
+                  </>
+                )}
+                {reservation.status === 'refused' && (
+                  <>
+                    {reservation.date_refus && (
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                        Refusée le {new Date(reservation.date_refus).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                    {reservation.motif_refus && (
+                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                        Motif : {reservation.motif_refus}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
-          {commande.status === 'confirmed' && (
-            <div style={{marginBottom:10}}>
-              <strong>Date confirmation :</strong> {commande.date_confirmation ? new Date(commande.date_confirmation).toLocaleDateString('fr-FR') : ''}
-            </div>
-          )}
-          {commande.status === 'cancelled' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date annulation :</strong> {commande.date_annulation ? new Date(commande.date_annulation).toLocaleDateString('fr-FR') : ''}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif annulation :</strong> {commande.motif_annulation || 'Non renseigné'}
-              </div>
-            </>
-          )}
-          {commande.status === 'refused' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date refus :</strong> {commande.date_refus ? new Date(commande.date_refus).toLocaleDateString('fr-FR') : ''}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif refus :</strong> {commande.motif_refus || 'Non renseigné'}
-              </div>
-            </>
-          )}
         </div>
       </div>
     );
@@ -815,235 +910,255 @@ export default function ParticularHomeMenu() {
       </div>
     )
   }
-  // Pop-up pour afficher les infos de la réservation
-  function ReservationInfoModal({ reservation, onClose }) {
-    if (!reservation) return null;
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.18)',
-        zIndex: 3000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{
-          background: '#fff',
-          borderRadius: 18,
-          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
-          padding: '32px 28px',
-          minWidth: 320,
-          maxWidth: 500,
-          textAlign: 'left',
-          position: 'relative',
-          maxHeight: '80vh',
-          overflowY: 'auto'
-        }}>
-          <button
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: 18,
-              background: 'none',
-              border: 'none',
-              fontSize: 22,
-              cursor: 'pointer'
-            }}
-            onClick={onClose}
-            aria-label="Fermer"
-          >×</button>
-          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la réservation</h2>
-          <div style={{marginBottom:10}}>
-            <strong>Date de la réservation :</strong> {reservation.created_at ? new Date(reservation.created_at).toLocaleDateString('fr-FR') : ''}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Nom du prestataire :</strong> {reservation.profiles?.nom || reservation.prestataire_nom || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Annonce concernée :</strong> {reservation.annonces?.titre || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Date de la prestation :</strong> {reservation.date ? new Date(reservation.date).toLocaleDateString('fr-FR') : ''}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Durée de la prestation :</strong> {reservation.duree || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>En :</strong> {reservation.unit_tarif || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Endroit de la prestation :</strong> {reservation.endroit || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Votre commentaire :</strong> {reservation.commentaire || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Montant :</strong> {reservation.montant || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Montant acompte payé :</strong> {reservation.montant_acompte || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Photos :</strong>
-            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
-              {Array.isArray(reservation.photos) && reservation.photos.length > 0 ? (
-                reservation.photos.map((b64, idx) => (
-                  <img
-                    key={idx}
-                    src={`data:image/*;base64,${b64}`}
-                    alt="photo"
-                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
-                  />
-                ))
-              ) : (
-                <span style={{color:'#888'}}>Aucune photo</span>
-              )}
-            </div>
-          </div>
-          {reservation.nb_personnes > 1 && (
-            <div style={{marginBottom:10}}>
-              <strong>Nb de participants :</strong> {reservation.nb_personnes}
-            </div>
-          )}
-          {reservation.status === 'confirmed' && (
-            <div style={{marginBottom:10}}>
-              <strong>Date confirmation :</strong> {reservation.date_confirmation ? new Date(reservation.date_confirmation).toLocaleDateString('fr-FR') : ''}
-            </div>
-          )}
-          {reservation.status === 'cancelled' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date annulation :</strong> {reservation.date_annulation ? new Date(reservation.date_annulation).toLocaleDateString('fr-FR') : ''}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif annulation :</strong> {reservation.motif_annulation || 'Non renseigné'}
-              </div>
-            </>
-          )}
-          {reservation.status === 'refused' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date refus :</strong> {reservation.date_refus ? new Date(reservation.date_refus).toLocaleDateString('fr-FR') : ''}
-              </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif refus :</strong> {reservation.motif_refus || 'Non renseigné'}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
 
-  // Pop-up pour afficher les infos de la commande
+  // Pop-up pour afficher les infos de la commande - Version moderne
   function CommandeInfoModal({ commande, onClose, quantity }) {
     if (!commande) return null;
     return (
       <div style={{
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.18)',
+        background: 'rgba(0,0,0,0.5)',
         zIndex: 3000,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        padding: '20px'
       }}>
         <div style={{
           background: '#fff',
-          borderRadius: 18,
-          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
-          padding: '32px 28px',
+          borderRadius: 20,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           minWidth: 320,
-          maxWidth: 500,
+          maxWidth: 700,
+          width: '100%',
           textAlign: 'left',
           position: 'relative',
-          maxHeight: '80vh',
+          maxHeight: '90vh',
           overflowY: 'auto'
         }}>
           <button
             style={{
               position: 'absolute',
-              top: 12,
-              right: 18,
-              background: 'none',
+              top: 16,
+              right: 20,
+              background: '#f5f5f5',
               border: 'none',
-              fontSize: 22,
-              cursor: 'pointer'
+              borderRadius: '50%',
+              width: 32,
+              height: 32,
+              fontSize: 18,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+              transition: 'background 0.2s'
             }}
             onClick={onClose}
             aria-label="Fermer"
+            onMouseOver={(e) => e.target.style.background = '#e5e5e5'}
+            onMouseOut={(e) => e.target.style.background = '#f5f5f5'}
           >×</button>
-          <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Détail de la commande</h2>
-          <div style={{marginBottom:10}}>
-            <strong>Date de la commande :</strong> {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : ''}
+          
+          {/* En-tête */}
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            padding: '32px',
+            borderRadius: '20px 20px 0 0',
+            color: 'white'
+          }}>
+            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+              🛒 Détail de la commande
+            </h2>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: 16 }}>
+              Commande du {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : 'N/A'}
+            </p>
           </div>
-          <div style={{marginBottom:10}}>
-            <strong>Nom du prestataire :</strong> {commande.prestataire_nom || commande.nom_prestataire || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Annonce concernée :</strong> {commande.annonces?.titre || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Quantité commandée :</strong> {quantity || 0}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Montant :</strong> {commande.montant || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Frais de livraison :</strong> {commande.frais_livraison || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Votre commentaire :</strong> {commande.commentaire || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Adresse de livraison :</strong> {commande.adresse_livraison || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Mode de livraison :</strong> {commande.mode_livraison || 'Non renseigné'}
-          </div>
-          <div style={{marginBottom:10}}>
-            <strong>Photos :</strong>
-            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:6}}>
-              {Array.isArray(commande.photos) && commande.photos.length > 0 ? (
-                commande.photos.map((b64, idx) => (
-                  <img
-                    key={idx}
-                    src={`data:image/*;base64,${b64}`}
-                    alt="photo"
-                    style={{width:60, height:60, objectFit:'cover', borderRadius:8, border:'1px solid #eee'}}
-                  />
-                ))
-              ) : (
-                <span style={{color:'#888'}}>Aucune photo</span>
-              )}
+
+          {/* Contenu */}
+          <div style={{ padding: '32px' }}>
+            {/* Informations principales */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: 24,
+              marginBottom: 32
+            }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  👤 Prestataire
+                </h2>
+                <div style={{ fontSize: 16, color: '#555', marginBottom: 8 }}>
+                  <strong>{commande.profiles?.nom || commande.prestataire_nom || 'Non renseigné'}</strong>
+                </div>
+                <div style={{ fontSize: 14, color: '#888' }}>
+                  Service : {commande.annonces?.titre || 'Non renseigné'}
+                </div>
+              </div>
+
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  📦 Commande
+                </h2>
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>Quantité :</strong> {quantity || 0} article{quantity > 1 ? 's' : ''}
+                </div>
+                <div style={{ fontSize: 14, color: '#555' }}>
+                  <strong>Mode :</strong> {commande.mode_livraison || 'Non renseigné'}
+                </div>
+              </div>
             </div>
-          </div>
-          {commande.status === 'confirmed' && (
-            <div style={{marginBottom:10}}>
-              <strong>Date confirmation :</strong> {commande.date_confirmation ? new Date(commande.date_confirmation).toLocaleDateString('fr-FR') : ''}
+
+            {/* Détails financiers */}
+            <div style={{
+              background: '#f8f9fa',
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 24
+            }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                💰 Facturation
+              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontSize: 14, color: '#555' }}>Montant articles :</span>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{commande.montant || 0} MAD</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontSize: 14, color: '#555' }}>Frais de livraison :</span>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#f39c12' }}>{commande.frais_livraison || 0} MAD</span>
+              </div>
+              <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #dee2e6' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>Total :</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#6bbf7b' }}>
+                  {((commande.montant || 0) + (commande.frais_livraison || 0))} MAD
+                </span>
+              </div>
             </div>
-          )}
-          {commande.status === 'cancelled' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date annulation :</strong> {commande.date_annulation ? new Date(commande.date_annulation).toLocaleDateString('fr-FR') : ''}
+
+            {/* Adresse de livraison */}
+            <div style={{
+              background: '#e3f2fd',
+              border: '1px solid #bbdefb',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24
+            }}>
+              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#1565c0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                🏠 Adresse de livraison
+              </h4>
+              <p style={{ margin: 0, fontSize: 14, color: '#1565c0' }}>
+                {commande.adresse_livraison || 'Non renseignée'}
+              </p>
+            </div>
+
+            {/* Commentaire */}
+            {commande.commentaire && (
+              <div style={{
+                background: '#fff3cd',
+                border: '1px solid #ffeaa7',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 24
+              }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#856404', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  💬 Votre message
+                </h4>
+                <p style={{ margin: 0, fontSize: 14, color: '#856404', fontStyle: 'italic' }}>
+                  "{commande.commentaire}"
+                </p>
               </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif annulation :</strong> {commande.motif_annulation || 'Non renseigné'}
+            )}
+
+            {/* Photos */}
+            {Array.isArray(commande.photos) && commande.photos.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  📸 Photos jointes
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 12 }}>
+                  {commande.photos.map((b64, idx) => (
+                    <img
+                      key={idx}
+                      src={`data:image/*;base64,${b64}`}
+                      alt={`Photo ${idx + 1}`}
+                      style={{
+                        width: '100%',
+                        height: 80,
+                        objectFit: 'cover',
+                        borderRadius: 8,
+                        border: '2px solid #e5e7eb',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s'
+                      }}
+                      onClick={() => {
+                        const modal = document.createElement('div');
+                        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+                        modal.innerHTML = `<img src="data:image/*;base64,${b64}" style="max-width:90%;max-height:90%;border-radius:8px">`;
+                        modal.onclick = () => document.body.removeChild(modal);
+                        document.body.appendChild(modal);
+                      }}
+                      onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                      onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                    />
+                  ))}
+                </div>
               </div>
-            </>
-          )}
-          {commande.status === 'refused' && (
-            <>
-              <div style={{marginBottom:10}}>
-                <strong>Date refus :</strong> {commande.date_refus ? new Date(commande.date_refus).toLocaleDateString('fr-FR') : ''}
+            )}
+
+            {/* Informations de statut */}
+            {(commande.status === 'confirmed' || commande.status === 'cancelled' || commande.status === 'refused') && (
+              <div style={{
+                background: commande.status === 'confirmed' ? '#d4edda' : '#f8d7da',
+                border: `1px solid ${commande.status === 'confirmed' ? '#c3e6cb' : '#f5c6cb'}`,
+                borderRadius: 12,
+                padding: 16
+              }}>
+                <h4 style={{ 
+                  fontSize: 14, 
+                  fontWeight: 600, 
+                  marginBottom: 8, 
+                  color: commande.status === 'confirmed' ? '#155724' : '#721c24' 
+                }}>
+                  {commande.status === 'confirmed' ? '✅ Confirmée' : commande.status === 'cancelled' ? '❌ Annulée' : '🚫 Refusée'}
+                </h4>
+                {commande.status === 'confirmed' && commande.date_confirmation && (
+                  <p style={{ margin: 0, fontSize: 14, color: '#155724' }}>
+                    Confirmée le {new Date(commande.date_confirmation).toLocaleDateString('fr-FR')}
+                  </p>
+                )}
+                {commande.status === 'cancelled' && (
+                  <>
+                    {commande.date_annulation && (
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                        Annulée le {new Date(commande.date_annulation).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                    {commande.motif_annulation && (
+                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                        Motif : {commande.motif_annulation}
+                      </p>
+                    )}
+                  </>
+                )}
+                {commande.status === 'refused' && (
+                  <>
+                    {commande.date_refus && (
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                        Refusée le {new Date(commande.date_refus).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                    {commande.motif_refus && (
+                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                        Motif : {commande.motif_refus}
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
-              <div style={{marginBottom:10}}>
-                <strong>Motif refus :</strong> {commande.motif_refus || 'Non renseigné'}
-              </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1051,6 +1166,8 @@ export default function ParticularHomeMenu() {
 
   // Bloc Commandes
   function CommandeCard({ r }) {
+    const livraison = livraisons.find(l => l.commande_id === r.id);
+    
     return (
       <div style={{
         background: '#fff',
@@ -1077,6 +1194,10 @@ export default function ParticularHomeMenu() {
             <StatusBadge status={r.status} />
           </div>
         </div>
+        
+        {/* Affichage du suivi de livraison pour les commandes payées */}
+        <LivraisonTracker commande={r} livraison={livraison} />
+        
         <div style={{marginTop:16, textAlign:'right'}}>
           <button
             style={{
@@ -1453,4 +1574,117 @@ export default function ParticularHomeMenu() {
       </div>
     </>
   )
+
+  // Composant de suivi de livraison
+  function LivraisonTracker({ commande, livraison }) {
+  if (!commande ) return null;
+
+  const getStatutLivraison = () => {
+    if (!livraison) return 'paid'; // Par défaut si pas de livraison trouvée
+    return livraison.status || 'paid';
+  };
+
+  const statutActuel = getStatutLivraison();
+
+  const etapes = [
+    { id: 'paid', label: 'Commandé', completed: ['paid','confirmed', 'shipped', 'delivered'].includes(statutActuel) },
+    { id: 'confirmed', label: 'Confirmé', completed: ['confirmed', 'shipped', 'delivered'].includes(statutActuel) },
+    { id: 'shipped', label: 'Expédié', completed: ['shipped', 'delivered'].includes(statutActuel) },
+    { id: 'delivered', label: 'Livré', completed: ['delivered'].includes(statutActuel) }
+  ];
+
+  // Cas spécial pour annulation
+  if (statutActuel === 'cancelled') {
+    return (
+      <div style={{ marginTop: 12, padding: 16, backgroundColor: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 20, height: 20, borderRadius: '50%',
+            backgroundColor: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>✕</span>
+          </div>
+          <span style={{ fontWeight: 600, color: '#dc2626' }}>Annulée</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 12, padding: 16, backgroundColor: '#f8fffe', borderRadius: 8, border: '1px solid #d1fae5' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+        {/* Section suivi principal */}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#065f46' }}>Suivi de livraison</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {etapes.map((etape, index) => (
+              <div key={etape.id} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%',
+                    backgroundColor: etape.completed ? '#10b981' : '#e5e7eb',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 4
+                  }}>
+                    {etape.completed && (
+                      <span style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>✓</span>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: 12, fontWeight: 500,
+                    color: etape.completed ? '#065f46' : '#6b7280'
+                  }}>{etape.label}</span>
+                  {etape.id === 'delivered' && livraison?.delivery_date && (
+                    <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, textAlign: 'center' }}>
+                      Livraison prévue le {new Date(livraison.delivery_date).toLocaleDateString('fr-FR')}
+                    </span>
+                  )}
+                </div>
+                {index < etapes.length - 1 && (
+                  <div style={{
+                    height: 2, flex: 1, backgroundColor: etapes[index + 1].completed ? '#10b981' : '#e5e7eb',
+                    marginLeft: 8, marginRight: 8, marginTop: -20
+                  }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Section informations de suivi (à droite) */}
+        {(livraison?.tracking_number || livraison?.delivery_provider) && (
+          <div style={{ 
+            minWidth: 200, 
+            paddingLeft: 16, 
+            borderLeft: '1px solid #d1fae5',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8
+          }}>
+            {livraison?.delivery_provider && (
+              <div style={{ fontSize: 12, color: '#065f46' }}>
+                <span style={{ fontWeight: 600 }}>Transporteur :</span>
+                <br />
+                <span>{livraison.delivery_provider}</span>
+              </div>
+            )}
+            {livraison?.tracking_number && (
+              <div style={{ fontSize: 12, color: '#065f46' }}>
+                <span style={{ fontWeight: 600 }}>N° de suivi :</span>
+                <br />
+                <span style={{ 
+                  fontFamily: 'monospace', 
+                  backgroundColor: '#f0fdf4', 
+                  padding: '2px 6px', 
+                  borderRadius: 4,
+                  fontSize: 11
+                }}>{livraison.tracking_number}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+  }
 }

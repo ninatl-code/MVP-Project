@@ -113,7 +113,7 @@ export default function SuccessPage() {
         </a>
         {details && (
           <a
-            href="/particuliers/orders"
+            href="/particuliers/menu"
             className="px-6 py-2 bg-gray-500 text-white rounded-xl shadow hover:bg-gray-600 transition-colors"
           >
             Mes commandes

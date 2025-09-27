@@ -85,6 +85,21 @@ export default async function handler(req, res) {
         console.error("❌ Erreur update commande:", commandeError);
       } else {
         console.log("✅ Commande mise à jour avec succès");
+        
+        // 2.1 Crée une nouvelle ligne dans la table livraisons
+        console.log("📦 Création livraison pour commande:", commandeId);
+        const { error: livraisonError } = await supabase
+          .from("livraisons")
+          .insert({
+            commande_id: commandeId,
+            status: "paid",
+            update_date: new Date().toISOString() // ✅ Ajout de la date et heure actuelle
+          });
+        if (livraisonError) {
+          console.error("❌ Erreur création livraison:", livraisonError);
+        } else {
+          console.log("✅ Livraison créée avec succès avec date:", new Date().toISOString());
+        }
       }
     }
 
