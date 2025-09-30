@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import PrestataireHeader from '../../components/HeaderPresta'
+import { Calendar, Clock, MapPin, Users, Mail, Phone, CheckCircle, X, Eye, TrendingUp } from 'lucide-react'
 
 export default function ReservationsPrestataire() {
   const [reservations, setReservations] = useState([])
   const [annonces, setAnnonces] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [annonceFilter, setAnnonceFilter] = useState('all')
+  const [selectedReservation, setSelectedReservation] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const fetchAnnonces = async () => {
@@ -83,225 +86,336 @@ export default function ReservationsPrestataire() {
   
 
   function StatusBadge({ status }) {
-    let color = '#b7e4c7', bg = '#eafaf1', label = 'Confirmé'
-    if (status === 'pending') { color = '#e67c73'; bg = '#fbeaea'; label = 'En attente' }
-    if (status === 'refused') { color = '#e67c73'; bg = '#fbeaea'; label = 'Rejetée' }
-    if (status === 'cancelled') { color = '#e67c73'; bg = '#fbeaea'; label = 'Annulée' }
-    if (status === 'confirmed' || status === 'accepted') { color = '#3cb371'; bg = '#eafaf1'; label = 'Confirmé' }
+    const statusConfig = {
+      pending: { color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', label: 'En attente' },
+      confirmed: { color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'Confirmé' },
+      accepted: { color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'Confirmé' },
+      refused: { color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', label: 'Rejetée' },
+      cancelled: { color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', label: 'Annulée' }
+    }
+    
+    const config = statusConfig[status] || statusConfig.confirmed
+    
     return (
-      <span style={{
-        background: bg,
-        color,
-        borderRadius: 8,
-        padding: '4px 14px',
-        fontWeight: 600,
-        fontSize: 15,
-        marginLeft: 12
-      }}>{label}</span>
+      <span className={`${config.bg} ${config.color} ${config.border} border px-3 py-1 rounded-full text-sm font-medium`}>
+        {config.label}
+      </span>
     )
   }
 
-  function ReservationCard({ r }) {
+  // Fonction pour filtrer les réservations
+  const filteredReservations = reservations.filter(reservation => {
+    const matchesStatus = statusFilter === 'all' || reservation.status === statusFilter
+    const matchesAnnonce = annonceFilter === 'all' || reservation.annonce_id === annonceFilter
+    const matchesSearch = searchTerm === '' || 
+      reservation.profiles?.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reservation.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reservation.annonces?.titre?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    return matchesStatus && matchesAnnonce && matchesSearch
+  })
+
+  function ReservationCard({ r, isSelected, onClick }) {
     return (
-      <div style={{
-        background: '#fff',
-        borderRadius: 14,
-        boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
-        padding: 24,
-        marginBottom: 18,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 18,
-        border: '1px solid #f1f1f1'
-      }}>
-        <div>
-          <div style={{
-            width: 54, height: 54, borderRadius: '50%',
-            background: '#f3f3f3', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 700, fontSize: 22, color: '#888'
-          }}>
+      <div 
+        onClick={() => onClick(r)}
+        className={`bg-white rounded-lg shadow-sm p-6 mb-4 border transition-all cursor-pointer hover:shadow-md ${
+          isSelected ? 'border-slate-400 ring-2 ring-slate-200' : 'border-slate-200'
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">
             {r.profiles?.nom ? r.profiles.nom.split(' ').map(n=>n[0]).join('').toUpperCase() : '?'}
           </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="font-semibold text-slate-800 truncate">{r.profiles?.nom || 'Nom inconnu'}</h2>
+              <StatusBadge status={r.status} />
+            </div>
+            
+            <p className="text-slate-500 text-sm mb-2">{r.profiles?.email}</p>
+            
+            {r.annonces?.titre && (
+              <p className="text-emerald-600 text-sm font-medium mb-3">
+                Annonce : {r.annonces.titre}
+              </p>
+            )}
+            
+            <div className="flex items-center gap-4 text-sm text-slate-600 flex-wrap">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {r.date ? new Date(r.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : 'Date non définie'}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                {r.heure ? `${r.heure}:00` : 'Heure non définie'}
+              </span>
+              {r.nb_personnes && (
+                <span className="flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  {r.nb_personnes} personnes
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {r.status === 'pending' && (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleUpdate(r.id, 'confirmed')
+                }}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 transition-colors text-sm"
+              >
+                <CheckCircle className="w-4 h-4 inline mr-1" />
+                Confirmer
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleUpdate(r.id, 'refused')
+                }}
+                className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-100 transition-colors text-sm border border-red-200"
+              >
+                <X className="w-4 h-4 inline mr-1" />
+                Décliner
+              </button>
+            </div>
+          )}
         </div>
-        <div style={{flex:1}}>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <span style={{fontWeight:700, fontSize:18}}>{r.profiles?.nom || 'Nom inconnu'}</span>
-            <StatusBadge status={r.status} />
-          </div>
-          <div style={{color:'#888', fontSize:15, marginTop:2}}>{r.profiles?.email}</div>
-          <div style={{color:'#6bbf7b', fontSize:15, marginTop:6, fontWeight:600}}>
-            {r.annonces?.titre ? `Annonce réservée : ${r.annonces.titre}` : ''}
-          </div>
-          <div style={{display:'flex', alignItems:'center', gap:18, marginTop:10, flexWrap:'wrap'}}>
-            <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
-              <svg width="16" height="16" fill="none"><path d="M8 2C5.24 2 3 4.24 3 7c0 4.25 5 7 5 7s5-2.75 5-7c0-2.76-2.24-5-5-5Zm0 7.5A2.5 2.5 0 1 1 8 4a2.5 2.5 0 0 1 0 5.5Z" fill="#bdbdbd"/></svg>
-              {r.endroit || 'Lieu inconnu'}
-            </span>
-            <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
-              <svg width="16" height="16" fill="none"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 1c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4Z" fill="#bdbdbd"/></svg>
-              {r.nb_personnes ? `${r.nb_personnes} ws` : '' }
-            </span>
-            <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
-              <svg width="16" height="16" fill="none"><path d="M8 1.333A6.667 6.667 0 1 0 8 14.667 6.667 6.667 0 0 0 8 1.333Zm0 12A5.333 5.333 0 1 1 8 2.667a5.333 5.333 0 0 1 0 10.666Zm.667-8.666H7.333v4l3.5 2.1.667-1.1-3-1.8V4.667Z" fill="#bdbdbd"/></svg>
-              {r.date ? new Date(r.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : ''}, {r.heure ? `${r.heure}:00` : ''}
-            </span>
-          </div>
-        </div>
-        {r.status === 'pending' && (
-          <div style={{display:'flex', flexDirection:'column', gap:8}}>
-            <button
-              onClick={() => handleUpdate(r.id, 'confirmed')}
-              style={{
-                background:'#8ba987', color:'#fff', border:'none', borderRadius:8,
-                padding:'8px 18px', fontWeight:600, fontSize:15, cursor:'pointer'
-              }}
-            >Confirmer</button>
-            <button
-              onClick={() => handleUpdate(r.id, 'refused')}
-              style={{
-                background:'#fbe7ee', color:'#e67c73', border:'none', borderRadius:8,
-                padding:'8px 18px', fontWeight:600, fontSize:15, cursor:'pointer'
-              }}
-            >Décliner</button>
-          </div>
-        )}
       </div>
     )
   }
 
+  // Sélectionner automatiquement la première réservation filtrée
+  useEffect(() => {
+    if (filteredReservations.length > 0 && !selectedReservation) {
+      setSelectedReservation(filteredReservations[0])
+    } else if (filteredReservations.length === 0) {
+      setSelectedReservation(null)
+    } else if (selectedReservation && !filteredReservations.find(r => r.id === selectedReservation.id)) {
+      setSelectedReservation(filteredReservations[0])
+    }
+  }, [filteredReservations, selectedReservation])
+
   return (
     <>
       <PrestataireHeader />
-      <div style={{background:'#f8fafc', minHeight:'100vh', padding:'40px 0'}}>
-        <div style={{maxWidth:1100, margin:'0 auto', display:'flex', gap:32}}>
-          <div style={{flex:2}}>
-            <h1 style={{fontWeight:700, fontSize:32, marginBottom:28}}>Réservations</h1>
-            {/* Barre de recherche et filtres */}
-            <div style={{
-              display:'flex', gap:16, marginBottom:28, alignItems:'center', flexWrap:'wrap'
-            }}>
-              <input
-                type="text"
-                placeholder="Rechercher"
-                style={{
-                  flex:1, padding:'10px 16px', borderRadius:8, border:'1px solid #e5e7eb',
-                  fontSize:16, background:'#fff'
-                }}
-              />
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                style={{
-                  padding:'10px 16px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:16, background:'#fff'
-                }}
-              >
-                <option value="all">Statut</option>
-                <option value="confirmed">Confirmé</option>
-                <option value="cancelled">Annulé</option>
-                <option value="refused">Rejeté</option>
-                <option value="pending">En attente</option>
-              </select>
-              <select
-                value={annonceFilter}
-                onChange={e => setAnnonceFilter(e.target.value)}
-                style={{
-                  padding:'10px 16px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:16, background:'#fff'
-                }}
-              >
-                <option value="all">Annonces</option>
-                {annonces.map(a => (
-                  <option key={a.id} value={a.id}>{a.titre}</option>
-                ))}
-              </select>
-              <select style={{
-                padding:'10px 16px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:16, background:'#fff'
-              }}>
-                <option>Date</option>
-              </select>
-            </div>
-            {/* Liste des réservations */}
-            {reservations.map(r => (
-              <ReservationCard key={r.id} r={r} />
-            ))}
-          </div>
-          {/* Détail à droite */}
-          <div style={{
-            flex:1,
-            background:'#fff',
-            borderRadius:14,
-            boxShadow:'0 1px 8px rgba(0,0,0,0.04)',
-            padding:24,
-            minWidth:320,
-            maxWidth:350,
-            height:'fit-content'
-          }}>
-            <h2 style={{fontWeight:700, fontSize:22, marginBottom:18}}>Réservation</h2>
-            {/* Affiche le détail de la première réservation */}
-            {reservations[0] && (
+      <div className="bg-slate-50 min-h-screen">
+        {/* Header avec statistiques */}
+        <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white">
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="flex items-center justify-between">
               <div>
-                <div style={{
-                  width:54, height:54, borderRadius:'50%',
-                  background:'#f3f3f3', display:'flex', alignItems:'center', justifyContent:'center',
-                  fontWeight:700, fontSize:22, color:'#888', marginBottom:10
-                }}>
-                  {reservations[0].profiles?.nom ? reservations[0].profiles.nom.split(' ').map(n=>n[0]).join('').toUpperCase() : '?'}
+                <h3 className="text-3xl font-bold mb-2">Gestion des Réservations</h3>
+                <p className="text-slate-300">Gérez toutes vos réservations en un seul endroit</p>
+              </div>
+              
+              <div className="flex gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{reservations.length}</div>
+                  <div className="text-slate-300 text-sm">Total</div>
                 </div>
-                <div style={{fontWeight:700, fontSize:17, marginBottom:2}}>
-                  {reservations[0].profiles?.nom || 'Nom inconnu'}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-amber-400">
+                    {reservations.filter(r => r.status === 'pending').length}
+                  </div>
+                  <div className="text-slate-300 text-sm">En attente</div>
                 </div>
-                <div style={{color:'#888', fontSize:15, marginBottom:8}}>
-                  {reservations[0].profiles?.email}
-                </div>
-                <div style={{color:'#6bbf7b', fontSize:15, marginBottom:8, fontWeight:600}}>
-                  {reservations[0].annonces?.titre ? `Annonce réservée : ${reservations[0].annonces.titre}` : ''}
-                </div>
-                <div style={{fontSize:15, marginBottom:8}}>
-                  <span style={{display:'flex', alignItems:'center', gap:4}}>
-                    <svg width="16" height="16" fill="none"><path d="M8 2C5.24 2 3 4.24 3 7c0 4.25 5 7 5 7s5-2.75 5-7c0-2.76-2.24-5-5-5Zm0 7.5A2.5 2.5 0 1 1 8 4a2.5 2.5 0 0 1 0 5.5Z" fill="#bdbdbd"/></svg>
-                    {reservations[0].endroit || 'Lieu inconnu'}
-                  </span>
-                </div>
-                <div style={{fontSize:15, marginBottom:8}}>
-                  <span style={{display:'flex', alignItems:'center', gap:4}}>
-                    <svg width="16" height="16" fill="none"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 1c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4Z" fill="#bdbdbd"/></svg>
-                    {reservations[0].nb_personnes ? reservations[0].nb_personnes : '' }
-                  </span>
-                </div>
-                <div style={{fontSize:15, marginBottom:8}}>
-                  <span style={{display:'flex', alignItems:'center', gap:4}}>
-                    <svg width="16" height="16" fill="none"><path d="M8 1.333A6.667 6.667 0 1 0 8 14.667 6.667 6.667 0 0 0 8 1.333Zm0 12A5.333 5.333 0 1 1 8 2.667a5.333 5.333 0 0 1 0 10.666Zm.667-8.666H7.333v4l3.5 2.1.667-1.1-3-1.8V4.667Z" fill="#bdbdbd"/></svg>
-                    {reservations[0].date ? new Date(reservations[0].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : ''}, {reservations[0].heure ? `${reservations[0].heure}:00` : ''}
-                  </span>
-                </div>
-                <div style={{fontSize:15, marginBottom:8}}>
-                  <span style={{display:'flex', alignItems:'center', gap:4}}>
-                    <svg width="16" height="16" fill="none"><circle cx="8" cy="8" r="7" stroke="#bdbdbd" strokeWidth="2"/><path d="M8 4v4l3 2" stroke="#bdbdbd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    4h
-                  </span>
-                </div>
-                <div style={{fontSize:15, marginBottom:8}}>
-                  Notes<br />
-                  
-                </div>
-                <div style={{display:'flex', gap:10, marginTop:16}}>
-                  <button
-                    style={{
-                      background:'#8ba987', color:'#fff', border:'none', borderRadius:8,
-                      padding:'8px 18px', fontWeight:600, fontSize:15, cursor:'pointer'
-                    }}
-                  >Confirmer</button>
-                  <button
-                    style={{
-                      background:'#fbe7ee', color:'#e67c73', border:'none', borderRadius:8,
-                      padding:'8px 18px', fontWeight:600, fontSize:15, cursor:'pointer'
-                    }}
-                  >Décliner</button>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-emerald-400">
+                    {reservations.filter(r => r.status === 'confirmed' || r.status === 'accepted').length}
+                  </div>
+                  <div className="text-slate-300 text-sm">Confirmées</div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
-        
+
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex gap-8">
+            {/* Liste des réservations */}
+            <div className="flex-1">
+              {/* Barre de recherche et filtres */}
+              <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <div className="flex gap-4 flex-wrap">
+                  <div className="flex-1 min-w-64">
+                    <input
+                      type="text"
+                      placeholder="Rechercher par nom, email ou annonce..."
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="all">Tous les statuts</option>
+                    <option value="pending">En attente</option>
+                    <option value="confirmed">Confirmées</option>
+                    <option value="refused">Refusées</option>
+                    <option value="cancelled">Annulées</option>
+                  </select>
+                  
+                  <select
+                    value={annonceFilter}
+                    onChange={e => setAnnonceFilter(e.target.value)}
+                    className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="all">Toutes les annonces</option>
+                    {annonces.map(a => (
+                      <option key={a.id} value={a.id}>{a.titre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Liste des réservations */}
+              <div className="space-y-1">
+                {filteredReservations.length > 0 ? (
+                  filteredReservations.map(r => (
+                    <ReservationCard 
+                      key={r.id} 
+                      r={r} 
+                      isSelected={selectedReservation?.id === r.id}
+                      onClick={setSelectedReservation}
+                    />
+                  ))
+                ) : (
+                  <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+                    <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-lg font-medium text-slate-600 mb-2">Aucune réservation trouvée</h2>
+                    <p className="text-slate-500">
+                      {searchTerm || statusFilter !== 'all' || annonceFilter !== 'all' 
+                        ? 'Essayez de modifier vos filtres de recherche'
+                        : 'Les nouvelles réservations apparaîtront ici'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Panneau de détail à droite */}
+            <div className="w-96">
+              <div className="bg-white rounded-lg shadow-sm p-6 sticky top-6">
+                {selectedReservation ? (
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xl">
+                        {selectedReservation.profiles?.nom ? 
+                          selectedReservation.profiles.nom.split(' ').map(n=>n[0]).join('').toUpperCase() : '?'
+                        }
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-slate-800">
+                          {selectedReservation.profiles?.nom || 'Nom inconnu'}
+                        </h2>
+                        <StatusBadge status={selectedReservation.status} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Mail className="w-5 h-5 text-slate-500" />
+                        <div>
+                          <div className="text-sm text-slate-500">Email</div>
+                          <div className="font-medium">{selectedReservation.profiles?.email || 'Non renseigné'}</div>
+                        </div>
+                      </div>
+
+                      {selectedReservation.annonces?.titre && (
+                        <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
+                          <Eye className="w-5 h-5 text-emerald-600" />
+                          <div>
+                            <div className="text-sm text-emerald-600">Annonce réservée</div>
+                            <div className="font-medium text-emerald-700">{selectedReservation.annonces.titre}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <Calendar className="w-5 h-5 text-slate-500" />
+                        <div>
+                          <div className="text-sm text-slate-500">Date et heure</div>
+                          <div className="font-medium">
+                            {selectedReservation.date ? 
+                              new Date(selectedReservation.date).toLocaleDateString('fr-FR', { 
+                                day: '2-digit', 
+                                month: 'long', 
+                                year: 'numeric' 
+                              }) : 'Date non définie'
+                            }
+                            {selectedReservation.heure && ` à ${selectedReservation.heure}:00`}
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedReservation.endroit && (
+                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                          <MapPin className="w-5 h-5 text-slate-500" />
+                          <div>
+                            <div className="text-sm text-slate-500">Lieu</div>
+                            <div className="font-medium">{selectedReservation.endroit}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedReservation.nb_personnes && (
+                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                          <Users className="w-5 h-5 text-slate-500" />
+                          <div>
+                            <div className="text-sm text-slate-500">Nombre de personnes</div>
+                            <div className="font-medium">{selectedReservation.nb_personnes} personnes</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedReservation.notes && (
+                        <div className="p-3 bg-slate-50 rounded-lg">
+                          <div className="text-sm text-slate-500 mb-1">Notes</div>
+                          <div className="text-slate-700">{selectedReservation.notes}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedReservation.status === 'pending' && (
+                      <div className="flex gap-3 mt-6 pt-6 border-t border-slate-200">
+                        <button
+                          onClick={() => handleUpdate(selectedReservation.id, 'confirmed')}
+                          className="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Confirmer
+                        </button>
+                        <button
+                          onClick={() => handleUpdate(selectedReservation.id, 'refused')}
+                          className="flex-1 bg-red-50 text-red-600 py-3 px-4 rounded-lg font-medium hover:bg-red-100 transition-colors border border-red-200 flex items-center justify-center gap-2"
+                        >
+                          <X className="w-4 h-4" />
+                          Refuser
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-slate-600 mb-2">Sélectionnez une réservation</h3>
+                    <p className="text-slate-500">Cliquez sur une réservation pour voir ses détails</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   )

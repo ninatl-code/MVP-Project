@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle } from "lucide-react";
+import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, BarChart3 } from "lucide-react";
 
 const GOLD = "#FFD600";
 
@@ -77,6 +77,11 @@ export default function Header() {
           <IconButton onClick={() => router.push("/prestataires/menu")}
             className="bg-slate-700 hover:bg-slate-800 text-white">
             <Menu className="w-5 h-5" />
+          </IconButton>
+          <IconButton onClick={() => router.push("/prestataires/kpis")}
+            className="bg-slate-700 hover:bg-slate-800 text-white"
+            title="Statistiques et KPIs">
+            <BarChart3 className="w-5 h-5" />
           </IconButton>
           <NotificationsPopup router={router} />
           <div className="relative">

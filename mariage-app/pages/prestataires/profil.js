@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { Mail, Phone, MapPin, Heart, Calendar } from "lucide-react";
+import { Mail, Phone, MapPin, Heart, Calendar, Star, Award, TrendingUp, Users, Eye, ShoppingCart, DollarSign, Briefcase, Clock, CheckCircle } from "lucide-react";
 import Header from '../../components/HeaderPresta';
 import { useRouter } from "next/router";
 
@@ -8,12 +8,19 @@ const DEFAULT_ANNONCE_IMG = "/shutterstock_2502519999.jpg"; // Place l'image PJ 
 
 export default function UserProfile() {
   const [user, setUser] = useState(null);
-  const [reservations, setReservations] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [villeNom, setVilleNom] = useState("");
   const [villeId, setVilleId] = useState(null);
-  const [annonceTitles, setAnnonceTitles] = useState({});
-  const [prestataireNames, setPrestataireNames] = useState({});
+  const [stats, setStats] = useState({
+    totalAnnonces: 0,
+    totalCommandes: 0,
+    totalReservations: 0,
+    chiffreAffaires: 0,
+    noteMoyenne: 0,
+    totalVues: 0
+  });
+  const [recentAnnonces, setRecentAnnonces] = useState([]);
+  const [prestations, setPrestations] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [bioEdit, setBioEdit] = useState("");
   const [emailEdit, setEmailEdit] = useState("");
@@ -72,87 +79,33 @@ export default function UserProfile() {
         .select("id, ville");
       setVillesList(villesData || []);
 
-      // Récupère les réservations
-      const { data: resaData } = await supabase
-        .from("reservations")
-        .select("id, annonce_id, particulier_id, date, status, montant_acompte, date_confirmation, date_annulation, motif_annulation, date_refus, motif_refus")
-        .eq("prestataire_id", authUser.id);
+      // Charger les statistiques du prestataire
+      await loadPrestataireStats(authUser.id);
+      
+      // Charger les prestations disponibles
+      const { data: prestationsData } = await supabase
+        .from("prestations")
+        .select("id, type, nom")
+        .order('nom');
+      setPrestations(prestationsData || []);
 
-      // Récupère les titres des annonces et noms des prestataires + photos
-      const annonceIds = [...new Set((resaData || []).map(r => r.annonce_id).filter(Boolean))];
-      const prestataireIds = [...new Set((resaData || []).map(r => r.prestataire_id).filter(Boolean))];
-
-      let annonceTitleMap = {};
-      let annoncePhotoMap = {};
-      if (annonceIds.length > 0) {
-        const { data: annoncesData } = await supabase
-          .from("annonces")
-          .select("id, titre, photos")
-          .in("id", annonceIds);
-        annoncesData?.forEach(a => {
-          annonceTitleMap[a.id] = a.titre;
-          annoncePhotoMap[a.id] = a.photos && a.photos.length > 0 ? a.photos[0] : DEFAULT_ANNONCE_IMG;
-        });
-      }
-      setAnnonceTitles(annonceTitleMap);
-
-      let prestataireNameMap = {};
-      if (prestataireIds.length > 0) {
-        const { data: prestatairesData } = await supabase
-          .from("profiles")
-          .select("id, nom")
-          .in("id", prestataireIds);
-        prestatairesData?.forEach(p => { prestataireNameMap[p.id] = p.nom; });
-      }
-      setPrestataireNames(prestataireNameMap);
-
-      setReservations(
-        (resaData || []).map((resa) => ({
-          id: resa.id,
-          title: annonceTitleMap[resa.annonce_id] || "Annonce",
-          provider: prestataireNameMap[resa.prestataire_id] || "Prestataire",
-          date: resa.date
-            ? new Date(resa.date).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })
-            : "",
-          city: villeLabel,
-          cover: annoncePhotoMap[resa.annonce_id] || DEFAULT_ANNONCE_IMG,
-          statut: resa.status || "Statut inconnu",
-          montant_acompte: resa.montant_acompte || null,
-          date_confirmation: resa.date_confirmation
-            ? new Date(resa.date_confirmation).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          date_annulation: resa.date_annulation
-            ? new Date(resa.date_annulation).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          motif_annulation: resa.motif_annulation || null,
-          date_refus: resa.date_refus
-            ? new Date(resa.date_refus).toLocaleDateString("fr-FR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          motif_refus: resa.motif_refus || null,
-        }))
-      );
+      // Charger les annonces récentes du prestataire
+      const { data: recentAnnoncesData } = await supabase
+        .from("annonces")
+        .select("id, titre, photos, created_at, rate, vues, prestation, prestations!inner(type)")
+        .eq("prestataire", authUser.id)
+        .order('created_at', { ascending: false })
+        .limit(6);
+        
+      setRecentAnnonces((recentAnnoncesData || []).map(annonce => ({
+        id: annonce.id,
+        titre: annonce.titre,
+        photo: annonce.photos && annonce.photos.length > 0 ? annonce.photos[0] : DEFAULT_ANNONCE_IMG,
+        dateCreation: new Date(annonce.created_at).toLocaleDateString("fr-FR"),
+        note: annonce.rate || 0,
+        vues: annonce.vues || 0,
+        prestation: annonce.prestations?.type || 'Non défini'
+      })));
 
       // Récupère les favoris
       const { data: favData } = await supabase
@@ -173,6 +126,61 @@ export default function UserProfile() {
     fetchUserData();
     calculateAndUpdatePrestataireRate();
   }, []);
+
+  // Charger les statistiques du prestataire
+  const loadPrestataireStats = async (prestataireId) => {
+    try {
+      // 1. Annonces
+      const { data: annonces } = await supabase
+        .from('annonces')
+        .select('id, rate, vues')
+        .eq('prestataire', prestataireId);
+
+      // 2. Commandes
+      const { data: commandes } = await supabase
+        .from('commandes')
+        .select('id, montant, status')
+        .eq('prestataire_id', prestataireId);
+
+      // 3. Réservations
+      const { data: reservations } = await supabase
+        .from('reservations')
+        .select('id, montant, status')
+        .eq('prestataire_id', prestataireId);
+
+      // Calculs
+      const totalAnnonces = annonces?.length || 0;
+      const totalCommandes = commandes?.length || 0;
+      const totalReservations = reservations?.length || 0;
+      const totalVues = annonces?.reduce((sum, a) => sum + (a.vues || 0), 0) || 0;
+      
+      const commandesPayees = commandes?.filter(c => 
+        c.status === 'completed' || c.status === 'delivered'
+      ) || [];
+      const reservationsPayees = reservations?.filter(r => 
+        r.status === 'paid' || r.status === 'confirmed'
+      ) || [];
+      
+      const caCommandes = commandesPayees.reduce((sum, c) => sum + (parseFloat(c.montant) || 0), 0);
+      const caReservations = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+      const chiffreAffaires = caCommandes + caReservations;
+      
+      const annonceAvecRate = annonces?.filter(a => a.rate && a.rate > 0) || [];
+      const noteMoyenne = annonceAvecRate.length > 0 ? 
+        annonceAvecRate.reduce((sum, a) => sum + a.rate, 0) / annonceAvecRate.length : 0;
+
+      setStats({
+        totalAnnonces,
+        totalCommandes,
+        totalReservations,
+        chiffreAffaires,
+        noteMoyenne: Math.round(noteMoyenne * 10) / 10,
+        totalVues
+      });
+    } catch (error) {
+      console.error('Erreur chargement stats:', error);
+    }
+  };
 
   // Calculer et mettre à jour la note moyenne du prestataire
   const calculateAndUpdatePrestataireRate = async () => {
@@ -232,6 +240,14 @@ export default function UserProfile() {
     } catch (error) {
       console.error('❌ Erreur calcul moyenne prestataire:', error);
     }
+  };
+
+  // Formater les devises
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount || 0);
   };
 
   // Conversion fichier en base64
@@ -339,73 +355,185 @@ export default function UserProfile() {
       <Header/>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="bg-white shadow-sm">
-          <div className="max-w-5xl mx-auto px-6 py-10 flex items-center gap-6">
-            {user.avatar ? (
-              <img
-                src={editMode ? photoEdit : user.avatar}
-                alt={user.name}
-                className="w-28 h-28 rounded-full border-4 border-pink-200 shadow object-cover"
-              />
-            ) : (
-              <div className="w-28 h-28 rounded-full border-4 border-pink-200 shadow flex items-center justify-center bg-pink-100 text-pink-700 text-4xl font-bold">
-                {user.name ? user.name[0].toUpperCase() : "?"}
+        <div className="bg-gradient-to-r from-slate-700 to-slate-800">
+          <div className="max-w-7xl mx-auto px-6 py-12">
+            <div className="flex items-center gap-8">
+              <div className="relative">
+                {user.avatar ? (
+                  <img
+                    src={editMode ? photoEdit : user.avatar}
+                    alt={user.name}
+                    className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl object-cover"
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl flex items-center justify-center bg-white text-slate-700 text-4xl font-bold">
+                    {user.name ? user.name[0].toUpperCase() : "?"}
+                  </div>
+                )}
+                <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-lg">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                </div>
+              </div>
+              
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-4xl font-bold text-white">{user.name}</h1>
+                  <div className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
+                    Prestataire
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 text-white/90 mb-4">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {user.city || 'Ville non renseignée'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Star className="w-4 h-4" />
+                    {stats.noteMoyenne}/5
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Eye className="w-4 h-4" />
+                    {stats.totalVues} vues
+                  </span>
+                </div>
+                
+                <div className="flex gap-3">
+                  {!editMode ? (
+                    <button
+                      className="bg-white text-slate-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-lg flex items-center gap-2"
+                      onClick={() => setEditMode(true)}
+                    >
+                      <Users className="w-4 h-4" />
+                      Modifier mon profil
+                    </button>
+                  ) : (
+                    <button
+                      className="bg-emerald-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-emerald-700 transition-colors shadow-lg flex items-center gap-2"
+                      onClick={handleSaveProfile}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Sauvegarder
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => router.push('/prestataires/kpis')}
+                    className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-lg font-medium hover:bg-white/30 transition-colors border border-white/20 flex items-center gap-2"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    Mes KPIs
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Input pour uploader une photo en mode édition */}
+            {editMode && (
+              <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <label className="block text-sm font-medium text-white mb-2">Changer ma photo de profil</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="block w-full text-sm text-white bg-white/20 backdrop-blur-sm rounded-lg p-2 border border-white/20"
+                />
               </div>
             )}
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-800">{user.name}</h1>
-              <p className="text-gray-500">{user.city}</p>
-              {!editMode ? (
-                <button
-                  className="mt-3 px-4 py-2 rounded-xl bg-pink-500 text-white hover:bg-pink-600 transition shadow"
-                  onClick={() => setEditMode(true)}
-                >
-                  Modifier mon profil
-                </button>
-              ) : (
-                <button
-                  className="mt-3 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition shadow"
-                  onClick={handleSaveProfile}
-                >
-                  Sauvegarder
-                </button>
-              )}
-              {/* Input pour uploader une photo en mode édition */}
-              {editMode && (
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Changer ma photo</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="block w-full text-sm text-gray-500"
-                  />
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
         {/* Main */}
-        <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+        <div className="max-w-7xl mx-auto px-6 py-10 space-y-10">
+          
+          {/* Statistiques rapides */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-slate-600" />
+              Mes performances
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-lg p-4 border border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <Briefcase className="w-5 h-5 text-slate-600" />
+                  <span className="text-sm font-medium text-slate-700">Annonces</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-800">{stats.totalAnnonces}</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
+                <div className="flex items-center justify-between mb-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                  <span className="text-sm font-medium text-emerald-700">CA Total</span>
+                </div>
+                <p className="text-lg font-bold text-emerald-800">{formatCurrency(stats.chiffreAffaires)}</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <ShoppingCart className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">Commandes</span>
+                </div>
+                <p className="text-2xl font-bold text-blue-800">{stats.totalCommandes}</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-lg p-4 border border-indigo-200">
+                <div className="flex items-center justify-between mb-2">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  <span className="text-sm font-medium text-indigo-700">Réservations</span>
+                </div>
+                <p className="text-2xl font-bold text-indigo-800">{stats.totalReservations}</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-200">
+                <div className="flex items-center justify-between mb-2">
+                  <Star className="w-5 h-5 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-700">Note</span>
+                </div>
+                <p className="text-2xl font-bold text-amber-800">{stats.noteMoyenne}/5</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <Eye className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Vues</span>
+                </div>
+                <p className="text-2xl font-bold text-gray-800">{stats.totalVues}</p>
+              </div>
+            </div>
+          </section>
+
           {/* Infos perso + Infos bancaires */}
           <section className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl shadow p-5 space-y-2">
-              <h2 className="font-semibold text-gray-800 mb-3">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-slate-600" />
                 Informations personnelles
               </h2>
               {!editMode ? (
-                <>
-                  <p className="flex items-center gap-2 text-gray-600">
-                    <Mail className="w-4 h-4 text-pink-500" /> {user.email}
-                  </p>
-                  <p className="flex items-center gap-2 text-gray-600">
-                    <Phone className="w-4 h-4 text-pink-500" /> {user.phone}
-                  </p>
-                  <p className="flex items-center gap-2 text-gray-600">
-                    <MapPin className="w-4 h-4 text-pink-500" /> {user.city}
-                  </p>
-                </>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <Mail className="w-5 h-5 text-slate-600" />
+                    <div>
+                      <p className="text-sm text-slate-500">Email</p>
+                      <p className="font-medium text-slate-800">{user.email || 'Non renseigné'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <Phone className="w-5 h-5 text-slate-600" />
+                    <div>
+                      <p className="text-sm text-slate-500">Téléphone</p>
+                      <p className="font-medium text-slate-800">{user.phone || 'Non renseigné'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <MapPin className="w-5 h-5 text-slate-600" />
+                    <div>
+                      <p className="text-sm text-gray-500">Ville</p>
+                      <p className="font-medium text-gray-800">{user.city || 'Non renseigné'}</p>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <>
                   <div className="flex items-center gap-2 mb-2">
@@ -442,168 +570,76 @@ export default function UserProfile() {
                 </>
               )}
             </div>
-            <div className="bg-white rounded-2xl shadow p-5 space-y-2 flex flex-col items-center justify-center">
-              <h2 className="font-semibold text-gray-800 mb-3">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
                 Informations bancaires
               </h2>
-              {stripeAccountId ? (
-                <>
-                  <div className="mb-2 text-green-600 font-semibold">Compte paramétré</div>
-                  <button
-                    className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow hover:bg-blue-700 transition"
-                    onClick={handleStripeSetup}
-                  >
-                    Modifier mon compte
-                  </button>
-                </>
-              ) : (
-                <button
-                  className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow hover:bg-blue-700 transition"
-                  onClick={handleStripeSetup}
-                >
-                  Configurer mes paiements
-                </button>
-              )}
+              <div className="text-center">
+                {stripeAccountId ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center gap-2 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                      <div>
+                        <p className="font-semibold text-green-800">Compte configuré</p>
+                        <p className="text-sm text-green-600">Vous pouvez recevoir des paiements</p>
+                      </div>
+                    </div>
+                    <button
+                      className="bg-slate-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-slate-700 transition-colors flex items-center gap-2 mx-auto"
+                      onClick={handleStripeSetup}
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      Modifier mon compte
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                      <p className="text-amber-800 font-medium mb-1">Configuration requise</p>
+                      <p className="text-sm text-amber-600">Configurez vos paiements pour recevoir des commandes</p>
+                    </div>
+                    <button
+                      className="bg-slate-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-slate-700 transition-colors flex items-center gap-2 mx-auto"
+                      onClick={handleStripeSetup}
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      Configurer mes paiements
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
           {/* About */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <Heart className="w-6 h-6 text-slate-600" />
               À propos de moi
             </h2>
-            {!editMode ? (
-              <p className="text-gray-600 bg-white rounded-2xl shadow p-4">
-                {user.about}
-              </p>
-            ) : (
-              <textarea
-                className="w-full text-gray-600 bg-white rounded-2xl shadow p-4"
-                value={bioEdit}
-                onChange={e => setBioEdit(e.target.value)}
-                rows={4}
-              />
-            )}
-          </section>
-
-          {/* Reservations */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              Mes réservations
-            </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {reservations.map((resa) => (
-                <div
-                  key={resa.id}
-                  className="bg-white rounded-2xl shadow overflow-hidden"
-                >
-                  <img
-                    src={resa.cover}
-                    alt={resa.title}
-                    className="h-40 w-full object-cover"
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              {!editMode ? (
+                <div className="prose prose-gray max-w-none">
+                  <p className="text-gray-700 leading-relaxed text-lg">
+                    {user.about || "Aucune description disponible. Cliquez sur 'Modifier mon profil' pour ajouter une présentation."}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Présentez-vous à vos futurs clients
+                  </label>
+                  <textarea
+                    className="w-full p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent resize-none"
+                    value={bioEdit}
+                    onChange={e => setBioEdit(e.target.value)}
+                    rows={6}
+                    placeholder="Parlez de votre expérience, votre passion, ce qui vous différencie..."
                   />
-                  <div className="p-4">
-                    <h2 className="font-semibold text-gray-800">{resa.title}</h2>
-                    <p className="text-sm text-gray-500">
-                      {resa.provider} – {resa.city}
-                    </p>
-                    <p className="text-sm text-gray-500">{resa.date}</p>
-                    <p className="text-sm font-semibold mt-2">
-                      Statut : <span className={
-                        resa.statut === "confirmed" ? "text-green-600" :
-                        resa.statut === "cancelled" ? "text-red-600" :
-                        resa.statut === "refused" ? "text-orange-600" :
-                        resa.statut === "pending" ? "text-orange-600" :
-                        "text-gray-600"
-                      }>
-                        {resa.statut === "confirmed"
-                          ? "Confirmée"
-                          : resa.statut === "cancelled"
-                          ? "Annulée"
-                          : resa.statut === "refused"
-                          ? "Refusée"
-                          : resa.statut === "pending"
-                          ? "En attente"
-                          : resa.statut}
-                      </span>
-                    </p>
-                    {resa.montant_acompte && (
-                      <p className="text-sm text-black-700">
-                        <span className="font-bold"> Acompte : </span> {resa.montant_acompte !== null ? resa.montant_acompte : 0} MAD
-                      </p>
-                    )}
-                    {resa.statut === "confirmed" && resa.date_confirmation && (
-                      <p className="text-sm text-black-700">
-                       <span className="font-bold"> Confirmée le : </span> {resa.date_confirmation}
-                      </p>
-                    )}
-                    {resa.statut === "cancelled" && (
-                      <>
-                        {resa.date_annulation && (
-                          <p className="text-sm text-black-700">
-                            <span className="font-bold"> Annulée le : </span>{resa.date_annulation}
-                          </p>
-                        )}
-                        {resa.motif_annulation && (
-                          <p className="text-sm text-black-700">
-                           <span className="font-bold"> Motif : </span>{resa.motif_annulation}
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {resa.statut === "refused" && (
-                      <>
-                        {resa.date_refus && (
-                          <p className="text-sm text-gray-700">
-                            <span className="font-bold"> Refusée le : </span>{resa.date_refus}
-                          </p>
-                        )}
-                        {resa.motif_refus && (
-                          <p className="text-sm text-gray-700">
-                            <span className="font-bold"> Motif : </span>{resa.motif_refus}
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {reservations.length === 0 && (
-                <div className="text-gray-400 text-center py-8">
-                  Aucune réservation pour le moment.
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Favoris */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              Mes favoris
-            </h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {favorites.map((fav) => (
-                <div
-                  key={fav.id}
-                  className="bg-white rounded-2xl shadow overflow-hidden"
-                >
-                  <img
-                    src={fav.cover}
-                    alt={fav.title}
-                    className="h-32 w-full object-cover"
-                  />
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <h2 className="font-semibold text-gray-800">{fav.title}</h2>
-                      <p className="text-sm text-gray-500">{fav.city}</p>
-                    </div>
-                    <Heart className="w-6 h-6 text-pink-500" />
-                  </div>
-                </div>
-              ))}
-              {favorites.length === 0 && (
-                <div className="text-gray-400 text-center py-8">
-                  Aucun favori pour le moment.
+                  <p className="text-sm text-gray-500 mt-2">
+                    Une bonne présentation aide les clients à mieux vous connaître et augmente vos chances d'être choisi.
+                  </p>
                 </div>
               )}
             </div>

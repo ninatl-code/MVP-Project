@@ -432,7 +432,36 @@ export default function CommandesPrestataire() {
     <>
       {/* Header de navigation pour prestataires */}
       <PrestataireHeader />
-      
+      {/* Header avec statistiques */}
+        <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white">
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-3xl font-bold mb-2">Gestion des Commandes</h3>
+                <p className="text-slate-300">Gérez toutes vos commandes en un seul endroit</p>
+              </div>
+              
+              <div className="flex gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{commandes.length}</div>
+                  <div className="text-slate-300 text-sm">Total</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-amber-400">
+                    {commandes.filter(r => r.status === 'pending').length}
+                  </div>
+                  <div className="text-slate-300 text-sm">En attente</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-emerald-400">
+                    {commandes.filter(r => r.status === 'confirmed' || r.status === 'accepted').length}
+                  </div>
+                  <div className="text-slate-300 text-sm">Confirmées</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       {/* Container principal avec background gris clair */}
       <div style={{
         background: '#f8fafc',

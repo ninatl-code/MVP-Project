@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
+import { trackAnnonceView } from "../../lib/viewTracking";
 import Header from "../../components/HeaderParti";
 import { Star } from "lucide-react";
 import { motion } from "framer-motion";
@@ -98,6 +99,19 @@ export default function ArtistProfilePreview() {
     }
     getUser();
   }, []);
+
+  // Track annonce view
+  useEffect(() => {
+    if (annonceId && annonce) {
+      // Délai de 3 secondes pour s'assurer que c'est une vraie visite
+      const viewTimer = setTimeout(() => {
+        trackAnnonceView(annonceId, 60); // 60 minutes de throttle
+        console.log(`👁️ Vue trackée pour l'annonce ${annonceId}`);
+      }, 3000);
+
+      return () => clearTimeout(viewTimer);
+    }
+  }, [annonceId, annonce]);
 
   // Check if already favori
   useEffect(() => {
