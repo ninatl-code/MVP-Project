@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
 
-export default function Login() {
+function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -14,13 +14,36 @@ export default function Login() {
     setLoading(true)
     setErrorMsg('')
 
+    // Vérifier d'abord si l'email existe
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', form.email)
+      .single()
+
+    if (!existingUser) {
+      setErrorMsg('Cette adresse email n\'est pas enregistrée. Veuillez créer un compte ou vérifier votre email.')
+      setLoading(false)
+      return
+    }
+
+    // Tentative de connexion
     const { data, error } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password,
     })
 
     if (error) {
-      setErrorMsg(error.message)
+      // Gérer les différents types d'erreurs
+      if (error.message === 'Invalid login credentials') {
+        setErrorMsg('Mot de passe incorrect. Veuillez réessayer.')
+      } else if (error.message === 'Email not confirmed') {
+        setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
+      } else if (error.message === 'Too many requests') {
+        setErrorMsg('Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
+      } else {
+        setErrorMsg('Erreur de connexion. Veuillez réessayer plus tard.')
+      }
       setLoading(false)
       return
     }
@@ -36,7 +59,6 @@ export default function Login() {
   return (
     <>
       <Headerhomepage />
-      {
     <main style={{
       maxWidth: 400,
       margin: "80px auto",
@@ -86,7 +108,8 @@ export default function Login() {
         </button>
       </form>
     </main>
-    }
     </>
   )
 }
+
+export default Login;

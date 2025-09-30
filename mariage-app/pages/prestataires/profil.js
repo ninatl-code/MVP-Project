@@ -171,7 +171,68 @@ export default function UserProfile() {
     };
 
     fetchUserData();
+    calculateAndUpdatePrestataireRate();
   }, []);
+
+  // Calculer et mettre à jour la note moyenne du prestataire
+  const calculateAndUpdatePrestataireRate = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+
+    try {
+      // 1. Récupérer toutes les annonces du prestataire
+      const { data: annonces, error: annoncesError } = await supabase
+        .from('annonces')
+        .select('id, rate')
+        .eq('prestataire', authUser.id);
+
+      if (annoncesError) {
+        console.error('Erreur récupération annonces:', annoncesError);
+        return;
+      }
+
+      if (!annonces || annonces.length === 0) {
+        console.log('Aucune annonce trouvée pour ce prestataire');
+        return;
+      }
+
+      // 2. Filtrer les annonces qui ont un rate (note) valide
+      const annoncesAvecRate = annonces.filter(annonce => 
+        annonce.rate !== null && annonce.rate !== undefined && annonce.rate > 0
+      );
+
+      if (annoncesAvecRate.length === 0) {
+        console.log('Aucune annonce avec note trouvée');
+        return;
+      }
+
+      // 3. Calculer la moyenne des rates
+      const sommeRates = annoncesAvecRate.reduce((sum, annonce) => sum + annonce.rate, 0);
+      const moyenneRate = sommeRates / annoncesAvecRate.length;
+
+      console.log(`📊 Calcul moyenne prestataire:`, {
+        totalAnnonces: annonces.length,
+        annoncesAvecNote: annoncesAvecRate.length,
+        somme: sommeRates,
+        moyenne: moyenneRate
+      });
+
+      // 4. Mettre à jour la colonne rate dans profiles
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ rate: Math.round(moyenneRate * 10) / 10 }) // Arrondi à 1 décimale
+        .eq('id', authUser.id);
+
+      if (updateError) {
+        console.error('❌ Erreur mise à jour rate prestataire:', updateError);
+      } else {
+        console.log(`✅ Rate prestataire mis à jour: ${Math.round(moyenneRate * 10) / 10}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Erreur calcul moyenne prestataire:', error);
+    }
+  };
 
   // Conversion fichier en base64
   function fileToBase64(file) {

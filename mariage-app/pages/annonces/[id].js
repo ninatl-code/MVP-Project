@@ -10,6 +10,7 @@ export default function ArtistProfilePreview() {
   const [annonce, setAnnonce] = useState(null);
   const [prestationType, setPrestationType] = useState("");
   const [avis, setAvis] = useState([]);
+  const [totalAvis, setTotalAvis] = useState(0);
   const [favorisLoading, setFavorisLoading] = useState(false);
   const [isFavori, setIsFavori] = useState(false);
   const [favoriId, setFavoriId] = useState(null);
@@ -32,13 +33,31 @@ export default function ArtistProfilePreview() {
       // Fetch annonce
       const { data: annonceData, error: annonceError } = await supabase
         .from("annonces")
-        .select("*, prix_fixe, prestataire:prestataire(*)")
+        .select(`
+          *, 
+          prix_fixe, 
+          prestataire:prestataire(*)
+        `)
         .eq("id", annonceId)
         .single();
+      
       if (annonceError || !annonceData) {
         setError("Aucune annonce trouvée pour cet identifiant.");
         setAnnonce(null);
         return;
+      }
+
+      // Si l'annonce existe et a une ville, récupérer le nom de la ville
+      if (annonceData.ville) {
+        const { data: villeData, error: villeError } = await supabase
+          .from("villes")
+          .select("id, ville")
+          .eq("id", annonceData.ville)
+          .single();
+        
+        if (villeData) {
+          annonceData.villeInfo = villeData;
+        }
       }
       setAnnonce(annonceData);
 
@@ -52,15 +71,21 @@ export default function ArtistProfilePreview() {
         setPrestationType(prestationData?.type || "");
       }
 
-      // Fetch avis for this prestataire
-      if (annonceData?.prestataire?.id) {
-        const { data: avisData } = await supabase
-          .from("avis")
-          .select("*, particulier:particulier_id(nom, photos)")
-          .eq("prestataire_id", annonceData.prestataire.id)
-          .order("created_at", { ascending: false });
-        setAvis(avisData || []);
-      }
+      // Fetch avis for this specific annonce
+      const { data: avisData } = await supabase
+        .from("avis")
+        .select("*, particulier:particulier_id(nom, photos)")
+        .eq("annonce_id", annonceId)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      setAvis(avisData || []);
+
+      // Get total count of avis for this annonce
+      const { count } = await supabase
+        .from("avis")
+        .select("*", { count: 'exact', head: true })
+        .eq("annonce_id", annonceId);
+      setTotalAvis(count || 0);
     }
     fetchAnnonceAndAvis();
   }, [annonceId]);
@@ -244,13 +269,18 @@ export default function ArtistProfilePreview() {
             />
             {/* Infos Artiste */}
             <div className="mt-6 md:mt-0 text-center md:text-left flex-1">
-              <h2 className="text-3xl font-bold text-slate-800">{annonce.prestataire?.nom}</h2>
-              <p className="text-slate-600 mt-2">{annonce.prestation}</p>
+              <h2 className="text-3xl font-bold text-slate-800">{annonce.prestataire?.nom}</h2>              {/* Affichage ville */}
+              {annonce.villeInfo?.ville && (
+                <p className="text-slate-500 mt-1 text-sm">📍 {annonce.villeInfo.ville}</p>
+              )}
               <div className="flex items-center justify-center md:justify-start mt-3 space-x-1">
-                {[...Array(Math.round(annonce.rate || 4.5))].map((_, i) => (
+                {[...Array(Math.round(annonce.rate || 0))].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                 ))}
-                <span className="text-slate-500 ml-2">({avis.length} avis)</span>
+                {annonce.rate && (
+                  <span className="text-slate-600 ml-2 font-medium">{annonce.rate.toFixed(0)}/5</span>
+                )}
+                <span className="text-slate-500 ml-2">({totalAvis} avis)</span>
               </div>
               <p className="mt-4 text-gray-600 max-w-lg">{annonce.description}</p>
               <div className="mt-6 flex space-x-4 justify-center md:justify-start">
@@ -333,26 +363,119 @@ export default function ArtistProfilePreview() {
 
         {/* Avis */}
         <section className="w-full max-w-4xl mt-16">
-          <h2 className="text-2xl font-semibold text-slate-800 mb-6">Avis clients</h2>
+          <h2 className="text-2xl font-semibold text-slate-800 mb-6">Avis clients {totalAvis > 3 && `(${avis.length} sur ${totalAvis})`}</h2>
           <div className="space-y-6">
             {avis.length === 0 && (
-              <div className="text-slate-400">Aucun avis pour ce prestataire.</div>
+              <div className="text-slate-400">Aucun avis pour cette annonce.</div>
             )}
             {avis.map((a, i) => (
               <div key={i} className="rounded-xl shadow-sm bg-white">
                 <div className="p-6">
-                  <div className="flex items-center space-x-2 mb-2">
-                    {[...Array(a.note)].map((_, j) => (
-                      <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      {[...Array(a.note)].map((_, j) => (
+                        <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                      <span className="text-sm text-slate-600 ml-2">{a.note}/5</span>
+                    </div>
+                    <span className="text-sm text-gray-400">
+                      {new Date(a.created_at).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
                   </div>
-                  <p className="text-gray-600">"{a.commentaire}"</p>
-                  <p className="mt-2 text-sm text-gray-400">— {a.particulier?.nom || "Utilisateur"}</p>
+                  <p className="text-gray-600 mb-3">"{a.commentaire}"</p>
+                  <p className="text-sm text-gray-500">— {a.particulier?.nom || "Utilisateur"}</p>
                 </div>
               </div>
             ))}
+            {totalAvis > 3 && (
+              <div className="text-center mt-6">
+                <button 
+                  className="text-slate-600 hover:text-slate-800 underline"
+                  onClick={() => router.push(`/annonces/${annonceId}/avis`)}
+                >
+                  Voir tous les {totalAvis} avis
+                </button>
+              </div>
+            )}
           </div>
         </section>
+
+        {/* Modal pour contacter */}
+        {showMessageModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-slate-800">Contacter {annonce.prestataire?.nom}</h3>
+                  <button
+                    onClick={() => setShowMessageModal(false)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form onSubmit={handleSendMessage} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Objet</label>
+                    <input
+                      type="text"
+                      value={objet}
+                      onChange={(e) => setObjet(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Sujet de votre message"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Message</label>
+                    <textarea
+                      value={messageContent}
+                      onChange={(e) => setMessageContent(e.target.value)}
+                      rows={4}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Votre message..."
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Image (optionnel)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setImageFile(e.target.files[0])}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  {sendError && (
+                    <div className="text-red-600 text-sm">{sendError}</div>
+                  )}
+                  {sendSuccess && (
+                    <div className="text-green-600 text-sm">Message envoyé avec succès !</div>
+                  )}
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowMessageModal(false)}
+                      className="flex-1 border border-slate-300 text-slate-700 py-2 px-4 rounded-lg hover:bg-slate-50"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={sending}
+                      className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {sending ? "Envoi..." : "Envoyer"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -11,7 +11,7 @@ export default function PrestationsPrestataire() {
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
   const [userId, setUserId] = useState(null)
   const [editingModele, setEditingModele] = useState(null) // Modèle en cours d'édition
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null) // ID du modèle à supprimer
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null) // { id, form, setForm }
 
   useEffect(() => {
     const fetchUserAndPrestations = async () => {
@@ -272,6 +272,86 @@ export default function PrestationsPrestataire() {
     )
   }
 
+  // Conversion fichier en base64 (déplacée au niveau global)
+  const fileToBase64 = file =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+
+  // Fonctions pour la gestion des modèles (déplacées au niveau du composant parent)
+  const handleEditModele = (modele, form, setForm) => {
+    // Initialiser les photos à partir de photo_url
+    const photos = modele.photo_url ? [modele.photo_url] : [];
+    
+    setEditingModele({
+      ...modele,
+      photos: photos, // Convertir photo_url en tableau pour l'édition
+      originalIndex: form.modeles.findIndex(m => m.id === modele.id),
+      form: form,
+      setForm: setForm
+    });
+  };
+
+  const handleSaveModele = async () => {
+    if (!editingModele.titre || !editingModele.description) {
+      alert('Veuillez renseigner le titre et la description du modèle.');
+      return;
+    }
+
+    // Prendre la première photo pour photo_url
+    const photo_url = editingModele.photos && editingModele.photos.length > 0 ? editingModele.photos[0] : null;
+    
+    const { error } = await supabase
+      .from('modeles')
+      .update({
+        titre: editingModele.titre,
+        description: editingModele.description,
+        prix: parseFloat(editingModele.prix) || 0,
+        photo_url: photo_url
+      })
+      .eq('id', editingModele.id);
+
+    if (!error) {
+      // Mettre à jour la liste locale
+      if (editingModele.setForm) {
+        editingModele.setForm(prev => ({
+          ...prev,
+          modeles: prev.modeles.map(m => 
+            m.id === editingModele.id ? editingModele : m
+          )
+        }));
+      }
+      setEditingModele(null);
+      alert('Modèle modifié avec succès!');
+    } else {
+      alert('Erreur lors de la modification: ' + error.message);
+    }
+  };
+
+  const handleDeleteModele = async (modeleId, form, setForm) => {
+    const { error } = await supabase
+      .from('modeles')
+      .delete()
+      .eq('id', modeleId);
+
+    if (!error) {
+      // Retirer de la liste locale
+      if (setForm) {
+        setForm(prev => ({
+          ...prev,
+          modeles: prev.modeles.filter(m => m.id !== modeleId)
+        }));
+      }
+      alert('Modèle supprimé avec succès!');
+    } else {
+      alert('Erreur lors de la suppression: ' + error.message);
+    }
+    setShowDeleteConfirm(null);
+  };
+
   // Pop-up d'ajout/modification/aperçu de prestation
   function AddPrestationModal({ open, onClose, prestation }) {
     const isEdit = !!prestation;
@@ -359,73 +439,6 @@ export default function PrestationsPrestataire() {
       }
     }, [prestation, isEdit]);
 
-    // Conversion fichier en base64
-    const fileToBase64 = file =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
-
-    // Fonctions pour la gestion des modèles
-    const handleEditModele = (modele) => {
-      setEditingModele({
-        ...modele,
-        originalIndex: form.modeles.findIndex(m => m.id === modele.id)
-      });
-    };
-
-    const handleSaveModele = async () => {
-      if (!editingModele.titre || !editingModele.description) {
-        alert('Veuillez renseigner le titre et la description du modèle.');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('modeles')
-        .update({
-          titre: editingModele.titre,
-          description: editingModele.description,
-          prix: parseFloat(editingModele.prix) || 0,
-          photos: editingModele.photos || []
-        })
-        .eq('id', editingModele.id);
-
-      if (!error) {
-        // Mettre à jour la liste locale
-        setForm(prev => ({
-          ...prev,
-          modeles: prev.modeles.map(m => 
-            m.id === editingModele.id ? editingModele : m
-          )
-        }));
-        setEditingModele(null);
-        alert('Modèle modifié avec succès!');
-      } else {
-        alert('Erreur lors de la modification: ' + error.message);
-      }
-    };
-
-    const handleDeleteModele = async (modeleId) => {
-      const { error } = await supabase
-        .from('modeles')
-        .delete()
-        .eq('id', modeleId);
-
-      if (!error) {
-        // Retirer de la liste locale
-        setForm(prev => ({
-          ...prev,
-          modeles: prev.modeles.filter(m => m.id !== modeleId)
-        }));
-        alert('Modèle supprimé avec succès!');
-      } else {
-        alert('Erreur lors de la suppression: ' + error.message);
-      }
-      setShowDeleteConfirm(null);
-    };
-
     const handleCheckbox = (cat) => {
       setForm(f => ({
         ...f,
@@ -457,6 +470,8 @@ export default function PrestationsPrestataire() {
           <button
             onClick={() => {
               setSelectedPrestation(null);
+              setEditingModele(null);
+              setShowDeleteConfirm(null);
               onClose();
             }}
             style={{
@@ -878,26 +893,13 @@ export default function PrestationsPrestataire() {
                         <div style={{fontSize: 12, fontWeight: 600, color: '#bfa046'}}>
                           {modele.prix} MAD
                         </div>
-                        {modele.photos && modele.photos.length > 0 && (
+                        {modele.photo_url && (
                           <div style={{display: 'flex', gap: 4, marginTop: 8}}>
-                            {modele.photos.slice(0, 3).map((photo, photoIdx) => (
-                              <img 
-                                key={photoIdx}
-                                src={photo.startsWith('data:') ? photo : `data:image/*;base64,${photo}`} 
-                                alt={`Photo ${photoIdx + 1}`}
-                                style={{width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid #ddd'}}
-                              />
-                            ))}
-                            {modele.photos.length > 3 && (
-                              <div style={{
-                                width: 40, height: 40, 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: '#f0f0f0', borderRadius: 6, border: '1px solid #ddd',
-                                fontSize: 10, color: '#666'
-                              }}>
-                                +{modele.photos.length - 3}
-                              </div>
-                            )}
+                            <img 
+                              src={modele.photo_url.startsWith('data:') ? modele.photo_url : `data:image/*;base64,${modele.photo_url}`} 
+                              alt="Photo du modèle"
+                              style={{width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid #ddd'}}
+                            />
                           </div>
                         )}
                       </div>
@@ -907,7 +909,7 @@ export default function PrestationsPrestataire() {
                             background: '#5bc0de', color: '#fff', border: 'none', borderRadius: 6,
                             padding: '6px 12px', fontSize: 11, cursor: 'pointer', fontWeight: 600
                           }}
-                          onClick={() => handleEditModele(modele)}
+                          onClick={() => handleEditModele(modele, form, setForm)}
                         >
                           Modifier
                         </button>
@@ -916,7 +918,7 @@ export default function PrestationsPrestataire() {
                             background: '#d9534f', color: '#fff', border: 'none', borderRadius: 6,
                             padding: '6px 12px', fontSize: 11, cursor: 'pointer', fontWeight: 600
                           }}
-                          onClick={() => setShowDeleteConfirm(modele.id)}
+                          onClick={() => setShowDeleteConfirm({ id: modele.id, form, setForm })}
                         >
                           Supprimer
                         </button>
@@ -1036,14 +1038,17 @@ export default function PrestationsPrestataire() {
                     // Les photos sont déjà en base64
                     const photos = form.modeleDraft?.photos || [];
                     
-                    // Sauvegarde dans la table modeles avec photos base64
+                    // Prendre la première photo pour photo_url (base64)
+                    const photo_url = photos.length > 0 ? photos[0] : null;
+                    
+                    // Sauvegarde dans la table modeles avec photo_url en base64
                     const { error } = await supabase.from('modeles').insert([
                       {
                         annonce_id: prestation?.id,
                         titre: form.modeleDraft?.titre || '',
                         description: form.modeleDraft?.description || '',
                         prix: form.modeleDraft?.prix || 0,
-                        photos: photos // tableau de base64
+                        photo_url: photo_url // première photo en base64
                       }
                     ]);
                     
@@ -1329,8 +1334,10 @@ export default function PrestationsPrestataire() {
                 cursor:'pointer'
               }}
               onClick={() => {
-                setSelectedPrestation(null)
-                onClose()
+                setSelectedPrestation(null);
+                setEditingModele(null);
+                setShowDeleteConfirm(null);
+                onClose();
               }}
             >Fermer</button>
           </div>
@@ -1734,7 +1741,7 @@ export default function PrestationsPrestataire() {
                     background: '#d9534f', color: '#fff', border: 'none',
                     borderRadius: 8, padding: '10px 20px', cursor: 'pointer'
                   }}
-                  onClick={() => handleDeleteModele(showDeleteConfirm)}
+                  onClick={() => handleDeleteModele(showDeleteConfirm?.id, showDeleteConfirm?.form, showDeleteConfirm?.setForm)}
                 >
                   Supprimer
                 </button>

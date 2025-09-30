@@ -1,19 +1,11 @@
-[
-    {
-        "type": "command",
-        "details": {
-            "key": "typescript.removeUnusedImports"
-        }
-    }
-]
-
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
 import Header from '../../components/HeaderParti'
+import RealTimeNotifications from '../../components/RealTimeNotifications'
 import { Search, Minus, Plus } from "lucide-react";
 
-export default function ParticularHomeMenu() {
+function ParticularHomeMenu() {
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
   const [devis, setDevis] = useState([]);
@@ -35,7 +27,47 @@ export default function ParticularHomeMenu() {
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [commandeQuantities, setCommandeQuantities] = useState({});
   const [loadingDevisAction, setLoadingDevisAction] = useState(false);
+  const [existingAvis, setExistingAvis] = useState([]);
+  const [showRatingForm, setShowRatingForm] = useState(null);
+  const [triggerAvisNotification, setTriggerAvisNotification] = useState(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const router = useRouter();
+
+  // Fonction pour charger les commandes
+  const fetchCommandes = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: commandesData } = await supabase
+      .from("commandes")
+      .select("*, annonces!commandes_annonce_id_fkey(titre)")
+      .eq("particulier_id", user.id);
+    setCommandes(commandesData || []);
+
+    // Récupérer les données de livraisons associées
+    if (commandesData && commandesData.length > 0) {
+      const commandeIds = commandesData.map(c => c.id);
+      const { data: livraisonsData } = await supabase
+        .from("livraisons")
+        .select("*")
+        .in("commande_id", commandeIds);
+      setLivraisons(livraisonsData || []);
+    }
+  };
+
+  // Fonction pour charger les livraisons
+  const fetchLivraisons = async () => {
+    if (commandes && commandes.length > 0) {
+      const commandeIds = commandes.map(c => c.id);
+      const { data: livraisonsData } = await supabase
+        .from("livraisons")
+        .select("*")
+        .in("commande_id", commandeIds);
+      setLivraisons(livraisonsData || []);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,21 +94,8 @@ export default function ParticularHomeMenu() {
         .eq("particulier_id", user.id);
       setReservations(reservationsData || []);
 
-      const { data: commandesData } = await supabase
-        .from("commandes")
-        .select("*, annonces!commandes_annonce_id_fkey(titre)")
-        .eq("particulier_id", user.id);
-      setCommandes(commandesData || []);
-
-      // Récupérer les données de livraisons
-      if (commandesData && commandesData.length > 0) {
-        const commandeIds = commandesData.map(c => c.id);
-        const { data: livraisonsData } = await supabase
-          .from("livraisons")
-          .select("*")
-          .in("commande_id", commandeIds);
-        setLivraisons(livraisonsData || []);
-      }
+      // Utiliser la fonction fetchCommandes pour charger commandes et livraisons
+      await fetchCommandes();
     };
     fetchData();
   }, []);
@@ -138,6 +157,349 @@ export default function ParticularHomeMenu() {
     }
     fetchQuantities();
   }, [commandes]);
+
+  // Récupérer les avis existants
+  useEffect(() => {
+    const fetchExistingAvis = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: avisData, error } = await supabase
+        .from('avis')
+        .select('commande_id, reservation_id, note')
+        .eq('particulier_id', user.id)
+
+      if (!error) {
+        setExistingAvis(avisData || [])
+      }
+    }
+    fetchExistingAvis()
+  }, [userId])
+
+  // Gérer l'ouverture automatique d'avis depuis HeaderParti.js
+  useEffect(() => {
+    if (router.query.openAvis && userId) {
+      const openAvisId = router.query.openAvis;
+      console.log('🔥 Ouverture avis depuis HeaderParti:', openAvisId);
+      
+      const fetchAndTriggerAvis = async () => {
+        const { data: notification, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('id', openAvisId)
+          .eq('user_id', userId)
+          .eq('type', 'avis')
+          .single();
+          
+        if (notification && !error) {
+          console.log('✅ Notification avis trouvée:', notification);
+          setTriggerAvisNotification(notification);
+          // Nettoyer l'URL après usage
+          router.replace('/particuliers/menu', undefined, { shallow: true });
+        }
+      };
+      
+      fetchAndTriggerAvis();
+    }
+  }, [router.query.openAvis, userId]);
+
+  // Fonction pour vérifier si un avis existe
+  const hasAvis = (type, id) => {
+    if (type === 'commande') {
+      return existingAvis.some(avis => avis.commande_id === id)
+    } else if (type === 'reservation') {
+      return existingAvis.some(avis => avis.reservation_id === id)
+    }
+    return false
+  }
+
+  // Fonction pour soumettre un avis depuis menu.js
+  const submitRatingFromMenu = async () => {
+    if (!showRatingForm || ratingValue === 0) {
+      alert('Veuillez sélectionner une note de 1 à 5 étoiles');
+      return;
+    }
+
+    setIsSubmittingRating(true);
+
+    try {
+      // Récupérer les informations de l'entité
+      let entityData = null;
+      let annonceData = null;
+      
+      if (showRatingForm.type === 'commande') {
+        const { data: commandeData, error: commandeError } = await supabase
+          .from('commandes')
+          .select('id, annonce_id, particulier_id')
+          .eq('id', showRatingForm.id)
+          .single();
+          
+        if (commandeError || !commandeData) {
+          alert('Impossible de trouver la commande');
+          return;
+        }
+        entityData = commandeData;
+        
+        // Récupérer l'annonce
+        const { data: annonceResult, error: annonceError } = await supabase
+          .from('annonces')
+          .select('id, prestataire, titre')
+          .eq('id', commandeData.annonce_id)
+          .single();
+          
+        if (annonceError || !annonceResult) {
+          alert('Impossible de trouver l\'annonce associée');
+          return;
+        }
+        annonceData = annonceResult;
+      } else if (showRatingForm.type === 'reservation') {
+        const { data: reservationData, error: reservationError } = await supabase
+          .from('reservations')
+          .select('id, annonce_id, particulier_id')
+          .eq('id', showRatingForm.id)
+          .single();
+          
+        if (reservationError || !reservationData) {
+          alert('Impossible de trouver la réservation');
+          return;
+        }
+        entityData = reservationData;
+        
+        // Récupérer l'annonce
+        const { data: annonceResult, error: annonceError } = await supabase
+          .from('annonces')
+          .select('id, prestataire, titre')
+          .eq('id', reservationData.annonce_id)
+          .single();
+          
+        if (annonceError || !annonceResult) {
+          alert('Impossible de trouver l\'annonce associée');
+          return;
+        }
+        annonceData = annonceResult;
+      }
+
+      // Créer l'avis
+      const avisData = {
+        particulier_id: userId,
+        prestataire_id: annonceData.prestataire,
+        commande_id: showRatingForm.type === 'commande' ? entityData.id : null,
+        reservation_id: showRatingForm.type === 'reservation' ? entityData.id : null,
+        note: ratingValue,
+        commentaire: ratingComment && ratingComment.trim() ? ratingComment.trim() : null,
+        created_at: new Date().toISOString()
+      };
+
+      const { error: avisError } = await supabase
+        .from('avis')
+        .insert(avisData);
+
+      if (avisError) {
+        console.error('Erreur lors de la création de l\'avis:', avisError);
+        alert('Erreur lors de l\'envoi de votre avis: ' + avisError.message);
+        return;
+      }
+
+      // Rafraîchir les avis existants
+      const { data: updatedAvis, error } = await supabase
+        .from('avis')
+        .select('commande_id, reservation_id, note')
+        .eq('particulier_id', userId);
+
+      if (!error) {
+        setExistingAvis(updatedAvis || []);
+      }
+
+      // Réinitialiser et fermer
+      setShowRatingForm(null);
+      setRatingValue(0);
+      setRatingComment('');
+      
+      alert(`✨ Merci pour votre avis de ${ratingValue} étoile${ratingValue > 1 ? 's' : ''} !`);
+
+    } catch (error) {
+      console.error('Erreur lors de la soumission:', error);
+      alert('Une erreur est survenue lors de l\'envoi de votre avis');
+    } finally {
+      setIsSubmittingRating(false);
+    }
+  };
+
+  // Fonction de debug pour tester la structure de la BDD
+  const debugCommandes = async () => {
+    console.log('🔍 Debug: structure des commandes...')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    
+    const { data, error } = await supabase
+      .from('commandes')
+      .select('*')
+      .limit(1)
+    
+    console.log('📊 Exemple de commande:', data?.[0])
+    console.log('🔑 Colonnes disponibles:', data?.[0] ? Object.keys(data[0]) : 'Aucune')
+    console.log('👤 User ID actuel:', user.id)
+  }
+
+  // Fonction pour marquer une commande comme livrée (côté particulier)
+  const markCommandeAsDelivered = async (commandeId) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      alert('Vous devez être connecté pour effectuer cette action')
+      return
+    }
+
+    try {
+      console.log(`🎯 Particulier ${user.id} marque commande ${commandeId} comme livrée`)
+      
+      // Vérification que la commande appartient bien à l'utilisateur
+      // Essayer d'abord avec 'particulier', puis avec 'particulier_id' si échec
+      let commandeCheck = null;
+      let checkError = null;
+
+      // Première tentative avec 'particulier'
+      const { data: commandeCheck1, error: checkError1 } = await supabase
+        .from('commandes')
+        .select('*')
+        .eq('id', commandeId)
+        .eq('particulier', user.id)
+        .maybeSingle()
+
+      if (checkError1) {
+        console.log('⚠️ Tentative avec colonne "particulier" échouée:', checkError1)
+        
+        // Deuxième tentative avec 'particulier_id'
+        const { data: commandeCheck2, error: checkError2 } = await supabase
+          .from('commandes')
+          .select('*')
+          .eq('id', commandeId)
+          .eq('particulier_id', user.id)
+          .maybeSingle()
+          
+        commandeCheck = commandeCheck2
+        checkError = checkError2
+        
+        if (checkError2) {
+          console.error('❌ Les deux tentatives ont échoué:', { checkError1, checkError2 })
+        } else {
+          console.log('✅ Succès avec colonne "particulier_id"')
+        }
+      } else {
+        commandeCheck = commandeCheck1
+        checkError = checkError1
+        console.log('✅ Succès avec colonne "particulier"')
+      }
+
+      if (checkError || !commandeCheck) {
+        console.error('❌ Erreur vérification commande:', checkError)
+        alert(`Cette commande ne vous appartient pas ou n'existe pas. Erreur: ${checkError?.message || 'Commande non trouvée'}`)
+        return
+      }
+      
+      console.log('📋 Commande trouvée:', commandeCheck)
+
+      if (commandeCheck.status === 'delivered') {
+        alert('Cette commande est déjà marquée comme livrée')
+        return
+      }
+
+      console.log('✅ Commande vérifiée, appartient à l\'utilisateur')
+      
+      // 1. Mise à jour du statut de la commande
+      console.log('1️⃣ Mise à jour du statut de la commande...')
+      
+      // Déterminer quelle colonne utiliser en fonction de la vérification précédente
+      const userColumn = 'particulier' in commandeCheck ? 'particulier' : 'particulier_id'
+      console.log(`🔑 Utilisation de la colonne: ${userColumn}`)
+      
+      const currentDateTime = new Date().toISOString()
+      
+      const updateQuery = supabase
+        .from('commandes')
+        .update({ 
+          status: 'delivered',
+          date_livraison: currentDateTime
+        })
+        .eq('id', commandeId)
+        
+      // Utiliser la bonne colonne pour la vérification de sécurité
+      const { error: commandeError } = await updateQuery.eq(userColumn, user.id)
+
+      if (commandeError) {
+        console.error('❌ Erreur mise à jour commande:', commandeError)
+        alert(`Erreur lors de la mise à jour de la commande: ${commandeError.message}`)
+        return
+      }
+      console.log('✅ Statut commande mis à jour avec date_livraison:', currentDateTime)
+
+      // 2. Mise à jour ou création de l'entrée livraison
+      console.log('2️⃣ Mise à jour de la livraison...')
+      
+      // Vérifier si une livraison existe déjà
+      const { data: existingLivraison, error: livraisonSelectError } = await supabase
+        .from('livraisons')
+        .select('id, status')
+        .eq('commande_id', commandeId)
+        .maybeSingle() // Utiliser maybeSingle au lieu de single pour éviter l'erreur si pas de résultat
+
+      if (livraisonSelectError) {
+        console.error('❌ Erreur lors de la recherche de livraison:', livraisonSelectError)
+        alert(`Erreur lors de la recherche de livraison: ${livraisonSelectError.message}`)
+        return
+      }
+
+      if (existingLivraison) {
+        // Mise à jour de l'entrée existante
+        console.log('📦 Mise à jour de la livraison existante...')
+        const { error: updateLivraisonError } = await supabase
+          .from('livraisons')
+          .update({
+            status: 'delivered',
+            delivery_date: currentDateTime,
+            update_date: currentDateTime
+          })
+          .eq('commande_id', commandeId)
+
+        if (updateLivraisonError) {
+          console.error('❌ Erreur mise à jour livraison:', updateLivraisonError)
+          alert(`Erreur lors de la mise à jour de la livraison: ${updateLivraisonError.message}`)
+          return
+        }
+        console.log('✅ Livraison existante mise à jour avec delivery_date:', currentDateTime)
+      } else {
+        // Création d'une nouvelle entrée livraison
+        console.log('📦 Création d\'une nouvelle livraison...')
+        const { error: insertLivraisonError } = await supabase
+          .from('livraisons')
+          .insert({
+            commande_id: commandeId,
+            status: 'delivered',
+            delivery_date: currentDateTime
+          })
+
+        if (insertLivraisonError) {
+          console.error('❌ Erreur création livraison:', insertLivraisonError)
+          alert(`Erreur lors de la création de la livraison: ${insertLivraisonError.message}`)
+          return
+        }
+        console.log('✅ Nouvelle livraison créée avec delivery_date:', currentDateTime)
+      }
+
+      // 3. La notification de notation sera créée automatiquement par le trigger Supabase ! ✨
+      console.log('3️⃣ Notification de notation sera créée automatiquement par le trigger Supabase')
+
+      alert('Commande marquée comme livrée ✅\nVous allez recevoir une invitation à noter cette commande.')
+      
+      // Recharger les données
+      console.log('4️⃣ Rechargement des données...')
+      await fetchCommandes()
+      console.log('✅ Données rechargées')
+      
+    } catch (error) {
+      console.error('❌ Erreur générale lors du marquage comme livré:', error)
+      alert(`Erreur inattendue: ${error.message}`)
+    }
+  }
 
   function MiniCalendar({ onSelect }) {
     const [calendarDate, setCalendarDate] = useState(() => {
@@ -1300,6 +1662,104 @@ export default function ParticularHomeMenu() {
             >Annuler</button>
           </div>
         )}
+        
+        {/* Zone d'affichage des avis existants pour réservations terminées */}
+        {r.status === 'finished' && hasAvis('reservation', r.id) && (
+          <div style={{ 
+            marginTop: 12, 
+            padding: '12px', 
+            backgroundColor: '#f0f9ff', 
+            borderRadius: 8, 
+            border: '1px solid #0ea5e9' 
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8
+            }}>
+              <span style={{ 
+                fontSize: 13, 
+                fontWeight: 600, 
+                color: '#0369a1'
+              }}>
+                ✅ Avis déjà donné
+              </span>
+              <span style={{
+                fontSize: 12,
+                color: '#0369a1',
+                backgroundColor: '#e0f2fe',
+                padding: '2px 8px',
+                borderRadius: 12,
+                fontWeight: 500
+              }}>
+                {existingAvis.find(a => a.reservation_id === r.id)?.note || 0}⭐
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: '#0369a1', fontStyle: 'italic' }}>
+              Merci d'avoir partagé votre expérience !
+            </div>
+          </div>
+        )}
+
+        {/* Zone de notation ergonomique pour réservations terminées */}
+        {r.status === 'finished' && !hasAvis('reservation', r.id) && (
+          <div style={{ 
+            marginTop: 12, 
+            padding: '12px', 
+            backgroundColor: '#f0fdf4', 
+            borderRadius: 8, 
+            border: '1px solid #22c55e',
+            width: '100%'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: 8 
+            }}>
+              <span style={{ 
+                fontSize: 13, 
+                fontWeight: 600, 
+                color: '#16a34a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                ⭐ Notez cette réservation
+              </span>
+              <button
+                onClick={() => {
+                  // Créer une pseudo-notification pour déclencher la modal d'avis
+                  const pseudoNotification = {
+                    id: `avis-reservation-${r.id}`,
+                    type: 'avis',
+                    reservation_id: r.id,
+                    annonce_id: r.annonce_id,
+                    contenu: 'Félicitations ! Votre réservation vient de se terminer. Partagez votre expérience avec la communauté en donnant votre avis sur cette prestation.',
+                    user_id: userId
+                  }
+                  console.log('🎯 Déclenchement modal d\'avis pour réservation:', r.id)
+                  setTriggerAvisNotification(pseudoNotification)
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '6px 12px',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                Noter maintenant
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: '#16a34a', fontStyle: 'italic' }}>
+              Aidez la communauté en partageant votre expérience !
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -1406,9 +1866,434 @@ export default function ParticularHomeMenu() {
   const reservationsSorted = [...reservations].sort((a, b) => new Date(b.date) - new Date(a.date));
   const commandesSorted = [...commandes].sort((a, b) => new Date(b.date_commande) - new Date(a.date_commande));
 
+  // Composant de suivi de livraison
+  function LivraisonTracker({ commande, livraison }) {
+    if (!commande) return null;
+
+    const getStatutLivraison = () => {
+      if (!livraison) return 'paid'; // Par défaut si pas de livraison trouvée
+      return livraison.status || 'paid';
+    };
+
+    const statutActuel = getStatutLivraison();
+    const commandeStatus = commande.status;
+
+    const etapes = [
+      { id: 'paid', label: 'Commandé', completed: ['paid','confirmed', 'shipped', 'delivered'].includes(statutActuel) || ['paid','confirmed', 'shipped', 'delivered'].includes(commandeStatus) },
+      { id: 'confirmed', label: 'Confirmé', completed: ['confirmed', 'shipped', 'delivered'].includes(statutActuel) || ['confirmed', 'shipped', 'delivered'].includes(commandeStatus) },
+      { id: 'shipped', label: 'Expédié', completed: ['shipped', 'delivered'].includes(statutActuel) || ['shipped', 'delivered'].includes(commandeStatus) },
+      { id: 'delivered', label: 'Livré', completed: ['delivered'].includes(statutActuel) || ['delivered'].includes(commandeStatus) }
+    ];
+
+    // Cas spécial pour annulation
+    if (statutActuel === 'cancelled') {
+      return (
+        <div style={{ marginTop: 12, padding: 16, backgroundColor: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 20, height: 20, borderRadius: '50%',
+              backgroundColor: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>✕</span>
+            </div>
+            <span style={{ fontWeight: 600, color: '#dc2626' }}>Annulée</span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ marginTop: 12, padding: 16, backgroundColor: '#f8fffe', borderRadius: 8, border: '1px solid #d1fae5' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          {/* Section suivi principal */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#065f46' }}>Suivi de livraison</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {etapes.map((etape, index) => (
+                <div key={etape.id} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      backgroundColor: etape.completed ? '#10b981' : '#e5e7eb',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      marginBottom: 4
+                    }}>
+                      {etape.completed && (
+                        <span style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>✓</span>
+                      )}
+                    </div>
+                    <span style={{
+                      fontSize: 12, fontWeight: 500,
+                      color: etape.completed ? '#065f46' : '#6b7280'
+                    }}>{etape.label}</span>
+                    {etape.id === 'delivered' && livraison?.delivery_date && (
+                      <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, textAlign: 'center' }}>
+                        Livraison prévue le {new Date(livraison.delivery_date).toLocaleDateString('fr-FR')}
+                      </span>
+                    )}
+                  </div>
+                  {index < etapes.length - 1 && (
+                    <div style={{
+                      height: 2, flex: 1, backgroundColor: etapes[index + 1].completed ? '#10b981' : '#e5e7eb',
+                      marginLeft: 8, marginRight: 8, marginTop: -20
+                    }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section informations de suivi et actions (à droite) */}
+          <div style={{ 
+            minWidth: 200, 
+            paddingLeft: 16, 
+            borderLeft: '1px solid #d1fae5',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8
+          }}>
+            {livraison?.delivery_provider && (
+              <div style={{ fontSize: 12, color: '#065f46' }}>
+                <span style={{ fontWeight: 600 }}>Transporteur :</span>
+                <br />
+                <span>{livraison.delivery_provider}</span>
+              </div>
+            )}
+            {livraison?.tracking_number && (
+              <div style={{ fontSize: 12, color: '#065f46' }}>
+                <span style={{ fontWeight: 600 }}>N° de suivi :</span>
+                <br />
+                <span style={{ 
+                  fontFamily: 'monospace', 
+                  backgroundColor: '#f0fdf4', 
+                  padding: '2px 6px', 
+                  borderRadius: 4,
+                  fontSize: 11
+                }}>{livraison.tracking_number}</span>
+              </div>
+            )}
+            
+            {/* Bouton pour marquer comme livré (seulement si expédié mais pas encore livré) */}
+            {(statutActuel === 'shipped' || commandeStatus === 'shipped') && 
+             !['delivered'].includes(statutActuel) && commandeStatus !== 'delivered' && (
+              <div style={{ marginTop: 8 }}>
+                <button
+                  onClick={async () => {
+                    if (confirm('Avez-vous bien reçu votre commande ? Cela marquera la commande comme livrée.')) {
+                      console.log('🎯 DEBUT: Bouton marquage livraison cliqué pour commande:', commande.id)
+                      console.log('📦 Info commande:', { id: commande.id, status: commande.status })
+                      
+                      try {
+                        await markCommandeAsDelivered(commande.id)
+                      } catch (error) {
+                        console.error('💥 ERREUR CAPTUREE dans onClick:', error)
+                        alert(`Erreur capturée: ${error.message}`)
+                      }
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontWeight: 600,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
+                  }}
+                  onMouseOver={(e) => e.target.style.transform = 'translateY(-1px)'}
+                  onMouseOut={(e) => e.target.style.transform = 'translateY(0px)'}
+                >
+                  ✅ J'ai reçu ma commande
+                </button>
+                <div style={{
+                  fontSize: 10,
+                  color: '#6b7280',
+                  textAlign: 'center',
+                  marginTop: 4,
+                  fontStyle: 'italic'
+                }}>
+                  Vous recevrez une invitation à noter
+                </div>
+              </div>
+            )}
+            
+            {/* Zone d'affichage des avis existants pour commandes livrées */}
+            {(statutActuel === 'delivered' || commandeStatus === 'delivered') && hasAvis('commande', commande.id) && (
+              <div style={{ 
+                marginTop: 12, 
+                padding: '12px', 
+                backgroundColor: '#f0f9ff', 
+                borderRadius: 8, 
+                border: '1px solid #0ea5e9' 
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 8
+                }}>
+                  <span style={{ 
+                    fontSize: 13, 
+                    fontWeight: 600, 
+                    color: '#0369a1'
+                  }}>
+                    ✅ Avis déjà donné
+                  </span>
+                  <span style={{
+                    fontSize: 12,
+                    color: '#0369a1',
+                    backgroundColor: '#e0f2fe',
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    fontWeight: 500
+                  }}>
+                    {existingAvis.find(a => a.commande_id === commande.id)?.note || 0}⭐
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: '#0369a1', fontStyle: 'italic' }}>
+                  Merci d'avoir partagé votre expérience !
+                </div>
+              </div>
+            )}
+
+            {/* Zone de notation ergonomique pour commandes livrées */}
+            {(statutActuel === 'delivered' || commandeStatus === 'delivered') && !hasAvis('commande', commande.id) && (
+              <div style={{ 
+                marginTop: 12, 
+                padding: '12px', 
+                backgroundColor: '#fef3cd', 
+                borderRadius: 8, 
+                border: '1px solid #fbbf24' 
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  marginBottom: 8 
+                }}>
+                  <span style={{ 
+                    fontSize: 13, 
+                    fontWeight: 600, 
+                    color: '#92400e',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    ⭐ Notez cette prestation
+                  </span>
+                  <button
+                    onClick={() => {
+                      // Créer une pseudo-notification pour déclencher la modal d'avis
+                      const pseudoNotification = {
+                        id: `avis-commande-${commande.id}`,
+                        type: 'avis',
+                        commande_id: commande.id,
+                        annonce_id: commande.annonce_id,
+                        contenu: 'Félicitations ! Votre commande vient d\'être livrée. Partagez votre expérience avec la communauté en donnant votre avis sur cette prestation.',
+                        user_id: userId
+                      }
+                      console.log('🎯 Déclenchement modal d\'avis pour commande:', commande.id)
+                      setTriggerAvisNotification(pseudoNotification)
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '6px 12px',
+                      fontWeight: 600,
+                      fontSize: 12,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Noter maintenant
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: '#92400e', fontStyle: 'italic' }}>
+                  Aidez la communauté en partageant votre expérience !
+                </div>
+              </div>
+            )}
+            
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Header />
+      {/* Système de notifications temps réel */}
+      <RealTimeNotifications userId={userId} triggerNotification={triggerAvisNotification} />
+      
+      {/* Modal de notation complète */}
+      {showRatingForm && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(255,255,255,0.4)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 20,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+            padding: '32px',
+            minWidth: 450,
+            maxWidth: 550
+          }}>
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+              <div style={{ 
+                width: 80, 
+                height: 80, 
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                fontSize: 36
+              }}>⭐</div>
+              <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, color: '#333' }}>
+                Notez votre {showRatingForm.type === 'commande' ? 'commande' : 'réservation'}
+              </h2>
+              <p style={{ fontSize: 16, color: '#666', marginBottom: 0 }}>
+                {showRatingForm.title}
+              </p>
+            </div>
+            
+            {/* Notation par étoiles */}
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <p style={{ fontSize: 16, fontWeight: 600, color: '#333', marginBottom: 16 }}>
+                Quelle note donnez-vous ?
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRatingValue(star)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: 36,
+                      cursor: 'pointer',
+                      color: star <= ratingValue ? '#f59e0b' : '#d1d5db',
+                      transition: 'color 0.2s',
+                      padding: 4
+                    }}
+                    onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    ⭐
+                  </button>
+                ))}
+              </div>
+              {ratingValue > 0 && (
+                <p style={{ fontSize: 14, color: '#666', fontStyle: 'italic' }}>
+                  {ratingValue === 5 && "⭐ Excellent !"}
+                  {ratingValue === 4 && "😊 Très bien !"}
+                  {ratingValue === 3 && "👍 Bien"}
+                  {ratingValue === 2 && "😐 Moyen"}
+                  {ratingValue === 1 && "😞 Décevant"}
+                </p>
+              )}
+            </div>
+            
+            {/* Zone de commentaire */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 8 }}>
+                Commentaire (optionnel)
+              </label>
+              <textarea
+                value={ratingComment}
+                onChange={(e) => setRatingComment(e.target.value)}
+                placeholder="Décrivez votre expérience, ce qui vous a plu ou moins plu..."
+                style={{
+                  width: '100%',
+                  padding: 12,
+                  border: '2px solid #e5e7eb',
+                  borderRadius: 8,
+                  resize: 'none',
+                  height: 100,
+                  fontSize: 14,
+                  fontFamily: 'inherit'
+                }}
+                maxLength={500}
+              />
+              <div style={{ textAlign: 'right', fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+                {ratingComment.length}/500
+              </div>
+            </div>
+            
+            {/* Boutons */}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  setShowRatingForm(null);
+                  setRatingValue(0);
+                  setRatingComment('');
+                }}
+                disabled={isSubmittingRating}
+                style={{
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '12px 24px',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={submitRatingFromMenu}
+                disabled={isSubmittingRating || ratingValue === 0}
+                style={{
+                  background: ratingValue === 0 ? '#d1d5db' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '12px 24px',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: ratingValue === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}
+              >
+                {isSubmittingRating ? (
+                  <>
+                    <div style={{
+                      width: 16,
+                      height: 16,
+                      border: '2px solid #fff',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    Envoi...
+                  </>
+                ) : (
+                  '✨ Publier mon avis'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div style={{background:'#f8fafc', minHeight:'100vh', padding:'40px 0'}}>
         <div style={{maxWidth:1100, margin:'0 auto'}}>
           {/* Bonjour + bouton rechercher */}
@@ -1573,118 +2458,6 @@ export default function ParticularHomeMenu() {
         </div>
       </div>
     </>
-  )
-
-  // Composant de suivi de livraison
-  function LivraisonTracker({ commande, livraison }) {
-  if (!commande ) return null;
-
-  const getStatutLivraison = () => {
-    if (!livraison) return 'paid'; // Par défaut si pas de livraison trouvée
-    return livraison.status || 'paid';
-  };
-
-  const statutActuel = getStatutLivraison();
-
-  const etapes = [
-    { id: 'paid', label: 'Commandé', completed: ['paid','confirmed', 'shipped', 'delivered'].includes(statutActuel) },
-    { id: 'confirmed', label: 'Confirmé', completed: ['confirmed', 'shipped', 'delivered'].includes(statutActuel) },
-    { id: 'shipped', label: 'Expédié', completed: ['shipped', 'delivered'].includes(statutActuel) },
-    { id: 'delivered', label: 'Livré', completed: ['delivered'].includes(statutActuel) }
-  ];
-
-  // Cas spécial pour annulation
-  if (statutActuel === 'cancelled') {
-    return (
-      <div style={{ marginTop: 12, padding: 16, backgroundColor: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{
-            width: 20, height: 20, borderRadius: '50%',
-            backgroundColor: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>✕</span>
-          </div>
-          <span style={{ fontWeight: 600, color: '#dc2626' }}>Annulée</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ marginTop: 12, padding: 16, backgroundColor: '#f8fffe', borderRadius: 8, border: '1px solid #d1fae5' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-        {/* Section suivi principal */}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#065f46' }}>Suivi de livraison</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {etapes.map((etape, index) => (
-              <div key={etape.id} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    backgroundColor: etape.completed ? '#10b981' : '#e5e7eb',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 4
-                  }}>
-                    {etape.completed && (
-                      <span style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>✓</span>
-                    )}
-                  </div>
-                  <span style={{
-                    fontSize: 12, fontWeight: 500,
-                    color: etape.completed ? '#065f46' : '#6b7280'
-                  }}>{etape.label}</span>
-                  {etape.id === 'delivered' && livraison?.delivery_date && (
-                    <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, textAlign: 'center' }}>
-                      Livraison prévue le {new Date(livraison.delivery_date).toLocaleDateString('fr-FR')}
-                    </span>
-                  )}
-                </div>
-                {index < etapes.length - 1 && (
-                  <div style={{
-                    height: 2, flex: 1, backgroundColor: etapes[index + 1].completed ? '#10b981' : '#e5e7eb',
-                    marginLeft: 8, marginRight: 8, marginTop: -20
-                  }} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Section informations de suivi (à droite) */}
-        {(livraison?.tracking_number || livraison?.delivery_provider) && (
-          <div style={{ 
-            minWidth: 200, 
-            paddingLeft: 16, 
-            borderLeft: '1px solid #d1fae5',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8
-          }}>
-            {livraison?.delivery_provider && (
-              <div style={{ fontSize: 12, color: '#065f46' }}>
-                <span style={{ fontWeight: 600 }}>Transporteur :</span>
-                <br />
-                <span>{livraison.delivery_provider}</span>
-              </div>
-            )}
-            {livraison?.tracking_number && (
-              <div style={{ fontSize: 12, color: '#065f46' }}>
-                <span style={{ fontWeight: 600 }}>N° de suivi :</span>
-                <br />
-                <span style={{ 
-                  fontFamily: 'monospace', 
-                  backgroundColor: '#f0fdf4', 
-                  padding: '2px 6px', 
-                  borderRadius: 4,
-                  fontSize: 11
-                }}>{livraison.tracking_number}</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
   );
-  }
 }
+export default ParticularHomeMenu;

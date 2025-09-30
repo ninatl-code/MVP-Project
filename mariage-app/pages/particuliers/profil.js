@@ -6,7 +6,7 @@ import Header from '../../components/HeaderParti';
 
 const DEFAULT_ANNONCE_IMG = "/shutterstock_2502519999.jpg";
 
-export default function UserProfile() {
+function UserProfile() {
   const [user, setUser] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [villeNom, setVilleNom] = useState("");
@@ -404,3 +404,4 @@ export default function UserProfile() {
     </>
   );
 }
+export default UserProfile;

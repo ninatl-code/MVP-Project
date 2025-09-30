@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderParti';
+import Header from '../../components/HeaderPresta';
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 
 /* ----- Helpers image/base64 ----- */

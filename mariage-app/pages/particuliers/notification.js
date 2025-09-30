@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Bell, MessageCircle, Calendar, Star, AlertTriangle } from "lucide-react";
 import Header from '../../components/HeaderParti';
+import RealTimeNotifications from '../../components/RealTimeNotifications';
 
 export default function NotificationsPage() {
   const [selected, setSelected] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [search, setSearch] = useState("");
   const [userId, setUserId] = useState(null);
+  const [triggerAvisModal, setTriggerAvisModal] = useState(null);
 
   useEffect(() => {
     const fetchUserAndNotifications = async () => {
@@ -39,6 +41,8 @@ export default function NotificationsPage() {
       return <MessageCircle className="w-5 h-5 text-blue-500" />;
     if (type === "review")
       return <Star className="w-5 h-5 text-yellow-500" />;
+    if (type === "avis")
+      return <Star className="w-5 h-5 text-purple-500" />;
     if (type === "alert")
       return <AlertTriangle className="w-5 h-5 text-red-500" />;
     return <Bell className="w-5 h-5 text-gray-400" />;
@@ -106,10 +110,32 @@ export default function NotificationsPage() {
           {notifications.map((notif) => (
             <div
               key={notif.id}
-              onClick={() => setSelected(notif)}
-              className={`flex gap-3 p-4 cursor-pointer border-b border-gray-100 ${
+              onClick={async () => {
+                if (notif.type === 'avis') {
+                  // Déclencher l'ouverture de la modal d'avis
+                  console.log('🔥 Clic sur notification d\'avis:', notif.id)
+                  setTriggerAvisModal(notif);
+                  
+                  // Marquer comme lue immédiatement
+                  await supabase
+                    .from('notifications')
+                    .update({ lu: true })
+                    .eq('id', notif.id)
+                    
+                  // Rafraîchir la liste
+                  const { data } = await supabase
+                    .from("notifications")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .order("created_at", { ascending: false });
+                  setNotifications(data || []);
+                } else {
+                  setSelected(notif);
+                }
+              }}
+              className={`flex gap-3 p-4 cursor-pointer border-b border-gray-100 transition-all duration-200 ${
                 notif.lu ? "bg-white" : "bg-pink-50 border-l-4 border-pink-500"
-              } hover:bg-gray-50 transition`}
+              } hover:bg-gray-50 ${notif.type === 'avis' ? 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:shadow-md' : ''}`}
             >
               {getIcon(notif.type)}
               <div className="flex-1">
@@ -120,6 +146,8 @@ export default function NotificationsPage() {
                     ? "Nouveau message"
                     : notif.type === "review"
                     ? "Nouvel avis"
+                    : notif.type === "avis"
+                    ? `✨ ${notif.reservation_id ? 'Réservation' : 'Commande'} terminée - Cliquez pour noter`
                     : notif.type === "alert"
                     ? "Alerte"
                     : "Notification"}
@@ -189,6 +217,9 @@ export default function NotificationsPage() {
         </div>
       </div>
     </div>
+    
+    {/* Composant pour gérer les modals d'avis */}
+    {userId && <RealTimeNotifications userId={userId} triggerNotification={triggerAvisModal} />}
     </>
   );
 }

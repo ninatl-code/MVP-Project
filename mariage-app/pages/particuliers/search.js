@@ -7,7 +7,7 @@ import Header from '../../components/HeaderParti';
 const GOLD = "#D4AF37";
 const ROSE = "#F6DCE8";
 
-export default function SearchProviders() {
+function SearchProviders() {
   const router = useRouter();
   const [prestations, setPrestations] = useState([]);
   const [villes, setVilles] = useState([]);
@@ -184,9 +184,9 @@ export default function SearchProviders() {
           {/* Filtres avancés */}
           {showFilters && (
             <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-100">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Filtre prix */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">💰 Fourchette de prix (MAD)</label>
                   <div className="flex gap-2">
                     <input
@@ -222,7 +222,8 @@ export default function SearchProviders() {
                 </div>
 
                 {/* Reset filtres */}
-                <div className="flex items-end">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">&nbsp;</label>
                   <button
                     onClick={() => {
                       setSelectedPrestation("");
@@ -230,7 +231,7 @@ export default function SearchProviders() {
                       setPriceRange({ min: "", max: "" });
                       setSortBy("rating");
                     }}
-                    className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                    className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm"
                   >
                     🔄 Réinitialiser
                   </button>
@@ -381,3 +382,4 @@ export default function SearchProviders() {
     </>
   );
 }
+export default SearchProviders;

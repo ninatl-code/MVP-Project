@@ -178,9 +178,14 @@ export default function CommandesPrestataire() {
     if (!commande) return
 
     // 1. Mise à jour du statut dans la table commandes
+    const updateData = { status }
+    if (status === 'delivered') {
+      updateData.date_livraison = new Date().toISOString()
+    }
+    
     const { error } = await supabase
       .from('commandes')
-      .update({ status })
+      .update(updateData)
       .eq('id', id)
 
     // 2. Préparation de la notification pour le client
@@ -194,10 +199,12 @@ export default function CommandesPrestataire() {
         'Votre commande a été expédiée.'
     } else if (status === 'cancelled') {
       contenu = 'Votre commande a été annulée par le prestataire. Vous serez remboursé dans les plus brefs délais.'
+    } else if (status === 'delivered') {
+      contenu = 'Votre commande a été livrée avec succès !'
     }
 
     // 3. Gestion de la table livraisons (pour le tracking et le suivi)
-    if (trackingData || status === 'cancelled') {
+    if (trackingData || status === 'cancelled' || status === 'delivered') {
       // Vérification si une entrée livraison existe déjà
       const { data: existingLivraison } = await supabase
         .from('livraisons')
@@ -210,12 +217,15 @@ export default function CommandesPrestataire() {
         await supabase
           .from('livraisons')
           .update({
-            status: status === 'shipped' ? 'shipped' : status,
+            status: status === 'shipped' ? 'shipped' : 
+                    status === 'delivered' ? 'delivered' : 
+                    status === 'cancelled' ? 'cancelled' : status,
             ...(trackingData && {
               tracking_number: trackingData.tracking_number,
               delivery_date: trackingData.delivery_date || null
             }),
-            update_date: new Date()
+            ...(status === 'delivered' && { delivery_date: new Date().toISOString() }),
+            update_date: new Date().toISOString()
           })
           .eq('commande_id', id)
       } else {
@@ -224,12 +234,15 @@ export default function CommandesPrestataire() {
           .from('livraisons')
           .insert({
             commande_id: id,
-            status: status === 'shipped' ? 'shipped' : status,
+            status: status === 'shipped' ? 'shipped' : 
+                    status === 'delivered' ? 'delivered' : 
+                    status === 'cancelled' ? 'cancelled' : status,
             ...(trackingData && {
               tracking_number: trackingData.tracking_number,
               delivery_date: trackingData.delivery_date || null,
               delivery_provider: 'Standard'
-            })
+            }),
+            ...(status === 'delivered' && { delivery_date: new Date().toISOString() })
           })
       }
     }
@@ -240,12 +253,17 @@ export default function CommandesPrestataire() {
         .from('notifications')
         .insert([
           {
-            user_id: clientId,
+            destinataire: clientId,
+            message: contenu,
             type: 'commande',
-            contenu,
             lu: false
           }
         ])
+    }
+
+    // 5. Les notifications de notation sont maintenant gérées automatiquement par le trigger Supabase ✨
+    if (status === 'delivered') {
+      console.log(`✅ Commande ${id} marquée comme livrée - Notification automatique via trigger Supabase`)
     }
 
     // 5. Gestion du résultat et mise à jour de l'interface
@@ -979,6 +997,37 @@ export default function CommandesPrestataire() {
                     >
                       Marquer comme expédié
                     </button>
+                  </div>
+                )}
+
+                {/* Action pour marquer comme livré */}
+                {selectedCommande.status === 'shipped' && (
+                  <div style={{ marginBottom: 24 }}>
+                    <button
+                      onClick={() => updateCommandeStatus(selectedCommande.id, 'delivered')}
+                      style={{
+                        width: '100%',
+                        background: '#4caf50',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '12px 16px',
+                        fontWeight: 600,
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        marginBottom: 12
+                      }}
+                    >
+                      ✅ Marquer comme livré
+                    </button>
+                    <div style={{
+                      fontSize: 12,
+                      color: '#666',
+                      textAlign: 'center',
+                      fontStyle: 'italic'
+                    }}>
+                      Le client recevra automatiquement une invitation à noter la commande
+                    </div>
                   </div>
                 )}
 

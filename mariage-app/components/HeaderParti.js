@@ -162,6 +162,7 @@ function NotificationsPopup({ router }) {
       case 'reservation': return <Calendar className="w-5 h-5 text-green-500" />;
       case 'message': return <MessageCircle className="w-5 h-5 text-blue-500" />;
       case 'review': return <Star className="w-5 h-5 text-yellow-500" />;
+      case 'avis': return <Star className="w-5 h-5 text-purple-500" />;
       case 'alert': return <AlertTriangle className="w-5 h-5 text-red-500" />;
       default: return <Bell className="w-5 h-5 text-slate-500" />;
     }
@@ -197,7 +198,20 @@ function NotificationsPopup({ router }) {
               notifications.slice(0,3).map((notif) => (
                 <div
                   key={notif.id}
-                  className={`flex items-start gap-3 p-4 border-b border-slate-50 ${notif.lu ? "bg-white" : "bg-pink-50"} hover:bg-slate-100 cursor-pointer transition`}
+                  onClick={() => {
+                    if (notif.type === 'avis') {
+                      // Pour les notifications d'avis, rediriger vers menu.js avec un paramètre
+                      setOpen(false);
+                      router.push(`/particuliers/menu?openAvis=${notif.id}`);
+                    } else if (notif.type === 'message') {
+                      setOpen(false);
+                      router.push('/particuliers/messages');
+                    } else {
+                      setOpen(false);
+                      router.push('/particuliers/notification');
+                    }
+                  }}
+                  className={`flex items-start gap-3 p-4 border-b border-slate-50 ${notif.lu ? "bg-white" : "bg-pink-50"} hover:bg-slate-100 cursor-pointer transition ${notif.type === 'avis' ? 'hover:bg-purple-50' : ''}`}
                 >
                   <div>{getIcon(notif.type)}</div>
                   <div className="flex-1">
