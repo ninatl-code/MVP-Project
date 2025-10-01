@@ -147,6 +147,8 @@ function CreateEventModal({ isOpen, onClose, onCreateEvent, selectedDate, select
                 required
                 value={formData.time}
                 onChange={(e) => setFormData({...formData, time: e.target.value})}
+                min="08:00"
+                max="20:00"
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
               />
             </div>
@@ -1312,7 +1314,7 @@ function PrestataireCalendar() {
     
     for (let i = 0; i < durationHours; i++) {
       const hour = startTime + i
-      if (hour >= 8 && hour <= 19) { // Limité aux heures d'ouverture
+      if (hour >= 8 && hour <= 20) { // Limité aux heures d'ouverture 8h-20h
         slots.push(`${hour.toString().padStart(2, '0')}:00`)
       }
     }
@@ -1329,7 +1331,7 @@ function PrestataireCalendar() {
   // Composant Vue Calendrier
   function CalendarView({ view, selectedDate, onDateChange, events, onSlotClick, onEventClick }) {
     const weeks = generateCalendarWeeks()
-    const timeSlots = Array.from({ length: 12 }, (_, i) => `${8 + i}:00`) // 8h à 19h
+    const timeSlots = Array.from({ length: 13 }, (_, i) => `${8 + i}:00`) // 8h à 20h
 
     if (view === 'month') {
       return (
@@ -1760,6 +1762,23 @@ function PrestataireCalendar() {
           ) : (
             <p className="text-slate-500 text-sm">Aucun événement aujourd'hui</p>
           )}
+        </div>
+
+        {/* Heures d'ouverture */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+          <h2 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-blue-500" />
+            Heures d'ouverture
+          </h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-600">Lundi - Dimanche</span>
+              <span className="font-semibold text-slate-800">08h00 - 20h00</span>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Seuls les créneaux pendant les heures d'ouverture sont disponibles pour la réservation.
+            </p>
+          </div>
         </div>
 
         {/* Événements à venir */}

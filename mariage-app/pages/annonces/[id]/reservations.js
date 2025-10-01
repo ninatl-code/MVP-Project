@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../../lib/supabaseClient";
+import { Calendar, Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import Header from "../../../components/HeaderParti";
 
 export default function ReservationPage() {
   const router = useRouter();
@@ -30,6 +32,8 @@ export default function ReservationPage() {
   const [particulierId, setParticulierId] = useState("");
   const [reservationMontant, setReservationMontant] = useState(null);
   const [reservationAcompte, setReservationAcompte] = useState(null);
+  const [availabilityStatus, setAvailabilityStatus] = useState(null);
+  const [alternativeSlots, setAlternativeSlots] = useState([]);
 
   // Pour garder les valeurs initiales du client
   const initialClient = useRef({ nom: "", email: "" });
@@ -91,8 +95,14 @@ export default function ReservationPage() {
       setTarifUnitaire(annonceData?.tarif_unit || tarifUnitaire);
       setUnitTarif(annonceData?.unit_tarif || unitTarif);
       setAcomptePercent(Number(annonceData?.acompte_percent || acomptePercent));
-      setPrestataireId(annonceData?.prestataire || prestataireId);
+      const newPrestataireId = annonceData?.prestataire || prestataireId;
+      setPrestataireId(newPrestataireId);
       setLoading(false);
+      
+      // Vérifier la disponibilité si on a déjà une date/heure (cas modification)
+      if (form.date && form.heure && form.duree && newPrestataireId) {
+        checkAvailability(form.date, form.heure, form.duree, newPrestataireId);
+      }
 
       // Si pas prix fixe, récupère le devis lié
       if (!annonceData?.prix_fixe) {
@@ -142,12 +152,173 @@ export default function ReservationPage() {
         fichiers: files ? Array.from(files) : [],
       });
     } else {
-      setForm({
-        ...form,
-        [name]: value,
-      });
+      const newForm = { ...form, [name]: value };
+      setForm(newForm);
+      
+      // Vérifier la disponibilité quand date, heure ou durée change
+      if ((name === 'date' || name === 'heure' || name === 'duree') && prestataireId) {
+        if (newForm.date && newForm.heure && newForm.duree) {
+          checkAvailability(newForm.date, newForm.heure, newForm.duree, prestataireId);
+        }
+      }
     }
   };
+
+  // Fonction pour vérifier la disponibilité d'un créneau
+  const checkAvailability = async (date, heure, duree, prestataireId) => {
+    if (!date || !heure || !duree || !prestataireId) return;
+
+    setAvailabilityStatus('checking');
+    setAlternativeSlots([]);
+
+    try {
+      const requestedDateTime = new Date(`${date}T${heure}:00`);
+      const requestedDateTimeStr = requestedDateTime.toISOString();
+      const duration = parseInt(duree) || 2;
+      const requestedEndTime = new Date(requestedDateTime.getTime() + duration * 60 * 60 * 1000);
+      
+      // Vérifier les réservations existantes (exclure la réservation actuelle si modification)
+      let query = supabase
+        .from('reservations')
+        .select('date, duree')
+        .eq('prestataire_id', prestataireId)
+        .neq('status', 'cancelled')
+        .gte('date', requestedDateTimeStr)
+        .lt('date', new Date(requestedDateTime.getTime() + 24 * 60 * 60 * 1000).toISOString());
+      
+      if (reservationId) {
+        query = query.neq('id', reservationId);
+      }
+      
+      const { data: existingReservations } = await query;
+
+      // Vérifier les créneaux bloqués
+      const { data: blockedSlots } = await supabase
+        .from('blocked_slots')
+        .select('date')
+        .eq('prestataire_id', prestataireId)
+        .gte('date', requestedDateTimeStr)
+        .lt('date', new Date(requestedDateTime.getTime() + 24 * 60 * 60 * 1000).toISOString());
+
+      let isAvailable = true;
+
+      // Vérifier les conflits avec les réservations
+      if (existingReservations) {
+        for (const reservation of existingReservations) {
+          const resStart = new Date(reservation.date);
+          const resEnd = new Date(resStart.getTime() + (reservation.duree || 120) * 60 * 1000);
+          
+          if (requestedDateTime < resEnd && requestedEndTime > resStart) {
+            isAvailable = false;
+            break;
+          }
+        }
+      }
+
+      // Vérifier les conflits avec les créneaux bloqués
+      if (isAvailable && blockedSlots) {
+        for (const blocked of blockedSlots) {
+          const blockedTime = new Date(blocked.date);
+          const blockedEnd = new Date(blockedTime.getTime() + 60 * 60 * 1000);
+          
+          if (requestedDateTime < blockedEnd && requestedEndTime > blockedTime) {
+            isAvailable = false;
+            break;
+          }
+        }
+      }
+
+      if (isAvailable) {
+        setAvailabilityStatus('available');
+      } else {
+        setAvailabilityStatus('unavailable');
+        await findAlternativeSlots(date, prestataireId, duration);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification de disponibilité:', error);
+      setAvailabilityStatus(null);
+    }
+  };
+
+  // Fonction pour trouver des créneaux alternatifs
+  const findAlternativeSlots = async (selectedDate, prestataireId, duration) => {
+    try {
+      const alternatives = [];
+      const baseDate = new Date(selectedDate);
+      
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const checkDate = new Date(baseDate);
+        checkDate.setDate(baseDate.getDate() + dayOffset);
+        
+        const dateStr = checkDate.toISOString().split('T')[0];
+        
+        for (let hour = 8; hour <= 20 - duration; hour++) {
+          const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+          const dateTimeStr = `${dateStr}T${timeStr}:00`;
+          const dateTime = new Date(dateTimeStr);
+          const endTime = new Date(dateTime.getTime() + duration * 60 * 60 * 1000);
+          
+          let query = supabase
+            .from('reservations')
+            .select('date, duree')
+            .eq('prestataire_id', prestataireId)
+            .neq('status', 'cancelled')
+            .gte('date', dateTimeStr)
+            .lt('date', endTime.toISOString());
+          
+          if (reservationId) {
+            query = query.neq('id', reservationId);
+          }
+          
+          const { data: conflicts } = await query;
+          const { data: blocked } = await supabase
+            .from('blocked_slots')
+            .select('date')
+            .eq('prestataire_id', prestataireId)
+            .gte('date', dateTimeStr)
+            .lt('date', endTime.toISOString());
+
+          if ((!conflicts || conflicts.length === 0) && (!blocked || blocked.length === 0)) {
+            alternatives.push({
+              date: dateStr,
+              heure: timeStr,
+              duree: duration,
+              dateTime: dateTime,
+              formatted: dateTime.toLocaleString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            });
+            
+            if (alternatives.length >= 3) break;
+          }
+        }
+        
+        if (alternatives.length >= 3) break;
+      }
+      
+      setAlternativeSlots(alternatives);
+    } catch (error) {
+      console.error('Erreur lors de la recherche d\'alternatives:', error);
+    }
+  };
+
+  // Fonction pour sélectionner un créneau alternatif
+  const selectAlternativeSlot = (slot) => {
+    setForm({ ...form, date: slot.date, heure: slot.heure, duree: slot.duree.toString() });
+    setAvailabilityStatus('available');
+    setAlternativeSlots([]);
+  };
+
+  // Vérifier la disponibilité au chargement si on modifie une réservation
+  useEffect(() => {
+    if (form.date && form.heure && form.duree && prestataireId && reservationId) {
+      checkAvailability(form.date, form.heure, form.duree, prestataireId);
+    }
+  }, [form.date, form.heure, form.duree, prestataireId, reservationId]);
 
   // Nouvelle fonction pour paiement Stripe (réservations)
   const handleStripeCheckout = async (reservationId, montantAcompte) => {
@@ -307,6 +478,8 @@ export default function ReservationPage() {
   const displayedEmail = client.email || initialClient.current.email;
 
   return (
+    <>  
+    <Header />
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-6">
       <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
         {/* Formulaire réservation */}
@@ -315,49 +488,109 @@ export default function ReservationPage() {
             Réserver une prestation
           </h1>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Date et heure */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-700 mb-2">Date</label>
-                <input
-                  type="date"
-                  name="date"
-                  value={form.date}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                  required
-                />
+            {/* Date, heure et durée avec vérification de disponibilité */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="date"
+                      name="date"
+                      value={form.date}
+                      onChange={handleChange}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full border rounded-lg px-3 py-2 pl-10 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Heure</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="time"
+                      name="heure"
+                      value={form.heure}
+                      onChange={handleChange}
+                      min="08:00"
+                      max="20:00"
+                      className="w-full border rounded-lg px-3 py-2 pl-10 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-gray-700 mb-2">Heure</label>
-                <input
-                  type="time"
-                  name="heure"
-                  value={form.heure}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                  required
-                />
-              </div>
-            </div>
 
-            {/* Durée */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <label className="block text-gray-700 mb-2">Durée </label>
-                <input
-                  type="number"
-                  name="duree"
-                  value={form.duree}
-                  onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Ex: 3"
-                  required
-                />
+              {/* Durée */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <label className="block text-gray-700 font-semibold mb-2">Durée</label>
+                  <input
+                    type="number"
+                    name="duree"
+                    value={form.duree}
+                    onChange={handleChange}
+                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                    placeholder="Ex: 3"
+                    min="1"
+                    max="12"
+                    required
+                  />
+                </div>
+                <div className="text-gray-500 text-sm mt-8">
+                  {unitTarif && <>Unité : <span className="font-semibold">{unitTarif}</span></>}
+                </div>
               </div>
-              <div className="ml-2 text-gray-500 text-sm">
-                {unitTarif && <>Unité : <span className="font-semibold">{unitTarif}</span></>}
-              </div>
+
+              {/* Statut de disponibilité */}
+              {availabilityStatus && (
+                <div className="mt-4">
+                  {availabilityStatus === 'checking' && (
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                      <span className="text-blue-700 text-sm">Vérification de la disponibilité...</span>
+                    </div>
+                  )}
+                  
+                  {availabilityStatus === 'available' && (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="text-green-700 font-medium">✅ Créneau disponible !</span>
+                    </div>
+                  )}
+                  
+                  {availabilityStatus === 'unavailable' && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                        <span className="text-red-700 font-medium">❌ Créneau non disponible</span>
+                      </div>
+                      
+                      {alternativeSlots.length > 0 && (
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <h4 className="font-semibold text-yellow-800 mb-3">💡 Créneaux alternatifs disponibles :</h4>
+                          <div className="space-y-2">
+                            {alternativeSlots.map((slot, index) => (
+                              <button
+                                key={index}
+                                type="button"
+                                onClick={() => selectAlternativeSlot(slot)}
+                                className="w-full text-left p-3 bg-white border border-yellow-300 rounded-lg hover:bg-yellow-50 hover:border-yellow-400 transition-colors"
+                              >
+                                <div className="font-medium text-gray-800">{slot.formatted}</div>
+                                <div className="text-sm text-gray-600">Durée: {slot.duree}h - Cliquez pour sélectionner</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Lieu et ville */}
@@ -427,10 +660,17 @@ export default function ReservationPage() {
             {/* Bouton */}
             <button
               type="submit"
-              className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 rounded-lg shadow-md transition"
-              disabled={loading}
+              className={`w-full font-semibold py-3 rounded-lg shadow-md transition ${
+                loading || availabilityStatus === 'unavailable' || availabilityStatus === 'checking'
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-pink-500 hover:bg-pink-600 text-white'
+              }`}
+              disabled={loading || availabilityStatus === 'unavailable' || availabilityStatus === 'checking'}
             >
-              Confirmer la réservation
+              {loading ? 'Traitement...' : 
+               availabilityStatus === 'checking' ? 'Vérification en cours...' :
+               availabilityStatus === 'unavailable' ? 'Créneau non disponible' :
+               'Confirmer la réservation'}
             </button>
             {error && <div className="text-red-500 mt-2">{error}</div>}
             {success && <div className="text-green-600 mt-2">Réservation envoyée !</div>}
@@ -519,5 +759,6 @@ export default function ReservationPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

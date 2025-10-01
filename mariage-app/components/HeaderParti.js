@@ -187,7 +187,7 @@ function NotificationsPopup({ router }) {
       {open && (
         <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
           <div className="p-4 border-b border-slate-100">
-            <h3 className="font-semibold text-lg text-slate-800">Notifications</h3>
+            <h2 className="font-semibold text-lg text-slate-800">Notifications</h2>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {loading ? (

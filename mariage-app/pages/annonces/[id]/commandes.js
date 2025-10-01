@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../../lib/supabaseClient";
+import Header from "../../../components/HeaderParti";
+
 
 export default function PasserCommande() {
   const [villes, setVilles] = useState([]);
@@ -260,224 +262,227 @@ export default function PasserCommande() {
     modeles.find((m) => m.id === id)?.titre || "-";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-6">
-      <div className="flex flex-col md:flex-row gap-8 w-full max-w-4xl">
-        {/* Formulaire commande */}
-        <form
-          className="bg-white rounded-2xl shadow-md p-8 flex-1"
-          onSubmit={handleSubmit}
-        >
-          <h2 className="text-2xl font-bold mb-6">Vos modèles</h2>
-          {commandeModeles.map((cm, idx) => (
-            <div key={idx} className="mb-6 p-4 rounded-xl border bg-slate-50">
-              <div className="mb-2 font-semibold">Modèle {idx + 1}</div>
-              <div className="flex gap-2 mb-2">
+    <>  
+      <Header />
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-6">
+        <div className="flex flex-col md:flex-row gap-8 w-full max-w-4xl">
+          {/* Formulaire commande */}
+          <form
+            className="bg-white rounded-2xl shadow-md p-8 flex-1"
+            onSubmit={handleSubmit}
+          >
+            <h2 className="text-2xl font-bold mb-6">Vos modèles</h2>
+            {commandeModeles.map((cm, idx) => (
+              <div key={idx} className="mb-6 p-4 rounded-xl border bg-slate-50">
+                <div className="mb-2 font-semibold">Modèle {idx + 1}</div>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-1/3 border rounded-xl px-4 py-2 text-sm"
+                    value={cm.quantite}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setCommandeModeles((arr) =>
+                        arr.map((m, i) =>
+                          i === idx ? { ...m, quantite: val } : m
+                        )
+                      );
+                    }}
+                    required
+                    placeholder="Quantité"
+                  />
+                  <select
+                    className="w-2/3 border rounded-xl px-4 py-2 text-sm"
+                    value={cm.modeleId}
+                    onChange={(e) => {
+                      setCommandeModeles((arr) =>
+                        arr.map((m, i) =>
+                          i === idx ? { ...m, modeleId: e.target.value } : m
+                        )
+                      );
+                    }}
+                    required
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {modeles.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.titre}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={0}
+                    className="w-1/3 border rounded-xl px-4 py-2 text-sm"
+                    value={cm.prix}
+                    readOnly
+                    placeholder="Prix"
+                  />
+                </div>
                 <input
-                  type="number"
-                  min={1}
-                  className="w-1/3 border rounded-xl px-4 py-2 text-sm"
-                  value={cm.quantite}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1;
+                  type="text"
+                  className="w-full border rounded-xl px-4 py-2 text-sm mb-2"
+                  placeholder="Message au vendeur"
+                  value={cm.commentaire}
+                  onChange={(e) =>
                     setCommandeModeles((arr) =>
                       arr.map((m, i) =>
-                        i === idx ? { ...m, quantite: val } : m
+                        i === idx ? { ...m, commentaire: e.target.value } : m
                       )
-                    );
-                  }}
-                  required
-                  placeholder="Quantité"
-                />
-                <select
-                  className="w-2/3 border rounded-xl px-4 py-2 text-sm"
-                  value={cm.modeleId}
-                  onChange={(e) => {
-                    setCommandeModeles((arr) =>
-                      arr.map((m, i) =>
-                        i === idx ? { ...m, modeleId: e.target.value } : m
-                      )
-                    );
-                  }}
-                  required
-                >
-                  <option value="">-- Sélectionner --</option>
-                  {modeles.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.titre}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={0}
-                  className="w-1/3 border rounded-xl px-4 py-2 text-sm"
-                  value={cm.prix}
-                  readOnly
-                  placeholder="Prix"
-                />
-              </div>
-              <input
-                type="text"
-                className="w-full border rounded-xl px-4 py-2 text-sm mb-2"
-                placeholder="Message au vendeur"
-                value={cm.commentaire}
-                onChange={(e) =>
-                  setCommandeModeles((arr) =>
-                    arr.map((m, i) =>
-                      i === idx ? { ...m, commentaire: e.target.value } : m
-                    )
-                  )
-                }
-              />
-              <input
-                type="file"
-                className="text-sm text-slate-500 mb-2"
-                onChange={(e) =>
-                  setCommandeModeles((arr) =>
-                    arr.map((m, i) =>
-                      i === idx
-                        ? { ...m, imageFile: e.target.files[0] }
-                        : m
-                    )
-                  )
-                }
-              />
-              {commandeModeles.length > 1 && (
-                <button
-                  type="button"
-                  className="text-red-500 text-lg"
-                  onClick={() =>
-                    setCommandeModeles((arr) =>
-                      arr.filter((_, i) => i !== idx)
                     )
                   }
-                >
-                  🗑️
-                </button>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-xl mb-6"
-            onClick={() =>
-              setCommandeModeles((arr) => [
-                ...arr,
-                {
-                  modeleId: "",
-                  quantite: 1,
-                  prix: 0,
-                  commentaire: "",
-                  imageFile: null
-                }
-              ])
-            }
-          >
-            + Ajouter un modèle
-          </button>
-
-          {/* Livraison */}
-          <h2 className="text-xl font-bold mb-4">Livraison</h2>
-          <input
-            type="text"
-            className="w-full border rounded-xl px-4 py-2 text-sm mb-4"
-            placeholder="Adresse de livraison"
-            value={adresse}
-            onChange={(e) => setAdresse(e.target.value)}
-            required
-          />
-          <div className="flex gap-4 mb-4">
-            <select
-              className="w-1/2 border rounded-xl px-4 py-2 text-sm"
-              value={selectedVille}
-              onChange={(e) => {
-                setSelectedVille(e.target.value);
-                setSelectedModeLivraison("");
-              }}
-              required
+                />
+                <input
+                  type="file"
+                  className="text-sm text-slate-500 mb-2"
+                  onChange={(e) =>
+                    setCommandeModeles((arr) =>
+                      arr.map((m, i) =>
+                        i === idx
+                          ? { ...m, imageFile: e.target.files[0] }
+                          : m
+                      )
+                    )
+                  }
+                />
+                {commandeModeles.length > 1 && (
+                  <button
+                    type="button"
+                    className="text-red-500 text-lg"
+                    onClick={() =>
+                      setCommandeModeles((arr) =>
+                        arr.filter((_, i) => i !== idx)
+                      )
+                    }
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-xl mb-6"
+              onClick={() =>
+                setCommandeModeles((arr) => [
+                  ...arr,
+                  {
+                    modeleId: "",
+                    quantite: 1,
+                    prix: 0,
+                    commentaire: "",
+                    imageFile: null
+                  }
+                ])
+              }
             >
-              <option value="">Ville</option>
-              {villes.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.ville}
-                </option>
-              ))}
-            </select>
-            <select
-              className="w-1/2 border rounded-xl px-4 py-2 text-sm"
-              value={selectedModeLivraison}
-              onChange={(e) => setSelectedModeLivraison(e.target.value)}
+              + Ajouter un modèle
+            </button>
+
+            {/* Livraison */}
+            <h2 className="text-xl font-bold mb-4">Livraison</h2>
+            <input
+              type="text"
+              className="w-full border rounded-xl px-4 py-2 text-sm mb-4"
+              placeholder="Adresse de livraison"
+              value={adresse}
+              onChange={(e) => setAdresse(e.target.value)}
               required
-              disabled={!selectedVille}
+            />
+            <div className="flex gap-4 mb-4">
+              <select
+                className="w-1/2 border rounded-xl px-4 py-2 text-sm"
+                value={selectedVille}
+                onChange={(e) => {
+                  setSelectedVille(e.target.value);
+                  setSelectedModeLivraison("");
+                }}
+                required
+              >
+                <option value="">Ville</option>
+                {villes.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.ville}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="w-1/2 border rounded-xl px-4 py-2 text-sm"
+                value={selectedModeLivraison}
+                onChange={(e) => setSelectedModeLivraison(e.target.value)}
+                required
+                disabled={!selectedVille}
+              >
+                <option value="">Mode de livraison</option>
+                {modesLivraison.map((mode, i) => (
+                  <option key={i} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {error && <div className="text-red-500 mb-2 text-sm">{error}</div>}
+            {success && (
+              <div className="text-green-600 mb-2 text-sm">
+                Commande envoyée !
+              </div>
+            )}
+            <button
+              type="submit"
+              className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl mt-4"
+              disabled={sending}
             >
-              <option value="">Mode de livraison</option>
-              {modesLivraison.map((mode, i) => (
-                <option key={i} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-          </div>
+              {sending ? "Envoi..." : "Confirmer ma commande"}
+            </button>
+          </form>
 
-          {error && <div className="text-red-500 mb-2 text-sm">{error}</div>}
-          {success && (
-            <div className="text-green-600 mb-2 text-sm">
-              Commande envoyée !
+          {/* Aperçu commande */}
+          <div className="bg-white rounded-2xl shadow-md p-8 w-full md:w-96">
+            <h2 className="text-xl font-bold mb-6">Récapitulatif</h2>
+            {commandeModeles.map((cm, idx) => (
+              <div key={idx} className="mb-2">
+                {cm.quantite} × {getModeleTitre(cm.modeleId)} →{" "}
+                {cm.quantite * cm.prix} MAD
+              </div>
+            ))}
+            <div className="mb-2">
+              Frais de livraison :{" "}
+              <span className="font-semibold">{fraisLivraison} MAD</span>
             </div>
-          )}
-          <button
-            type="submit"
-            className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl mt-4"
-            disabled={sending}
-          >
-            {sending ? "Envoi..." : "Confirmer ma commande"}
-          </button>
-        </form>
-
-        {/* Aperçu commande */}
-        <div className="bg-white rounded-2xl shadow-md p-8 w-full md:w-96">
-          <h2 className="text-xl font-bold mb-6">Récapitulatif</h2>
-          {commandeModeles.map((cm, idx) => (
-            <div key={idx} className="mb-2">
-              {cm.quantite} × {getModeleTitre(cm.modeleId)} →{" "}
-              {cm.quantite * cm.prix} MAD
+            <div className="mb-2 font-bold">
+              Total :{" "}
+              {commandeModeles.reduce(
+                (sum, cm) => sum + cm.prix * cm.quantite,
+                0
+              ) + fraisLivraison}{" "}
+              MAD
             </div>
-          ))}
-          <div className="mb-2">
-            Frais de livraison :{" "}
-            <span className="font-semibold">{fraisLivraison} MAD</span>
-          </div>
-          <div className="mb-2 font-bold">
-            Total :{" "}
-            {commandeModeles.reduce(
-              (sum, cm) => sum + cm.prix * cm.quantite,
-              0
-            ) + fraisLivraison}{" "}
-            MAD
-          </div>
-          <div className="mb-2">
-            Adresse : <span className="font-semibold">{adresse || "-"}</span>
-          </div>
-          <div className="mb-2">
-            Ville :{" "}
-            <span className="font-semibold">
-              {villes.find((v) => v.id === selectedVille)?.ville || "-"}
-            </span>
-          </div>
-          <div className="mb-2">
-            Mode de livraison :{" "}
-            <span className="font-semibold">
-              {selectedModeLivraison || "-"}
-            </span>
-          </div>
-          <div className="mb-2">
-            Délais de livraison :{" "}
-            <span className="font-semibold">
-              {delaiLivraison || "-"}
-            </span>
+            <div className="mb-2">
+              Adresse : <span className="font-semibold">{adresse || "-"}</span>
+            </div>
+            <div className="mb-2">
+              Ville :{" "}
+              <span className="font-semibold">
+                {villes.find((v) => v.id === selectedVille)?.ville || "-"}
+              </span>
+            </div>
+            <div className="mb-2">
+              Mode de livraison :{" "}
+              <span className="font-semibold">
+                {selectedModeLivraison || "-"}
+              </span>
+            </div>
+            <div className="mb-2">
+              Délais de livraison :{" "}
+              <span className="font-semibold">
+                {delaiLivraison || "-"}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

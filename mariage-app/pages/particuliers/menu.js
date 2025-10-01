@@ -3,7 +3,12 @@ import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
 import Header from '../../components/HeaderParti'
 import RealTimeNotifications from '../../components/RealTimeNotifications'
-import { Search, Minus, Plus } from "lucide-react";
+import { 
+  Search, Minus, Plus, Calendar, Package, FileText, 
+  Star, Clock, CheckCircle, AlertCircle, User, 
+  ArrowRight, ArrowLeft, Filter, Grid3X3, List, Eye,
+  TrendingUp, Activity, Award, Heart
+} from "lucide-react";
 
 function ParticularHomeMenu() {
   const [profile, setProfile] = useState(null);
@@ -22,6 +27,7 @@ function ParticularHomeMenu() {
   const [showDevis, setShowDevis] = useState(true)
   const [showReservations, setShowReservations] = useState(true)
   const [showCommandes, setShowCommandes] = useState(true)
+  const [activeTab, setActiveTab] = useState('overview') // 'overview', 'devis', 'reservations', 'commandes'
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [selectedCommande, setSelectedCommande] = useState(null);
@@ -1709,7 +1715,7 @@ function ParticularHomeMenu() {
             backgroundColor: '#f0fdf4', 
             borderRadius: 8, 
             border: '1px solid #22c55e',
-            width: '100%'
+            width: '15%'
           }}>
             <div style={{ 
               display: 'flex', 
@@ -1717,16 +1723,7 @@ function ParticularHomeMenu() {
               justifyContent: 'space-between',
               marginBottom: 8 
             }}>
-              <span style={{ 
-                fontSize: 13, 
-                fontWeight: 600, 
-                color: '#16a34a',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}>
-                ⭐ Notez cette réservation
-              </span>
+              
               <button
                 onClick={() => {
                   // Créer une pseudo-notification pour déclencher la modal d'avis
@@ -1752,11 +1749,8 @@ function ParticularHomeMenu() {
                   cursor: 'pointer'
                 }}
               >
-                Noter maintenant
+                ⭐ Noter maintenant
               </button>
-            </div>
-            <div style={{ fontSize: 11, color: '#16a34a', fontStyle: 'italic' }}>
-              Aidez la communauté en partageant votre expérience !
             </div>
           </div>
         )}
@@ -2062,7 +2056,7 @@ function ParticularHomeMenu() {
             {/* Zone de notation ergonomique pour commandes livrées */}
             {(statutActuel === 'delivered' || commandeStatus === 'delivered') && !hasAvis('commande', commande.id) && (
               <div style={{ 
-                marginTop: 12, 
+                marginTop:4, 
                 padding: '12px', 
                 backgroundColor: '#fef3cd', 
                 borderRadius: 8, 
@@ -2072,18 +2066,8 @@ function ParticularHomeMenu() {
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'space-between',
-                  marginBottom: 8 
+                  marginBottom: 2 
                 }}>
-                  <span style={{ 
-                    fontSize: 13, 
-                    fontWeight: 600, 
-                    color: '#92400e',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
-                    ⭐ Notez cette prestation
-                  </span>
                   <button
                     onClick={() => {
                       // Créer une pseudo-notification pour déclencher la modal d'avis
@@ -2109,11 +2093,8 @@ function ParticularHomeMenu() {
                       cursor: 'pointer'
                     }}
                   >
-                    Noter maintenant
+                    ⭐ Noter maintenant
                   </button>
-                </div>
-                <div style={{ fontSize: 11, color: '#92400e', fontStyle: 'italic' }}>
-                  Aidez la communauté en partageant votre expérience !
                 </div>
               </div>
             )}
@@ -2130,323 +2111,574 @@ function ParticularHomeMenu() {
       {/* Système de notifications temps réel */}
       <RealTimeNotifications userId={userId} triggerNotification={triggerAvisNotification} />
       
-      {/* Modal de notation complète */}
+      {/* Modal de notation compact */}
       {showRatingForm && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(255,255,255,0.4)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 2000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            background: '#fff',
-            borderRadius: 20,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-            padding: '32px',
-            minWidth: 450,
-            maxWidth: 550
-          }}>
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: 32 }}>
-              <div style={{ 
-                width: 80, 
-                height: 80, 
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
-                fontSize: 36
-              }}>⭐</div>
-              <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, color: '#333' }}>
-                Notez votre {showRatingForm.type === 'commande' ? 'commande' : 'réservation'}
-              </h2>
-              <p style={{ fontSize: 16, color: '#666', marginBottom: 0 }}>
-                {showRatingForm.title}
-              </p>
-            </div>
-            
-            {/* Notation par étoiles */}
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <p style={{ fontSize: 16, fontWeight: 600, color: '#333', marginBottom: 16 }}>
-                Quelle note donnez-vous ?
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => setRatingValue(star)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: 36,
-                      cursor: 'pointer',
-                      color: star <= ratingValue ? '#f59e0b' : '#d1d5db',
-                      transition: 'color 0.2s',
-                      padding: 4
-                    }}
-                    onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                  >
-                    ⭐
-                  </button>
-                ))}
-              </div>
-              {ratingValue > 0 && (
-                <p style={{ fontSize: 14, color: '#666', fontStyle: 'italic' }}>
-                  {ratingValue === 5 && "⭐ Excellent !"}
-                  {ratingValue === 4 && "😊 Très bien !"}
-                  {ratingValue === 3 && "👍 Bien"}
-                  {ratingValue === 2 && "😐 Moyen"}
-                  {ratingValue === 1 && "😞 Décevant"}
-                </p>
-              )}
-            </div>
-            
-            {/* Zone de commentaire */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 8 }}>
-                Commentaire (optionnel)
-              </label>
-              <textarea
-                value={ratingComment}
-                onChange={(e) => setRatingComment(e.target.value)}
-                placeholder="Décrivez votre expérience, ce qui vous a plu ou moins plu..."
-                style={{
-                  width: '100%',
-                  padding: 12,
-                  border: '2px solid #e5e7eb',
-                  borderRadius: 8,
-                  resize: 'none',
-                  height: 100,
-                  fontSize: 14,
-                  fontFamily: 'inherit'
-                }}
-                maxLength={500}
-              />
-              <div style={{ textAlign: 'right', fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
-                {ratingComment.length}/500
-              </div>
-            </div>
-            
-            {/* Boutons */}
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full mx-4 overflow-hidden">
+            {/* Header minimal - juste le bouton fermer */}
+            <div className="flex justify-end p-2">
               <button
                 onClick={() => {
                   setShowRatingForm(null);
                   setRatingValue(0);
                   setRatingComment('');
                 }}
-                disabled={isSubmittingRating}
-                style={{
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '12px 24px',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: 'pointer'
-                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
               >
-                Annuler
+                <X className="w-5 h-5" />
               </button>
-              <button
-                onClick={submitRatingFromMenu}
-                disabled={isSubmittingRating || ratingValue === 0}
-                style={{
-                  background: ratingValue === 0 ? '#d1d5db' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '12px 24px',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: ratingValue === 0 ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8
-                }}
-              >
-                {isSubmittingRating ? (
-                  <>
-                    <div style={{
-                      width: 16,
-                      height: 16,
-                      border: '2px solid #fff',
-                      borderTop: '2px solid transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    Envoi...
-                  </>
-                ) : (
-                  '✨ Publier mon avis'
+            </div>
+            
+            <div className="px-4 pb-4">
+              {/* Étoiles compactes */}
+              <div className="text-center mb-4">
+                <div className="flex justify-center gap-2 mb-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRatingValue(star)}
+                      className={`transition-all duration-200 hover:scale-110 ${
+                        star <= ratingValue ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-200'
+                      }`}
+                    >
+                      <Star className="w-8 h-8 fill-current" />
+                    </button>
+                  ))}
+                </div>
+                {ratingValue > 0 && (
+                  <p className="text-sm text-gray-600">
+                    {ratingValue === 5 && "🌟 Excellent !"}
+                    {ratingValue === 4 && "😊 Très bien"}
+                    {ratingValue === 3 && "👍 Bien"}
+                    {ratingValue === 2 && "😐 Moyen"}
+                    {ratingValue === 1 && "😞 Décevant"}
+                  </p>
                 )}
-              </button>
+              </div>
+              
+              {/* Commentaire compact */}
+              <div className="mb-4">
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Votre commentaire (optionnel)..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
+                  rows={3}
+                  maxLength={200}
+                />
+                <div className="text-right text-xs text-gray-400 mt-1">
+                  {ratingComment.length}/200
+                </div>
+              </div>
+              
+              {/* Boutons compacts */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowRatingForm(null);
+                    setRatingValue(0);
+                    setRatingComment('');
+                  }}
+                  disabled={isSubmittingRating}
+                  className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={submitRatingFromMenu}
+                  disabled={isSubmittingRating || ratingValue === 0}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    ratingValue === 0
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white hover:from-yellow-500 hover:to-orange-600 shadow-md hover:shadow-lg'
+                  }`}
+                >
+                  {isSubmittingRating ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Envoi...</span>
+                    </div>
+                  ) : (
+                    '✨ Publier'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
       
-      <div style={{background:'#f8fafc', minHeight:'100vh', padding:'40px 0'}}>
-        <div style={{maxWidth:1100, margin:'0 auto'}}>
-          {/* Bonjour + bouton rechercher */}
-          <div style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "flex-end",
-            justifyContent: "space-between",
-            gap: 24,
-            marginBottom: 36,
-          }}>
-            <div>
-              <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6 }}>
-                Bonjour {profile?.nom ? profile.nom.split(" ")[0] : ""}
-                <span> 👋</span>
-              </h1>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+        {/* Hero Section avec statistiques */}
+        <div className="bg-white shadow-sm border-b border-gray-100">
+          <div className="max-w-6xl mx-auto px-6 py-8">
+            <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
+              {/* Greeting Section */}
+              <div className="flex-1">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                      Bonjour {profile?.nom ? profile.nom.split(" ")[0] : ""}!
+                    </h1>
+                    <p className="text-gray-600">Gérez vos commandes, réservations et devis en un coup d'œil</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 mt-6">
               <button
-                className="px-4 py-2 font-semibold rounded-xl border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-100 transition-colors"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
                 onClick={() => router.push("/particuliers/search")}
               >
-                <Search className="inline-block mr-2 w-5 h-5" />
-                Rechercher un prestataire
+                <Search className="w-5 h-5" />
+                Trouver un prestataire
+              </button>
+              <button
+                className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
+                onClick={() => router.push("/particuliers/favoris")}
+              >
+                <Heart className="w-5 h-5" />
+                Mes favoris
+              </button>
+              <button
+                className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
+                onClick={() => router.push("/particuliers/messages")}
+              >
+                <Activity className="w-5 h-5" />
+                Messages
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Bloc Devis */}
-          {devisSorted.length > 0 && (
-            <section style={{ marginBottom: 36 }}>
-              <div className="bg-white shadow-sm rounded-xl p-5">
-                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-                  <h2 className="font-semibold text-lg">Mes devis</h2>
-                  <button
-                    style={{background:'none', border:'none', cursor:'pointer'}}
-                    onClick={() => setShowDevis(v => !v)}
-                  >
-                    {showDevis ? <Minus size={22}/> : <Plus size={22}/>}
-                  </button>
+        {/* Main Content */}
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          {/* Navigation Tabs */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {/* Onglet Vue d'ensemble */}
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
+                activeTab === 'overview'
+                  ? 'border-indigo-500 bg-indigo-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  activeTab === 'overview' ? 'bg-indigo-500' : 'bg-gray-100'
+                }`}>
+                  <Grid3X3 className={`w-5 h-5 ${
+                    activeTab === 'overview' ? 'text-white' : 'text-gray-600'
+                  }`} />
                 </div>
-                {showDevis && (
-                  <div className="space-y-3">
+                <div>
+                  <h2 className={`font-semibold ${
+                    activeTab === 'overview' ? 'text-indigo-900' : 'text-gray-900'
+                  }`}>Vue d'ensemble</h2>
+                  <p className="text-sm text-gray-500">Tous vos éléments</p>
+                </div>
+              </div>
+            </button>
+
+            {/* Onglet Devis */}
+            <button
+              onClick={() => setActiveTab('devis')}
+              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
+                activeTab === 'devis'
+                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  activeTab === 'devis' ? 'bg-blue-500' : 'bg-blue-100'
+                }`}>
+                  <FileText className={`w-5 h-5 ${
+                    activeTab === 'devis' ? 'text-white' : 'text-blue-600'
+                  }`} />
+                </div>
+                <div>
+                  <h2 className={`font-semibold ${
+                    activeTab === 'devis' ? 'text-blue-900' : 'text-gray-900'
+                  }`}>Mes devis</h2>
+                  <p className="text-sm text-gray-500">Réponses des prestataires</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`text-2xl font-bold ${
+                  activeTab === 'devis' ? 'text-blue-700' : 'text-blue-600'
+                }`}>
+                  {devis.length}
+                </div>
+              </div>
+            </button>
+
+            {/* Onglet Réservations */}
+            <button
+              onClick={() => setActiveTab('reservations')}
+              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
+                activeTab === 'reservations'
+                  ? 'border-green-500 bg-green-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  activeTab === 'reservations' ? 'bg-green-500' : 'bg-green-100'
+                }`}>
+                  <Calendar className={`w-5 h-5 ${
+                    activeTab === 'reservations' ? 'text-white' : 'text-green-600'
+                  }`} />
+                </div>
+                <div>
+                  <h2 className={`font-semibold ${
+                    activeTab === 'reservations' ? 'text-green-900' : 'text-gray-900'
+                  }`}>Réservations</h2>
+                  <p className="text-sm text-gray-500">Prestations réservées</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`text-2xl font-bold ${
+                  activeTab === 'reservations' ? 'text-green-700' : 'text-green-600'
+                }`}>
+                  {reservations.length}
+                </div>
+                
+              </div>
+            </button>
+
+            {/* Onglet Commandes */}
+            <button
+              onClick={() => setActiveTab('commandes')}
+              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
+                activeTab === 'commandes'
+                  ? 'border-purple-500 bg-purple-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  activeTab === 'commandes' ? 'bg-purple-500' : 'bg-purple-100'
+                }`}>
+                  <Package className={`w-5 h-5 ${
+                    activeTab === 'commandes' ? 'text-white' : 'text-purple-600'
+                  }`} />
+                </div>
+                <div>
+                  <h2 className={`font-semibold ${
+                    activeTab === 'commandes' ? 'text-purple-900' : 'text-gray-900'
+                  }`}>Commandes</h2>
+                  <p className="text-sm text-gray-500">Créations commandées</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`text-2xl font-bold ${
+                  activeTab === 'commandes' ? 'text-purple-700' : 'text-purple-600'
+                }`}>
+                  {commandes.length}
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Vue d'ensemble - Affiche toutes les sections */}
+          {activeTab === 'overview' && (
+            <>
+              {/* Section Devis */}
+              {devisSorted.length > 0 && (
+                <section className="mb-8">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <h2 className="text-xl font-bold text-gray-900">Mes devis</h2>
+                            <p className="text-sm text-gray-600">{devisSorted.length} devis au total</p>
+                          </div>
+                        </div>
+                        <button
+                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+                          onClick={() => setActiveTab('devis')}
+                        >
+                          <span className="text-sm font-medium">Voir tout</span>
+                          <ArrowRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="grid gap-4">
+                        {devisSorted.slice(0, 3).map((r) => (
+                          <DevisCard key={r.id} r={r} />
+                        ))}
+                        {devisSorted.length > 3 && (
+                          <div className="text-center py-4">
+                            <button
+                              onClick={() => setActiveTab('devis')}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            >
+                              Voir {devisSorted.length - 3} autres devis...
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+
+          {/* Section Devis uniquement */}
+          {activeTab === 'devis' && devisSorted.length > 0 && (
+            <section className="mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setActiveTab('overview')}
+                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Tous mes devis</h2>
+                        <p className="text-sm text-gray-600">{devisSorted.length} devis au total</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="grid gap-4">
                     {devisSorted.map((r) => (
                       <DevisCard key={r.id} r={r} />
                     ))}
                   </div>
-                )}
+                </div>
               </div>
-              {/* Pop-up infos devis */}
               <DevisInfoModal devis={selectedDevis} onClose={() => setSelectedDevis(null)} />
             </section>
           )}
 
-          {/* Bloc Réservations */}
-          {reservationsSorted.length > 0 && (
-            <section style={{ marginBottom: 36 }}>
-              <div className="bg-white shadow-sm rounded-xl p-5">
-                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-                  <h2 className="font-semibold text-lg">Mes réservations</h2>
-                  <button
-                    style={{background:'none', border:'none', cursor:'pointer'}}
-                    onClick={() => setShowReservations(v => !v)}
-                  >
-                    {showReservations ? <Minus size={22}/> : <Plus size={22}/>}
-                  </button>
+          {/* Vue d'ensemble - Section Réservations */}
+          {activeTab === 'overview' && reservationsSorted.length > 0 && (
+            <section className="mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Mes réservations</h2>
+                        <p className="text-sm text-gray-600">{reservationsSorted.length} réservations au total</p>
+                      </div>
+                    </div>
+                    <button
+                      className="flex items-center gap-2 text-green-600 hover:text-green-800 transition-colors"
+                      onClick={() => setActiveTab('reservations')}
+                    >
+                      <span className="text-sm font-medium">Voir tout</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-                {showReservations && (
-                  <>
-                    {/* Barre de recherche et filtres */}
-                    <div style={{
-                      display:'flex', gap:16, marginBottom:28, alignItems:'center', flexWrap:'wrap', position:'relative'
-                    }}>
+                <div className="p-6">
+                  <div className="grid gap-4">
+                    {reservationsSorted.slice(0, 3).map(r => (
+                      <ReservationCard key={r.id} r={r} />
+                    ))}
+                    {reservationsSorted.length > 3 && (
+                      <div className="text-center py-4">
+                        <button
+                          onClick={() => setActiveTab('reservations')}
+                          className="text-green-600 hover:text-green-800 font-medium text-sm"
+                        >
+                          Voir {reservationsSorted.length - 3} autres réservations...
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Section Réservations uniquement */}
+          {activeTab === 'reservations' && reservationsSorted.length > 0 && (
+            <section className="mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setActiveTab('overview')}
+                        className="text-green-600 hover:text-green-800 transition-colors"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Toutes mes réservations</h2>
+                        <p className="text-sm text-gray-600">{reservationsSorted.length} réservations au total</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {/* Filtres améliorés */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Filter className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">Filtres</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <select
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value)}
-                        style={{
-                          padding:'10px 16px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:16, background:'#fff'
-                        }}
+                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       >
-                        <option value="all">Statut</option>
-                        <option value="confirmed">Confirmé</option>
-                        <option value="cancelled">Annulé</option>
-                        <option value="refused">Rejeté</option>
-                        <option value="pending">En attente</option>
+                        <option value="all">Tous les statuts</option>
+                        <option value="confirmed">✅ Confirmé</option>
+                        <option value="cancelled">❌ Annulé</option>
+                        <option value="refused">🚫 Rejeté</option>
+                        <option value="pending">⏳ En attente</option>
                       </select>
                       <select
                         value={prestationFilter}
                         onChange={e => setPrestationFilter(e.target.value)}
-                        style={{
-                          padding:'10px 16px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:16, background:'#fff'
-                        }}
+                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       >
-                        <option value="all">Prestation</option>
+                        <option value="all">Toutes les prestations</option>
                         {prestations.map(p => (
                           <option key={p.id} value={p.id}>{p.nom}</option>
                         ))}
                       </select>
-                      <div style={{position:'relative'}}>
+                      <div className="relative">
                         <button
-                          style={{
-                            padding:'10px 16px', borderRadius:8, border:'1px solid #e5e7eb',
-                            fontSize:16, background:'#fff', cursor:'pointer'
-                          }}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-left focus:ring-2 focus:ring-green-500 focus:border-transparent hover:bg-gray-50"
                           onClick={() => setShowCalendar(!showCalendar)}
                         >
-                          Date
+                          <Calendar className="w-4 h-4 inline mr-2" />
+                          {dateFilter === 'all' ? 'Toutes les dates' : 'Date sélectionnée'}
                         </button>
                         {showCalendar && (
                           <MiniCalendar onSelect={setDateFilter} />
                         )}
                       </div>
                     </div>
-                    {/* Liste des réservations */}
+                  </div>
+                  {/* Liste des réservations */}
+                  <div className="grid gap-4">
                     {reservationsSorted.map(r => (
                       <ReservationCard key={r.id} r={r} />
                     ))}
-                    <ReservationInfoModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
-                    {showConfirm && (
-                      <ConfirmCancelModal
-                        onConfirm={() => handleUpdate(pendingCancelId, 'cancelled')}
-                        onCancel={() => {
-                          setShowConfirm(false)
-                          setPendingCancelId(null)
-                        }}
-                      />
-                    )}
-                  </>
-                )}
+                  </div>
+                  <ReservationInfoModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+                  {showConfirm && (
+                    <ConfirmCancelModal
+                      onConfirm={() => handleUpdate(pendingCancelId, 'cancelled')}
+                      onCancel={() => {
+                        setShowConfirm(false)
+                        setPendingCancelId(null)
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </section>
           )}
 
-          {/* Bloc Commandes */}
-          {commandesSorted.length > 0 && (
-            <section style={{ marginBottom: 36 }}>
-              <div className="bg-white shadow-sm rounded-xl p-5">
-                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
-                  <h2 className="font-semibold text-lg">Mes commandes</h2>
-                  <button
-                    style={{background:'none', border:'none', cursor:'pointer'}}
-                    onClick={() => setShowCommandes(v => !v)}
-                  >
-                    {showCommandes ? <Minus size={22}/> : <Plus size={22}/>}
-                  </button>
+          {/* Vue d'ensemble - Section Commandes */}
+          {activeTab === 'overview' && commandesSorted.length > 0 && (
+            <section className="mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-50 to-violet-50 px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Package className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Mes commandes</h2>
+                        <p className="text-sm text-gray-600">{commandesSorted.length} commandes au total</p>
+                      </div>
+                    </div>
+                    <button
+                      className="flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-colors"
+                      onClick={() => setActiveTab('commandes')}
+                    >
+                      <span className="text-sm font-medium">Voir tout</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-                {showCommandes && (
-                  <div className="space-y-3">
+                <div className="p-6">
+                  <div className="grid gap-4">
+                    {commandesSorted.slice(0, 3).map((r) => (
+                      <CommandeCard key={r.id} r={r} />
+                    ))}
+                    {commandesSorted.length > 3 && (
+                      <div className="text-center py-4">
+                        <button
+                          onClick={() => setActiveTab('commandes')}
+                          className="text-purple-600 hover:text-purple-800 font-medium text-sm"
+                        >
+                          Voir {commandesSorted.length - 3} autres commandes...
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Section Commandes uniquement */}
+          {activeTab === 'commandes' && commandesSorted.length > 0 && (
+            <section className="mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-50 to-violet-50 px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setActiveTab('overview')}
+                        className="text-purple-600 hover:text-purple-800 transition-colors"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
+                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Package className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Toutes mes commandes</h2>
+                        <p className="text-sm text-gray-600">{commandesSorted.length} commandes au total</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="grid gap-4">
                     {commandesSorted.map((r) => (
                       <CommandeCard key={r.id} r={r} />
                     ))}
                   </div>
-                )}
+                </div>
               </div>
               <CommandeInfoModal
                 commande={selectedCommande}
@@ -2454,6 +2686,86 @@ function ParticularHomeMenu() {
                 quantity={selectedCommande ? commandeQuantities[selectedCommande.id] : 0}
               />
             </section>
+          )}
+
+          {/* Section vide selon l'onglet actif */}
+          {activeTab === 'devis' && devisSorted.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FileText className="w-12 h-12 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucun devis pour le moment</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                Recherchez des prestataires et demandez des devis personnalisés pour vos besoins.
+              </p>
+              <button
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                onClick={() => router.push("/particuliers/search")}
+              >
+                <Search className="w-5 h-5 inline mr-2" />
+                Trouver des prestataires
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'reservations' && reservationsSorted.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Calendar className="w-12 h-12 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucune réservation active</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                Réservez des prestations pour votre événement et organisez votre planning.
+              </p>
+              <button
+                className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
+                onClick={() => router.push("/particuliers/search")}
+              >
+                <Search className="w-5 h-5 inline mr-2" />
+                Rechercher des services
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'commandes' && commandesSorted.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Package className="w-12 h-12 text-purple-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucune commande passée</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                Commandez des créations personnalisées auprès de nos artisans talentueux.
+              </p>
+              <button
+                className="bg-gradient-to-r from-purple-600 to-violet-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-purple-700 hover:to-violet-700 transition-all shadow-md hover:shadow-lg"
+                onClick={() => router.push("/particuliers/search")}
+              >
+                <Search className="w-5 h-5 inline mr-2" />
+                Découvrir les créations
+              </button>
+            </div>
+          )}
+
+          {/* Section vide globale */}
+          {activeTab === 'overview' && devisSorted.length === 0 && reservationsSorted.length === 0 && commandesSorted.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search className="w-12 h-12 text-gray-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Commencez votre recherche !
+              </h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                Découvrez des prestataires exceptionnels pour votre mariage et commencez à créer des souvenirs inoubliables.
+              </p>
+              <button
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                onClick={() => router.push("/particuliers/search")}
+              >
+                <Search className="w-5 h-5 inline mr-2" />
+                Découvrir les prestataires
+              </button>
+            </div>
           )}
         </div>
       </div>

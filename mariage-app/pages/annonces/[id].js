@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
 import { trackAnnonceView } from "../../lib/viewTracking";
 import Header from "../../components/HeaderParti";
-import { Star } from "lucide-react";
+import { Star, User } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function ArtistProfilePreview() {
@@ -297,13 +297,23 @@ export default function ArtistProfilePreview() {
                 <span className="text-slate-500 ml-2">({totalAvis} avis)</span>
               </div>
               <p className="mt-4 text-gray-600 max-w-lg">{annonce.description}</p>
-              <div className="mt-6 flex space-x-4 justify-center md:justify-start">
+              <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
                 <button
-                  className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl"
+                  className="bg-slate-700 hover:bg-slate-800 text-white px-6 py-2 rounded-xl flex items-center gap-2"
                   onClick={() => setShowMessageModal(true)}
                 >
                   Contacter
                 </button>
+                
+                {/* Bouton Voir le profil */}
+                <button
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl flex items-center gap-2"
+                  onClick={() => router.push(`/profil/${annonce.prestataire?.id}`)}
+                >
+                  <User className="w-4 h-4" />
+                  Voir le profil
+                </button>
+                
                 {/* Bouton dynamique selon type de prestation */}
                 {prestationType === "produit" && (
                   <button
@@ -424,7 +434,7 @@ export default function ArtistProfilePreview() {
             <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-slate-800">Contacter {annonce.prestataire?.nom}</h3>
+                  <h2 className="text-xl font-bold text-slate-800">Contacter {annonce.prestataire?.nom}</h2>
                   <button
                     onClick={() => setShowMessageModal(false)}
                     className="text-slate-400 hover:text-slate-600"

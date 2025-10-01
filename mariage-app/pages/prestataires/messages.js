@@ -321,13 +321,7 @@ export default function MessagesParticulier() {
       lu: false,
       attachments: attachments.length > 0 ? JSON.stringify(attachments) : null
     }]);
-    await supabase.from('notifications').insert([{
-      user_id: selectedConv.userId,
-      type: 'message',
-      contenu: messageInput,
-      lu: false
-    }]);
-    if (!error) {
+        if (!error) {
       await supabase.from('conversations').update({ 
         last_message: messageInput || '[Fichier joint]', 
         updated: now 
