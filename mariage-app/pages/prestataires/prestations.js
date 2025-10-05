@@ -22,7 +22,7 @@ export default function PrestationsPrestataire() {
         // Récupérer toutes les annonces (actives et désactivées) liées à ce prestataire
         const { data, error } = await supabase
           .from('annonces')
-          .select('id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, acompte_percent, equipement, prestation, ville, actif, prestataire')
+          .select('id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, acompte_percent, equipement, prestation, ville, actif, prestataire, conditions_annulation')
           .eq('prestataire', user.id)
           .order('created_at', { ascending: false })
         if (!error) setPrestations(data || [])
@@ -253,9 +253,28 @@ export default function PrestationsPrestataire() {
           <div style={{fontSize:15, color:'#444', marginBottom:6}}>
             <b>Acompte à la réservation :</b> {prestation.acompte_percent ? `${prestation.acompte_percent}%` : "Non renseigné"}
           </div>
-          <div style={{fontSize:15, color:'#444'}}>
+          <div style={{fontSize:15, color:'#444', marginBottom:6}}>
             <b>Équipements :</b> {prestation.equipement}
           </div>
+          
+          {prestation.conditions_annulation && (
+            <div style={{fontSize:15, color:'#444', marginBottom:6}}>
+              <b>Conditions d'annulation :</b> 
+              <span style={{
+                marginLeft: 8,
+                padding: '2px 8px',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                background: prestation.conditions_annulation === 'Flexible' ? '#d1fae5' : 
+                          prestation.conditions_annulation === 'Modéré' ? '#fef3c7' : '#fee2e2',
+                color: prestation.conditions_annulation === 'Flexible' ? '#065f46' : 
+                       prestation.conditions_annulation === 'Modéré' ? '#92400e' : '#991b1b'
+              }}>
+                {prestation.conditions_annulation}
+              </span>
+            </div>
+          )}
 
           {prestation.actif === false && (
             <div style={{
@@ -355,6 +374,7 @@ export default function PrestationsPrestataire() {
   // Pop-up d'ajout/modification/aperçu de prestation
   function AddPrestationModal({ open, onClose, prestation }) {
     const isEdit = !!prestation;
+    
     const [form, setForm] = useState({
       titre: '',
       type: '',
@@ -368,11 +388,28 @@ export default function PrestationsPrestataire() {
       photos: [],
       modeles: [],
       conditions: '',
-      categories: []
+      categories: [],
+      conditions_annulation: ''
+    });
+
+    // --- Delivery info state for produit type (improved) ---
+    const [livraisonsByMode, setLivraisonsByMode] = useState({
+      standard: { villes: [], prix: '', delai: '' },
+      express: { villes: [], prix: '', delai: '' }
     });
 
     const [categoriesList, setCategoriesList] = useState([]);
     const [villesList, setVillesList] = useState([]);
+
+    // Reset delivery info when modal opens for produit type
+    useEffect(() => {
+      if (open && form?.type === 'produit') {
+        setLivraisonsByMode({
+          standard: { villes: [], prix: '', delai: '' },
+          express: { villes: [], prix: '', delai: '' }
+        });
+      }
+    }, [open, form?.type]);
 
     useEffect(() => {
       const fetchCategories = async () => {
@@ -415,6 +452,7 @@ export default function PrestationsPrestataire() {
           modeles: Array.isArray(prestation.modelesExistants) ? prestation.modelesExistants : [],
           conditions: prestation.conditions || '',
           categories: prestation.categories || [],
+          conditions_annulation: prestation.conditions_annulation || '',
           modeleDraft: { titre: '', description: '', prix: '', photos: [] } // Réinitialiser le draft
         });
       } else if (!isEdit) {
@@ -434,6 +472,7 @@ export default function PrestationsPrestataire() {
           modeles: [],
           conditions: '',
           categories: [],
+          conditions_annulation: '',
           modeleDraft: { titre: '', description: '', prix: '', photos: [] }
         });
       }
@@ -698,6 +737,53 @@ export default function PrestationsPrestataire() {
                 }}
                 disabled={false}
               />
+              
+              {/* Conditions d'annulation pour service */}
+              <div style={{marginBottom: 10}}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#333'
+                }}>
+                  Conditions d'annulation *
+                </label>
+                <select
+                  value={form.conditions_annulation}
+                  onChange={e => setForm(f => ({ ...f, conditions_annulation: e.target.value }))}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 10px', 
+                    borderRadius: 10, 
+                    border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
+                    fontSize: 13, 
+                    background: isEdit ? '#fff8f0' : '#fff' 
+                  }}
+                  required
+                  disabled={false}
+                >
+                  <option value="">Sélectionner une condition d'annulation</option>
+                  <option value="Flexible">Flexible - Annulation gratuite jusqu'à 24h avant</option>
+                  <option value="Modéré">Modéré - Annulation gratuite 7 jours avant, 50% après</option>
+                  <option value="Strict">Strict - Aucun remboursement sauf force majeure</option>
+                </select>
+                {form.conditions_annulation && (
+                  <div style={{
+                    marginTop: 6,
+                    padding: '6px 10px',
+                    background: '#f0f9ff',
+                    border: '1px solid #0ea5e9',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    color: '#0369a1'
+                  }}>
+                    {form.conditions_annulation === 'Flexible' && 'Les clients peuvent annuler gratuitement jusqu\'à 24h avant la prestation.'}
+                    {form.conditions_annulation === 'Modéré' && 'Annulation gratuite jusqu\'à 7 jours avant, remboursement de 50% ensuite.'}
+                    {form.conditions_annulation === 'Strict' && 'Aucun remboursement sauf en cas de force majeure justifiée.'}
+                  </div>
+                )}
+              </div>
               {/* Bloc photos pour service */}
               <div style={{marginBottom: 10}}>
                 <label>Photos {isEdit && <span style={{color: '#f0ad4e', fontSize: 12}}>- Mode modification - Vous pouvez ajouter ou supprimer</span>}</label>
@@ -866,7 +952,173 @@ export default function PrestationsPrestataire() {
                   ))}
                 </div>
               </div>
-              {/* Modèles existants */}
+
+              {/* --- Bloc livraisons amélioré pour produit --- */}
+              <div style={{marginBottom: 18, marginTop: 18}}>
+                <div style={{fontWeight:600, fontSize:15, marginBottom:12}}>Informations de livraison</div>
+                
+                {/* Mode Standard */}
+                <div style={{marginBottom: 16, padding: 16, background: '#f8f9fa', borderRadius: 12, border: '1px solid #e9ecef'}}>
+                  <div style={{display: 'flex', alignItems: 'center', marginBottom: 12}}>
+                    <div style={{
+                      background: '#28a745', 
+                      color: '#fff', 
+                      padding: '4px 12px', 
+                      borderRadius: 6, 
+                      fontSize: 13, 
+                      fontWeight: 600,
+                      marginRight: 16
+                    }}>
+                      STANDARD
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Prix (MAD)"
+                      value={livraisonsByMode.standard.prix}
+                      onChange={e => setLivraisonsByMode(prev => ({
+                        ...prev,
+                        standard: { ...prev.standard, prix: e.target.value }
+                      }))}
+                      style={{width: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, marginRight: 12}}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Délai (ex: 3-5 jours)"
+                      value={livraisonsByMode.standard.delai}
+                      onChange={e => setLivraisonsByMode(prev => ({
+                        ...prev,
+                        standard: { ...prev.standard, delai: e.target.value }
+                      }))}
+                      style={{width: 140, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13}}
+                    />
+                  </div>
+                  
+                  <div style={{marginBottom: 8, fontSize: 13, fontWeight: 600, color: '#555'}}>Villes disponibles :</div>
+                  <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
+                    {villesList.map(ville => (
+                      <label key={ville} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '6px 12px',
+                        background: livraisonsByMode.standard.villes.includes(ville) ? '#e3f2fd' : '#fff',
+                        border: livraisonsByMode.standard.villes.includes(ville) ? '2px solid #2196f3' : '1px solid #ddd',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        transition: 'all 0.2s'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={livraisonsByMode.standard.villes.includes(ville)}
+                          onChange={e => {
+                            setLivraisonsByMode(prev => ({
+                              ...prev,
+                              standard: {
+                                ...prev.standard,
+                                villes: e.target.checked 
+                                  ? [...prev.standard.villes, ville]
+                                  : prev.standard.villes.filter(v => v !== ville)
+                              }
+                            }));
+                          }}
+                          style={{marginRight: 8, accentColor: '#2196f3'}}
+                        />
+                        {ville}
+                      </label>
+                    ))}
+                  </div>
+                  {livraisonsByMode.standard.villes.length > 0 && (
+                    <div style={{marginTop: 8, fontSize: 12, color: '#666'}}>
+                      {livraisonsByMode.standard.villes.length} ville(s) sélectionnée(s) : {livraisonsByMode.standard.villes.join(', ')}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mode Express */}
+                <div style={{marginBottom: 16, padding: 16, background: '#fff8f0', borderRadius: 12, border: '1px solid #ffe0b3'}}>
+                  <div style={{display: 'flex', alignItems: 'center', marginBottom: 12}}>
+                    <div style={{
+                      background: '#ff9800', 
+                      color: '#fff', 
+                      padding: '4px 12px', 
+                      borderRadius: 6, 
+                      fontSize: 13, 
+                      fontWeight: 600,
+                      marginRight: 16
+                    }}>
+                      EXPRESS
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Prix (MAD)"
+                      value={livraisonsByMode.express.prix}
+                      onChange={e => setLivraisonsByMode(prev => ({
+                        ...prev,
+                        express: { ...prev.express, prix: e.target.value }
+                      }))}
+                      style={{width: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, marginRight: 12}}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Délai (ex: 24h)"
+                      value={livraisonsByMode.express.delai}
+                      onChange={e => setLivraisonsByMode(prev => ({
+                        ...prev,
+                        express: { ...prev.express, delai: e.target.value }
+                      }))}
+                      style={{width: 140, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13}}
+                    />
+                  </div>
+                  
+                  <div style={{marginBottom: 8, fontSize: 13, fontWeight: 600, color: '#555'}}>Villes disponibles :</div>
+                  <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
+                    {villesList.map(ville => (
+                      <label key={ville} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '6px 12px',
+                        background: livraisonsByMode.express.villes.includes(ville) ? '#fff3e0' : '#fff',
+                        border: livraisonsByMode.express.villes.includes(ville) ? '2px solid #ff9800' : '1px solid #ddd',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        transition: 'all 0.2s'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={livraisonsByMode.express.villes.includes(ville)}
+                          onChange={e => {
+                            setLivraisonsByMode(prev => ({
+                              ...prev,
+                              express: {
+                                ...prev.express,
+                                villes: e.target.checked 
+                                  ? [...prev.express.villes, ville]
+                                  : prev.express.villes.filter(v => v !== ville)
+                              }
+                            }));
+                          }}
+                          style={{marginRight: 8, accentColor: '#ff9800'}}
+                        />
+                        {ville}
+                      </label>
+                    ))}
+                  </div>
+                  {livraisonsByMode.express.villes.length > 0 && (
+                    <div style={{marginTop: 8, fontSize: 12, color: '#666'}}>
+                      {livraisonsByMode.express.villes.length} ville(s) sélectionnée(s) : {livraisonsByMode.express.villes.join(', ')}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{fontSize: 12, color: '#888', marginTop: 8, fontStyle: 'italic'}}>
+                  💡 Cochez les villes pour chaque mode de livraison. Vous pouvez sélectionner plusieurs villes par mode et définir des prix/délais différents.
+                </div>
+              </div>
+
+              {/* Modèles existants et ajout de modèles (inchangé) */}
               {isEdit && form.modeles && form.modeles.length > 0 && (
                 <div style={{marginBottom: 20, padding: 16, background: '#f9f9f9', borderRadius: 12, border: '1px solid #e0e0e0'}}>
                   <div style={{fontWeight:600, fontSize:14, marginBottom:12, color: '#333'}}>
@@ -927,7 +1179,6 @@ export default function PrestationsPrestataire() {
                   ))}
                 </div>
               )}
-              
               {/* Modèles proposés - Section pour ajouter un nouveau modèle */}
               <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>
                 {isEdit ? 'Ajouter un nouveau modèle' : `Modèles proposés (${form.modeles && form.modeles.length ? `${form.modeles.length} créé${form.modeles.length > 1 ? 's' : ''}` : 'aucun'})`}
@@ -1078,25 +1329,6 @@ export default function PrestationsPrestataire() {
                   disabled={!form.modeleDraft?.titre || !form.modeleDraft?.description}
                 >Ajouter ce modèle</button>
               </div>
-              {/* Conditions d'annulation */}
-              <textarea
-                placeholder="Conditions d'annulation"
-                value={form.conditions}
-                onChange={e => setForm(f => ({ ...f, conditions: e.target.value }))}
-                style={{ 
-                  width: '100%', 
-                  padding: '8px 10px', 
-                  borderRadius: 10, 
-                  border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
-                  fontSize: 13, 
-                  marginBottom: 16, 
-                  background: isEdit ? '#fff8f0' : '#fff', 
-                  minHeight: 40, 
-                  resize: 'vertical' 
-                }}
-                maxLength={80}
-                disabled={false}
-              />
             </>
           )}
   
@@ -1179,7 +1411,8 @@ export default function PrestationsPrestataire() {
                     unit_tarif: form.unit_tarif || null,
                     prix_fixe: Boolean(form.prix_fixe),
                     acompte_percent: form.acompte_percent ? parseInt(form.acompte_percent) : null,
-                    equipement: form.equipements || null
+                    equipement: form.equipements || null,
+                    conditions_annulation: form.type === 'service' ? (form.conditions_annulation || null) : null
                   };
                   
                   console.log('Données à mettre à jour:', updateData); // Debug
@@ -1196,7 +1429,7 @@ export default function PrestationsPrestataire() {
                     // Rafraîchir la liste des prestations
                     const { data, error } = await supabase
                       .from('annonces')
-                      .select('id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, acompte_percent, equipement, prestation, ville, actif, prestataire')
+                      .select('id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, acompte_percent, equipement, prestation, ville, actif, prestataire, conditions_annulation')
                       .eq('prestataire', userId)
                       .order('created_at', { ascending: false });
                     if (!error) setPrestations(data || []);
@@ -1264,10 +1497,54 @@ export default function PrestationsPrestataire() {
                     }
                   }
                   
+                  // Validation des conditions d'annulation pour les services
+                  if (form.type === 'service' && !form.conditions_annulation) {
+                    alert("Veuillez sélectionner des conditions d'annulation pour ce service.");
+                    return;
+                  }
+                  
                   // Vérifier que l'acompte est un pourcentage valide
                   if (form.acompte_percent && (isNaN(parseInt(form.acompte_percent)) || parseInt(form.acompte_percent) < 0 || parseInt(form.acompte_percent) > 100)) {
                     alert("L'acompte doit être un pourcentage entre 0 et 100.");
                     return;
+                  }
+
+                  // Validation des livraisons pour les produits
+                  if (form.type === 'produit') {
+                    let hasValidLivraison = false;
+                    let validationErrors = [];
+
+                    // Vérifier le mode standard
+                    if (livraisonsByMode.standard.villes.length > 0) {
+                      if (!livraisonsByMode.standard.prix || !livraisonsByMode.standard.delai) {
+                        validationErrors.push("Veuillez renseigner le prix et le délai pour le mode Standard.");
+                      } else if (isNaN(parseFloat(livraisonsByMode.standard.prix)) || parseFloat(livraisonsByMode.standard.prix) < 0) {
+                        validationErrors.push("Le prix Standard doit être un nombre positif.");
+                      } else {
+                        hasValidLivraison = true;
+                      }
+                    }
+
+                    // Vérifier le mode express
+                    if (livraisonsByMode.express.villes.length > 0) {
+                      if (!livraisonsByMode.express.prix || !livraisonsByMode.express.delai) {
+                        validationErrors.push("Veuillez renseigner le prix et le délai pour le mode Express.");
+                      } else if (isNaN(parseFloat(livraisonsByMode.express.prix)) || parseFloat(livraisonsByMode.express.prix) < 0) {
+                        validationErrors.push("Le prix Express doit être un nombre positif.");
+                      } else {
+                        hasValidLivraison = true;
+                      }
+                    }
+
+                    if (!hasValidLivraison) {
+                      alert("Veuillez configurer au moins un mode de livraison avec des villes sélectionnées.");
+                      return;
+                    }
+
+                    if (validationErrors.length > 0) {
+                      alert(validationErrors.join("\n"));
+                      return;
+                    }
                   }
 
                   // Préparer les données d'insertion en gérant les valeurs numériques
@@ -1282,17 +1559,78 @@ export default function PrestationsPrestataire() {
                     prix_fixe: Boolean(form.prix_fixe),
                     acompte_percent: form.acompte_percent ? parseInt(form.acompte_percent) : null,
                     equipement: form.equipements || null,
+                    conditions_annulation: form.type === 'service' ? (form.conditions_annulation || null) : null,
                     prestataire: userId,
                     actif: true
                   };
                   
                   console.log('Données à insérer:', insertData); // Debug
                   
-                  const { error: insertError } = await supabase
+                  const { data: insertedAnnonce, error: insertError } = await supabase
                     .from('annonces')
-                    .insert([insertData]);
+                    .insert([insertData])
+                    .select('id')
+                    .single();
 
-                  if (!insertError) {
+                  if (!insertError && insertedAnnonce) {
+                    // Si c'est un produit, sauvegarder les informations de livraison
+                    if (form.type === 'produit') {
+                      const livraisonsData = [];
+                      
+                      // Traiter le mode standard
+                      if (livraisonsByMode.standard.villes.length > 0 && livraisonsByMode.standard.prix && livraisonsByMode.standard.delai) {
+                        for (let ville of livraisonsByMode.standard.villes) {
+                          const { data: villeData, error: villeError } = await supabase
+                            .from('villes')
+                            .select('id')
+                            .eq('ville', ville)
+                            .single();
+                          
+                          if (!villeError && villeData) {
+                            livraisonsData.push({
+                              annonce_id: insertedAnnonce.id,
+                              ville_id: villeData.id,
+                              mode: 'standard',
+                              prix: parseFloat(livraisonsByMode.standard.prix),
+                              delai: livraisonsByMode.standard.delai
+                            });
+                          }
+                        }
+                      }
+
+                      // Traiter le mode express
+                      if (livraisonsByMode.express.villes.length > 0 && livraisonsByMode.express.prix && livraisonsByMode.express.delai) {
+                        for (let ville of livraisonsByMode.express.villes) {
+                          const { data: villeData, error: villeError } = await supabase
+                            .from('villes')
+                            .select('id')
+                            .eq('ville', ville)
+                            .single();
+                          
+                          if (!villeError && villeData) {
+                            livraisonsData.push({
+                              annonce_id: insertedAnnonce.id,
+                              ville_id: villeData.id,
+                              mode: 'express',
+                              prix: parseFloat(livraisonsByMode.express.prix),
+                              delai: livraisonsByMode.express.delai
+                            });
+                          }
+                        }
+                      }
+                      
+                      if (livraisonsData.length > 0) {
+                        const { error: livError } = await supabase
+                          .from('livraisons_annonces')
+                          .insert(livraisonsData);
+                        
+                        if (livError) {
+                          console.error('Erreur lors de l\'ajout des livraisons:', livError);
+                          alert('Annonce créée mais erreur lors de l\'ajout des livraisons: ' + livError.message);
+                        }
+                      }
+                    }
+                    
                     setForm({
                       titre: '',
                       type: '',
@@ -1306,13 +1644,18 @@ export default function PrestationsPrestataire() {
                       photos: [],
                       modeles: [],
                       conditions: '',
-                      categories: []
+                      categories: [],
+                      conditions_annulation: ''
+                    });
+                    setLivraisonsByMode({
+                      standard: { villes: [], prix: '', delai: '' },
+                      express: { villes: [], prix: '', delai: '' }
                     });
                     onClose();
                     // Rafraîchir la liste des prestations
                     const { data, error } = await supabase
                       .from('annonces')
-                      .select('id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, acompte_percent, equipement, prestation, ville, actif, prestataire')
+                      .select('id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, acompte_percent, equipement, prestation, ville, actif, prestataire, conditions_annulation')
                       .eq('prestataire', userId)
                       .order('created_at', { ascending: false });
                     if (!error) setPrestations(data || []);

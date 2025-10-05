@@ -17,6 +17,7 @@ export default function CommandesPrestataire() {
   // États pour la gestion de l'expédition
   const [trackingNumber, setTrackingNumber] = useState(''); // Numéro de suivi saisi par le prestataire
   const [deliveryDate, setDeliveryDate] = useState(''); // Date de livraison estimée
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false); // État de chargement pour éviter les clics multiples
 
   // Récupération des annonces du prestataire au chargement de la page
   // Utilisé pour le filtre par annonce dans l'interface
@@ -110,6 +111,10 @@ export default function CommandesPrestataire() {
   const confirmCommande = async (id) => {
     const commande = commandes.find(c => c.id === id)
     if (!commande) return
+    
+    if (isUpdatingStatus) return; // Empêcher les clics multiples
+    
+    setIsUpdatingStatus(true);
 
     // 1. Mise à jour du statut dans la table commandes
     const { error: commandeError } = await supabase
@@ -155,7 +160,8 @@ export default function CommandesPrestataire() {
           user_id: clientId,
           type: 'commande',
           contenu: `Votre commande a été confirmée par le prestataire. Elle sera traitée dans les plus brefs délais.`,
-          lu: false
+          lu: false,
+          commande_id: commande.id
         }
       ])
 
@@ -169,6 +175,8 @@ export default function CommandesPrestataire() {
         setSelectedCommande({ ...selectedCommande, status: 'confirmed' })
       }
     }
+    
+    setIsUpdatingStatus(false);
   }
 
   // Fonction principale pour mettre à jour le statut d'une commande
@@ -176,32 +184,87 @@ export default function CommandesPrestataire() {
   const updateCommandeStatus = async (id, status, trackingData = null) => {
     const commande = commandes.find(c => c.id === id)
     if (!commande) return
-
-    // 1. Mise à jour du statut dans la table commandes
-    const updateData = { status }
-    if (status === 'delivered') {
-      updateData.date_livraison = new Date().toISOString()
-    }
     
-    const { error } = await supabase
-      .from('commandes')
-      .update(updateData)
-      .eq('id', id)
-
-    // 2. Préparation de la notification pour le client
-    const clientId = commande.particulier_id
-    let contenu = ''
+    if (isUpdatingStatus) return; // Empêcher les clics multiples
     
-    // Construction du message selon l'action
-    if (status === 'shipped') {
-      contenu = trackingData?.tracking_number ? 
-        `Votre commande a été expédiée. Numéro de suivi: ${trackingData.tracking_number}` : 
-        'Votre commande a été expédiée.'
-    } else if (status === 'cancelled') {
-      contenu = 'Votre commande a été annulée par le prestataire. Vous serez remboursé dans les plus brefs délais.'
-    } else if (status === 'delivered') {
-      contenu = 'Votre commande a été livrée avec succès !'
-    }
+    setIsUpdatingStatus(true);
+    try {
+      // Si c'est une annulation, gérer le remboursement d'abord
+      if (status === 'cancelled') {
+        console.log('🚀 Annulation par prestataire - Début du processus');
+        console.log('📋 Commande à annuler:', commande);
+        
+        // Vérifier si la commande était payée et nécessite un remboursement
+        if (['paid', 'confirmed'].includes(commande.status) && commande.montant > 0) {
+          console.log('💳 Traitement du remboursement pour commande payée...');
+          
+          try {
+            const refundResponse = await fetch('/api/stripe/refund', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                reservationId: id, // L'API accepte reservationId même pour les commandes
+                cancelReason: 'Annulation par le prestataire',
+                userId: commande.particulier_id
+              })
+            });
+
+            console.log('🔄 Réponse API refund status:', refundResponse.status);
+            const refundResult = await refundResponse.json();
+            console.log('📨 Réponse API refund complète:', refundResult);
+            
+            if (!refundResponse.ok) {
+              console.error('❌ Erreur lors du remboursement:', refundResult);
+              alert(`⚠️ Commande annulée mais problème de remboursement: ${refundResult.error}\n\nVeuillez contacter le support.`);
+            } else if (refundResult.success) {
+              console.log('✅ Remboursement traité avec succès:', refundResult);
+            }
+          } catch (refundError) {
+            console.error('💥 Erreur générale remboursement:', refundError);
+            alert(`⚠️ Commande sera annulée mais erreur de remboursement: ${refundError.message}\n\nVeuillez contacter le support.`);
+          }
+        }
+      }
+
+      // 1. Mise à jour du statut dans la table commandes
+      const updateData = { 
+        status,
+        ...(status === 'cancelled' && {
+          date_annulation: new Date().toISOString(),
+          motif_annulation: 'Annulation par le prestataire'
+        }),
+        ...(status === 'delivered' && {
+          date_livraison: new Date().toISOString()
+        })
+      }
+      
+      const { error } = await supabase
+        .from('commandes')
+        .update(updateData)
+        .eq('id', id)
+
+      if (error) {
+        console.error('❌ Erreur mise à jour statut:', error);
+        alert(`Erreur: ${error.message}`);
+        return;
+      }
+
+      // 2. Préparation de la notification pour le client
+      const clientId = commande.particulier_id
+      let contenu = ''
+      
+      // Construction du message selon l'action
+      if (status === 'shipped') {
+        contenu = trackingData?.tracking_number ? 
+          `Votre commande a été expédiée. Numéro de suivi: ${trackingData.tracking_number}` : 
+          'Votre commande a été expédiée.'
+      } else if (status === 'cancelled') {
+        contenu = 'Votre commande a été annulée par le prestataire. Vous serez remboursé dans les plus brefs délais';
+      } else if (status === 'delivered') {
+        contenu = 'Votre commande a été livrée avec succès !'
+      }
 
     // 3. Gestion de la table livraisons (pour le tracking et le suivi)
     if (trackingData || status === 'cancelled' || status === 'delivered') {
@@ -253,26 +316,31 @@ export default function CommandesPrestataire() {
         .from('notifications')
         .insert([
           {
-            destinataire: clientId,
-            message: contenu,
+            user_id: clientId,
+            contenu: contenu,
             type: 'commande',
-            lu: false
+            lu: false,
+            commande_id: id
           }
         ])
     }
 
-    // 5. Les notifications de notation sont maintenant gérées automatiquement par le trigger Supabase ✨
-    if (status === 'delivered') {
-      console.log(`✅ Commande ${id} marquée comme livrée - Notification automatique via trigger Supabase`)
-    }
+      // 5. Les notifications de notation sont maintenant gérées automatiquement par le trigger Supabase ✨
+      if (status === 'delivered') {
+        console.log(`✅ Commande ${id} marquée comme livrée - Notification automatique via trigger Supabase`)
+      }
 
-    // 5. Gestion du résultat et mise à jour de l'interface
-    if (error) {
-      alert(`Erreur: ${error.message}`)
-    } else {
+      // 6. Gestion du résultat et mise à jour de l'interface
       const statusText = status === 'shipped' ? 'expédiée' : 
                         status === 'cancelled' ? 'annulée' : status
-      alert(`Commande ${statusText} ✅`)
+      
+      const successMessage = status === 'cancelled' && 
+                             ['paid', 'confirmed'].includes(commande.status) && 
+                             commande.montant > 0
+        ? `Commande ${statusText} ✅ Le client sera automatiquement remboursé.`
+        : `Commande ${statusText} ✅`;
+        
+      alert(successMessage);
       
       // Mise à jour de l'état local des commandes
       setCommandes(commandes.map(c => c.id === id ? { ...c, status } : c))
@@ -282,6 +350,12 @@ export default function CommandesPrestataire() {
       // Reset des champs de saisie
       setTrackingNumber('')
       setDeliveryDate('')
+      
+    } catch (error) {
+      console.error('💥 Erreur générale dans updateCommandeStatus:', error);
+      alert('Erreur lors de la mise à jour: ' + error.message);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   }
 
@@ -398,7 +472,7 @@ export default function CommandesPrestataire() {
         <div style={{ flex: 1 }}>
           {/* Nom du client */}
           <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>
-            {commande.client_profile?.nom || 'Client inconnu'}
+            {commande.client_profile?.nom || 'Client inconnu'} {commande.num_commande && <span style={{color: '#666', fontSize: 12, fontWeight: 400}}>#{commande.num_commande}</span>}
           </div>
           {/* Email du client */}
           <div style={{ color: '#888', fontSize: 13, marginBottom: 4 }}>
@@ -576,7 +650,7 @@ export default function CommandesPrestataire() {
                   marginBottom: 24,
                   color: '#333'
                 }}>
-                  Détails de la commande
+                  Détails de la commande {selectedCommande.num_commande && <span style={{color: '#666', fontSize: 18}}>#{selectedCommande.num_commande}</span>}
                 </h2>
 
                 {/* Informations client */}
@@ -948,20 +1022,22 @@ export default function CommandesPrestataire() {
                     </div>
                     <button
                       onClick={() => confirmCommande(selectedCommande.id)}
+                      disabled={isUpdatingStatus}
                       style={{
                         width: '100%',
-                        background: '#4caf50',
+                        background: isUpdatingStatus ? '#ccc' : '#4caf50',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 8,
                         padding: '12px 16px',
                         fontWeight: 600,
                         fontSize: 15,
-                        cursor: 'pointer',
-                        marginBottom: 16
+                        cursor: isUpdatingStatus ? 'not-allowed' : 'pointer',
+                        marginBottom: 16,
+                        opacity: isUpdatingStatus ? 0.6 : 1
                       }}
                     >
-                      Confirmer la commande
+                      {isUpdatingStatus ? 'Confirmation...' : 'Confirmer la commande'}
                     </button>
                   </div>
                 )}
@@ -1010,21 +1086,22 @@ export default function CommandesPrestataire() {
                     
                     <button
                       onClick={() => updateCommandeStatus(selectedCommande.id, 'shipped', { tracking_number: trackingNumber, delivery_date: deliveryDate })}
-                      disabled={!trackingNumber}
+                      disabled={!trackingNumber || isUpdatingStatus}
                       style={{
                         width: '100%',
-                        background: trackingNumber ? '#0277bd' : '#ccc',
+                        background: (trackingNumber && !isUpdatingStatus) ? '#0277bd' : '#ccc',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 8,
                         padding: '12px 16px',
                         fontWeight: 600,
                         fontSize: 15,
-                        cursor: trackingNumber ? 'pointer' : 'not-allowed',
-                        marginBottom: 12
+                        cursor: (trackingNumber && !isUpdatingStatus) ? 'pointer' : 'not-allowed',
+                        marginBottom: 12,
+                        opacity: isUpdatingStatus ? 0.6 : 1
                       }}
                     >
-                      Marquer comme expédié
+                      {isUpdatingStatus ? 'Traitement...' : 'Marquer comme expédié'}
                     </button>
                   </div>
                 )}
@@ -1034,20 +1111,22 @@ export default function CommandesPrestataire() {
                   <div style={{ marginBottom: 24 }}>
                     <button
                       onClick={() => updateCommandeStatus(selectedCommande.id, 'delivered')}
+                      disabled={isUpdatingStatus}
                       style={{
                         width: '100%',
-                        background: '#4caf50',
+                        background: isUpdatingStatus ? '#ccc' : '#4caf50',
                         color: '#fff',
                         border: 'none',
                         borderRadius: 8,
                         padding: '12px 16px',
                         fontWeight: 600,
                         fontSize: 15,
-                        cursor: 'pointer',
-                        marginBottom: 12
+                        cursor: isUpdatingStatus ? 'not-allowed' : 'pointer',
+                        marginBottom: 12,
+                        opacity: isUpdatingStatus ? 0.6 : 1
                       }}
                     >
-                      ✅ Marquer comme livré
+                      {isUpdatingStatus ? '⏳ Traitement...' : '✅ Marquer comme livré'}
                     </button>
                     <div style={{
                       fontSize: 12,
@@ -1064,19 +1143,21 @@ export default function CommandesPrestataire() {
                 {selectedCommande.status !== 'cancelled' && selectedCommande.status !== 'delivered' && (
                   <button
                     onClick={() => updateCommandeStatus(selectedCommande.id, 'cancelled')}
+                    disabled={isUpdatingStatus}
                     style={{
                       width: '100%',
-                      background: '#fbe7ee',
-                      color: '#e67c73',
+                      background: isUpdatingStatus ? '#f5f5f5' : '#fbe7ee',
+                      color: isUpdatingStatus ? '#999' : '#e67c73',
                       border: 'none',
                       borderRadius: 8,
                       padding: '12px 16px',
                       fontWeight: 600,
                       fontSize: 15,
-                      cursor: 'pointer'
+                      cursor: isUpdatingStatus ? 'not-allowed' : 'pointer',
+                      opacity: isUpdatingStatus ? 0.6 : 1
                     }}
                   >
-                    Annuler la commande
+                    {isUpdatingStatus ? '🔄 Annulation en cours...' : '❌ Annuler la commande'}
                   </button>
                 )}
               </>

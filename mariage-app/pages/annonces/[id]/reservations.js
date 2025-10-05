@@ -391,6 +391,11 @@ export default function ReservationPage() {
         ? reservationAcompte
         : 0;
 
+    // Déterminer le statut selon l'acompte
+    const status = montant_acompte === 0 ? 'paid' : 'pending';
+
+    // La vérification de disponibilité se fera avec le système existant de blocked_slots
+
     // Mise à jour de la réservation existante si reservationId présent
     let insertError = null;
     if (reservationId) {
@@ -412,11 +417,33 @@ export default function ReservationPage() {
           particulier_id: particulierId,
           montant,
           montant_acompte,
+          status: status,
         })
         .eq("id", reservationId);
       insertError = updateError;
     } else {
-      // Insertion dans reservations si pas d'id et récupérer l'ID
+      // 1. Générer le numéro de réservation
+      let numReservation = null;
+      try {
+        const numberResponse = await fetch('/api/reservations/generate-number', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (numberResponse.ok) {
+          const numberResult = await numberResponse.json();
+          numReservation = numberResult.num_reservation;
+          console.log('✅ Numéro de réservation généré:', numReservation);
+        } else {
+          console.error('❌ Erreur génération numéro de réservation');
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'appel API numéro réservation:', error);
+      }
+
+      // 2. Insertion dans reservations si pas d'id et récupérer l'ID
       const { data: reservationData, error: newInsertError } = await supabase
         .from("reservations")
         .insert({
@@ -435,10 +462,34 @@ export default function ReservationPage() {
           particulier_id: particulierId,
           montant,
           montant_acompte,
+          status: status,
+          num_reservation: numReservation, // <-- Numéro de réservation généré automatiquement
         })
         .select();
       
       insertError = newInsertError;
+      
+      // 3. Si création réussie, utiliser le système existant pour bloquer les créneaux
+      if (!newInsertError && reservationData && reservationData[0]?.id) {
+        // Le système existant de blocked_slots se charge automatiquement via les triggers/fonctions existantes
+        console.log('✅ Réservation créée avec succès');
+        
+        // Envoyer notification au prestataire
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert([{
+            user_id: prestataireId,
+            type: 'reservation',
+            contenu: `Nouvelle reservation reçue ${numReservation ? `${numReservation}` : ''} du client ${client.nom} pour un montant de ${montant} MAD. La reservation est en attente de votre confirmation.`,
+            lu: false,
+            reservation_id: reservationData[0].id,
+            annonce_id: annonceId
+          }]);
+        
+        if (notificationError) {
+          console.error('Erreur lors de l\'envoi de la notification:', notificationError);
+        }
+      }
       
       // Si création réussie et qu'il y a un acompte à payer, rediriger vers Stripe
       if (!newInsertError && reservationData && reservationData[0]?.id && montant_acompte > 0) {

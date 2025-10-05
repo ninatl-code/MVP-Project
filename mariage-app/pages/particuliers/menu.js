@@ -39,6 +39,11 @@ function ParticularHomeMenu() {
   const [ratingValue, setRatingValue] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedCancelReservation, setSelectedCancelReservation] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancellationConditions, setCancellationConditions] = useState(null);
   const router = useRouter();
 
   // Fonction pour charger les commandes
@@ -123,7 +128,7 @@ function ParticularHomeMenu() {
 
       let query = supabase
         .from('reservations')
-        .select('*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre)')
+        .select('*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre, conditions_annulation)')
 
       query = query.eq('particulier_id', user.id)
 
@@ -143,6 +148,135 @@ function ParticularHomeMenu() {
     }
     fetchReservations()
   }, [statusFilter, prestationFilter, dateFilter])
+
+  // États pour l'annulation de commande
+  const [showCancelCommandeModal, setShowCancelCommandeModal] = useState(false);
+  const [selectedCancelCommande, setSelectedCancelCommande] = useState(null);
+  const [commandeCancelReason, setCommandeCancelReason] = useState('');
+  const [isCancellingCommande, setIsCancellingCommande] = useState(false);
+
+  // Fonction pour ouvrir la modal d'annulation de commande
+  const handleCancelCommande = async (commande) => {
+    if (!commande) return;
+
+    // Vérifier que la commande peut être annulée
+    if (!['pending', 'paid'].includes(commande.status)) {
+      alert('Cette commande ne peut plus être annulée car elle a déjà été confirmée ou expédiée.');
+      return;
+    }
+
+    // Ouvrir la modal d'annulation
+    setSelectedCancelCommande(commande);
+    setCommandeCancelReason('');
+    setShowCancelCommandeModal(true);
+  };
+
+  // Fonction pour confirmer l'annulation de commande
+  const confirmCancelCommande = async () => {
+    const commande = selectedCancelCommande;
+    if (!commande) return;
+
+    setIsCancellingCommande(true);
+    setShowCancelCommandeModal(false);
+
+    try {
+      console.log('🚀 DÉBUT ANNULATION COMMANDE');
+      console.log('📋 Commande à annuler:', commande);
+      console.log('👤 User ID:', userId);
+      
+      // 1. Traiter le remboursement via l'API existante si la commande était payée
+      if (commande.status === 'paid' && commande.montant > 0) {
+        console.log('💳 Traitement du remboursement pour commande payée...');
+        console.log('📦 Données envoyées à l\'API:', {
+          reservationId: commande.id,
+          cancelReason: commandeCancelReason || 'Annulation de commande par le client',
+          userId: userId
+        });
+        
+        const refundResponse = await fetch('/api/stripe/refund', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            reservationId: commande.id, // L'API accepte reservationId même pour les commandes
+            cancelReason: commandeCancelReason || 'Annulation de commande par le client',
+            userId: userId
+          })
+        });
+
+        console.log('🔄 Réponse API status:', refundResponse.status);
+
+        const refundResult = await refundResponse.json();
+        console.log('📨 Réponse API complète:', refundResult);
+        
+        if (!refundResponse.ok) {
+          console.error('❌ Erreur lors du remboursement:', refundResult);
+          // Continuer même si le remboursement échoue pour permettre l'annulation
+          alert(`⚠️ Commande annulée mais problème de remboursement: ${refundResult.error}\n\nVeuillez contacter le support.`);
+        } else if (refundResult.success) {
+          console.log('✅ Remboursement traité avec succès:', refundResult);
+          alert(`✅ Remboursement de ${refundResult.montant_remboursement}€ effectué (${refundResult.pourcentage_remboursement}%)`);
+        }
+      }
+
+      // 2. Mettre à jour le statut de la commande (si pas déjà fait par l'API)
+      console.log('🔄 Mise à jour directe du statut de la commande...');
+      const { error: updateError } = await supabase
+        .from('commandes')
+        .update({ 
+          status: 'cancelled',
+          date_annulation: new Date().toISOString(),
+          motif_annulation: commandeCancelReason || 'Annulation par le client'
+        })
+        .eq('id', commande.id)
+        .eq('particulier_id', userId); // Sécurité
+
+      console.log('📊 Résultat mise à jour commande:', { error: updateError });
+
+      if (updateError) {
+        console.error('❌ Erreur lors de l\'annulation:', updateError);
+        alert('Erreur lors de l\'annulation de la commande: ' + updateError.message);
+        setIsCancellingCommande(false);
+        return;
+      }
+
+      // 3. Envoyer une notification au prestataire
+      console.log('🔔 Envoi notification au prestataire...');
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert([{
+          user_id: commande.prestataire_id,
+          type: 'commande',
+          contenu: `Commande annulée par le client${commande.status === 'paid' ? ' - Remboursement en cours' : ''}`
+        }]);
+
+      console.log('📊 Résultat notification:', { error: notifError });
+
+      if (notifError) {
+        console.error('❌ Erreur notification:', notifError);
+      }
+
+      // 4. Rafraîchir les commandes
+      console.log('🔄 Rafraîchissement des commandes...');
+      await fetchCommandes();
+      
+      // Message de succès adapté selon le statut de paiement
+      const successMessage = commande.status === 'paid' 
+        ? '✅ Commande annulée avec succès ! Le remboursement sera traité sous 2-3 jours ouvrés.'
+        : '✅ Commande annulée avec succès !';
+        
+      console.log('✅ FIN PROCESSUS ANNULATION - Succès complet !');
+      alert(successMessage);
+      
+    } catch (error) {
+      console.error('💥 Erreur générale dans handleCancelCommande:', error);
+      alert('Erreur lors de l\'annulation: ' + error.message);
+    } finally {
+      console.log('🔚 Fin du processus d\'annulation');
+      setIsCancellingCommande(false);
+    }
+  };
 
   // Récupérer les quantités pour chaque commande
   useEffect(() => {
@@ -304,6 +438,23 @@ function ParticularHomeMenu() {
         console.error('Erreur lors de la création de l\'avis:', avisError);
         alert('Erreur lors de l\'envoi de votre avis: ' + avisError.message);
         return;
+      }
+
+      // Envoyer notification au prestataire
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert([{
+          user_id: annonceData.prestataire,
+          type: 'avis',
+          contenu: 'Votre annonce a reçu un avis. Vous trouverez plus de détails dans la page dédiée aux annonces',
+          lu: false,
+          annonce_id: annonceData.id,
+          commande_id: showRatingForm.type === 'commande' ? entityData.id : null,
+          reservation_id: showRatingForm.type === 'reservation' ? entityData.id : null
+        }]);
+
+      if (notificationError) {
+        console.error('Erreur lors de l\'envoi de la notification d\'avis:', notificationError);
       }
 
       // Rafraîchir les avis existants
@@ -506,6 +657,239 @@ function ParticularHomeMenu() {
       alert(`Erreur inattendue: ${error.message}`)
     }
   }
+
+  // Fonction pour vérifier si une réservation peut être annulée selon les conditions d'annulation
+  const checkCancellationConditions = async (reservation) => {
+    if (!reservation || !reservation.annonce_id || !reservation.date) {
+      return { canCancel: false, reason: 'Données de réservation incomplètes' };
+    }
+
+    try {
+      // Récupérer les conditions d'annulation de l'annonce
+      const { data: annonceData, error } = await supabase
+        .from('annonces')
+        .select('conditions_annulation')
+        .eq('id', reservation.annonce_id)
+        .single();
+
+      if (error || !annonceData) {
+        return { canCancel: false, reason: 'Impossible de récupérer les conditions d\'annulation' };
+      }
+
+      const conditionAnnulation = annonceData.conditions_annulation;
+      const reservationDate = new Date(reservation.date);
+      const currentDate = new Date();
+      const timeDiff = reservationDate.getTime() - currentDate.getTime();
+      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      const hoursDiff = Math.ceil(timeDiff / (1000 * 3600));
+
+      switch (conditionAnnulation) {
+        case 'Flexible':
+          if (hoursDiff >= 24) {
+            return { 
+              canCancel: true, 
+              refundPercentage: 100, 
+              message: 'Annulation gratuite (plus de 24h avant)' 
+            };
+          } else {
+            return { 
+              canCancel: false, 
+              reason: 'Annulation impossible (moins de 24h avant la prestation)' 
+            };
+          }
+
+        case 'Modéré':
+          if (daysDiff >= 7) {
+            return { 
+              canCancel: true, 
+              refundPercentage: 100, 
+              message: 'Annulation gratuite (plus de 7 jours avant)' 
+            };
+          } else if (daysDiff >= 1) {
+            return { 
+              canCancel: true, 
+              refundPercentage: 50, 
+              message: 'Annulation possible avec remboursement de 50%' 
+            };
+          } else {
+            return { 
+              canCancel: false, 
+              reason: 'Annulation impossible (moins de 24h avant la prestation)' 
+            };
+          }
+
+        case 'Strict':
+          return { 
+            canCancel: true, 
+            refundPercentage: 0, 
+            message: 'Annulation possible uniquement pour force majeure (aucun remboursement)',
+            forceMajeure: true
+          };
+
+        default:
+          // Si pas de condition définie, on applique une politique flexible par défaut
+          if (hoursDiff >= 24) {
+            return { 
+              canCancel: true, 
+              refundPercentage: 100, 
+              message: 'Annulation gratuite (plus de 24h avant)' 
+            };
+          } else {
+            return { 
+              canCancel: false, 
+              reason: 'Annulation impossible (moins de 24h avant la prestation)' 
+            };
+          }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification des conditions:', error);
+      return { canCancel: false, reason: 'Erreur lors de la vérification des conditions' };
+    }
+  };
+
+  // Fonction pour annuler une réservation
+  const handleCancelReservation = async () => {
+    if (!selectedCancelReservation) return;
+
+    setIsCancelling(true);
+    try {
+      const cancellationCheck = await checkCancellationConditions(selectedCancelReservation);
+      
+      if (!cancellationCheck.canCancel) {
+        alert(cancellationCheck.reason);
+        setIsCancelling(false);
+        return;
+      }
+
+      // Validation pour force majeure si condition stricte
+      if (cancellationCheck.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)) {
+        alert('Veuillez fournir une justification détaillée pour l\'annulation (minimum 20 caractères)');
+        setIsCancelling(false);
+        return;
+      }
+
+      // Vérification des données avant l'appel API
+      if (!userId) {
+        alert('Erreur: Utilisateur non identifié');
+        setIsCancelling(false);
+        return;
+      }
+
+      if (!selectedCancelReservation?.id) {
+        alert('Erreur: Réservation non sélectionnée');
+        setIsCancelling(false);
+        return;
+      }
+
+      // Appeler l'API de remboursement Stripe
+      console.log('🔄 Traitement du remboursement via Stripe...');
+      console.log('📋 Données envoyées:', {
+        reservationId: selectedCancelReservation.id,
+        reservationIdType: typeof selectedCancelReservation.id,
+        cancelReason: cancelReason || 'Annulation selon conditions',
+        userId: userId,
+        userIdType: typeof userId,
+        reservationData: selectedCancelReservation
+      });
+      
+      const refundResponse = await fetch('/api/stripe/refund', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reservationId: selectedCancelReservation.id,
+          cancelReason: cancelReason || 'Annulation selon conditions',
+          userId: userId
+        })
+      });
+
+      const refundResult = await refundResponse.json();
+      
+      console.log('📋 Réponse complète de l\'API:', {
+        status: refundResponse.status,
+        ok: refundResponse.ok,
+        result: refundResult
+      });
+      
+      if (!refundResponse.ok) {
+        console.error('❌ Erreur API détaillée:', {
+          status: refundResponse.status,
+          error: refundResult.error,
+          details: refundResult.details,
+          debug: refundResult.debug,
+          fullResponse: refundResult
+        });
+        
+        // Afficher un message plus informatif
+        const errorMsg = refundResult.debug ? 
+          `Debug: ${JSON.stringify(refundResult.debug, null, 2)}` : 
+          (refundResult.error || 'Erreur lors du remboursement');
+          
+        alert('Erreur détaillée:\n' + errorMsg);
+        throw new Error(refundResult.error || 'Erreur lors du remboursement');
+      }
+
+      // Succès - afficher le message de confirmation
+      console.log('✅ Annulation réussie:', refundResult);
+      
+      if (refundResult.success) {
+        const successMsg = refundResult.message || 'Réservation annulée avec succès';
+        alert(successMsg);
+        
+        // Fermer le modal d'annulation
+        setShowCancelModal(false);
+        setSelectedCancelReservation(null);
+        setCancelReason('');
+        setCancellationConditions(null);
+        
+        // Rafraîchir la liste des réservations
+        await fetchReservations();
+      }
+
+      // Envoyer une notification au prestataire
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert([{
+          user_id: selectedCancelReservation.prestataire_id,
+          type: 'reservation',
+          contenu: `Réservation annulée par le client${refundResult.refundPercentage < 100 ? ` (remboursement ${refundResult.refundPercentage}%)` : ''}`
+        }]);
+
+      if (notifError) {
+        console.error('Erreur notification:', notifError);
+      }
+
+      // Rafraîchir les données
+      const { data: updatedReservations } = await supabase
+        .from('reservations')
+        .select('*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre)')
+        .eq('particulier_id', userId);
+      
+      setReservations(updatedReservations || []);
+      
+      setShowCancelModal(false);
+      setSelectedCancelReservation(null);
+      setCancelReason('');
+      
+      let message = `Réservation annulée avec succès !`;
+      if (refundResult.refundAmount > 0) {
+        message += `\n💰 Remboursement: ${refundResult.refundAmount} MAD (${refundResult.refundPercentage}%)`;
+        message += `\n⏰ Le remboursement sera traité sous 5-10 jours ouvrés.`;
+      } else if (refundResult.refundPercentage === 0) {
+        message += `\n📋 Votre demande d'annulation pour force majeure a été enregistrée.`;
+        message += `\nElle sera examinée par notre équipe sous 24-48h.`;
+      }
+      
+      alert(message);
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'annulation:', error);
+      alert('Erreur lors du traitement: ' + error.message);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   function MiniCalendar({ onSelect }) {
     const [calendarDate, setCalendarDate] = useState(() => {
@@ -1050,7 +1434,7 @@ function ParticularHomeMenu() {
               onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
               aria-label="Fermer"
             >×</button>
-            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, margin: 0 }}>🎉 Réservation</h2>
+            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, margin: 0 }}>🎉 Réservation {reservation.num_reservation && <span style={{fontSize: 18, opacity: 0.9}}>#{reservation.num_reservation}</span>}</h2>
             <p style={{ margin: 0, opacity: 0.9, fontSize: 16 }}>{reservation.annonces?.titre || 'Service'}</p>
           </div>
 
@@ -1337,7 +1721,7 @@ function ParticularHomeMenu() {
             color: 'white'
           }}>
             <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-              🛒 Détail de la commande
+              🛒 Détail de la commande {commande.num_commande && <span style={{fontSize: 18, opacity: 0.9}}>#{commande.num_commande}</span>}
             </h2>
             <p style={{ margin: 0, opacity: 0.9, fontSize: 16 }}>
               Commande du {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : 'N/A'}
@@ -1549,7 +1933,7 @@ function ParticularHomeMenu() {
         <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:18}}>
           <div style={{flex:1}}>
             <div style={{fontWeight:700, fontSize:18}}>
-              {r.annonces?.titre || 'Annonce'}
+              {r.annonces?.titre || 'Annonce'} {r.num_commande && <span style={{color: '#666', fontSize: 14, fontWeight: 400}}>#{r.num_commande}</span>}
             </div>
             <div style={{color:'#888', fontSize:15, marginTop:2}}>
               Date de la commande : {r.date_commande ? new Date(r.date_commande).toLocaleDateString('fr-FR') : ''}
@@ -1566,7 +1950,7 @@ function ParticularHomeMenu() {
         {/* Affichage du suivi de livraison pour les commandes payées */}
         <LivraisonTracker commande={r} livraison={livraison} />
         
-        <div style={{marginTop:16, textAlign:'right'}}>
+        <div style={{marginTop:16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
           <button
             style={{
               background:'#eafaf1',
@@ -1582,6 +1966,9 @@ function ParticularHomeMenu() {
           >
             Afficher les détails
           </button>
+          
+          {/* Bouton d'annulation pour les commandes non expédiées */}
+          <CancelCommandeButton commande={r} />
         </div>
       </div>
     )
@@ -1617,7 +2004,7 @@ function ParticularHomeMenu() {
           </div>
           <div style={{color:'#888', fontSize:15, marginTop:2}}>{r.profiles?.email}</div>
           <div style={{color:'#6bbf7b', fontSize:15, marginTop:6, fontWeight:600}}>
-            {r.annonces?.titre ? `Annonce réservée : ${r.annonces.titre}` : ''}
+            {r.annonces?.titre ? `Annonce réservée : ${r.annonces.titre}` : ''} {r.num_reservation && <span style={{color: '#666', fontSize: 14, fontWeight: 400}}>#{r.num_reservation}</span>}
           </div>
           <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
             {r.prestation ? `Prestation : ${prestations.find(p => p.id === r.prestation)?.nom || ''}` : ''}
@@ -1654,23 +2041,12 @@ function ParticularHomeMenu() {
             Afficher les détails
           </button>
         </div>
-        {r.status === 'pending' && (
-          <div style={{display:'flex', flexDirection:'column', gap:8}}>
-            <button
-              onClick={() => {
-                setPendingCancelId(r.id)
-                setShowConfirm(true)
-              }}
-              style={{
-                background:'#fbe7ee', color:'#e67c73', border:'none', borderRadius:8,
-                padding:'8px 18px', fontWeight:600, fontSize:15, cursor:'pointer'
-              }}
-            >Annuler</button>
-          </div>
+        {(r.status === 'pending' || r.status === 'paid') && (
+          <CancelReservationButton reservation={r} />
         )}
         
-        {/* Zone d'affichage des avis existants pour réservations terminées */}
-        {r.status === 'finished' && hasAvis('reservation', r.id) && (
+        {/* Zone d'affichage des avis existants pour commandes livrées */}
+        {r.status === 'delivered' && hasAvis('reservation', r.id) && (
           <div style={{ 
             marginTop: 12, 
             padding: '12px', 
@@ -1708,7 +2084,7 @@ function ParticularHomeMenu() {
         )}
 
         {/* Zone de notation ergonomique pour réservations terminées */}
-        {r.status === 'finished' && !hasAvis('reservation', r.id) && (
+        {r.status === 'delivered' && !hasAvis('reservation', r.id) && (
           <div style={{ 
             marginTop: 12, 
             padding: '12px', 
@@ -1756,6 +2132,99 @@ function ParticularHomeMenu() {
         )}
       </div>
     )
+  }
+
+  // Composant bouton d'annulation intelligent
+  function CancelReservationButton({ reservation }) {
+    const [cancellationInfo, setCancellationInfo] = useState(null);
+    const [isChecking, setIsChecking] = useState(false);
+
+    const handleCancelClick = async () => {
+      setIsChecking(true);
+      try {
+        const conditions = await checkCancellationConditions(reservation);
+        setCancellationInfo(conditions);
+        setCancellationConditions(conditions);
+        
+        if (conditions.canCancel) {
+          setSelectedCancelReservation(reservation);
+          setShowCancelModal(true);
+        } else {
+          alert(conditions.reason);
+        }
+      } catch (error) {
+        alert('Erreur lors de la vérification des conditions d\'annulation');
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    return (
+      <div style={{display:'flex', flexDirection:'column', gap:8}}>
+        <button
+          onClick={handleCancelClick}
+          disabled={isChecking}
+          style={{
+            background: isChecking ? '#f5f5f5' : '#fbe7ee', 
+            color: isChecking ? '#999' : '#e67c73', 
+            border:'none', 
+            borderRadius:8,
+            padding:'8px 18px', 
+            fontWeight:600, 
+            fontSize:15, 
+            cursor: isChecking ? 'not-allowed' : 'pointer',
+            opacity: isChecking ? 0.6 : 1
+          }}
+        >
+          {isChecking ? 'Vérification...' : 'Annuler'}
+        </button>
+      </div>
+    );
+  }
+
+  // Composant bouton d'annulation pour commandes
+  function CancelCommandeButton({ commande }) {
+    // Vérifier si la commande peut être annulée
+    const canCancel = ['pending', 'paid'].includes(commande.status);
+    
+    if (!canCancel) return null;
+
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCancelCommande(commande);
+        }}
+        disabled={isCancelling}
+        style={{
+          background: isCancelling ? '#f5f5f5' : '#fef2f2',
+          color: isCancelling ? '#999' : '#dc2626',
+          border: '1px solid #fecaca',
+          borderRadius: 8,
+          padding: '8px 16px',
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: isCancelling ? 'not-allowed' : 'pointer',
+          transition: 'all 0.2s',
+          marginTop: 8,
+          opacity: isCancelling ? 0.6 : 1
+        }}
+        onMouseOver={(e) => {
+          if (!isCancelling) {
+            e.target.style.background = '#fee2e2';
+            e.target.style.borderColor = '#fca5a5';
+          }
+        }}
+        onMouseOut={(e) => {
+          if (!isCancelling) {
+            e.target.style.background = '#fef2f2';
+            e.target.style.borderColor = '#fecaca';
+          }
+        }}
+      >
+        {isCancelling ? 'Annulation en cours...' : '❌ Annuler la commande'}
+      </button>
+    );
   }
 
   const ConfirmCancelModal = ({ onConfirm, onCancel }) => (
@@ -2599,6 +3068,299 @@ function ParticularHomeMenu() {
                       }}
                     />
                   )}
+                  
+                  {/* Modal d'annulation simplifié */}
+                  {showCancelModal && selectedCancelReservation && (
+                    <div 
+                      style={{
+                        position: 'fixed',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 3000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px'
+                      }}
+                      onClick={() => {
+                        setShowCancelModal(false);
+                        setSelectedCancelReservation(null);
+                        setCancelReason('');
+                        setCancellationConditions(null);
+                      }}
+                    >
+                      <div 
+                        style={{
+                          background: '#fff',
+                          borderRadius: 20,
+                          maxWidth: 600,
+                          width: '100%',
+                          maxHeight: '90vh',
+                          overflowY: 'auto'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div style={{
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          padding: '32px',
+                          borderRadius: '20px 20px 0 0',
+                          color: 'white',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+                          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
+                            Annuler la réservation
+                          </h2>
+                        </div>
+
+                        <div style={{ padding: '32px' }}>
+                          {/* Informations sur la réservation */}
+                          <div style={{ marginBottom: 24, padding: 20, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                            <h2 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+                              📅 Détails de la réservation
+                            </h2>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontSize: 14 }}>
+                              <strong style={{ color: '#475569' }}>Service :</strong>
+                              <span style={{ color: '#64748b' }}>{selectedCancelReservation?.annonces?.titre || 'Service non spécifié'}</span>
+                              
+                              <strong style={{ color: '#475569' }}>Prestataire :</strong>
+                              <span style={{ color: '#64748b' }}>{selectedCancelReservation?.profiles?.nom || 'Prestataire non spécifié'}</span>
+                              
+                              <strong style={{ color: '#475569' }}>Date :</strong>
+                              <span style={{ color: '#64748b' }}>
+                                {selectedCancelReservation?.date ? new Date(selectedCancelReservation.date).toLocaleDateString('fr-FR', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                }) : 'Date non spécifiée'}
+                              </span>
+                              
+                              {selectedCancelReservation?.prix && (
+                                <>
+                                  <strong style={{ color: '#475569' }}>Montant payé :</strong>
+                                  <span style={{ color: '#64748b', fontWeight: 600 }}>{selectedCancelReservation.prix}€</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Affichage des conditions d'annulation */}
+                          {cancellationConditions && (
+                            <div style={{ marginBottom: 24, padding: 20, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                              <h2 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+                                📋 Conditions d'annulation
+                              </h2>
+                              
+                              <div style={{ marginBottom: 16 }}>
+                                <div style={{ 
+                                  display: 'inline-block',
+                                  padding: '8px 16px', 
+                                  borderRadius: 20, 
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  background: cancellationConditions.canCancel ? '#dcfce7' : '#fecaca',
+                                  color: cancellationConditions.canCancel ? '#15803d' : '#dc2626'
+                                }}>
+                                  {cancellationConditions.canCancel ? '✅ Annulation autorisée' : '❌ Annulation non autorisée'}
+                                </div>
+                              </div>
+
+                              <div style={{ marginBottom: 12 }}>
+                                <strong style={{ fontSize: 14, color: '#475569' }}>Politique :</strong>
+                                <span style={{ marginLeft: 8, fontSize: 14, color: '#64748b' }}>
+                                  {selectedCancelReservation?.annonces?.conditions_annulation || 'Standard'}
+                                </span>
+                              </div>
+
+                              {selectedCancelReservation?.date && (
+                                <div style={{ marginBottom: 12 }}>
+                                  <strong style={{ fontSize: 14, color: '#475569' }}>Temps restant :</strong>
+                                  <span style={{ marginLeft: 8, fontSize: 14, color: '#64748b' }}>
+                                    {(() => {
+                                      const reservationDate = new Date(selectedCancelReservation.date);
+                                      const currentDate = new Date();
+                                      const timeDiff = reservationDate.getTime() - currentDate.getTime();
+                                      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                                      const hoursDiff = Math.ceil(timeDiff / (1000 * 3600));
+                                      
+                                      if (daysDiff > 1) {
+                                        return `${daysDiff} jours`;
+                                      } else if (hoursDiff > 1) {
+                                        return `${hoursDiff} heures`;
+                                      } else {
+                                        return 'Moins d\'une heure';
+                                      }
+                                    })()}
+                                  </span>
+                                </div>
+                              )}
+
+                              {cancellationConditions.canCancel && (
+                                <>
+                                  <div style={{ marginBottom: 12 }}>
+                                    <strong style={{ fontSize: 14, color: '#475569' }}>Remboursement :</strong>
+                                    <span style={{ 
+                                      marginLeft: 8, 
+                                      fontSize: 14,
+                                      fontWeight: 600,
+                                      color: cancellationConditions.refundPercentage === 100 ? '#059669' : 
+                                             cancellationConditions.refundPercentage === 50 ? '#d97706' : '#dc2626'
+                                    }}>
+                                      {cancellationConditions.refundPercentage}% du montant payé
+                                      {selectedCancelReservation?.prix && (
+                                        <span style={{ marginLeft: 8, fontSize: 13, color: '#64748b' }}>
+                                          (soit {Math.round((selectedCancelReservation.prix * cancellationConditions.refundPercentage) / 100)}€)
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  
+                                  <div style={{ 
+                                    padding: 12, 
+                                    background: '#f1f5f9', 
+                                    borderRadius: 8, 
+                                    borderLeft: '4px solid #3b82f6' 
+                                  }}>
+                                    <span style={{ fontSize: 13, color: '#475569' }}>
+                                      {cancellationConditions.message}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
+
+                              {!cancellationConditions.canCancel && (
+                                <div style={{ 
+                                  padding: 12, 
+                                  background: '#fef2f2', 
+                                  borderRadius: 8, 
+                                  borderLeft: '4px solid #ef4444' 
+                                }}>
+                                  <span style={{ fontSize: 13, color: '#dc2626' }}>
+                                    {cancellationConditions.reason}
+                                  </span>
+                                </div>
+                              )}
+
+                              {cancellationConditions.forceMajeure && (
+                                <div style={{ 
+                                  marginTop: 12,
+                                  padding: 12, 
+                                  background: '#fffbeb', 
+                                  borderRadius: 8, 
+                                  borderLeft: '4px solid #f59e0b' 
+                                }}>
+                                  <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+                                    ⚠️ Annulation pour force majeure uniquement
+                                  </span>
+                                  <br />
+                                  <span style={{ fontSize: 12, color: '#92400e' }}>
+                                    Une justification détaillée est requise (minimum 20 caractères)
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Champ motif d'annulation */}
+                          {cancellationConditions && cancellationConditions.canCancel && (
+                            <div style={{ marginBottom: 24 }}>
+                              <label style={{
+                                display: 'block',
+                                marginBottom: 8,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: '#333'
+                              }}>
+                                {cancellationConditions.forceMajeure ? 'Justification détaillée (obligatoire)' : 'Motif d\'annulation'}
+                                {cancellationConditions.forceMajeure && (
+                                  <span style={{ color: '#ef4444', marginLeft: 4 }}>*</span>
+                                )}
+                              </label>
+                              <textarea
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                placeholder={
+                                  cancellationConditions.forceMajeure 
+                                    ? "Veuillez expliquer en détail les circonstances exceptionnelles justifiant cette annulation..."
+                                    : "Pourquoi souhaitez-vous annuler cette réservation ?"
+                                }
+                                style={{
+                                  width: '100%',
+                                  minHeight: cancellationConditions.forceMajeure ? 120 : 80,
+                                  padding: '12px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: 8,
+                                  fontSize: 14,
+                                  resize: 'vertical',
+                                  fontFamily: 'inherit'
+                                }}
+                              />
+                              {cancellationConditions.forceMajeure && cancelReason && cancelReason.trim().length < 20 && (
+                                <div style={{ marginTop: 6, fontSize: 12, color: '#ef4444' }}>
+                                  Justification trop courte ({cancelReason.trim().length}/20 caractères minimum)
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={() => {
+                                setShowCancelModal(false);
+                                setSelectedCancelReservation(null);
+                                setCancelReason('');
+                                setCancellationConditions(null);
+                              }}
+                              style={{
+                                background: '#6b7280',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 12,
+                                padding: '14px 24px',
+                                fontSize: 14,
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Fermer
+                            </button>
+                            
+                            {cancellationConditions && cancellationConditions.canCancel && (
+                              <button
+                                onClick={handleCancelReservation}
+                                disabled={
+                                  isCancelling || 
+                                  (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20))
+                                }
+                                style={{
+                                  background: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
+                                    ? '#d1d5db' : '#ef4444',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: 12,
+                                  padding: '14px 24px',
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  cursor: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
+                                    ? 'not-allowed' : 'pointer',
+                                  opacity: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
+                                    ? 0.7 : 1
+                                }}
+                              >
+                                {isCancelling ? 'Annulation...' : 
+                                 cancellationConditions.refundPercentage === 100 ? 'Confirmer l\'annulation (remboursement intégral)' :
+                                 cancellationConditions.refundPercentage === 50 ? 'Confirmer l\'annulation (remboursement 50%)' :
+                                 'Confirmer l\'annulation (aucun remboursement)'
+                                }
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -2685,6 +3447,173 @@ function ParticularHomeMenu() {
                 onClose={() => setSelectedCommande(null)}
                 quantity={selectedCommande ? commandeQuantities[selectedCommande.id] : 0}
               />
+
+              {/* Modal d'annulation de commande */}
+              {showCancelCommandeModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+                  <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 animate-in slide-in-from-bottom-4 duration-300">
+                    {/* Header avec icône d'alerte */}
+                    <div className="relative px-6 py-5 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-gray-900">
+                            Annuler la commande
+                          </h2>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Cette action est irréversible.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowCancelCommandeModal(false);
+                          setSelectedCancelCommande(null);
+                          setCommandeCancelReason('');
+                        }}
+                        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors group"
+                        disabled={isCancellingCommande}
+                      >
+                        <svg className="w-4 h-4 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="px-6 py-5 space-y-5">
+                      {selectedCancelCommande && (
+                        <>
+                          {/* Informations de la commande avec design amélioré */}
+                          <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 text-base mb-2">
+                                  {selectedCancelCommande.titre} {selectedCancelCommande.num_commande && <span className="text-gray-500 text-sm font-normal">#{selectedCancelCommande.num_commande}</span>}
+                                </h4>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                    </svg>
+                                    <span className="font-medium text-gray-700">{selectedCancelCommande.montant}€</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${
+                                      selectedCancelCommande.status === 'paid' ? 'bg-green-500' : 
+                                      selectedCancelCommande.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
+                                    }`} />
+                                    <span className="text-gray-600 capitalize">{selectedCancelCommande.status}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Zone de saisie de la raison avec design amélioré */}
+                          <div className="space-y-3">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              Raison de l'annulation
+                              <span className="text-xs font-normal text-gray-500 ml-1">(optionnel)</span>
+                            </label>
+                            <div className="relative">
+                              <textarea
+                                value={commandeCancelReason}
+                                onChange={(e) => setCommandeCancelReason(e.target.value)}
+                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-300 transition-all resize-none text-sm placeholder-gray-400"
+                                rows="3"
+                                maxLength="300"
+                                placeholder="Dites-nous pourquoi vous annulez cette commande (cela nous aide à améliorer nos services)..."
+                                disabled={isCancellingCommande}
+                              />
+                              <div className="absolute bottom-2 right-3 text-xs text-gray-400">
+                                {commandeCancelReason.length}/300
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Information de remboursement avec design amélioré */}
+                          {selectedCancelCommande.status === 'paid' && selectedCancelCommande.montant > 0 && (
+                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-400 rounded-xl p-4">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-blue-900 text-sm mb-1">
+                                    Remboursement automatique
+                                  </p>
+                                  <p className="text-xs text-blue-700 leading-relaxed">
+                                    Vous serez remboursé selon nos conditions d'annulation. Le remboursement sera effectué sous 2-3 jours ouvrés sur votre moyen de paiement.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Footer avec boutons améliorés */}
+                    <div className="px-6 py-5 bg-gray-50 rounded-b-2xl border-t border-gray-100">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            setShowCancelCommandeModal(false);
+                            setSelectedCancelCommande(null);
+                            setCommandeCancelReason('');
+                          }}
+                          className="flex-1 px-4 py-3 text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={isCancellingCommande}
+                        >
+                          <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Garder ma commande
+                        </button>
+                        <button
+                          onClick={confirmCancelCommande}
+                          disabled={isCancellingCommande}
+                          className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        >
+                          {isCancellingCommande ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Annulation en cours...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Confirmer l'annulation
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 text-center mt-3">
+                        En confirmant, vous acceptez l'annulation définitive de cette commande
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
@@ -2772,4 +3701,5 @@ function ParticularHomeMenu() {
     </>
   );
 }
+
 export default ParticularHomeMenu;

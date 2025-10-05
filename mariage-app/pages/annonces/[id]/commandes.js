@@ -185,7 +185,28 @@ export default function PasserCommande() {
       commandeModeles.reduce((sum, cm) => sum + cm.prix * cm.quantite, 0) +
       fraisLivraison;
 
-    // 1. Créer la commande et récupérer son id
+    // 1. Générer le numéro de commande
+    let numCommande = null;
+    try {
+      const numberResponse = await fetch('/api/commandes/generate-number', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (numberResponse.ok) {
+        const numberResult = await numberResponse.json();
+        numCommande = numberResult.num_commande;
+        console.log('✅ Numéro de commande généré:', numCommande);
+      } else {
+        console.error('❌ Erreur génération numéro de commande');
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'appel API numéro commande:', error);
+    }
+
+    // 2. Créer la commande et récupérer son id
     const { data: commandeData, error: insertError } = await supabase
       .from("commandes")
       .insert({
@@ -198,7 +219,8 @@ export default function PasserCommande() {
         annonce_id: annonceId,
         adresse_livraison: adresse + selectedVille,
         mode_livraison: selectedModeLivraison,
-        frais_livraison: fraisLivraison
+        frais_livraison: fraisLivraison,
+        num_commande: numCommande // Ajout du numéro de commande généré
       })
       .select();
 
@@ -212,7 +234,7 @@ export default function PasserCommande() {
     }
     const commandeId = commandeData[0].id;
 
-    // 2. Insérer chaque modèle dans commande_modeles avec les images en base64
+    // 3. Insérer chaque modèle dans commande_modeles avec les images en base64
     const modelesRows = commandeModeles.map((cm, idx) => ({
       commande_id: commandeId,
       modele_id: cm.modeleId,
@@ -234,15 +256,17 @@ export default function PasserCommande() {
       return;
     }
 
-    // 3. Envoyer une notification au prestataire
+    // 4. Envoyer une notification au prestataire
     const { error: notificationError } = await supabase
       .from('notifications')
       .insert([
         {
           user_id: prestataireId,
           type: 'commande',
-          contenu: `Nouvelle commande reçue de ${clientNom} pour un montant de ${montantTotal} MAD. La commande sera confirmée après paiement.`,
-          lu: false
+          contenu: `Nouvelle commande reçue ${numCommande ? `${numCommande}` : ''} du client ${clientNom} pour un montant de ${montantTotal} MAD. La commande est en attente de votre confirmation.`,
+          lu: false,
+          commande_id: commandeId,
+          annonce_id: annonceId
         }
       ]);
 

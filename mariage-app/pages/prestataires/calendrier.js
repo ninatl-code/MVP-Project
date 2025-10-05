@@ -5,7 +5,7 @@ import {
   Calendar, Clock, Users, MapPin, Mail, CheckCircle, X, Plus, ChevronLeft, ChevronRight, 
   TrendingUp, Settings, RefreshCw, Bell, Star, CalendarDays, AlertCircle, Info, 
   Grid3x3, List, Filter, Download, Zap, Target, Activity, BarChart3, PieChart,
-  Trash2, Edit3, Copy, Share, BookOpen, Coffee, Briefcase, Phone, ArrowRight
+  Trash2, Edit3, Copy, Share, BookOpen, Coffee, Briefcase, Phone, ArrowRight, DollarSign
 } from 'lucide-react'
 import { format, formatDistanceToNow, isSameDay } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -576,27 +576,76 @@ function EventDetailModal({ isOpen, event, onClose, onUpdate, onDelete, annonces
   )
 }
 
-// Modal de réservation rapide - sélection date/heure
-function QuickReservationModal({ isOpen, onClose, onConfirm }) {
+// Modal de réservation rapide unifiée - tous les champs en une seule étape
+function QuickReservationModal({ isOpen, onClose, onConfirm, annonces }) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     time: '09:00',
-    duration: 120
+    duration: 2, // en heures
+    clientNom: '',
+    clientEmail: '',
+    endroit: '',
+    montant: '',
+    montantAcompte: '0',
+    description: '',
+    selectedAnnonces: [],
+    participants: 1
   })
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleAnnonceToggle = (annonceId) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedAnnonces: prev.selectedAnnonces.includes(annonceId)
+        ? prev.selectedAnnonces.filter(id => id !== annonceId)
+        : [...prev.selectedAnnonces, annonceId]
+    }))
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Créer le timestamp pour la réservation
-    const dateTime = new Date(`${formData.date}T${formData.time}:00`)
-    onConfirm([dateTime.toISOString()])
-    onClose()
+    
+    // Validation des champs obligatoires
+    if (!formData.clientNom.trim()) {
+      setError('Le nom du client est obligatoire')
+      return
+    }
+    
+    if (formData.selectedAnnonces.length === 0 && annonces && annonces.length > 0) {
+      setError('Veuillez sélectionner au moins une annonce')
+      return
+    }
+
+    try {
+      // Créer le timestamp pour la réservation
+      const dateTime = new Date(`${formData.date}T${formData.time}:00`)
+      
+      // Préparer les données pour la confirmation
+      const reservationData = {
+        actionType: 'resaManual',
+        clientNom: formData.clientNom,
+        clientEmail: formData.clientEmail,
+        endroit: formData.endroit,
+        montant: formData.montant,
+        montantAcompte: formData.montantAcompte,
+        description: formData.description,
+        selectedAnnonces: formData.selectedAnnonces,
+        duration: formData.duration,
+        participants: formData.participants
+      }
+      
+      await onConfirm(reservationData, [dateTime.toISOString()])
+      onClose()
+    } catch (error) {
+      setError('Erreur lors de la création de la réservation')
+    }
   }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
@@ -608,67 +657,230 @@ function QuickReservationModal({ isOpen, onClose, onConfirm }) {
             </button>
           </div>
           <p className="text-slate-600 mt-2">
-            Choisissez la date et l'heure pour votre nouvelle réservation
+            Créez une nouvelle réservation avec toutes les informations nécessaires
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Date *
-              </label>
-              <input
-                type="date"
-                required
-                value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              />
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Heure *
-              </label>
-              <input
-                type="time"
-                required
-                value={formData.time}
-                onChange={(e) => setFormData({...formData, time: e.target.value})}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              />
+          {/* Date et heure */}
+          <div className="bg-emerald-50 p-4 rounded-lg">
+            <h3 className="font-medium text-emerald-800 mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Date et heure
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Heure <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={formData.time}
+                  onChange={(e) => setFormData({...formData, time: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Durée (heures)
+                </label>
+                <input
+                  type="number"
+                  min="0.5"
+                  max="24"
+                  step="0.5"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({...formData, duration: parseFloat(e.target.value)})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
             </div>
           </div>
 
+          {/* Annonces */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Annonces concernées <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-3">
+              {annonces && annonces.length > 0 ? (
+                annonces.map((a) => (
+                  <label key={a.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedAnnonces.includes(a.id)}
+                      onChange={() => handleAnnonceToggle(a.id)}
+                      className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <span className="text-sm">{a.titre}</span>
+                  </label>
+                ))
+              ) : (
+                <div className="p-3 text-center text-gray-500 text-sm">
+                  <p>Aucune annonce active trouvée.</p>
+                  <label className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer mt-2 border border-dashed border-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedAnnonces.includes('temp')}
+                      onChange={() => handleAnnonceToggle('temp')}
+                      className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <span className="text-sm italic text-gray-600">Option temporaire (test)</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Informations client */}
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Informations client
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Nom du client <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.clientNom}
+                  onChange={(e) => setFormData({...formData, clientNom: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nom complet du client"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Email du client
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.clientEmail}
+                    onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="email@exemple.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Lieu de la cérémonie
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.endroit}
+                    onChange={(e) => setFormData({...formData, endroit: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Adresse ou nom du lieu"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Nombre de participants <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  required
+                  value={formData.participants}
+                  onChange={(e) => setFormData({...formData, participants: parseInt(e.target.value) || 1})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nombre de personnes"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Montants */}
+          <div className="bg-amber-50 p-4 rounded-lg">
+            <h3 className="font-medium text-amber-800 mb-3 flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Montants
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Montant total (€)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.montant}
+                  onChange={(e) => setFormData({...formData, montant: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Acompte versé (€)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.montantAcompte}
+                  onChange={(e) => setFormData({...formData, montantAcompte: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Commentaire */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Durée estimée
+              Commentaire
             </label>
-            <select
-              value={formData.duration}
-              onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value={60}>1 heure</option>
-              <option value={90}>1h30</option>
-              <option value={120}>2 heures</option>
-              <option value={180}>3 heures</option>
-              <option value={240}>4 heures</option>
-              <option value={480}>Journée complète</option>
-            </select>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+              placeholder="Notes ou commentaires particuliers (optionnel)"
+            />
           </div>
 
-          <div className="bg-emerald-50 p-4 rounded-lg">
+          {/* Aperçu */}
+          <div className="bg-slate-50 p-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Info className="w-4 h-4 text-emerald-600" />
-              <span className="font-medium text-emerald-800">Aperçu</span>
+              <Info className="w-4 h-4 text-slate-600" />
+              <span className="font-medium text-slate-800">Aperçu de la réservation</span>
             </div>
-            <p className="text-sm text-emerald-700">
-              {new Date(formData.date).toLocaleDateString('fr-FR', { 
+            <p className="text-sm text-slate-700">
+              <strong>{formData.clientNom || 'Client'}</strong> - {new Date(formData.date).toLocaleDateString('fr-FR', { 
                 weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-              })} à {formData.time} ({formData.duration} minutes)
+              })} à {formData.time} ({formData.duration}h)
             </p>
+            {formData.montant && (
+              <p className="text-sm text-slate-600 mt-1">
+                Montant: {formData.montant}€ {formData.montantAcompte && formData.montantAcompte !== '0' && `(acompte: ${formData.montantAcompte}€)`}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -677,7 +889,7 @@ function QuickReservationModal({ isOpen, onClose, onConfirm }) {
               className="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
             >
               <CheckCircle className="w-4 h-4" />
-              Continuer
+              Créer la réservation
             </button>
             <button
               type="button"
@@ -702,26 +914,40 @@ function roundToHour(date){
 }
 
 // Modale de réservation manuelle moderne
-function ReservationModal({ open, slots, onConfirm, onCancel, annonces }) {
+function ReservationModal({ open, slots, onConfirm, onCancel, annonces, defaultActionType }) {
+  const [actionType, setActionType] = useState(defaultActionType || 'resaManual'); // 'resaManual', 'blocked'
   const [clientNom, setClientNom] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [description, setDescription] = useState('');
-  const [annonceId, setAnnonceId] = useState('');
+  const [selectedAnnonces, setSelectedAnnonces] = useState([]);
+  const [duration, setDuration] = useState(2); // Durée en heures
   const [montant, setMontant] = useState('');
   const [montantAcompte, setMontantAcompte] = useState('0');
   const [endroit, setEndroit] = useState('');
+  const [participants, setParticipants] = useState(1);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setAnnonceId('');
+    setActionType(defaultActionType || 'resaManual');
+    setSelectedAnnonces([]);
+    setDuration(2);
     setError('');
     setMontant('');
     setMontantAcompte('0');
     setClientNom('');
     setClientEmail('');
     setDescription('');
-    setEndroit('')
-  }, [open]);
+    setEndroit('');
+    setParticipants(1)
+  }, [open, defaultActionType]);
+
+  const handleAnnonceToggle = (annonceId) => {
+    setSelectedAnnonces(prev => 
+      prev.includes(annonceId) 
+        ? prev.filter(id => id !== annonceId)
+        : [...prev, annonceId]
+    );
+  };
 
   if (!open) return null;
   return (
@@ -729,67 +955,211 @@ function ReservationModal({ open, slots, onConfirm, onCancel, annonces }) {
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-6">
           <Plus className="w-6 h-6 text-slate-600" />
-          <h2 className="text-xl font-semibold text-slate-800">Nouvelle réservation</h2>
+          <h2 className="text-xl font-semibold text-slate-800">
+            {actionType === 'resaManual' ? 'Nouvelle réservation' : 'Bloquer des créneaux'}
+          </h2>
         </div>
         
         <div className="space-y-4">
+          {/* Type d'action */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Annonce <span className="text-red-500">*</span>
+              Type d'action <span className="text-red-500">*</span>
             </label>
-            <select
-              value={annonceId}
-              onChange={e => setAnnonceId(e.target.value)}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setActionType('resaManual')}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  actionType === 'resaManual'
+                    ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                    : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+                }`}
+              >
+                📅 Réservation client
+              </button>
+              <button
+                type="button"
+                onClick={() => setActionType('blocked')}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  actionType === 'blocked'
+                    ? 'bg-red-100 text-red-700 border-2 border-red-300'
+                    : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
+                }`}
+              >
+                🚫 Bloquer créneaux
+              </button>
+            </div>
+          </div>
+
+          {/* Durée */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Durée (heures) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="24"
+              step="0.5"
+              value={duration}
+              onChange={e => setDuration(parseFloat(e.target.value) || 1)}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-              required
-            >
-              <option value="">Sélectionnez une annonce</option>
-              {annonces.map(a => (
-                <option key={a.id} value={a.id}>{a.titre}</option>
-              ))}
-            </select>
+            />
+          </div>
+
+          {/* Sélection multiple d'annonces */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Annonces concernées <span className="text-red-500">*</span>
+            </label>
+            <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 space-y-1">
+              {annonces && annonces.length > 0 ? (
+                <>
+                  {/* Option "Toutes les annonces" */}
+                  <label className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer border-b border-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={selectedAnnonces.length === annonces.length}
+                      onChange={() => {
+                        if (selectedAnnonces.length === annonces.length) {
+                          setSelectedAnnonces([])
+                        } else {
+                          setSelectedAnnonces(annonces.map(a => a.id))
+                        }
+                      }}
+                      className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <span className="text-sm font-medium text-blue-600">✓ Toutes les annonces</span>
+                  </label>
+                  
+                  {/* Annonces individuelles */}
+                  {annonces.map(a => (
+                    <label key={a.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedAnnonces.includes(a.id)}
+                        onChange={() => handleAnnonceToggle(a.id)}
+                        className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                      />
+                      <span className="text-sm">{a.titre}</span>
+                    </label>
+                  ))}
+                </>
+              ) : (
+                <div className="p-3 text-center text-gray-500 text-sm">
+                  <p>Aucune annonce active trouvée.</p>
+                  <p className="text-xs mt-1">Créez d'abord des annonces pour pouvoir les sélectionner.</p>
+                  {/* Option de secours pour tester */}
+                  <label className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer mt-2 border border-dashed border-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={selectedAnnonces.includes('temp')}
+                      onChange={() => handleAnnonceToggle('temp')}
+                      className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <span className="text-sm italic text-gray-600">Option temporaire (test)</span>
+                  </label>
+                </div>
+              )}
+            </div>
+            {selectedAnnonces.length === 0 && annonces && annonces.length > 0 && (
+              <p className="text-red-500 text-xs mt-1">Veuillez sélectionner au moins une annonce</p>
+            )}
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              <Users className="w-4 h-4 inline mr-1" />
-              Nom du client
-            </label>
-            <input
-              type="text"
-              value={clientNom}
-              onChange={e => setClientNom(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-              placeholder="Nom complet du client"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              <Mail className="w-4 h-4 inline mr-1" />
-              Email du client
-            </label>
-            <input
-              type="email"
-              value={clientEmail}
-              onChange={e => setClientEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-              placeholder="email@exemple.com (optionnel)"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              <MapPin className="w-4 h-4 inline mr-1" />
-              Lieu de la cérémonie
-            </label>
-            <input
-              type="text"
-              value={endroit}
-              onChange={e => setEndroit(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-              placeholder="Adresse ou nom du lieu (optionnel)"
-            />
-          </div>
+          {/* Champs spécifiques aux réservations client */}
+          {actionType === 'resaManual' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <Users className="w-4 h-4 inline mr-1" />
+                  Nom du client
+                </label>
+                <input
+                  type="text"
+                  value={clientNom}
+                  onChange={e => setClientNom(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                  placeholder="Nom complet du client"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <Mail className="w-4 h-4 inline mr-1" />
+                  Email du client
+                </label>
+                <input
+                  type="email"
+                  value={clientEmail}
+                  onChange={e => setClientEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                  placeholder="email@exemple.com (optionnel)"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <MapPin className="w-4 h-4 inline mr-1" />
+                  Lieu de la cérémonie
+                </label>
+                <input
+                  type="text"
+                  value={endroit}
+                  onChange={e => setEndroit(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                  placeholder="Adresse ou nom du lieu (optionnel)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <Users className="w-4 h-4 inline mr-1" />
+                  Nombre de participants <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  required
+                  value={participants}
+                  onChange={e => setParticipants(parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                  placeholder="Nombre de personnes"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Montant total (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={montant}
+                    onChange={e => setMontant(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Acompte versé (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={montantAcompte}
+                    onChange={e => setMontantAcompte(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </>
+          )}
           
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -804,34 +1174,7 @@ function ReservationModal({ open, slots, onConfirm, onCancel, annonces }) {
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Montant total (€)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={montant}
-                onChange={e => setMontant(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Acompte versé (€)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={montantAcompte}
-                onChange={e => setMontantAcompte(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent"
-                placeholder="0"
-              />
-            </div>
-          </div>
+
           
           <div className="bg-slate-50 p-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
@@ -858,25 +1201,36 @@ function ReservationModal({ open, slots, onConfirm, onCancel, annonces }) {
         <div className="flex gap-3 mt-6 pt-6 border-t border-slate-200">
           <button
             onClick={() => {
-              if (!annonceId) {
-                setError("Veuillez sélectionner une annonce.");
+              if (selectedAnnonces.length === 0) {
+                setError("Veuillez sélectionner au moins une annonce.");
+                return;
+              }
+              if (duration <= 0) {
+                setError("Veuillez spécifier une durée valide.");
+                return;
+              }
+              if (actionType === 'resaManual' && !clientNom.trim()) {
+                setError("Veuillez indiquer le nom du client pour une réservation.");
                 return;
               }
               setError('');
               onConfirm({
+                actionType,
+                selectedAnnonces,
+                duration,
                 clientNom,
                 clientEmail,
                 description,
-                annonceId,
                 montant,
                 montantAcompte,
-                endroit
+                endroit,
+                participants
               });
             }}
             className="flex-1 bg-slate-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
           >
             <CheckCircle className="w-4 h-4" />
-            Créer la réservation
+            {actionType === 'resaManual' ? 'Créer la réservation' : 'Bloquer les créneaux'}
           </button>
           <button 
             onClick={onCancel}
@@ -925,7 +1279,6 @@ function PrestataireCalendar() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [events, setEvents] = useState([])
   const [filteredEvents, setFilteredEvents] = useState([])
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState({ date: null, time: null })
   const [filterType, setFilterType] = useState('all') // all, blocked, reservation
   const [searchTerm, setSearchTerm] = useState('')
@@ -940,21 +1293,165 @@ function PrestataireCalendar() {
   const [eventDetailModal, setEventDetailModal] = useState({ open: false, event: null })
   const [quickReservationModal, setQuickReservationModal] = useState({ open: false })
 
+  // Fonction centralisée pour créer des réservations
+  const createReservation = async (reservationData, options = {}) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        throw new Error('Utilisateur non connecté')
+      }
+
+      // Générer un numéro de réservation unique si demandé
+      let numReservation = null
+      if (options.generateNumber !== false) {
+        try {
+          const numberResponse = await fetch('/api/reservations/generate-number', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (numberResponse.ok) {
+            const numberResult = await numberResponse.json()
+            numReservation = numberResult.num_reservation
+          }
+        } catch (error) {
+          console.warn('Erreur génération numéro réservation:', error)
+        }
+      }
+
+      // Préparer les données de base
+      const durationHours = reservationData.duration ? parseFloat(reservationData.duration) : 1 // Durée reçue en heures
+      
+      const baseData = {
+        prestataire_id: user.id,
+        date: reservationData.date,
+        client_nom: reservationData.clientNom || reservationData.client_name,
+        client_email: reservationData.clientEmail || reservationData.client_email || null,
+        endroit: reservationData.endroit || reservationData.location || null,
+        montant: reservationData.montant ? parseFloat(reservationData.montant) : (reservationData.price ? parseFloat(reservationData.price) : null),
+        montant_acompte: reservationData.montantAcompte ? parseFloat(reservationData.montantAcompte) : 0,
+        commentaire: reservationData.description || reservationData.notes || null,
+        duree: durationHours, // Durée en heures pour la base de données
+        participants: reservationData.participants || 1,
+        status: reservationData.status || 'confirmed',
+        num_reservation: numReservation
+      }
+
+      // Fonction helper pour créer les créneaux bloqués
+      const createBlockedSlotsForReservation = async (startDateTime, durationHours, annonceId, reservationType = 'resaManual') => {
+        const blockedSlots = []
+        const startDate = new Date(startDateTime)
+        
+        // Créer un créneau bloqué pour chaque heure de la réservation
+        for (let i = 0; i < durationHours; i++) {
+          const slotTime = new Date(startDate)
+          slotTime.setHours(startDate.getHours() + i)
+          
+          const clientName = reservationData.clientNom || reservationData.client_name || 'Client'
+          const motif = `${reservationType} - ${clientName}${annonceId && annonceId !== 'temp' ? ` (Annonce ${annonceId})` : ''}`
+          
+          blockedSlots.push({
+            prestataire_id: user.id,
+            date: slotTime.toISOString(),
+            motif: motif,
+            annonce_id: annonceId && annonceId !== 'temp' ? parseInt(annonceId) : null
+          })
+        }
+        
+        if (blockedSlots.length > 0) {
+          const { error: blockedError } = await supabase
+            .from('blocked_slots')
+            .insert(blockedSlots)
+          
+          if (blockedError) {
+            console.error('Erreur création créneaux bloqués:', blockedError)
+            // Ne pas faire échouer la réservation si les créneaux bloqués échouent
+          }
+        }
+      }
+
+      // Si plusieurs annonces sont spécifiées
+      if (reservationData.selectedAnnonces && reservationData.selectedAnnonces.length > 0) {
+        const results = []
+        for (const annonceId of reservationData.selectedAnnonces) {
+          const data = {
+            ...baseData,
+            annonce_id: typeof annonceId === 'string' && annonceId !== 'temp' ? parseInt(annonceId) : annonceId === 'temp' ? null : annonceId
+          }
+          
+          const { data: result, error } = await supabase
+            .from('reservations')
+            .insert(data)
+            .select()
+          
+          if (error) throw error
+          
+          // Créer les créneaux bloqués pour cette réservation
+          await createBlockedSlotsForReservation(
+            baseData.date, 
+            durationHours, 
+            annonceId,
+            'resaManual'
+          )
+          
+          results.push(result)
+        }
+        return results
+      } else {
+        // Une seule réservation
+        const data = {
+          ...baseData,
+          annonce_id: reservationData.annonce_id ? parseInt(reservationData.annonce_id) : null
+        }
+        
+        const { data: result, error } = await supabase
+          .from('reservations')
+          .insert(data)
+          .select()
+        
+        if (error) throw error
+        
+        // Créer les créneaux bloqués pour cette réservation
+        await createBlockedSlotsForReservation(
+          baseData.date, 
+          durationHours, 
+          data.annonce_id,
+          'resaManual'
+        )
+        
+        return result
+      }
+    } catch (error) {
+      console.error('Erreur lors de la création de réservation:', error)
+      throw error
+    }
+  }
+
   // Chargement des annonces
   const loadAnnonces = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        console.log('❌ Pas d\'utilisateur connecté pour charger les annonces')
+        return
+      }
 
-      const { data: annoncesData } = await supabase
+      console.log('📋 Chargement des annonces pour utilisateur:', user.id)
+
+      const { data: annoncesData, error } = await supabase
         .from('annonces')
         .select('id, titre, tarif_unit')
         .eq('prestataire', user.id)
         .eq('actif', true)
 
+      if (error) {
+        console.error('❌ Erreur Supabase lors du chargement des annonces:', error)
+        return
+      }
+
+      console.log('📋 Annonces chargées:', annoncesData?.length || 0, 'annonces')
       setAnnonces(annoncesData || [])
     } catch (error) {
-      console.error('Erreur lors du chargement des annonces:', error)
+      console.error('❌ Erreur lors du chargement des annonces:', error)
     }
   }
 
@@ -976,10 +1473,13 @@ function PrestataireCalendar() {
         .eq('prestataire_id', user.id)
         .neq('status', 'cancelled')
 
-      // Charger les créneaux bloqués
+      // Charger les créneaux bloqués avec les annonces associées
       const { data: blocked } = await supabase
         .from('blocked_slots')
-        .select('id, date, motif, created_at')
+        .select(`
+          id, date, motif, created_at, description,
+          annonces!blocked_slots_annonce_id_fkey(id, titre, tarif_unit)
+        `)
         .eq('prestataire_id', user.id)
 
       // Transformer les données en format unifié
@@ -999,7 +1499,7 @@ function PrestataireCalendar() {
             title: res.annonces?.titre || 'Réservation',
             date: dateStr,
             time: timeStr,
-            duration: res.duree || 120, // Durée en minutes
+            duration: (res.duree || 2) * 60, // Durée en minutes (convertir depuis heures)
             status: res.status,
             client_name: res.client_nom || res.profiles?.nom || '',
             client_email: res.client_email || res.profiles?.email || '',
@@ -1021,15 +1521,32 @@ function PrestataireCalendar() {
           const dateStr = dateTime.toISOString().split('T')[0]
           const timeStr = dateTime.toTimeString().substring(0, 5)
           
+          // Déterminer le titre et la couleur selon le motif
+          let title = 'Indisponible'
+          let color = 'red'
+          
+          if (block.motif === 'resaManual') {
+            title = block.annonces?.titre || 'Réservation manuelle'
+            color = 'blue'
+          } else if (block.motif === 'resaAuto') {
+            title = block.annonces?.titre || 'Réservation automatique'
+            color = 'emerald'
+          } else if (block.motif === 'blocked') {
+            title = block.annonces?.titre ? `Bloqué - ${block.annonces.titre}` : 'Créneaux bloqués'
+            color = 'red'
+          }
+          
           allEvents.push({
             id: `block_${block.id}`,
             type: 'blocked',
-            title: 'Indisponible',
+            title: title,
             date: dateStr,
             time: timeStr,
             duration: 60, // 1 heure par défaut
-            notes: block.motif || '',
-            color: 'red'
+            notes: block.description || block.motif || '',
+            annonce_titre: block.annonces?.titre || '',
+            motif: block.motif,
+            color: color
           })
         })
       }
@@ -1159,21 +1676,17 @@ function PrestataireCalendar() {
           }
         }
         
-        // Créer la réservation
-        await supabase
-          .from('reservations')
-          .insert({
-            prestataire_id: user.id,
-            particulier_id,
-            date: dateTime.toISOString(),
-            duree: eventData.duration,
-            client_nom: eventData.client_name,
-            client_email: eventData.client_email,
-            commentaire: eventData.description,
-            montant: eventData.price ? parseFloat(eventData.price) : null,
-            status: 'confirmed',
-            participants: 1
-          })
+        // Créer la réservation via la fonction centralisée
+        await createReservation({
+          date: dateTime.toISOString(),
+          duration: eventData.duration,
+          client_name: eventData.client_name,
+          client_email: eventData.client_email,
+          description: eventData.description,
+          price: eventData.price,
+          status: 'confirmed',
+          participants: 1
+        })
       }
 
       // Recharger les données
@@ -1233,7 +1746,7 @@ function PrestataireCalendar() {
             commentaire: formData.description,
             montant: formData.price ? parseFloat(formData.price) : null,
             endroit: formData.location,
-            duree: formData.duration,
+            duree: formData.duration, // Durée en heures
             annonce_id: formData.annonce_id ? parseInt(formData.annonce_id) : null
           })
           .eq('id', id)
@@ -1260,10 +1773,41 @@ function PrestataireCalendar() {
           .eq('id', id)
       } else if (eventId.startsWith('res_')) {
         const id = eventId.replace('res_', '')
+        
+        // D'abord récupérer les informations de la réservation pour trouver les créneaux bloqués associés
+        const { data: reservation } = await supabase
+          .from('reservations')
+          .select('date, duree, annonce_id')
+          .eq('id', id)
+          .single()
+        
+        // Annuler la réservation
         await supabase
           .from('reservations')
           .update({ status: 'cancelled' })
           .eq('id', id)
+          
+        // Supprimer les créneaux bloqués associés si on a les informations de la réservation
+        if (reservation) {
+          const startDate = new Date(reservation.date)
+          const durationHours = reservation.duree || 2 // Durée déjà en heures dans la DB
+          
+          // Générer les timestamps des créneaux à supprimer
+          const slotsToDelete = []
+          for (let i = 0; i < durationHours; i++) {
+            const slotTime = new Date(startDate)
+            slotTime.setHours(startDate.getHours() + i)
+            slotsToDelete.push(slotTime.toISOString())
+          }
+          
+          // Supprimer les créneaux bloqués correspondants
+          await supabase
+            .from('blocked_slots')
+            .delete()
+            .eq('prestataire_id', user.id)
+            .in('date', slotsToDelete)
+            .like('motif', `resaManual%`)
+        }
       }
 
       await loadEvents()
@@ -1331,7 +1875,7 @@ function PrestataireCalendar() {
   // Composant Vue Calendrier
   function CalendarView({ view, selectedDate, onDateChange, events, onSlotClick, onEventClick }) {
     const weeks = generateCalendarWeeks()
-    const timeSlots = Array.from({ length: 13 }, (_, i) => `${8 + i}:00`) // 8h à 20h
+    const timeSlots = Array.from({ length: 13 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`) // 8h à 20h
 
     if (view === 'month') {
       return (
@@ -1719,16 +2263,17 @@ function PrestataireCalendar() {
             <button 
               onClick={() => {
                 const now = new Date()
-                setSelectedSlot({ 
-                  date: now.toISOString().split('T')[0], 
-                  time: `${now.getHours().toString().padStart(2, '0')}:00` 
+                const currentHour = `${now.getHours().toString().padStart(2, '0')}:00`
+                setReservationModal({ 
+                  open: true, 
+                  slots: [now.toISOString()],
+                  defaultActionType: 'blocked'
                 })
-                setIsCreateModalOpen(true)
               }}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all flex items-center justify-center gap-2 font-medium"
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-lg hover:from-red-600 hover:to-red-700 transition-all flex items-center justify-center gap-2 font-medium"
             >
-              <Plus className="w-4 h-4" />
-              Nouvel événement
+              <X className="w-4 h-4" />
+              Bloquer créneaux
             </button>
             <button 
               onClick={() => setQuickReservationModal({ open: true })}
@@ -1957,7 +2502,49 @@ function PrestataireCalendar() {
                   events={filteredEvents}
                   onSlotClick={(date, time) => {
                     setSelectedSlot({ date, time })
-                    setIsCreateModalOpen(true)
+                    
+                    // Validation et création sécurisée du dateTime
+                    try {
+                      console.log('🎯 onSlotClick appelé avec:', { date, time })
+                      
+                      // Valider le format de date (YYYY-MM-DD)
+                      if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        console.error('❌ Format de date invalide:', date)
+                        alert('Format de date invalide')
+                        return
+                      }
+                      
+                      // Valider le format d'heure (HH:MM)
+                      if (!time || !time.match(/^\d{2}:\d{2}$/)) {
+                        console.error('❌ Format d\'heure invalide:', time)
+                        alert('Format d\'heure invalide')
+                        return
+                      }
+                      
+                      // Créer le dateTime avec validation
+                      const dateTimeStr = `${date}T${time}:00`
+                      console.log('🕒 Création dateTime:', dateTimeStr)
+                      
+                      const dateTime = new Date(dateTimeStr)
+                      
+                      // Vérifier si la date est valide
+                      if (isNaN(dateTime.getTime())) {
+                        console.error('❌ Date/heure invalide:', dateTimeStr)
+                        alert('Date ou heure invalide')
+                        return
+                      }
+                      
+                      console.log('✅ DateTime créé:', dateTime.toISOString())
+                      
+                      setReservationModal({ 
+                        open: true, 
+                        slots: [dateTime.toISOString()],
+                        defaultActionType: 'resaManual'
+                      })
+                    } catch (error) {
+                      console.error('❌ Erreur lors de la création du slot:', error)
+                      alert('Erreur lors de la sélection du créneau: ' + error.message)
+                    }
                   }}
                   onEventClick={(event) => {
                     setEventDetailModal({ open: true, event })
@@ -1973,14 +2560,7 @@ function PrestataireCalendar() {
           </div>
         </div>
 
-        {/* Modal de création */}
-        <CreateEventModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreateEvent={handleCreateEvent}
-          selectedDate={selectedSlot.date}
-          selectedTime={selectedSlot.time}
-        />
+
 
         {/* Modal de détail/édition d'événement */}
         <EventDetailModal
@@ -1997,43 +2577,84 @@ function PrestataireCalendar() {
           open={reservationModal.open}
           slots={reservationModal.slots}
           annonces={annonces}
+          defaultActionType={reservationModal.defaultActionType}
           onConfirm={async (formData) => {
             try {
               const { data: { user } } = await supabase.auth.getUser()
               if (!user) return
 
-              // Créer les réservations pour chaque créneau sélectionné
-              const reservationsData = reservationModal.slots.map(slot => {
-                const dateTime = new Date(slot)
-                return {
-                  prestataire_id: user.id,
-                  annonce_id: formData.annonceId ? parseInt(formData.annonceId) : null,
-                  date: dateTime.toISOString(),
-                  client_nom: formData.clientNom,
-                  client_email: formData.clientEmail,
-                  commentaire: formData.description,
-                  montant: formData.montant ? parseFloat(formData.montant) : null,
-                  montant_acompte: formData.montantAcompte ? parseFloat(formData.montantAcompte) : 0,
-                  endroit: formData.endroit,
-                  status: 'confirmed',
-                  duree: 120, // 2h par défaut
-                  participants: 1
+              console.log('🎯 Traitement de l\'action:', formData.actionType)
+              console.log('📅 Créneaux sélectionnés:', reservationModal.slots)
+              console.log('📢 Annonces:', formData.selectedAnnonces)
+              console.log('⏰ Durée:', formData.duration, 'heures')
+
+              // Fonction helper pour générer tous les créneaux selon la durée
+              const generateSlotsFromDuration = (startSlot, durationHours) => {
+                const slots = []
+                const startDate = new Date(startSlot)
+                
+                for (let i = 0; i < durationHours; i++) {
+                  const slotTime = new Date(startDate)
+                  slotTime.setHours(startDate.getHours() + i)
+                  slots.push(slotTime.toISOString())
                 }
-              })
-
-              const { error } = await supabase
-                .from('reservations')
-                .insert(reservationsData)
-
-              if (error) {
-                console.error('Erreur lors de la création des réservations:', error)
-                alert('Erreur lors de la création des réservations')
-              } else {
-                setReservationModal({ open: false, slots: [] })
-                loadEvents()
+                return slots
               }
+
+              if (formData.actionType === 'blocked') {
+                // Bloquer des créneaux - générer tous les créneaux selon la durée
+                for (const slot of reservationModal.slots) {
+                  const allSlots = generateSlotsFromDuration(slot, formData.duration)
+                  
+                  for (const timeSlot of allSlots) {
+                    const motifText = formData.selectedAnnonces.length > 0 
+                      ? `Bloqué - ${formData.selectedAnnonces.map(id => {
+                          const annonce = annonces.find(a => a.id === parseInt(id))
+                          return annonce ? annonce.titre : `Annonce ${id}`
+                        }).join(', ')}`
+                      : 'Créneaux bloqués'
+                    
+                    await supabase
+                      .from('blocked_slots')
+                      .insert({
+                        prestataire_id: user.id,
+                        date: timeSlot,
+                        motif: motifText,
+                        annonce_id: formData.selectedAnnonces.length > 0 ? parseInt(formData.selectedAnnonces[0]) : null
+                      })
+                  }
+                }
+              } else {
+                // Réservation manuelle - créer UNE réservation qui générera automatiquement tous les créneaux bloqués
+                for (const slot of reservationModal.slots) {
+                  const dateTime = new Date(slot)
+                  await createReservation({
+                    date: dateTime.toISOString(),
+                    clientNom: formData.clientNom,
+                    clientEmail: formData.clientEmail,
+                    description: formData.description,
+                    montant: formData.montant,
+                    montantAcompte: formData.montantAcompte,
+                    endroit: formData.endroit,
+                    duration: formData.duration, // en heures
+                    selectedAnnonces: formData.selectedAnnonces,
+                    participants: formData.participants,
+                    status: 'confirmed'
+                  })
+                }
+              }
+
+              // Fermer la modal et recharger les événements
+              setReservationModal({ open: false, slots: [] })
+              loadEvents()
+              
+              // Afficher un message de succès
+              const actionText = formData.actionType === 'resaManual' ? 'Réservations' : 'Blocages'
+              alert(`${actionText} créé(s) avec succès !`)
+              
             } catch (error) {
-              console.error('Erreur:', error)
+              console.error('❌ Erreur générale:', error)
+              alert('Erreur lors du traitement: ' + error.message)
             }
           }}
           onCancel={() => setReservationModal({ open: false, slots: [] })}
@@ -2043,9 +2664,40 @@ function PrestataireCalendar() {
         <QuickReservationModal
           isOpen={quickReservationModal.open}
           onClose={() => setQuickReservationModal({ open: false })}
-          onConfirm={(slots) => {
-            setQuickReservationModal({ open: false })
-            setReservationModal({ open: true, slots })
+          annonces={annonces}
+          onConfirm={async (formData, slots) => {
+            try {
+              const { data: { user } } = await supabase.auth.getUser()
+              if (!user) return
+
+              // Créer directement la réservation avec la fonction centralisée
+              for (const slot of slots) {
+                const dateTime = new Date(slot)
+                await createReservation({
+                  date: dateTime.toISOString(),
+                  clientNom: formData.clientNom,
+                  clientEmail: formData.clientEmail,
+                  endroit: formData.endroit,
+                  montant: formData.montant,
+                  montantAcompte: formData.montantAcompte,
+                  description: formData.description,
+                  selectedAnnonces: formData.selectedAnnonces,
+                  duration: formData.duration, // en heures
+                  status: 'confirmed'
+                })
+              }
+              
+              setQuickReservationModal({ open: false })
+              
+              // Recharger les données
+              await loadEvents()
+              
+              alert('✅ Réservation créée avec succès!')
+              
+            } catch (error) {
+              console.error('❌ Erreur création réservation rapide:', error)
+              alert('Erreur lors de la création de la réservation: ' + error.message)
+            }
           }}
         />
       </div>
