@@ -32,6 +32,7 @@ function EventTooltip({ event, children }) {
   }
 
   const formatDuration = (durationMinutes) => {
+    if (!durationMinutes) return '0min'
     if (durationMinutes < 60) {
       return `${durationMinutes}min`
     } else if (durationMinutes % 60 === 0) {
@@ -1804,7 +1805,7 @@ function PrestataireCalendar() {
       const { data: reservations } = await supabase
         .from('reservations')
         .select(`
-          id, date, montant, status, participants, endroit, commentaire, duree,
+          id, date, montant, status, participants, endroit, commentaire, duree, duree_heure,
           client_nom, client_email,
           profiles!reservations_particulier_id_fkey(nom, email, telephone, role),
           annonces!reservations_annonce_id_fkey(titre, tarif_unit)
@@ -1833,18 +1834,41 @@ function PrestataireCalendar() {
       // Réservations
       if (reservations) {
         reservations.forEach(res => {
-          // Extraire la date et l'heure du timestamp
+          // Extraire la date et l'heure du timestamp de début
           const dateTime = new Date(res.date)
           const dateStr = dateTime.toISOString().split('T')[0]
           const timeStr = dateTime.toTimeString().substring(0, 5)
           
+          // Calculer la durée en minutes
+          // Utiliser duree_heure si disponible, sinon utiliser duree (pour compatibilité)
+          let durationMinutes;
+          if (res.duree_heure !== null && res.duree_heure !== undefined) {
+            durationMinutes = res.duree_heure * 60; // Convertir heures en minutes
+          } else {
+            durationMinutes = (res.duree || 2) * 60; // Fallback: utiliser duree
+          }
+          
+          // Calculer la date/heure de fin
+          const endDateTime = new Date(dateTime.getTime() + durationMinutes * 60 * 1000);
+          
+          // Créer un événement pour chaque heure de travail occupée
+          // On va afficher l'événement sur toutes les heures entre début et fin
+          const startHour = dateTime.getHours();
+          const endHour = endDateTime.getHours();
+          const endMinutes = endDateTime.getMinutes();
+          
+          // Si la réservation se termine à l'heure pile (minutes = 0), on ne compte pas cette heure
+          const finalEndHour = endMinutes === 0 ? endHour : endHour + 1;
+          
+          // On crée un seul événement avec la durée totale
+          // Le système de créneaux horaires gérera l'affichage sur plusieurs heures
           allEvents.push({
             id: `res_${res.id}`,
             type: 'reservation',
             title: res.annonces?.titre || 'Réservation',
             date: dateStr,
             time: timeStr,
-            duration: (res.duree || 2) * 60, // Durée en minutes (convertir depuis heures)
+            duration: durationMinutes, // Durée en minutes
             status: res.status,
             client_name: res.client_nom || res.profiles?.nom || '',
             client_email: res.client_email || res.profiles?.email || '',
@@ -1855,7 +1879,8 @@ function PrestataireCalendar() {
             guests: res.participants || 1,
             color: 'emerald', // Couleur uniforme pour toutes les réservations
             annonce_title: res.annonces?.titre || 'Annonce inconnue',
-            annonce_id: res.annonce_id
+            annonce_id: res.annonce_id,
+            duree_heure: res.duree_heure // Conserver pour affichage
           })
         })
       }
@@ -2228,12 +2253,18 @@ function PrestataireCalendar() {
 
   // Calculer les créneaux horaires occupés par un événement
   const getEventTimeSlots = (event) => {
-    const startTime = parseInt(event.time.split(':')[0])
-    const durationHours = Math.ceil(event.duration / 60)
+    const [startHour, startMinute] = event.time.split(':').map(Number)
+    const durationMinutes = event.duration || 60
     const slots = []
     
-    for (let i = 0; i < durationHours; i++) {
-      const hour = startTime + i
+    // Calculer l'heure de fin
+    const startTotalMinutes = startHour * 60 + startMinute
+    const endTotalMinutes = startTotalMinutes + durationMinutes
+    const endHour = Math.floor(endTotalMinutes / 60)
+    const endMinute = endTotalMinutes % 60
+    
+    // Générer tous les créneaux horaires occupés (heures de travail 8h-20h)
+    for (let hour = startHour; hour < endHour || (hour === endHour && endMinute > 0); hour++) {
       if (hour >= 8 && hour <= 20) { // Limité aux heures d'ouverture 8h-20h
         slots.push(`${hour.toString().padStart(2, '0')}:00`)
       }

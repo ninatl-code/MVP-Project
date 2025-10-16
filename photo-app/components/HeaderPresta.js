@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, BarChart3 } from "lucide-react";
+import { ShootyLogoSimple } from "./ShootyLogo";
 
 const GOLD = "#FFD600";
 
@@ -68,18 +69,24 @@ export default function Header() {
     <header className="sticky top-0 z-20 bg-white shadow-sm border-b border-slate-200">
       <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo & Titre */}
-        <div className="flex items-center gap-4">
-          <span className="text-2xl font-extrabold tracking-tight text-slate-700">ArtYzana</span>
-          <span className="ml-4 text-base text-slate-400 hidden sm:block">Espace artiste</span>
+        <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/prestataires/menu")}>
+          <ShootyLogoSimple width={120} height={40} />
+          <span className="ml-4 text-base hidden sm:block" style={{color: 'var(--foreground)', opacity: 0.6}}>Espace artiste</span>
         </div>
         {/* Actions */}
         <div className="flex items-center gap-2">
           <IconButton onClick={() => router.push("/prestataires/menu")}
-            className="bg-slate-700 hover:bg-slate-800 text-white">
+            className="text-white"
+            style={{backgroundColor: 'var(--primary)'}}
+            onMouseEnter={e => e.target.style.backgroundColor = 'var(--accent)'}
+            onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}>
             <Menu className="w-5 h-5" />
           </IconButton>
           <IconButton onClick={() => router.push("/prestataires/kpis")}
-            className="bg-slate-700 hover:bg-slate-800 text-white"
+            className="text-white"
+            style={{backgroundColor: 'var(--primary)'}}
+            onMouseEnter={e => e.target.style.backgroundColor = 'var(--accent)'}
+            onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}
             title="Statistiques et KPIs">
             <BarChart3 className="w-5 h-5" />
           </IconButton>

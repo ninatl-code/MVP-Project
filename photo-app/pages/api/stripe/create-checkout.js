@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   try {
     // Récupère les infos du body
-    const { annonce_id, montant_acompte, user_id, email, commande_id, reservation_id } = req.body;
+    const { annonce_id, montant_acompte, user_id, email, reservation_id } = req.body;
 
     if (!annonce_id || !montant_acompte || !user_id || !email) {
       return res.status(400).json({ error: "Paramètres manquants" });
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       line_items: [
         {
           price_data: {
-            currency: "mad",
+            currency: "eur",
             product_data: { name: `Acompte pour la réservation de l'annonce ${annonce_id}` },
             unit_amount: Math.round(Number(montant_acompte) * 100), // en centimes
           },
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
       },
       metadata: {
         annonce_id: String(annonce_id),
-        commande_id: commande_id ? String(commande_id) : "",
+
         reservation_id: reservation_id ? String(reservation_id) : "",
         user_id: String(user_id),
         prestataire_id: String(prestataire_id),
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // Tu peux ici insérer une commande temporaire en base si besoin
+
 
     return res.status(200).json({ session, url: session.url });
   } catch (err) {

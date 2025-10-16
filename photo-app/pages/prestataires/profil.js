@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { Mail, Phone, MapPin, Heart, Calendar, Star, Award, TrendingUp, Users, Eye, ShoppingCart, DollarSign, Briefcase, Clock, CheckCircle, Instagram, Facebook, Linkedin, Globe } from "lucide-react";
+import { Mail, Phone, MapPin, Heart, Calendar, Star, Award, TrendingUp, Users, Eye, ShoppingCart, DollarSign, Briefcase, Clock, CheckCircle, Instagram, Facebook, Linkedin, Globe, Upload, FileText, AlertTriangle, Shield } from "lucide-react";
 import Header from '../../components/HeaderPresta';
 import { useRouter } from "next/router";
 
@@ -41,6 +41,22 @@ export default function UserProfile() {
     linkedin: '',
     website: ''
   });
+  
+  // États pour les documents professionnels
+  const [documents, setDocuments] = useState({
+    siret: null,
+    assurance: null,
+    kbis: null
+  });
+  const [statutValidation, setStatutValidation] = useState('pending');
+  const [uploadingDoc, setUploadingDoc] = useState(null);
+  
+  // États pour les zones d'intervention
+  const [zonesIntervention, setZonesIntervention] = useState([]);
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [newZone, setNewZone] = useState({ ville_centre: '', rayon_km: 50 });
+  const [savingZone, setSavingZone] = useState(false);
+  
   const router = useRouter();
 
   useEffect(() => {
@@ -50,7 +66,7 @@ export default function UserProfile() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("nom, photos, ville_id, email, telephone, bio, stripe_account_id, instagram, facebook, linkedin, website")
+        .select("nom, photos, ville_id, email, telephone, bio, stripe_account_id, instagram, facebook, linkedin, website, documents_siret, documents_assurance, documents_kbis, statut_validation")
         .eq("id", authUser.id)
         .single();
 
@@ -97,6 +113,14 @@ export default function UserProfile() {
       };
       setSocialMedia(socialData);
       setSocialMediaEdit(socialData);
+
+      // Initialiser les documents professionnels
+      setDocuments({
+        siret: profile?.documents_siret || null,
+        assurance: profile?.documents_assurance || null,
+        kbis: profile?.documents_kbis || null
+      });
+      setStatutValidation(profile?.statut_validation || 'pending');
 
       // Récupère la liste des villes
       const { data: villesData } = await supabase
@@ -146,6 +170,9 @@ export default function UserProfile() {
           cover: fav.cover || "https://source.unsplash.com/300x200/?wedding",
         }))
       );
+
+      // Charger les zones d'intervention
+      await loadZonesIntervention(authUser.id);
     };
 
     fetchUserData();
@@ -320,6 +347,154 @@ export default function UserProfile() {
     setPhotoEdit(base64);
   };
 
+  // Fonction pour téléverser un document
+  const handleDocumentUpload = async (documentType, file) => {
+    if (!file) return;
+    
+    setUploadingDoc(documentType);
+    
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Utilisateur non authentifié");
+
+      // Créer un nom de fichier unique
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${authUser.id}/${documentType}_${Date.now()}.${fileExt}`;
+
+      // Upload du fichier vers Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+
+      // Mettre à jour le profil avec l'URL du document
+      const columnName = `documents_${documentType}`;
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          [columnName]: publicUrl,
+          statut_validation: 'pending' // Remettre en attente après un nouvel upload
+        })
+        .eq('id', authUser.id);
+
+      if (updateError) throw updateError;
+
+      // Mettre à jour l'état local
+      setDocuments(prev => ({
+        ...prev,
+        [documentType]: publicUrl
+      }));
+      setStatutValidation('pending');
+
+      alert(`Document ${documentType.toUpperCase()} téléversé avec succès !`);
+
+    } catch (error) {
+      console.error('Erreur upload document:', error);
+      alert('Erreur lors du téléversement: ' + error.message);
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
+  // Charger les zones d'intervention
+  const loadZonesIntervention = async (prestataireId) => {
+    try {
+      const { data: zonesData, error } = await supabase
+        .from('zones_intervention')
+        .select('*')
+        .eq('prestataire_id', prestataireId)
+        .eq('active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erreur lors du chargement des zones:', error);
+      } else {
+        setZonesIntervention(zonesData || []);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+    }
+  };
+
+  // Ajouter une nouvelle zone d'intervention
+  const handleAddZone = async () => {
+    if (!newZone.ville_centre.trim()) {
+      alert('Veuillez saisir une ville centre');
+      return;
+    }
+
+    if (newZone.rayon_km < 1 || newZone.rayon_km > 200) {
+      alert('Le rayon doit être entre 1 et 200 km');
+      return;
+    }
+
+    try {
+      setSavingZone(true);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Utilisateur non authentifié");
+
+      const { error } = await supabase
+        .from('zones_intervention')
+        .insert({
+          prestataire_id: authUser.id,
+          ville_centre: newZone.ville_centre.trim(),
+          rayon_km: parseInt(newZone.rayon_km),
+          active: true
+        });
+
+      if (error) throw error;
+
+      // Recharger les zones
+      await loadZonesIntervention(authUser.id);
+      
+      // Réinitialiser le formulaire
+      setNewZone({ ville_centre: '', rayon_km: 50 });
+      setShowZoneModal(false);
+      
+      alert('Zone d\'intervention ajoutée avec succès !');
+
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de la zone:', error);
+      alert('Erreur lors de l\'ajout: ' + error.message);
+    } finally {
+      setSavingZone(false);
+    }
+  };
+
+  // Supprimer une zone d'intervention
+  const handleDeleteZone = async (zoneId) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette zone d\'intervention ?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('zones_intervention')
+        .update({ active: false })
+        .eq('id', zoneId);
+
+      if (error) throw error;
+
+      // Recharger les zones
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        await loadZonesIntervention(authUser.id);
+      }
+      
+      alert('Zone d\'intervention supprimée');
+
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression: ' + error.message);
+    }
+  };
+
   // Sauvegarde des modifications
   const handleSaveProfile = async () => {
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
@@ -414,7 +589,7 @@ export default function UserProfile() {
       <Header/>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-700 to-slate-800">
+        <div style={{background: 'linear-gradient(to right, var(--primary), var(--accent))'}}>
           <div className="max-w-7xl mx-auto px-6 py-12">
             <div className="flex items-center gap-8">
               <div className="relative">
@@ -425,7 +600,7 @@ export default function UserProfile() {
                     className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl object-cover"
                   />
                 ) : (
-                  <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl flex items-center justify-center bg-white text-slate-700 text-4xl font-bold">
+                  <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl flex items-center justify-center bg-white text-4xl font-bold" style={{color: 'var(--text)'}}>
                     {user.name ? user.name[0].toUpperCase() : "?"}
                   </div>
                 )}
@@ -460,7 +635,8 @@ export default function UserProfile() {
                 <div className="flex gap-3">
                   {!editMode ? (
                     <button
-                      className="bg-white text-slate-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-lg flex items-center gap-2"
+                      className="bg-white px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-lg flex items-center gap-2"
+                      style={{color: 'var(--text)'}}
                       onClick={() => setEditMode(true)}
                     >
                       <Users className="w-4 h-4" />
@@ -507,17 +683,17 @@ export default function UserProfile() {
           
           {/* Statistiques rapides */}
           <section>
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-slate-600" />
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{color: 'var(--text)'}}>
+              <TrendingUp className="w-6 h-6" style={{color: 'var(--primary)'}} />
               Mes performances
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-lg p-4 border border-slate-200">
+              <div className="rounded-lg p-4" style={{background: 'linear-gradient(to right, var(--background), #f9fafb)', border: '1px solid var(--primary)'}}>
                 <div className="flex items-center justify-between mb-2">
-                  <Briefcase className="w-5 h-5 text-slate-600" />
-                  <span className="text-sm font-medium text-slate-700">Annonces</span>
+                  <Briefcase className="w-5 h-5" style={{color: 'var(--primary)'}} />
+                  <span className="text-sm font-medium" style={{color: 'var(--text)'}}>Annonces</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-800">{stats.totalAnnonces}</p>
+                <p className="text-2xl font-bold" style={{color: 'var(--text)'}}>{stats.totalAnnonces}</p>
               </div>
               
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
@@ -546,7 +722,7 @@ export default function UserProfile() {
                 <p className="text-2xl font-bold text-amber-800">{stats.noteMoyenne}/5</p>
               </div>
               
-              <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
+              <div className="rounded-lg p-4" style={{background: 'linear-gradient(to right, #f9fafb, var(--background))', border: '1px solid #d1d5db'}}>
                 <div className="flex items-center justify-between mb-2">
                   <Eye className="w-5 h-5 text-gray-600" />
                   <span className="text-sm font-medium text-gray-700">Vues</span>
@@ -559,33 +735,33 @@ export default function UserProfile() {
           {/* Infos perso + Infos bancaires */}
           <section className="grid md:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5 text-slate-600" />
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2" style={{color: 'var(--text)'}}>
+                <Users className="w-5 h-5" style={{color: 'var(--primary)'}} />
                 Informations personnelles
               </h2>
               {!editMode ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                    <Mail className="w-5 h-5 text-slate-600" />
+                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{backgroundColor: 'var(--background)'}}>
+                    <Mail className="w-5 h-5" style={{color: 'var(--primary)'}} />
                     <div>
-                      <p className="text-sm text-slate-500">Email</p>
-                      <p className="font-medium text-slate-800">{user.email || 'Non renseigné'}</p>
+                      <p className="text-sm" style={{color: 'var(--primary)'}}>Email</p>
+                      <p className="font-medium" style={{color: 'var(--text)'}}>{user.email || 'Non renseigné'}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                    <Phone className="w-5 h-5 text-slate-600" />
+                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{backgroundColor: 'var(--background)'}}>
+                    <Phone className="w-5 h-5" style={{color: 'var(--primary)'}} />
                     <div>
-                      <p className="text-sm text-slate-500">Téléphone</p>
-                      <p className="font-medium text-slate-800">
+                      <p className="text-sm" style={{color: 'var(--primary)'}}>Téléphone</p>
+                      <p className="font-medium" style={{color: 'var(--text)'}}>
                         {user.phone ? String(user.phone) : 'Non renseigné'}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                    <MapPin className="w-5 h-5 text-slate-600" />
+                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{backgroundColor: 'var(--background)'}}>
+                    <MapPin className="w-5 h-5" style={{color: 'var(--primary)'}} />
                     <div>
-                      <p className="text-sm text-gray-500">Ville</p>
-                      <p className="font-medium text-gray-800">{user.city || 'Non renseigné'}</p>
+                      <p className="text-sm" style={{color: 'var(--primary)'}}>Ville</p>
+                      <p className="font-medium" style={{color: 'var(--text)'}}>{user.city || 'Non renseigné'}</p>
                     </div>
                   </div>
                 </div>
@@ -627,7 +803,7 @@ export default function UserProfile() {
               )}
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2" style={{color: 'var(--text)'}}>
                 <DollarSign className="w-5 h-5 text-emerald-600" />
                 Informations bancaires
               </h2>
@@ -642,7 +818,10 @@ export default function UserProfile() {
                       </div>
                     </div>
                     <button
-                      className="bg-slate-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-slate-700 transition-colors flex items-center gap-2 mx-auto"
+                      className="text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2 mx-auto"
+                      style={{backgroundColor: 'var(--primary)'}}
+                      onMouseEnter={e => e.target.style.backgroundColor = 'var(--accent)'}
+                      onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}
                       onClick={handleStripeSetup}
                     >
                       <DollarSign className="w-4 h-4" />
@@ -656,7 +835,10 @@ export default function UserProfile() {
                       <p className="text-sm text-amber-600">Configurez vos paiements pour recevoir des reservations</p>
                     </div>
                     <button
-                      className="bg-slate-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-slate-700 transition-colors flex items-center gap-2 mx-auto"
+                      className="text-white px-6 py-3 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2 mx-auto"
+                      style={{backgroundColor: 'var(--primary)'}}
+                      onMouseEnter={e => e.target.style.backgroundColor = 'var(--accent)'}
+                      onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}
                       onClick={handleStripeSetup}
                     >
                       <DollarSign className="w-4 h-4" />
@@ -670,8 +852,8 @@ export default function UserProfile() {
 
           {/* About */}
           <section>
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <Heart className="w-6 h-6 text-slate-600" />
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{color: 'var(--text)'}}>
+              <Heart className="w-6 h-6" style={{color: 'var(--primary)'}} />
               À propos de moi
             </h2>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -687,7 +869,10 @@ export default function UserProfile() {
                     Présentez-vous à vos futurs clients
                   </label>
                   <textarea
-                    className="w-full p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent resize-none"
+                    className="w-full p-4 border rounded-lg resize-none"
+                    style={{borderColor: 'var(--primary)', '--tw-ring-color': 'var(--primary)'}}
+                    onFocus={e => e.target.style.outline = 'none'}
+                    onBlur={e => e.target.style.outline = 'none'}
                     value={bioEdit}
                     onChange={e => setBioEdit(e.target.value)}
                     rows={6}
@@ -703,8 +888,8 @@ export default function UserProfile() {
 
           {/* Réseaux sociaux */}
           <section>
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <Globe className="w-6 h-6 text-slate-600" />
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{color: 'var(--text)'}}>
+              <Globe className="w-6 h-6" style={{color: 'var(--primary)'}} />
               Mes réseaux sociaux
             </h2>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -761,7 +946,8 @@ export default function UserProfile() {
                       href={socialMedia.website.startsWith('http') ? socialMedia.website : `https://${socialMedia.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200 group"
+                      className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200 group"
+                      style={{background: 'linear-gradient(to right, #f9fafb, var(--background))'}}
                     >
                       <Globe className="w-6 h-6 text-gray-600 group-hover:scale-110 transition-transform" />
                       <div>
@@ -853,8 +1039,347 @@ export default function UserProfile() {
               )}
             </div>
           </section>
+
+          {/* Documents professionnels */}
+          <section>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{color: 'var(--text)'}}>
+              <Shield className="w-6 h-6" style={{color: 'var(--primary)'}} />
+              Documents professionnels
+            </h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              {/* Statut de validation */}
+              <div className="mb-6 p-4 rounded-lg border" style={{
+                backgroundColor: statutValidation === 'validated' ? '#f0f9ff' : 
+                                statutValidation === 'rejected' ? '#fef2f2' : '#fffbeb',
+                borderColor: statutValidation === 'validated' ? '#3b82f6' : 
+                            statutValidation === 'rejected' ? '#ef4444' : '#f59e0b'
+              }}>
+                <div className="flex items-center gap-2">
+                  {statutValidation === 'validated' ? (
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  ) : statutValidation === 'rejected' ? (
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-amber-600" />
+                  )}
+                  <span className="font-medium" style={{
+                    color: statutValidation === 'validated' ? '#059669' : 
+                           statutValidation === 'rejected' ? '#dc2626' : '#d97706'
+                  }}>
+                    {statutValidation === 'validated' ? 'Documents validés' : 
+                     statutValidation === 'rejected' ? 'Documents refusés' : 
+                     'En attente de validation'}
+                  </span>
+                </div>
+                <p className="text-sm mt-1" style={{
+                  color: statutValidation === 'validated' ? '#059669' : 
+                         statutValidation === 'rejected' ? '#dc2626' : '#d97706'
+                }}>
+                  {statutValidation === 'validated' ? 'Vos documents ont été validés par notre équipe.' : 
+                   statutValidation === 'rejected' ? 'Veuillez téléverser des documents conformes.' : 
+                   'Vos documents sont en cours de vérification.'}
+                </p>
+              </div>
+
+              {/* Liste des documents */}
+              <div className="grid md:grid-cols-3 gap-6">
+                {/* SIRET */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-5 h-5" style={{color: 'var(--primary)'}} />
+                    <h3 className="font-semibold" style={{color: 'var(--text)'}}>SIRET</h3>
+                  </div>
+                  {documents.siret ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <CheckCircle className="w-4 h-4" />
+                        Document téléversé
+                      </div>
+                      <button
+                        onClick={() => window.open(documents.siret, '_blank')}
+                        className="text-sm underline text-blue-600 hover:text-blue-800"
+                      >
+                        Voir le document
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 mb-3">Aucun document</p>
+                  )}
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleDocumentUpload('siret', e.target.files[0])}
+                      className="hidden"
+                      disabled={uploadingDoc === 'siret'}
+                    />
+                    <div className="mt-2 flex items-center gap-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 text-sm">
+                      {uploadingDoc === 'siret' ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          Téléversement...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Téléverser SIRET
+                        </>
+                      )}
+                    </div>
+                  </label>
+                </div>
+
+                {/* Assurance */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-5 h-5" style={{color: 'var(--primary)'}} />
+                    <h3 className="font-semibold" style={{color: 'var(--text)'}}>Assurance</h3>
+                  </div>
+                  {documents.assurance ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <CheckCircle className="w-4 h-4" />
+                        Document téléversé
+                      </div>
+                      <button
+                        onClick={() => window.open(documents.assurance, '_blank')}
+                        className="text-sm underline text-blue-600 hover:text-blue-800"
+                      >
+                        Voir le document
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 mb-3">Aucun document</p>
+                  )}
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleDocumentUpload('assurance', e.target.files[0])}
+                      className="hidden"
+                      disabled={uploadingDoc === 'assurance'}
+                    />
+                    <div className="mt-2 flex items-center gap-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 text-sm">
+                      {uploadingDoc === 'assurance' ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          Téléversement...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Téléverser Assurance
+                        </>
+                      )}
+                    </div>
+                  </label>
+                </div>
+
+                {/* KBIS */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Briefcase className="w-5 h-5" style={{color: 'var(--primary)'}} />
+                    <h3 className="font-semibold" style={{color: 'var(--text)'}}>KBIS</h3>
+                  </div>
+                  {documents.kbis ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <CheckCircle className="w-4 h-4" />
+                        Document téléversé
+                      </div>
+                      <button
+                        onClick={() => window.open(documents.kbis, '_blank')}
+                        className="text-sm underline text-blue-600 hover:text-blue-800"
+                      >
+                        Voir le document
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 mb-3">Aucun document</p>
+                  )}
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleDocumentUpload('kbis', e.target.files[0])}
+                      className="hidden"
+                      disabled={uploadingDoc === 'kbis'}
+                    />
+                    <div className="mt-2 flex items-center gap-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 text-sm">
+                      {uploadingDoc === 'kbis' ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          Téléversement...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Téléverser KBIS
+                        </>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2">📋 Informations importantes :</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• Les documents sont obligatoires pour valider votre profil prestataire</li>
+                  <li>• Formats acceptés : PDF, JPG, PNG (max 5MB par fichier)</li>
+                  <li>• La validation peut prendre 24-48h après téléversement</li>
+                  <li>• Assurez-vous que les documents soient lisibles et à jour</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Zones d'intervention */}
+          <section>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{color: 'var(--text)'}}>
+              <MapPin className="w-6 h-6" style={{color: 'var(--primary)'}} />
+              Zones d'intervention
+            </h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <p className="text-gray-600">
+                  Définissez les zones géographiques où vous acceptez d'intervenir
+                </p>
+                <button
+                  onClick={() => setShowZoneModal(true)}
+                  className="px-4 py-2 text-white rounded-lg shadow transition"
+                  style={{backgroundColor: 'var(--primary)'}}
+                  onMouseEnter={e => e.target.style.backgroundColor = 'var(--accent)'}
+                  onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}
+                >
+                  Ajouter une zone
+                </button>
+              </div>
+
+              {zonesIntervention.length === 0 ? (
+                <div className="text-center py-8">
+                  <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-600 mb-2">Aucune zone définie</h3>
+                  <p className="text-gray-500 mb-4">
+                    Ajoutez vos zones d'intervention pour que les clients sachent où vous pouvez vous déplacer
+                  </p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {zonesIntervention.map((zone) => (
+                    <div key={zone.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MapPin className="w-4 h-4" style={{color: 'var(--primary)'}} />
+                            <h3 className="font-semibold" style={{color: 'var(--text)'}}>{zone.ville_centre}</h3>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Rayon : <span className="font-medium">{zone.rayon_km} km</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteZone(zone.id)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-medium text-green-800 mb-2">💡 Conseils pour vos zones d'intervention :</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• Définissez des zones réalistes selon vos possibilités de déplacement</li>
+                  <li>• Un rayon de 50 km est généralement recommandé pour commencer</li>
+                  <li>• Vous pouvez ajouter plusieurs zones centrées sur différentes villes</li>
+                  <li>• Les clients verront ces informations sur votre profil</li>
+                </ul>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
+
+      {/* Modal d'ajout de zone d'intervention */}
+      {showZoneModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold" style={{color: 'var(--text)'}}>
+                  Ajouter une zone d'intervention
+                </h3>
+                <button
+                  onClick={() => setShowZoneModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ville centre
+                  </label>
+                  <input
+                    type="text"
+                    value={newZone.ville_centre}
+                    onChange={(e) => setNewZone({...newZone, ville_centre: e.target.value})}
+                    placeholder="Ex: Casablanca, Rabat, Marrakech..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rayon d'intervention (km)
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="200"
+                      value={newZone.rayon_km}
+                      onChange={(e) => setNewZone({...newZone, rayon_km: parseInt(e.target.value)})}
+                      className="flex-1"
+                    />
+                    <div className="text-lg font-semibold min-w-[60px]" style={{color: 'var(--primary)'}}>
+                      {newZone.rayon_km} km
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Distance maximale depuis la ville centre où vous acceptez d'intervenir
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setShowZoneModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleAddZone}
+                  disabled={savingZone}
+                  className="flex-1 px-4 py-2 text-white rounded-lg shadow transition"
+                  style={{backgroundColor: 'var(--primary)'}}
+                  onMouseEnter={e => !savingZone && (e.target.style.backgroundColor = 'var(--accent)')}
+                  onMouseLeave={e => !savingZone && (e.target.style.backgroundColor = 'var(--primary)')}
+                >
+                  {savingZone ? 'Ajout...' : 'Ajouter'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

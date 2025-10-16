@@ -21,14 +21,14 @@ export default function PrestationsPrestataire() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUserId(user.id)
-        // Récupérer toutes les annonces avec leurs villes de livraison
+        // Récupérer toutes les annonces avec leurs zones d'intervention
         const { data, error } = await supabase
           .from('annonces')
           .select(`
             id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, 
             acompte_percent, equipement, prestation, actif, prestataire, conditions_annulation,
             prestations(nom, type),
-            livraisons_annonces(mode, villes(ville))
+            zones_intervention(id, ville_centre, rayon_km, active)
           `)
           .eq('prestataire', user.id)
           .order('created_at', { ascending: false })
@@ -73,16 +73,49 @@ export default function PrestationsPrestataire() {
   // Suppression des annonces sélectionnées
   const handleDelete = async () => {
     if (selectedIds.length === 0) return
-    const { error } = await supabase
-      .from('annonces')
-      .delete()
-      .in('id', selectedIds)
-    if (!error) {
-      setPrestations(prev => prev.filter(p => !selectedIds.includes(p.id)))
-      setSelectedIds([])
-    } else {
-      alert("Erreur lors de la suppression : " + error.message)
+    
+    try {
+      // D'abord supprimer les zones d'intervention associées
+      const { error: zonesError } = await supabase
+        .from('zones_intervention')
+        .delete()
+        .in('annonce_id', selectedIds)
+      
+      if (zonesError) {
+        console.error('Erreur lors de la suppression des zones:', zonesError);
+        alert("Erreur lors de la suppression des zones d'intervention : " + zonesError.message);
+        return;
+      }
+      
+      // Ensuite supprimer les modèles associés (si produits)
+      const { error: modelesError } = await supabase
+        .from('modeles')
+        .delete()
+        .in('annonce_id', selectedIds)
+      
+      if (modelesError) {
+        console.error('Erreur lors de la suppression des modèles:', modelesError);
+        // On continue même si erreur sur modèles (peut-être qu'il n'y en a pas)
+      }
+      
+      // Enfin supprimer les annonces
+      const { error } = await supabase
+        .from('annonces')
+        .delete()
+        .in('id', selectedIds)
+      
+      if (!error) {
+        setPrestations(prev => prev.filter(p => !selectedIds.includes(p.id)))
+        setSelectedIds([])
+        alert(`${selectedIds.length} annonce(s) supprimée(s) avec succès`);
+      } else {
+        alert("Erreur lors de la suppression : " + error.message)
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert("Erreur lors de la suppression : " + error.message);
     }
+    
     setShowConfirm(false)
   }
 
@@ -146,6 +179,11 @@ export default function PrestationsPrestataire() {
         <div style={{fontSize:15, color:'#444', marginBottom:6}}>
           <b>Équipements :</b> {prestation.equipement}
         </div>
+        {prestation.fichiers && (
+          <div style={{fontSize:15, color:'#444', marginBottom:6}}>
+            <b>Types de fichiers livrables :</b> {prestation.fichiers}
+          </div>
+        )}
       </>
     );
   }
@@ -208,14 +246,13 @@ export default function PrestationsPrestataire() {
         }}
         onClick={async e => {
           if (e.target.type === 'checkbox') return;
-          // Recherche les infos complètes de l'annonce avec les livraisons
+          // Recherche les infos complètes de l'annonce avec les zones d'intervention
           const { data: annonceDetails, error } = await supabase
             .from('annonces')
             .select(`
               *, 
-              prestations(*), 
-              villes(*),
-              livraisons_annonces(mode, prix, delai, villes(ville))
+              prestations(*),
+              zones_intervention(id, ville_centre, rayon_km, active)
             `)
             .eq('id', prestation.id)
             .single();
@@ -241,8 +278,6 @@ export default function PrestationsPrestataire() {
               ...annonceDetails,
               prestation: annonceDetails.prestations?.nom || annonceDetails.titre || '',
               prestationType: annonceDetails.prestations?.type || '',
-              ville: annonceDetails.villes?.ville || '',
-              villeId: annonceDetails.ville,
               prestationId: annonceDetails.prestation,
               modelesExistants: modelesExistants // Ajouter les modèles existants
             });
@@ -265,7 +300,7 @@ export default function PrestationsPrestataire() {
             zIndex: 2,
             width: 22,
             height: 22,
-            accentColor: '#bfa046',
+            accentColor: '#5C6BC0',
             cursor: 'pointer'
           }}
           onClick={e => e.stopPropagation()}
@@ -325,12 +360,12 @@ export default function PrestationsPrestataire() {
             <ServiceDetails prestation={prestation} />
           )}
           
-          {/* Affichage des villes de livraison/service */}
-          {prestation.livraisons_annonces && prestation.livraisons_annonces.length > 0 && (
+          {/* Affichage des zones d'intervention */}
+          {prestation.zones_intervention && prestation.zones_intervention.length > 0 ? (
             <div style={{fontSize:15, color:'#444', marginBottom:10}}>
-              <b>Villes :</b> 
+              <b>Zones d'intervention :</b> 
               <div style={{marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4}}>
-                {[...new Set(prestation.livraisons_annonces.map(liv => liv.villes?.ville).filter(Boolean))].map((ville, idx) => (
+                {prestation.zones_intervention.filter(z => z.active !== false).map((zone, idx) => (
                   <span 
                     key={idx}
                     style={{
@@ -338,23 +373,17 @@ export default function PrestationsPrestataire() {
                       borderRadius: 12,
                       fontSize: 12,
                       fontWeight: 500,
-                      background: '#e3f2fd',
-                      color: '#1976d2',
-                      border: '1px solid #bbdefb'
+                      background: '#e8f5e9',
+                      color: '#2e7d32',
+                      border: '1px solid #a5d6a7'
                     }}
                   >
-                    {ville}
+                    {zone.ville_centre} ({zone.rayon_km} km)
                   </span>
                 ))}
               </div>
-              {/* Affichage des modes de livraison pour les produits */}
-              {prestation.prestations?.type === 'produit' && (
-                <div style={{marginTop: 6, fontSize: 12, color: '#666', fontStyle: 'italic'}}>
-                  Modes : {[...new Set(prestation.livraisons_annonces.map(liv => liv.mode).filter(mode => mode !== 'service'))].join(', ')}
-                </div>
-              )}
             </div>
-          )}
+          ) : null}
           
           {prestation.conditions_annulation && (
             <div style={{fontSize:15, color:'#444', marginBottom:6}}>
@@ -392,7 +421,7 @@ export default function PrestationsPrestataire() {
             padding: '15px 20px',
             borderTop: '1px solid #f0f0f0',
             display: 'flex',
-            gap: 10,
+            gap: 8,
             justifyContent: 'space-between'
           }}>
             <button
@@ -401,8 +430,8 @@ export default function PrestationsPrestataire() {
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
-                padding: '8px 16px',
-                fontSize: 14,
+                padding: '8px 12px',
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
@@ -421,12 +450,82 @@ export default function PrestationsPrestataire() {
             
             <button
               style={{
-                background: '#bfa046',
+                background: '#28a745',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
-                padding: '8px 16px',
-                fontSize: 14,
+                padding: '8px 12px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                flex: 1,
+                justifyContent: 'center'
+              }}
+              onClick={async (e) => {
+                e.stopPropagation();
+                
+                if (!confirm('Voulez-vous dupliquer cette annonce ?')) return;
+                
+                try {
+                  // Charger les détails complets de l'annonce
+                  const { data: annonceDetails, error: fetchError } = await supabase
+                    .from('annonces')
+                    .select(`
+                      *, 
+                      prestations(*),
+                      zones_intervention(id, ville_centre, rayon_km, active)
+                    `)
+                    .eq('id', prestation.id)
+                    .single();
+                  
+                  if (fetchError) throw fetchError;
+                  
+                  // Charger les modèles si c'est un produit
+                  let modelesExistants = [];
+                  if (annonceDetails?.prestations?.type === 'produit') {
+                    const { data: modelesData, error: modelesError } = await supabase
+                      .from('modeles')
+                      .select('*')
+                      .eq('annonce_id', prestation.id);
+                    
+                    if (!modelesError && modelesData) {
+                      modelesExistants = modelesData;
+                    }
+                  }
+                  
+                  // Préparer les données pour le modal avec indication de duplication
+                  setSelectedPrestation({
+                    ...annonceDetails,
+                    id: null, // Pas d'ID = nouvelle annonce
+                    titre: `${annonceDetails.titre} (Copie)`,
+                    prestation: annonceDetails.prestations?.nom || annonceDetails.titre || '',
+                    prestationType: annonceDetails.prestations?.type || '',
+                    prestationId: annonceDetails.prestation,
+                    modelesExistants: modelesExistants.map(m => ({ ...m, id: null, isTemp: true })), // Marquer comme temporaires
+                    isDuplicate: true // Flag pour indiquer que c'est une duplication
+                  });
+                  
+                  setShowModal(true);
+                } catch (error) {
+                  console.error('Erreur lors de la duplication:', error);
+                  alert('Erreur lors de la duplication: ' + error.message);
+                }
+              }}
+            >
+              📋 Dupliquer
+            </button>
+            
+            <button
+              style={{
+                background: '#5C6BC0',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '8px 12px',
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
@@ -535,11 +634,11 @@ export default function PrestationsPrestataire() {
 
   // Pop-up d'ajout/modification/aperçu de prestation
   function AddPrestationModal({ open, onClose, prestation }) {
-    const isEdit = !!prestation;
+    const isEdit = !!(prestation && prestation.id && !prestation.isDuplicate);
     
     // Fonction pour traiter la création d'annonce (appelée directement ou après confirmation)
     const handleCreateAnnonce = async (annonceData) => {
-    const { form, prestationId, livraisonsByMode } = annonceData;
+    const { form, prestationId } = annonceData;
     
     try {
       // Validation des champs obligatoires si prix_fixe
@@ -551,6 +650,11 @@ export default function PrestationsPrestataire() {
         // Vérifier que le tarif unitaire est un nombre valide
         if (form.tarif_unit && isNaN(parseFloat(form.tarif_unit))) {
           alert("Le tarif unitaire doit être un nombre valide.");
+          return;
+        }
+        // Validation du nombre d'heures pour séance/forfait
+        if ((form.unit_tarif === 'seance' || form.unit_tarif === 'forfait') && (!form.nb_heure || parseFloat(form.nb_heure) <= 0)) {
+          alert(`Veuillez renseigner le nombre d'heures pour ${form.unit_tarif === 'seance' ? 'une séance' : 'le forfait'}.`);
           return;
         }
       }
@@ -567,48 +671,32 @@ export default function PrestationsPrestataire() {
         return;
       }
 
-      // Validation des livraisons pour les produits
-      if (form.type === 'produit') {
-        let hasValidLivraison = false;
-        let validationErrors = [];
-
-        // Vérifier le mode standard
-        if (livraisonsByMode.standard.villes.length > 0) {
-          if (!livraisonsByMode.standard.prix || !livraisonsByMode.standard.delai) {
-            validationErrors.push("Veuillez renseigner le prix et le délai pour le mode Standard.");
-          } else if (isNaN(parseFloat(livraisonsByMode.standard.prix)) || parseFloat(livraisonsByMode.standard.prix) < 0) {
-            validationErrors.push("Le prix Standard doit être un nombre positif.");
-          } else {
-            hasValidLivraison = true;
-          }
-        }
-
-        // Vérifier le mode express
-        if (livraisonsByMode.express.villes.length > 0) {
-          if (!livraisonsByMode.express.prix || !livraisonsByMode.express.delai) {
-            validationErrors.push("Veuillez renseigner le prix et le délai pour le mode Express.");
-          } else if (isNaN(parseFloat(livraisonsByMode.express.prix)) || parseFloat(livraisonsByMode.express.prix) < 0) {
-            validationErrors.push("Le prix Express doit être un nombre positif.");
-          } else {
-            hasValidLivraison = true;
-          }
-        }
-
-        if (!hasValidLivraison) {
-          alert("Veuillez configurer au moins un mode de livraison avec des villes sélectionnées.");
-          return;
-        }
-
-        if (validationErrors.length > 0) {
-          alert(validationErrors.join("\n"));
-          return;
-        }
+      // Validation des zones d'intervention
+      if (zonesIntervention.length === 0) {
+        alert("Veuillez définir au moins une zone d'intervention.");
+        return;
       }
 
-      // Validation des villes selon le type
-      if (form.type === 'service' && (!form.villes || form.villes.length === 0)) {
-        alert("Veuillez sélectionner au moins une ville pour ce service.");
-        return;
+      // Calculer nb_heure automatiquement selon l'unité choisie
+      let nbHeure = null;
+      if (form.unit_tarif) {
+        switch (form.unit_tarif) {
+          case 'heure':
+            nbHeure = 1;
+            break;
+          case 'demi_journee':
+            nbHeure = 4;
+            break;
+          case 'jour':
+            nbHeure = 8;
+            break;
+          case 'seance':
+          case 'forfait':
+            nbHeure = form.nb_heure ? parseFloat(form.nb_heure) : null;
+            break;
+          default:
+            nbHeure = null;
+        }
       }
 
       // Préparer les données d'insertion en gérant les valeurs numériques
@@ -622,7 +710,9 @@ export default function PrestationsPrestataire() {
         prix_fixe: Boolean(form.prix_fixe),
         acompte_percent: form.acompte_percent ? parseInt(form.acompte_percent) : null,
         equipement: form.equipements || null,
+        fichiers: form.fichiers || null,
         conditions_annulation: form.type === 'service' ? (form.conditions_annulation || null) : null,
+        nb_heure: nbHeure, // Ajout du nombre d'heures
         prestataire: userId,
         actif: true
       };
@@ -636,81 +726,20 @@ export default function PrestationsPrestataire() {
         .single();
 
       if (!insertError && insertedAnnonce) {
-        // Sauvegarder les informations de livraison pour tous les types
-        const livraisonsData = [];
-        
-        if (form.type === 'service') {
-          // Pour les services, créer une livraison "service" pour chaque ville
-          for (let ville of form.villes || []) {
-            const { data: villeData, error: villeError } = await supabase
-              .from('villes')
-              .select('id')
-              .eq('ville', ville)
-              .single();
-            
-            if (!villeError && villeData) {
-              livraisonsData.push({
-                annonce_id: insertedAnnonce.id,
-                ville_id: villeData.id,
-                mode: 'service',
-                prix: 0, // Les services n'ont pas de prix de livraison
-                delai: 'Sur rendez-vous'
-              });
-            }
-          }
-        } else if (form.type === 'produit') {
-          // Pour les produits, utiliser les données de livraison configurées
-          // Mode standard
-          if (livraisonsByMode.standard.villes.length > 0 && livraisonsByMode.standard.prix && livraisonsByMode.standard.delai) {
-            for (let ville of livraisonsByMode.standard.villes) {
-              const { data: villeData, error: villeError } = await supabase
-                .from('villes')
-                .select('id')
-                .eq('ville', ville)
-                .single();
-              
-              if (!villeError && villeData) {
-                livraisonsData.push({
-                  annonce_id: insertedAnnonce.id,
-                  ville_id: villeData.id,
-                  mode: 'standard',
-                  prix: parseFloat(livraisonsByMode.standard.prix),
-                  delai: livraisonsByMode.standard.delai
-                });
-              }
-            }
-          }
+        // Sauvegarder les zones d'intervention
+        for (let zone of zonesIntervention) {
+          const { error: zoneError } = await supabase
+            .from('zones_intervention')
+            .insert([{
+              prestataire_id: userId,
+              annonce_id: insertedAnnonce.id,
+              ville_centre: zone.ville_centre,
+              rayon_km: zone.rayon_km,
+              active: true
+            }]);
           
-          // Mode express
-          if (livraisonsByMode.express.villes.length > 0 && livraisonsByMode.express.prix && livraisonsByMode.express.delai) {
-            for (let ville of livraisonsByMode.express.villes) {
-              const { data: villeData, error: villeError } = await supabase
-                .from('villes')
-                .select('id')
-                .eq('ville', ville)
-                .single();
-              
-              if (!villeError && villeData) {
-                livraisonsData.push({
-                  annonce_id: insertedAnnonce.id,
-                  ville_id: villeData.id,
-                  mode: 'express',
-                  prix: parseFloat(livraisonsByMode.express.prix),
-                  delai: livraisonsByMode.express.delai
-                });
-              }
-            }
-          }
-        }
-        
-        if (livraisonsData.length > 0) {
-          const { error: livError } = await supabase
-            .from('livraisons_annonces')
-            .insert(livraisonsData);
-          
-          if (livError) {
-            console.error('Erreur lors de l\'ajout des livraisons:', livError);
-            alert('Annonce créée mais erreur lors de l\'ajout des livraisons: ' + livError.message);
+          if (zoneError) {
+            console.error('Erreur lors de l\'ajout de la zone:', zoneError);
           }
         }
         
@@ -737,6 +766,7 @@ export default function PrestationsPrestataire() {
             }
           }
         }
+      
         
         // Rafraîchir la liste des prestations
         const { data, error } = await supabase
@@ -745,7 +775,7 @@ export default function PrestationsPrestataire() {
             id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, 
             acompte_percent, equipement, prestation, actif, prestataire, conditions_annulation,
             prestations(nom, type),
-            livraisons_annonces(mode, villes(ville))
+            zones_intervention(id, ville_centre, rayon_km, active)
           `)
           .eq('prestataire', userId)
           .order('created_at', { ascending: false });
@@ -777,13 +807,9 @@ export default function PrestationsPrestataire() {
       modeles: [],
       conditions: '',
       categories: [],
-      conditions_annulation: ''
-    });
-
-    // --- Delivery info state for produit type (improved) ---
-    const [livraisonsByMode, setLivraisonsByMode] = useState({
-      standard: { villes: [], prix: '', delai: '' },
-      express: { villes: [], prix: '', delai: '' }
+      conditions_annulation: '',
+      fichiers: '',
+      nb_heure: '' // Nombre d'heures pour séance/forfait
     });
 
     // Local confirmation state for modeleDraft
@@ -792,15 +818,11 @@ export default function PrestationsPrestataire() {
     const [categoriesList, setCategoriesList] = useState([]);
     const [villesList, setVillesList] = useState([]);
 
-    // Reset delivery info when modal opens for produit type
-    useEffect(() => {
-      if (open && form?.type === 'produit') {
-        setLivraisonsByMode({
-          standard: { villes: [], prix: '', delai: '' },
-          express: { villes: [], prix: '', delai: '' }
-        });
-      }
-    }, [open, form?.type]);
+    // --- États pour les zones d'intervention ---
+    const [zonesIntervention, setZonesIntervention] = useState([]);
+    const [newZone, setNewZone] = useState({ ville_centre: '', rayon_km: 50 });
+    const [showZoneModal, setShowZoneModal] = useState(false);
+    const [savingZone, setSavingZone] = useState(false);
 
     useEffect(() => {
       const fetchCategories = async () => {
@@ -826,88 +848,62 @@ export default function PrestationsPrestataire() {
     }, []);
 
     useEffect(() => {
-      if (isEdit && prestation) {
+      if (prestation) {
         console.log('Initialisation formulaire avec:', prestation); // Debug
         
-        // Charger les livraisons existantes depuis la base de données
-        const loadExistingLivraisons = async () => {
-          const { data: livraisons, error } = await supabase
-            .from('livraisons_annonces')
-            .select(`
-              mode, prix, delai,
-              villes!inner(ville)
-            `)
-            .eq('annonce_id', prestation.id);
-          
-          if (!error && livraisons) {
-            console.log('Livraisons existantes:', livraisons); // Debug
-            
-            // Organiser les livraisons par mode
-            const villesServices = [];
-            const standardLivraisons = { villes: [], prix: '', delai: '' };
-            const expressLivraisons = { villes: [], prix: '', delai: '' };
-            
-            livraisons.forEach(liv => {
-              const villeName = liv.villes?.ville;
-              if (!villeName) return;
-              
-              switch(liv.mode) {
-                case 'service':
-                  villesServices.push(villeName);
-                  break;
-                case 'standard':
-                  standardLivraisons.villes.push(villeName);
-                  if (!standardLivraisons.prix) {
-                    standardLivraisons.prix = liv.prix?.toString() || '';
-                    standardLivraisons.delai = liv.delai || '';
-                  }
-                  break;
-                case 'express':
-                  expressLivraisons.villes.push(villeName);
-                  if (!expressLivraisons.prix) {
-                    expressLivraisons.prix = liv.prix?.toString() || '';
-                    expressLivraisons.delai = liv.delai || '';
-                  }
-                  break;
-              }
-            });
-            
-            // Mettre à jour les states
-            setForm(prevForm => ({
-              ...prevForm,
-              villes: villesServices
+        // Charger les zones d'intervention de l'annonce
+        const loadZonesIntervention = async () => {
+          // Si c'est une duplication, charger les zones et les marquer comme temporaires
+          if (prestation.isDuplicate && prestation.zones_intervention) {
+            const zonesTemp = prestation.zones_intervention.map((zone, idx) => ({
+              id: `temp-${Date.now()}-${idx}`,
+              ville_centre: zone.ville_centre,
+              rayon_km: zone.rayon_km,
+              isTemp: true
             }));
+            setZonesIntervention(zonesTemp);
+          } 
+          // Si c'est une modification, charger les zones de la base
+          else if (isEdit && prestation.id) {
+            const { data: zones, error } = await supabase
+              .from('zones_intervention')
+              .select('*')
+              .eq('annonce_id', prestation.id)
+              .eq('active', true)
+              .order('created_at', { ascending: false });
             
-            setLivraisonsByMode({
-              standard: standardLivraisons,
-              express: expressLivraisons
-            });
+            if (!error && zones) {
+              setZonesIntervention(zones || []);
+            }
           }
         };
         
         setForm({
-          titre: prestation.prestations?.nom || prestation.prestation || prestation.titre || '',
+          titre: prestation.titre || prestation.prestations?.nom || prestation.prestation || '',
           type: prestation.prestations?.type || prestation.prestationType || prestation.type || '',
           categorie: prestation.categorie || '',
-          villes: [], // Sera rempli par loadExistingLivraisons
+          villes: [],
           description: prestation.description || '',
           tarif_unit: prestation.tarif_unit || '',
           unit_tarif: prestation.unit_tarif || '',
           prix_fixe: Boolean(prestation.prix_fixe),
           acompte_percent: prestation.acompte_percent || '',
           equipements: prestation.equipement || '',
+          fichiers: prestation.fichiers || '',
           photos: Array.isArray(prestation.photos) ? prestation.photos : [],
           modeles: Array.isArray(prestation.modelesExistants) ? prestation.modelesExistants : [],
           conditions: prestation.conditions || '',
           categories: prestation.categories || [],
           conditions_annulation: prestation.conditions_annulation || '',
+          nb_heure: prestation.nb_heure || '',
           modeleDraft: { titre: '', description: '', prix: '', photos: [] } // Réinitialiser le draft
         });
         
-        // Charger les livraisons existantes
-        loadExistingLivraisons();
-      } else if (!isEdit) {
+        // Charger les zones d'intervention
+        loadZonesIntervention();
+      } else if (!prestation) {
         // Réinitialiser le formulaire pour un nouvel ajout
+        setZonesIntervention([]);
         setForm({
           titre: '',
           type: '',
@@ -924,6 +920,7 @@ export default function PrestationsPrestataire() {
           conditions: '',
           categories: [],
           conditions_annulation: '',
+          nb_heure: '',
           modeleDraft: { titre: '', description: '', prix: '', photos: [] }
         });
       }
@@ -938,6 +935,103 @@ export default function PrestationsPrestataire() {
       }))
     }
 
+    // Fonction pour ajouter une zone d'intervention
+    const handleAddZone = async () => {
+      if (!newZone.ville_centre.trim()) {
+        alert('Veuillez saisir une ville centre');
+        return;
+      }
+
+      if (newZone.rayon_km < 1 || newZone.rayon_km > 200) {
+        alert('Le rayon doit être entre 1 et 200 km');
+        return;
+      }
+
+      // Si on édite une annonce existante, sauvegarder directement en base
+      if (isEdit && prestation?.id) {
+        try {
+          setSavingZone(true);
+          
+          const { error } = await supabase
+            .from('zones_intervention')
+            .insert({
+              prestataire_id: userId,
+              annonce_id: prestation.id,
+              ville_centre: newZone.ville_centre.trim(),
+              rayon_km: parseInt(newZone.rayon_km),
+              active: true
+            });
+
+          if (error) throw error;
+
+          // Recharger les zones
+          const { data: zones, error: loadError } = await supabase
+            .from('zones_intervention')
+            .select('*')
+            .eq('annonce_id', prestation.id)
+            .eq('active', true)
+            .order('created_at', { ascending: false });
+
+          if (!loadError) {
+            setZonesIntervention(zones || []);
+          }
+          
+          setNewZone({ ville_centre: '', rayon_km: 50 });
+          setShowZoneModal(false);
+          alert('Zone d\'intervention ajoutée avec succès !');
+
+        } catch (error) {
+          console.error('Erreur lors de l\'ajout de la zone:', error);
+          alert('Erreur lors de l\'ajout: ' + error.message);
+        } finally {
+          setSavingZone(false);
+        }
+      } else {
+        // Pour une nouvelle annonce, ajouter temporairement à l'état local
+        setZonesIntervention(prev => [...prev, {
+          id: `temp_${Date.now()}`,
+          ville_centre: newZone.ville_centre.trim(),
+          rayon_km: parseInt(newZone.rayon_km),
+          active: true,
+          isTemp: true // Marqueur pour savoir qu'il faut l'insérer lors de la création
+        }]);
+        
+        setNewZone({ ville_centre: '', rayon_km: 50 });
+        setShowZoneModal(false);
+      }
+    };
+
+    // Fonction pour supprimer une zone d'intervention
+    const handleDeleteZone = async (zoneId, isTemp = false) => {
+      if (!confirm('Êtes-vous sûr de vouloir supprimer cette zone d\'intervention ?')) {
+        return;
+      }
+
+      // Si c'est une zone temporaire (nouvelle annonce pas encore créée)
+      if (isTemp) {
+        setZonesIntervention(prev => prev.filter(z => z.id !== zoneId));
+        return;
+      }
+
+      // Si c'est une zone existante en base de données, la supprimer définitivement
+      try {
+        const { error } = await supabase
+          .from('zones_intervention')
+          .delete()
+          .eq('id', zoneId);
+
+        if (error) throw error;
+
+        // Retirer de l'état local
+        setZonesIntervention(prev => prev.filter(z => z.id !== zoneId));
+        alert('Zone d\'intervention supprimée');
+
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+        alert('Erreur lors de la suppression: ' + error.message);
+      }
+    };
+
     if (!open) return null
     return (
       <div style={{
@@ -946,7 +1040,7 @@ export default function PrestationsPrestataire() {
       }}>
         {/* Modal principal élargi pour meilleure visibilité */}
         <div style={{
-          background: '#fdf6ec',
+          background: '#E8EAF6',
           borderRadius: 18,
           padding: 38,
           minWidth: 680,
@@ -966,7 +1060,7 @@ export default function PrestationsPrestataire() {
             }}
             style={{
               position: 'absolute', top: 18, right: 18, background: 'none', border: 'none',
-              fontSize: 26, color: '#bfa046', cursor: 'pointer', fontWeight: 700
+              fontSize: 26, color: '#5C6BC0', cursor: 'pointer', fontWeight: 700
             }}
             aria-label="Fermer"
           >×</button>
@@ -982,15 +1076,20 @@ export default function PrestationsPrestataire() {
             {isEdit ? (
               <>
                 ✏️ Modifier l'annonce
+              </>
+            ) : prestation?.isDuplicate ? (
+              <>
+                📋 Dupliquer l'annonce
                 <span style={{
                   fontSize: 12,
-                  background: '#f0ad4e',
+                  background: '#28a745',
                   color: 'white',
                   padding: '4px 8px',
                   borderRadius: 12,
-                  fontWeight: 500
+                  fontWeight: 500,
+                  marginLeft: 8
                 }}>
-                  MODE ÉDITION
+                  DUPLICATION
                 </span>
               </>
             ) : (
@@ -1073,50 +1172,23 @@ export default function PrestationsPrestataire() {
                   />
                   Prix fixe ?
                 </label>
-              </div>
-              {/* Sélection multiple de villes pour service */}
-              <div style={{marginBottom: 12}}>
-                <div style={{fontWeight:600, fontSize:14, marginBottom:8, color: '#333'}}>
-                  Villes où vous proposez ce service *
+                <div style={{
+                  marginTop: 8,
+                  padding: '10px 12px',
+                  background: form.prix_fixe ? '#d1fae5' : '#fef3c7',
+                  border: `1px solid ${form.prix_fixe ? '#10b981' : '#f59e0b'}`,
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: form.prix_fixe ? '#065f46' : '#92400e',
+                  lineHeight: 1.5
+                }}>
+                  <strong>{form.prix_fixe ? '✓ ' : 'ℹ️ '}</strong>
+                  {form.prix_fixe 
+                    ? 'Les clients pourront réserver directement cette prestation en ligne.'
+                    : 'Les clients devront vous envoyer une demande de devis avant de pouvoir réserver.'}
                 </div>
-                <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 200, overflowY: 'auto', padding: 8, border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', borderRadius: 10, background: isEdit ? '#fff8f0' : '#fff'}}>
-                  {villesList.map(ville => (
-                    <label key={ville} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '6px 12px',
-                      background: (form.villes || []).includes(ville) ? '#e3f2fd' : '#f8f9fa',
-                      border: (form.villes || []).includes(ville) ? '2px solid #2196f3' : '1px solid #ddd',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      transition: 'all 0.2s',
-                      minWidth: 'fit-content'
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={(form.villes || []).includes(ville)}
-                        onChange={e => {
-                          const currentVilles = form.villes || [];
-                          setForm(f => ({
-                            ...f,
-                            villes: e.target.checked 
-                              ? [...currentVilles, ville]
-                              : currentVilles.filter(v => v !== ville)
-                          }));
-                        }}
-                        style={{marginRight: 8, accentColor: '#2196f3'}}
-                      />
-                      {ville}
-                    </label>
-                  ))}
-                </div>
-                {form.villes && form.villes.length > 0 && (
-                  <div style={{marginTop: 8, fontSize: 12, color: '#666'}}>
-                    {form.villes.length} ville(s) sélectionnée(s) : {form.villes.join(', ')}
-                  </div>
-                )}
               </div>
+              
               {/* Bloc description pour service */}
               <textarea
                 placeholder="Description"
@@ -1138,100 +1210,186 @@ export default function PrestationsPrestataire() {
               {/* Tarification et unité si prix fixe */}
               {form.prix_fixe && (
                 <>
-                  <input
-                    type="text"
-                    placeholder="Tarif unitaire"
-                    value={form.tarif_unit}
-                    onChange={e => setForm(f => ({ ...f, tarif_unit: e.target.value }))}
-                    style={{ 
-                      width: '100%', 
-                      padding: '8px 10px', 
-                      borderRadius: 10, 
-                      border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
-                      fontSize: 13, 
-                      marginBottom: 10, 
-                      background: isEdit ? '#fff8f0' : '#fff' 
-                    }}
-                    required
-                    disabled={false}
-                  />
                   {form.type === 'produit' ? (
-                    <div style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: 10,
-                      border: '2px solid #4CAF50',
-                      fontSize: 13,
-                      marginBottom: 10,
-                      background: '#e8f5e8',
-                      color: '#2e7d32',
-                      fontWeight: 600,
-                      textAlign: 'center'
-                    }}>
-                      forfait (automatique pour les produits)
-                    </div>
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Tarif unitaire"
+                        value={form.tarif_unit}
+                        onChange={e => setForm(f => ({ ...f, tarif_unit: e.target.value }))}
+                        style={{ 
+                          width: '100%', 
+                          padding: '8px 10px', 
+                          borderRadius: 10, 
+                          border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
+                          fontSize: 13, 
+                          marginBottom: 10, 
+                          background: isEdit ? '#fff8f0' : '#fff' 
+                        }}
+                        required
+                        disabled={false}
+                      />
+                      <div style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 10,
+                        border: '2px solid #4CAF50',
+                        fontSize: 13,
+                        marginBottom: 10,
+                        background: '#e8f5e8',
+                        color: '#2e7d32',
+                        fontWeight: 600,
+                        textAlign: 'center'
+                      }}>
+                        forfait (automatique pour les produits)
+                      </div>
+                    </>
                   ) : (
-                    <select
-                      value={form.unit_tarif}
-                      onChange={e => setForm(f => ({ ...f, unit_tarif: e.target.value }))}
-                      style={{ 
-                        width: '100%', 
-                        padding: '8px 10px', 
-                        borderRadius: 10, 
-                        border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
-                        fontSize: 13, 
-                        marginBottom: 10, 
-                        background: isEdit ? '#fff8f0' : '#fff' 
-                      }}
-                      required
-                      disabled={false}
-                    >
-                      <option value="">Sélectionnez l'unité de temps</option>
-                      <option value="heure">Heure</option>
-                      <option value="demi_journee">Demi journée</option>
-                      <option value="jour">Jour</option>
-                      <option value="seance">Séance</option>
-                      <option value="forfait">Forfait</option>
-                    </select>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: 10 }}>
+                      <input
+                        type="text"
+                        placeholder="Tarif unitaire"
+                        value={form.tarif_unit}
+                        onChange={e => setForm(f => ({ ...f, tarif_unit: e.target.value }))}
+                        style={{ 
+                          flex: 1,
+                          padding: '8px 10px', 
+                          borderRadius: 10, 
+                          border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
+                          fontSize: 13, 
+                          background: isEdit ? '#fff8f0' : '#fff' 
+                        }}
+                        required
+                        disabled={false}
+                      />
+                      <select
+                        value={form.unit_tarif}
+                        onChange={e => setForm(f => ({ ...f, unit_tarif: e.target.value }))}
+                        style={{ 
+                          flex: 1,
+                          padding: '8px 10px', 
+                          borderRadius: 10, 
+                          border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
+                          fontSize: 13, 
+                          background: isEdit ? '#fff8f0' : '#fff' 
+                        }}
+                        required
+                        disabled={false}
+                      >
+                        <option value="">Unité de temps</option>
+                        <option value="heure">Heure</option>
+                        <option value="demi_journee">Demi journée</option>
+                        <option value="jour">Jour</option>
+                        <option value="seance">Séance</option>
+                        <option value="forfait">Forfait</option>
+                      </select>
+                    </div>
+                  )}
+                  
+                  {/* Champ nombre d'heures pour séance/forfait */}
+                  {(form.unit_tarif === 'seance' || form.unit_tarif === 'forfait') && (
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ 
+                        display: 'block', 
+                        fontSize: 12, 
+                        color: '#666', 
+                        marginBottom: 6,
+                        fontWeight: 600
+                      }}>
+                        Nombre d'heures dans {form.unit_tarif === 'seance' ? 'une séance' : 'le forfait'} <span style={{color: '#d9534f'}}>*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        placeholder={`Ex: ${form.unit_tarif === 'seance' ? '2' : '8'}`}
+                        value={form.nb_heure}
+                        onChange={e => setForm(f => ({ ...f, nb_heure: e.target.value }))}
+                        style={{ 
+                          width: '100%', 
+                          padding: '8px 10px', 
+                          borderRadius: 10, 
+                          border: '2px solid #5C6BC0', 
+                          fontSize: 13, 
+                          background: '#f8f9ff' 
+                        }}
+                        required
+                      />
+                      <div style={{
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: '#666',
+                        fontStyle: 'italic'
+                      }}>
+                        ℹ️ Cette information permet de calculer la durée totale de la prestation
+                      </div>
+                    </div>
                   )}
                 </>
               )}
               {/* Pourcentage acompte */}
-              <input
-                type="number"
-                min="0"
-                max="100"
-                placeholder="Pourcentage d'acompte à la réservation (%)"
-                value={form.acompte_percent}
-                onChange={e => setForm(f => ({ ...f, acompte_percent: e.target.value }))}
-                style={{ 
-                  width: '100%', 
-                  padding: '8px 10px', 
-                  borderRadius: 10, 
-                  border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
-                  fontSize: 13, 
-                  marginBottom: 10, 
-                  background: isEdit ? '#fff8f0' : '#fff' 
-                }}
-                disabled={false}
-              />
-              {/* Bloc équipements pour service */}
-              <input
-                type="text"
-                placeholder="Équipements"
-                value={form.equipements}
-                onChange={e => setForm(f => ({ ...f, equipements: e.target.value }))}
-                style={{ 
-                  width: '100%', 
-                  padding: '8px 10px', 
-                  borderRadius: 10, 
-                  border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
-                  fontSize: 13, 
-                  marginBottom: 10, 
-                  background: isEdit ? '#fff8f0' : '#fff' 
-                }}
-                disabled={false}
-              />
+              <div style={{ position: 'relative', marginBottom: 10 }}>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="Pourcentage d'acompte à la réservation"
+                  value={form.acompte_percent}
+                  onChange={e => setForm(f => ({ ...f, acompte_percent: e.target.value }))}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 10px', 
+                    paddingRight: '30px',
+                    borderRadius: 10, 
+                    border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
+                    fontSize: 13, 
+                    background: isEdit ? '#fff8f0' : '#fff' 
+                  }}
+                  disabled={false}
+                />
+                <span style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: 13,
+                  color: '#666',
+                  pointerEvents: 'none'
+                }}>%</span>
+              </div>
+              {/* Bloc équipements et type de fichiers livrables */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: 10 }}>
+                <input
+                  type="text"
+                  placeholder="Équipements"
+                  value={form.equipements}
+                  onChange={e => setForm(f => ({ ...f, equipements: e.target.value }))}
+                  style={{ 
+                    flex: 1,
+                    padding: '8px 10px', 
+                    borderRadius: 10, 
+                    border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
+                    fontSize: 13, 
+                    background: isEdit ? '#fff8f0' : '#fff' 
+                  }}
+                  disabled={false}
+                />
+                <input
+                  type="text"
+                  placeholder="Types de fichiers livrables"
+                  value={form.fichiers}
+                  onChange={e => setForm(f => ({ ...f, fichiers: e.target.value }))}
+                  style={{ 
+                    flex: 1,
+                    padding: '8px 10px', 
+                    borderRadius: 10, 
+                    border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd', 
+                    fontSize: 13, 
+                    background: isEdit ? '#fff8f0' : '#fff' 
+                  }}
+                  disabled={false}
+                />
+              </div>
               
               {/* Conditions d'annulation pour service */}
               <div style={{marginBottom: 10}}>
@@ -1279,67 +1437,355 @@ export default function PrestationsPrestataire() {
                   </div>
                 )}
               </div>
-              {/* Bloc photos pour service */}
-              <div style={{marginBottom: 10}}>
-                <label>Photos {isEdit && <span style={{color: '#f0ad4e', fontSize: 12}}>- Mode modification - Vous pouvez ajouter ou supprimer</span>}</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={async e => {
-                    const files = Array.from(e.target.files);
-                    const base64Photos = [];
-                    for (let file of files) {
-                      const base64 = await fileToBase64(file);
-                      base64Photos.push(base64);
-                    }
-                    // En mode édition, ajouter aux photos existantes
-                    if (isEdit) {
-                      setForm(f => ({ ...f, photos: [...f.photos, ...base64Photos] }));
-                    } else {
-                      setForm(f => ({ ...f, photos: base64Photos }));
-                    }
-                  }}
-                  disabled={false}
-                  style={{
-                    border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd',
-                    borderRadius: 8,
-                    padding: '8px',
-                    background: isEdit ? '#fff8f0' : '#fff'
-                  }}
-                />
-                <div style={{display:'flex', gap:6, marginTop:8, flexWrap: 'wrap'}}>
-                  {form.photos && form.photos.map((b64, idx) => (
-                    <div key={idx} style={{position: 'relative'}}>
-                      <img 
-                        src={b64.startsWith('data:') ? b64 : `data:image/*;base64,${b64}`} 
-                        alt="photo" 
-                        style={{width:60, height:60, objectFit:'cover', borderRadius:8, border: '2px solid #ddd'}} 
-                      />
-                      <button
-                        onClick={() => setForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }))}
-                        style={{
-                          position: 'absolute',
-                          top: -8, right: -8,
-                          background: '#d9534f',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: 20, height: 20,
-                          fontSize: 12,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: isEdit ? 0.9 : 1
-                        }}
-                        title={isEdit ? 'Supprimer cette photo (mode édition)' : 'Supprimer cette photo'}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+              {/* Bloc photos pour service - Version améliorée */}
+              <div style={{
+                marginBottom: 20,
+                padding: 20,
+                background: '#f8f9fa',
+                borderRadius: 12,
+                border: '2px dashed #635BFF'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 15
+                }}>
+                  <h3 style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: '#635BFF',
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    📸 Photos de votre prestation
+                    {isEdit && (
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 400,
+                        color: '#f0ad4e',
+                        background: '#fff8f0',
+                        padding: '2px 8px',
+                        borderRadius: 12
+                      }}>
+                        Mode édition
+                      </span>
+                    )}
+                  </h3>
+                  <span style={{
+                    fontSize: 12,
+                    color: '#666',
+                    background: 'white',
+                    padding: '4px 10px',
+                    borderRadius: 12,
+                    fontWeight: 600
+                  }}>
+                    {form.photos?.length || 0} photo{(form.photos?.length || 0) > 1 ? 's' : ''}
+                  </span>
                 </div>
+
+                <p style={{
+                  fontSize: 12,
+                  color: '#666',
+                  marginBottom: 15,
+                  lineHeight: 1.5
+                }}>
+                  Ajoutez plusieurs photos de qualité pour mettre en valeur votre prestation. 
+                  Les premières photos seront plus visibles.
+                </p>
+
+                <label style={{
+                  display: 'inline-block',
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #635BFF 0%, #8B83FF 100%)',
+                  color: 'white',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 4px 12px rgba(99, 91, 255, 0.25)',
+                  marginBottom: 15
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(99, 91, 255, 0.35)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(99, 91, 255, 0.25)';
+                }}
+                >
+                  + Ajouter des photos
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={async e => {
+                      const files = Array.from(e.target.files);
+                      if (files.length === 0) return;
+                      
+                      const base64Photos = [];
+                      for (let file of files) {
+                        const base64 = await fileToBase64(file);
+                        base64Photos.push(base64);
+                      }
+                      // En mode édition, ajouter aux photos existantes
+                      if (isEdit) {
+                        setForm(f => ({ ...f, photos: [...(f.photos || []), ...base64Photos] }));
+                      } else {
+                        setForm(f => ({ ...f, photos: [...(f.photos || []), ...base64Photos] }));
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                {/* Grille de photos */}
+                {form.photos && form.photos.length > 0 ? (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                    gap: 12,
+                    marginTop: 15
+                  }}>
+                    {form.photos.map((b64, idx) => (
+                      <div key={idx} style={{
+                        position: 'relative',
+                        paddingTop: '100%',
+                        background: 'white',
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                      }}
+                      >
+                        <img 
+                          src={b64.startsWith('data:') ? b64 : `data:image/*;base64,${b64}`} 
+                          alt={`Photo ${idx + 1}`}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }} 
+                        />
+                        <div style={{
+                          position: 'absolute',
+                          top: 6,
+                          left: 6,
+                          background: 'rgba(0,0,0,0.6)',
+                          color: 'white',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 600
+                        }}>
+                          #{idx + 1}
+                        </div>
+                        <button
+                          onClick={() => setForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }))}
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 28,
+                            height: 28,
+                            fontSize: 18,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = '#dc2626';
+                            e.target.style.transform = 'scale(1.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = '#ef4444';
+                            e.target.style.transform = 'scale(1)';
+                          }}
+                          title="Supprimer cette photo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    background: 'white',
+                    borderRadius: 10,
+                    border: '2px dashed #ddd'
+                  }}>
+                    <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
+                    <p style={{
+                      fontSize: 14,
+                      color: '#999',
+                      margin: 0
+                    }}>
+                      Aucune photo ajoutée pour le moment
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Section Zones d'intervention pour service */}
+              <div style={{
+                marginTop: 20,
+                marginBottom: 20,
+                padding: 20,
+                background: '#f8f9fa',
+                borderRadius: 12,
+                border: '2px dashed #635BFF'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 15
+                }}>
+                  <h3 style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: '#635BFF',
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    📍 Zones d'intervention
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 400,
+                      color: '#666',
+                      background: '#fff',
+                      padding: '2px 8px',
+                      borderRadius: 12
+                    }}>
+                      obligatoire
+                    </span>
+                  </h3>
+                  <button
+                    onClick={() => setShowZoneModal(true)}
+                    style={{
+                      background: '#635BFF',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '8px 16px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                    type="button"
+                  >
+                    + Ajouter une zone
+                  </button>
+                </div>
+
+                <p style={{
+                  fontSize: 12,
+                  color: '#666',
+                  marginBottom: 15,
+                  lineHeight: 1.5
+                }}>
+                  Définissez les zones géographiques où vous proposez cette prestation. 
+                  Cela aide les clients à savoir si vous intervenez près de chez eux.
+                </p>
+
+                {zonesIntervention.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '30px 20px',
+                    background: 'white',
+                    borderRadius: 8,
+                    border: '1px solid #e0e0e0'
+                  }}>
+                    <div style={{fontSize: 32, marginBottom: 10}}>🗺️</div>
+                    <p style={{
+                      fontSize: 13,
+                      color: '#999',
+                      margin: 0
+                    }}>
+                      Aucune zone d'intervention définie pour cette annonce
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
+                    {zonesIntervention.map((zone) => (
+                      <div
+                        key={zone.id}
+                        style={{
+                          background: 'white',
+                          padding: 15,
+                          borderRadius: 10,
+                          border: '1px solid #e0e0e0',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div style={{flex: 1}}>
+                          <div style={{
+                            fontWeight: 600,
+                            fontSize: 14,
+                            color: '#333',
+                            marginBottom: 4
+                          }}>
+                            {zone.ville_centre}
+                          </div>
+                          <div style={{
+                            fontSize: 12,
+                            color: '#666'
+                          }}>
+                            Rayon d'intervention : <strong>{zone.rayon_km} km</strong>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteZone(zone.id, zone.isTemp)}
+                          style={{
+                            background: '#ff4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 6,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          type="button"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -1364,232 +1810,236 @@ export default function PrestationsPrestataire() {
                 maxLength={120}
                 disabled={false}
               />
-              {/* Photos du produit */}
-              <div style={{marginBottom: 10}}>
-                <label>Photos {isEdit}</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={async e => {
-                    const files = Array.from(e.target.files);
-                    const base64Photos = [];
-                    for (let file of files) {
-                      const base64 = await fileToBase64(file);
-                      base64Photos.push(base64);
-                    }
-                    // En mode édition, ajouter aux photos existantes
-                    if (isEdit) {
-                      setForm(f => ({ ...f, photos: [...f.photos, ...base64Photos] }));
-                    } else {
-                      setForm(f => ({ ...f, photos: base64Photos }));
-                    }
-                  }}
-                  disabled={false}
-                  style={{
-                    border: isEdit ? '2px solid #f0ad4e' : '1px solid #ddd',
-                    borderRadius: 8,
-                    padding: '8px',
-                    background: isEdit ? '#fff8f0' : '#fff'
-                  }}
-                />
-                <div style={{display:'flex', gap:6, marginTop:8, flexWrap: 'wrap'}}>
-                  {form.photos && form.photos.map((b64, idx) => (
-                    <div key={idx} style={{position: 'relative'}}>
-                      <img 
-                        src={b64.startsWith('data:') ? b64 : `data:image/*;base64,${b64}`} 
-                        alt="photo" 
-                        style={{width:60, height:60, objectFit:'cover', borderRadius:8, border: '2px solid #ddd'}} 
-                      />
-                      <button
-                        onClick={() => setForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }))}
-                        style={{
-                          position: 'absolute',
-                          top: -8, right: -8,
-                          background: '#d9534f',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: 20, height: 20,
-                          fontSize: 12,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: isEdit ? 0.9 : 1
-                        }}
-                        title={isEdit ? 'Supprimer cette photo (mode édition)' : 'Supprimer cette photo'}
+              {/* Photos du produit - Version améliorée */}
+              <div style={{
+                marginBottom: 20,
+                padding: 20,
+                background: '#f8f9fa',
+                borderRadius: 12,
+                border: '2px dashed #FFD369'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 15
+                }}>
+                  <h3 style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: '#1C1C1E',
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    📸 Photos de votre produit
+                    {isEdit && (
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 400,
+                        color: '#f0ad4e',
+                        background: '#fff8f0',
+                        padding: '2px 8px',
+                        borderRadius: 12
+                      }}>
+                        Mode édition
+                      </span>
+                    )}
+                  </h3>
+                  <span style={{
+                    fontSize: 12,
+                    color: '#666',
+                    background: 'white',
+                    padding: '4px 10px',
+                    borderRadius: 12,
+                    fontWeight: 600
+                  }}>
+                    {form.photos?.length || 0} photo{(form.photos?.length || 0) > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <p style={{
+                  fontSize: 12,
+                  color: '#666',
+                  marginBottom: 15,
+                  lineHeight: 1.5
+                }}>
+                  Ajoutez plusieurs photos de qualité pour montrer votre produit sous différents angles. 
+                  La première photo sera l'image principale.
+                </p>
+
+                <label style={{
+                  display: 'inline-block',
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #FFD369 0%, #FFE099 100%)',
+                  color: '#1C1C1E',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 4px 12px rgba(255, 211, 105, 0.35)',
+                  marginBottom: 15
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(255, 211, 105, 0.45)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(255, 211, 105, 0.35)';
+                }}
+                >
+                  + Ajouter des photos
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={async e => {
+                      const files = Array.from(e.target.files);
+                      if (files.length === 0) return;
+                      
+                      const base64Photos = [];
+                      for (let file of files) {
+                        const base64 = await fileToBase64(file);
+                        base64Photos.push(base64);
+                      }
+                      // En mode édition, ajouter aux photos existantes
+                      if (isEdit) {
+                        setForm(f => ({ ...f, photos: [...(f.photos || []), ...base64Photos] }));
+                      } else {
+                        setForm(f => ({ ...f, photos: [...(f.photos || []), ...base64Photos] }));
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                {/* Grille de photos */}
+                {form.photos && form.photos.length > 0 ? (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                    gap: 12,
+                    marginTop: 15
+                  }}>
+                    {form.photos.map((b64, idx) => (
+                      <div key={idx} style={{
+                        position: 'relative',
+                        paddingTop: '100%',
+                        background: 'white',
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                      }}
                       >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* --- Bloc livraisons amélioré pour produit --- */}
-              <div style={{marginBottom: 18, marginTop: 18}}>
-                <div style={{fontWeight:600, fontSize:15, marginBottom:12}}>Informations de livraison</div>
-                
-                {/* Mode Standard */}
-                <div style={{marginBottom: 16, padding: 16, background: '#f8f9fa', borderRadius: 12, border: '1px solid #e9ecef'}}>
-                  <div style={{display: 'flex', alignItems: 'center', marginBottom: 12}}>
-                    <div style={{
-                      background: '#28a745', 
-                      color: '#fff', 
-                      padding: '4px 12px', 
-                      borderRadius: 6, 
-                      fontSize: 13, 
-                      fontWeight: 600,
-                      marginRight: 16
-                    }}>
-                      STANDARD
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Prix (EUR)"
-                      value={livraisonsByMode.standard.prix}
-                      onChange={e => setLivraisonsByMode(prev => ({
-                        ...prev,
-                        standard: { ...prev.standard, prix: e.target.value }
-                      }))}
-                      style={{width: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, marginRight: 12}}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Délai (ex: 3-5 jours)"
-                      value={livraisonsByMode.standard.delai}
-                      onChange={e => setLivraisonsByMode(prev => ({
-                        ...prev,
-                        standard: { ...prev.standard, delai: e.target.value }
-                      }))}
-                      style={{width: 140, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13}}
-                    />
-                  </div>
-                  
-                  <div style={{marginBottom: 8, fontSize: 13, fontWeight: 600, color: '#555'}}>Villes disponibles :</div>
-                  <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
-                    {villesList.map(ville => (
-                      <label key={ville} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '6px 12px',
-                        background: livraisonsByMode.standard.villes.includes(ville) ? '#e3f2fd' : '#fff',
-                        border: livraisonsByMode.standard.villes.includes(ville) ? '2px solid #2196f3' : '1px solid #ddd',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        transition: 'all 0.2s'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={livraisonsByMode.standard.villes.includes(ville)}
-                          onChange={e => {
-                            setLivraisonsByMode(prev => ({
-                              ...prev,
-                              standard: {
-                                ...prev.standard,
-                                villes: e.target.checked 
-                                  ? [...prev.standard.villes, ville]
-                                  : prev.standard.villes.filter(v => v !== ville)
-                              }
-                            }));
-                          }}
-                          style={{marginRight: 8, accentColor: '#2196f3'}}
+                        <img 
+                          src={b64.startsWith('data:') ? b64 : `data:image/*;base64,${b64}`} 
+                          alt={`Photo ${idx + 1}`}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }} 
                         />
-                        {ville}
-                      </label>
+                        {idx === 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 6,
+                            left: 6,
+                            background: 'linear-gradient(135deg, #FFD369, #FF7F50)',
+                            color: 'white',
+                            padding: '3px 10px',
+                            borderRadius: 6,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                          }}>
+                            ⭐ PRINCIPALE
+                          </div>
+                        )}
+                        {idx !== 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 6,
+                            left: 6,
+                            background: 'rgba(0,0,0,0.6)',
+                            color: 'white',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            fontSize: 10,
+                            fontWeight: 600
+                          }}>
+                            #{idx + 1}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }))}
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 28,
+                            height: 28,
+                            fontSize: 18,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.background = '#dc2626';
+                            e.target.style.transform = 'scale(1.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = '#ef4444';
+                            e.target.style.transform = 'scale(1)';
+                          }}
+                          title="Supprimer cette photo"
+                        >
+                          ×
+                        </button>
+                      </div>
                     ))}
                   </div>
-                  {livraisonsByMode.standard.villes.length > 0 && (
-                    <div style={{marginTop: 8, fontSize: 12, color: '#666'}}>
-                      {livraisonsByMode.standard.villes.length} ville(s) sélectionnée(s) : {livraisonsByMode.standard.villes.join(', ')}
-                    </div>
-                  )}
-                </div>
-
-                {/* Mode Express */}
-                <div style={{marginBottom: 16, padding: 16, background: '#fff8f0', borderRadius: 12, border: '1px solid #ffe0b3'}}>
-                  <div style={{display: 'flex', alignItems: 'center', marginBottom: 12}}>
-                    <div style={{
-                      background: '#ff9800', 
-                      color: '#fff', 
-                      padding: '4px 12px', 
-                      borderRadius: 6, 
-                      fontSize: 13, 
-                      fontWeight: 600,
-                      marginRight: 16
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    background: 'white',
+                    borderRadius: 10,
+                    border: '2px dashed #ddd'
+                  }}>
+                    <div style={{ fontSize: 48, marginBottom: 10 }}>📷</div>
+                    <p style={{
+                      fontSize: 14,
+                      color: '#999',
+                      margin: 0
                     }}>
-                      EXPRESS
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Prix (EUR)"
-                      value={livraisonsByMode.express.prix}
-                      onChange={e => setLivraisonsByMode(prev => ({
-                        ...prev,
-                        express: { ...prev.express, prix: e.target.value }
-                      }))}
-                      style={{width: 120, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, marginRight: 12}}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Délai (ex: 24h)"
-                      value={livraisonsByMode.express.delai}
-                      onChange={e => setLivraisonsByMode(prev => ({
-                        ...prev,
-                        express: { ...prev.express, delai: e.target.value }
-                      }))}
-                      style={{width: 140, padding: '7px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13}}
-                    />
+                      Aucune photo ajoutée pour le moment
+                    </p>
                   </div>
-                  
-                  <div style={{marginBottom: 8, fontSize: 13, fontWeight: 600, color: '#555'}}>Villes disponibles :</div>
-                  <div style={{display: 'flex', flexWrap: 'wrap', gap: 8}}>
-                    {villesList.map(ville => (
-                      <label key={ville} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '6px 12px',
-                        background: livraisonsByMode.express.villes.includes(ville) ? '#fff3e0' : '#fff',
-                        border: livraisonsByMode.express.villes.includes(ville) ? '2px solid #ff9800' : '1px solid #ddd',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        transition: 'all 0.2s'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={livraisonsByMode.express.villes.includes(ville)}
-                          onChange={e => {
-                            setLivraisonsByMode(prev => ({
-                              ...prev,
-                              express: {
-                                ...prev.express,
-                                villes: e.target.checked 
-                                  ? [...prev.express.villes, ville]
-                                  : prev.express.villes.filter(v => v !== ville)
-                              }
-                            }));
-                          }}
-                          style={{marginRight: 8, accentColor: '#ff9800'}}
-                        />
-                        {ville}
-                      </label>
-                    ))}
-                  </div>
-                  {livraisonsByMode.express.villes.length > 0 && (
-                    <div style={{marginTop: 8, fontSize: 12, color: '#666'}}>
-                      {livraisonsByMode.express.villes.length} ville(s) sélectionnée(s) : {livraisonsByMode.express.villes.join(', ')}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{fontSize: 12, color: '#888', marginTop: 8, fontStyle: 'italic'}}>
-                  💡 Cochez les villes pour chaque mode de livraison. Vous pouvez sélectionner plusieurs villes par mode et définir des prix/délais différents.
-                </div>
+                )}
               </div>
 
               {/* Modèles existants et nouveaux modèles */}
@@ -1630,7 +2080,7 @@ export default function PrestationsPrestataire() {
                         <div style={{fontSize: 12, color: '#666', marginBottom: 6}}>
                           {modele.description}
                         </div>
-                        <div style={{fontSize: 12, fontWeight: 600, color: '#bfa046'}}>
+                        <div style={{fontSize: 12, fontWeight: 600, color: '#5C6BC0'}}>
                           {modele.prix} EUR
                         </div>
                         {/* Affichage des photos - compatible avec les formats ancien et nouveau */}
@@ -1944,11 +2394,11 @@ export default function PrestationsPrestataire() {
           )}
   
           <div style={{display:'flex', justifyContent:'space-between', marginTop:18}}>
-            {prestation ? (
+            {isEdit ? (
               <div style={{display: 'flex', gap: 12}}>
                 <button
                   style={{
-                    background:'#bfa046',
+                    background:'#5C6BC0',
                     color:'#fff',
                     border:'none',
                     borderRadius:12,
@@ -1969,6 +2419,12 @@ export default function PrestationsPrestataire() {
                       alert("Le tarif unitaire doit être un nombre valide.");
                       return;
                     }
+                  }
+                  
+                  // Validation du nombre d'heures pour séance/forfait
+                  if ((form.unit_tarif === 'seance' || form.unit_tarif === 'forfait') && !form.nb_heure) {
+                    alert("Veuillez renseigner le nombre d'heures pour cette séance/forfait.");
+                    return;
                   }
                   
                   // Vérifier que l'acompte est un pourcentage valide
@@ -1994,10 +2450,32 @@ export default function PrestationsPrestataire() {
                     }
                   }
 
-                  // Validation des villes selon le type
-                  if (form.type === 'service' && (!form.villes || form.villes.length === 0)) {
-                    alert("Veuillez sélectionner au moins une ville pour ce service.");
+                  // Validation des zones d'intervention pour les services
+                  if (form.type === 'service' && zonesIntervention.length === 0) {
+                    alert("Veuillez définir au moins une zone d'intervention pour ce service.");
                     return;
+                  }
+
+                  // Calcul automatique du nombre d'heures selon l'unité tarifaire
+                  let nbHeure = null;
+                  if (form.type !== 'produit') {
+                    switch (form.unit_tarif) {
+                      case 'heure':
+                        nbHeure = 1;
+                        break;
+                      case 'demi_journee':
+                        nbHeure = 4;
+                        break;
+                      case 'jour':
+                        nbHeure = 8;
+                        break;
+                      case 'seance':
+                      case 'forfait':
+                        nbHeure = form.nb_heure ? parseFloat(form.nb_heure) : null;
+                        break;
+                      default:
+                        nbHeure = null;
+                    }
                   }
 
                   // Les photos sont déjà en base64, pas besoin d'upload
@@ -2009,9 +2487,11 @@ export default function PrestationsPrestataire() {
                     photos: form.photos || [],
                     tarif_unit: form.tarif_unit ? parseFloat(form.tarif_unit) : null,
                     unit_tarif: form.type === 'produit' ? 'forfait' : (form.unit_tarif || null),
+                    nb_heure: nbHeure,
                     prix_fixe: Boolean(form.prix_fixe),
                     acompte_percent: form.acompte_percent ? parseInt(form.acompte_percent) : null,
                     equipement: form.equipements || null,
+                    fichiers: form.fichiers || null,
                     conditions_annulation: form.type === 'service' ? (form.conditions_annulation || null) : null
                   };
                   
@@ -2024,91 +2504,6 @@ export default function PrestationsPrestataire() {
                     .eq('id', prestation.id)
 
                   if (!updateError) {
-                    // Mettre à jour les livraisons pour tous les types d'annonces
-                    // D'abord supprimer les anciennes livraisons
-                    await supabase
-                      .from('livraisons_annonces')
-                      .delete()
-                      .eq('annonce_id', prestation.id);
-                    
-                    // Puis ajouter les nouvelles livraisons
-                    const livraisonsData = [];
-                    
-                    if (form.type === 'service') {
-                      // Pour les services, créer une livraison "service" pour chaque ville
-                      for (let ville of form.villes || []) {
-                        const { data: villeData, error: villeError } = await supabase
-                          .from('villes')
-                          .select('id')
-                          .eq('ville', ville)
-                          .single();
-                        
-                        if (!villeError && villeData) {
-                          livraisonsData.push({
-                            annonce_id: prestation.id,
-                            ville_id: villeData.id,
-                            mode: 'service',
-                            prix: 0, // Les services n'ont pas de prix de livraison
-                            delai: 'Sur rendez-vous'
-                          });
-                        }
-                      }
-                    } else if (form.type === 'produit') {
-                      // Pour les produits, utiliser les données de livraison configurées
-                      // Mode standard
-                      if (livraisonsByMode.standard.villes.length > 0 && livraisonsByMode.standard.prix && livraisonsByMode.standard.delai) {
-                        for (let ville of livraisonsByMode.standard.villes) {
-                          const { data: villeData, error: villeError } = await supabase
-                            .from('villes')
-                            .select('id')
-                            .eq('ville', ville)
-                            .single();
-                          
-                          if (!villeError && villeData) {
-                            livraisonsData.push({
-                              annonce_id: prestation.id,
-                              ville_id: villeData.id,
-                              mode: 'standard',
-                              prix: parseFloat(livraisonsByMode.standard.prix),
-                              delai: livraisonsByMode.standard.delai
-                            });
-                          }
-                        }
-                      }
-                      
-                      // Mode express
-                      if (livraisonsByMode.express.villes.length > 0 && livraisonsByMode.express.prix && livraisonsByMode.express.delai) {
-                        for (let ville of livraisonsByMode.express.villes) {
-                          const { data: villeData, error: villeError } = await supabase
-                            .from('villes')
-                            .select('id')
-                            .eq('ville', ville)
-                            .single();
-                          
-                          if (!villeError && villeData) {
-                            livraisonsData.push({
-                              annonce_id: prestation.id,
-                              ville_id: villeData.id,
-                              mode: 'express',
-                              prix: parseFloat(livraisonsByMode.express.prix),
-                              delai: livraisonsByMode.express.delai
-                            });
-                          }
-                        }
-                      }
-                    }
-                    
-                    if (livraisonsData.length > 0) {
-                      const { error: livError } = await supabase
-                        .from('livraisons_annonces')
-                        .insert(livraisonsData);
-                      
-                      if (livError) {
-                        console.error('Erreur lors de la mise à jour des livraisons:', livError);
-                        alert('Annonce mise à jour mais erreur lors de la mise à jour des livraisons: ' + livError.message);
-                        return;
-                      }
-                    }
                     
                     // Sauvegarder les modèles temporaires si c'est un produit (lors de la mise à jour)
                     if (form.type === 'produit' && form.modeles && form.modeles.length > 0) {
@@ -2138,14 +2533,14 @@ export default function PrestationsPrestataire() {
                     
                     setSelectedPrestation(null)
                     onClose()
-                    // Rafraîchir la liste des prestations avec les villes
+                    // Rafraîchir la liste des prestations
                     const { data, error } = await supabase
                       .from('annonces')
                       .select(`
                         id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, 
                         acompte_percent, equipement, prestation, actif, prestataire, conditions_annulation,
                         prestations(nom, type),
-                        livraisons_annonces(mode, villes(ville))
+                        zones_intervention(id, ville_centre, rayon_km, active)
                       `)
                       .eq('prestataire', userId)
                       .order('created_at', { ascending: false });
@@ -2179,7 +2574,7 @@ export default function PrestationsPrestataire() {
             ) : (
               <button
                 style={{
-                  background:'#bfa046',
+                  background:'#5C6BC0',
                   color:'#fff',
                   border:'none',
                   borderRadius:12,
@@ -2202,9 +2597,9 @@ export default function PrestationsPrestataire() {
                     }
                   }
 
-                  // Validation des villes selon le type
-                  if (form.type === 'service' && (!form.villes || form.villes.length === 0)) {
-                    alert("Veuillez sélectionner au moins une ville pour ce service.");
+                  // Validation des zones d'intervention pour les services
+                  if (form.type === 'service' && zonesIntervention.length === 0) {
+                    alert("Veuillez définir au moins une zone d'intervention pour ce service.");
                     return;
                   }
 
@@ -2229,13 +2624,13 @@ export default function PrestationsPrestataire() {
                   }
 
                   // Si pas de modèle en cours, créer directement
-                  await handleCreateAnnonce({ form, prestationId, livraisonsByMode });
+                  await handleCreateAnnonce({ form, prestationId });
                 }}
               >Ajouter</button>
             )}
             <button
               style={{
-                background:'#bfa046',
+                background:'#5C6BC0',
                 color:'#fff',
                 border:'none',
                 borderRadius:12,
@@ -2322,7 +2717,7 @@ export default function PrestationsPrestataire() {
                 
                 <button
                   style={{
-                    background: '#bfa046',
+                    background: '#5C6BC0',
                     color: 'white',
                     border: 'none',
                     borderRadius: 8,
@@ -2345,12 +2740,192 @@ export default function PrestationsPrestataire() {
                         prestationId = parseInt(prestationData.id);
                       }
                     }
-                    await handleCreateAnnonce({ form, prestationId, livraisonsByMode });
+                    await handleCreateAnnonce({ form, prestationId });
                   }}
                 >
                   ✅ Continuer
                   <br />
                   <span style={{ fontSize: 11, opacity: 0.8 }}>Créer sans le modèle</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Ajouter Zone d'Intervention */}
+        {showZoneModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, width: '100vw', height: '100vh',
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: 16,
+              padding: 32,
+              minWidth: 450,
+              maxWidth: 500,
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 24
+              }}>
+                <h2 style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: '#635BFF',
+                  margin: 0
+                }}>
+                  📍 Ajouter une zone d'intervention
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowZoneModal(false);
+                    setNewZone({ ville_centre: '', rayon_km: 50 });
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: 24,
+                    color: '#999',
+                    cursor: 'pointer',
+                    padding: 0,
+                    lineHeight: 1
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#333'
+                }}>
+                  Ville centre *
+                </label>
+                <select
+                  value={newZone.ville_centre}
+                  onChange={(e) => setNewZone(prev => ({ ...prev, ville_centre: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '2px solid #e0e0e0',
+                    fontSize: 14,
+                    outline: 'none',
+                    transition: 'border 0.2s',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#635BFF'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                >
+                  <option value="">Sélectionner une ville...</option>
+                  {villesList.map((ville, idx) => (
+                    <option key={idx} value={ville}>
+                      {ville}
+                    </option>
+                  ))}
+                </select>
+                <div style={{
+                  fontSize: 12,
+                  color: '#666',
+                  marginTop: 6
+                }}>
+                  La ville principale où vous proposez cette prestation
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#333'
+                }}>
+                  Rayon d'intervention (km) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={newZone.rayon_km}
+                  onChange={(e) => setNewZone(prev => ({ ...prev, rayon_km: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '2px solid #e0e0e0',
+                    fontSize: 14,
+                    outline: 'none',
+                    transition: 'border 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#635BFF'}
+                  onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                />
+                <div style={{
+                  fontSize: 12,
+                  color: '#666',
+                  marginTop: 6
+                }}>
+                  Distance maximale autour de la ville (entre 1 et 200 km)
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: 12,
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowZoneModal(false);
+                    setNewZone({ ville_centre: '', rayon_km: 50 });
+                  }}
+                  style={{
+                    background: '#e0e0e0',
+                    color: '#333',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                  disabled={savingZone}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleAddZone}
+                  style={{
+                    background: savingZone ? '#ccc' : '#635BFF',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: savingZone ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                  disabled={savingZone}
+                >
+                  {savingZone ? 'Ajout en cours...' : '+ Ajouter'}
                 </button>
               </div>
             </div>
@@ -2371,10 +2946,10 @@ export default function PrestationsPrestataire() {
               <button
                 style={{
                   background:'#130183',
-                  color:'#FFFFFF',
+                  color:'#F5F5F5',
                   border:'none',
                   borderRadius:16,
-                  padding:'8px 10px',
+                  padding:'8px 18px',
                   fontWeight:600,
                   fontSize:14,
                   cursor:'pointer',
@@ -2390,7 +2965,7 @@ export default function PrestationsPrestataire() {
               <button
                 style={{
                   background: selectedIds.length > 0 ? '#d9534f' : '#e0e0e0',
-                  color: selectedIds.length > 0 ? '#fff' : '#888',
+                  color: selectedIds.length > 0 ? '#F5F5F5' : '#888',
                   border:'none',
                   borderRadius:16,
                   padding:'8px 18px',
@@ -2407,7 +2982,7 @@ export default function PrestationsPrestataire() {
               <button
                 style={{
                   background: selectedIds.length > 0 ? '#f0ad4e' : '#e0e0e0',
-                  color: selectedIds.length > 0 ? '#fff' : '#888',
+                  color: selectedIds.length > 0 ? '#F5F5F5' : '#888',
                   border:'none',
                   borderRadius:16,
                   padding:'8px 18px',
@@ -2763,7 +3338,6 @@ export default function PrestationsPrestataire() {
             </div>
           </div>
         )}
-
 
       </div>
     </>

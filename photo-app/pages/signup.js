@@ -6,14 +6,13 @@ import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
 
 // Palette Shooty
 const COLORS = {
-  primary: '#5C6BC0',     // Violet
-  secondary: '#E8EAF6',   // Jaune doré
+  primary: '#E8EAF6',     // Violet
+  secondary: '#5C6BC0',   // Jaune doré
   accent: '#130183',      // Orange
   background: '#F8F9FB',  // Gris clair
   text: '#1C1C1E',        // Noir
   error: '#ef4444',       // Rouge
-  success: '#22c55e'      // Vert
-  
+  success: '#10b981'      // Vert
 };
 
 export default function Signup() {

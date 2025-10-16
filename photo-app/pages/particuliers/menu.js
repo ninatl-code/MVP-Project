@@ -15,8 +15,6 @@ function ParticularHomeMenu() {
   const [userId, setUserId] = useState(null);
   const [devis, setDevis] = useState([]);
   const [reservations, setReservations] = useState([]);
-  const [commandes, setCommandes] = useState([]);
-  const [livraisons, setLivraisons] = useState([]);
   const [prestations, setPrestations] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [prestationFilter, setPrestationFilter] = useState('all')
@@ -26,12 +24,9 @@ function ParticularHomeMenu() {
   const [pendingCancelId, setPendingCancelId] = useState(null)
   const [showDevis, setShowDevis] = useState(true)
   const [showReservations, setShowReservations] = useState(true)
-  const [showCommandes, setShowCommandes] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview') // 'overview', 'devis', 'reservations', 'commandes'
+  const [activeTab, setActiveTab] = useState('overview') // 'overview', 'devis', 'reservations'
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [selectedReservation, setSelectedReservation] = useState(null);
-  const [selectedCommande, setSelectedCommande] = useState(null);
-  const [commandeQuantities, setCommandeQuantities] = useState({});
   const [loadingDevisAction, setLoadingDevisAction] = useState(false);
   const [existingAvis, setExistingAvis] = useState([]);
   const [showRatingForm, setShowRatingForm] = useState(null);
@@ -46,39 +41,7 @@ function ParticularHomeMenu() {
   const [cancellationConditions, setCancellationConditions] = useState(null);
   const router = useRouter();
 
-  // Fonction pour charger les commandes
-  const fetchCommandes = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const { data: commandesData } = await supabase
-      .from("commandes")
-      .select("*, annonces!commandes_annonce_id_fkey(titre)")
-      .eq("particulier_id", user.id);
-    setCommandes(commandesData || []);
-
-    // Récupérer les données de livraisons associées
-    if (commandesData && commandesData.length > 0) {
-      const commandeIds = commandesData.map(c => c.id);
-      const { data: livraisonsData } = await supabase
-        .from("livraisons")
-        .select("*")
-        .in("commande_id", commandeIds);
-      setLivraisons(livraisonsData || []);
-    }
-  };
-
-  // Fonction pour charger les livraisons
-  const fetchLivraisons = async () => {
-    if (commandes && commandes.length > 0) {
-      const commandeIds = commandes.map(c => c.id);
-      const { data: livraisonsData } = await supabase
-        .from("livraisons")
-        .select("*")
-        .in("commande_id", commandeIds);
-      setLivraisons(livraisonsData || []);
-    }
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -104,9 +67,6 @@ function ParticularHomeMenu() {
         .select("*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre)")
         .eq("particulier_id", user.id);
       setReservations(reservationsData || []);
-
-      // Utiliser la fonction fetchCommandes pour charger commandes et livraisons
-      await fetchCommandes();
     };
     fetchData();
   }, []);
@@ -149,154 +109,9 @@ function ParticularHomeMenu() {
     fetchReservations()
   }, [statusFilter, prestationFilter, dateFilter])
 
-  // États pour l'annulation de commande
-  const [showCancelCommandeModal, setShowCancelCommandeModal] = useState(false);
-  const [selectedCancelCommande, setSelectedCancelCommande] = useState(null);
-  const [commandeCancelReason, setCommandeCancelReason] = useState('');
-  const [isCancellingCommande, setIsCancellingCommande] = useState(false);
 
-  // Fonction pour ouvrir la modal d'annulation de commande
-  const handleCancelCommande = async (commande) => {
-    if (!commande) return;
 
-    // Vérifier que la commande peut être annulée
-    if (!['pending', 'paid'].includes(commande.status)) {
-      alert('Cette commande ne peut plus être annulée car elle a déjà été confirmée ou expédiée.');
-      return;
-    }
 
-    // Ouvrir la modal d'annulation
-    setSelectedCancelCommande(commande);
-    setCommandeCancelReason('');
-    setShowCancelCommandeModal(true);
-  };
-
-  // Fonction pour confirmer l'annulation de commande
-  const confirmCancelCommande = async () => {
-    const commande = selectedCancelCommande;
-    if (!commande) return;
-
-    setIsCancellingCommande(true);
-    setShowCancelCommandeModal(false);
-
-    try {
-      console.log('🚀 DÉBUT ANNULATION COMMANDE');
-      console.log('📋 Commande à annuler:', commande);
-      console.log('👤 User ID:', userId);
-      
-      // 1. Traiter le remboursement via l'API existante si la commande était payée
-      if (commande.status === 'paid' && commande.montant > 0) {
-        console.log('💳 Traitement du remboursement pour commande payée...');
-        console.log('📦 Données envoyées à l\'API:', {
-          reservationId: commande.id,
-          cancelReason: commandeCancelReason || 'Annulation de commande par le client',
-          userId: userId
-        });
-        
-        const refundResponse = await fetch('/api/stripe/refund', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            reservationId: commande.id, // L'API accepte reservationId même pour les commandes
-            cancelReason: commandeCancelReason || 'Annulation de commande par le client',
-            userId: userId
-          })
-        });
-
-        console.log('🔄 Réponse API status:', refundResponse.status);
-
-        const refundResult = await refundResponse.json();
-        console.log('📨 Réponse API complète:', refundResult);
-        
-        if (!refundResponse.ok) {
-          console.error('❌ Erreur lors du remboursement:', refundResult);
-          // Continuer même si le remboursement échoue pour permettre l'annulation
-          alert(`⚠️ Commande annulée mais problème de remboursement: ${refundResult.error}\n\nVeuillez contacter le support.`);
-        } else if (refundResult.success) {
-          console.log('✅ Remboursement traité avec succès:', refundResult);
-          alert(`✅ Remboursement de ${refundResult.montant_remboursement}€ effectué (${refundResult.pourcentage_remboursement}%)`);
-        }
-      }
-
-      // 2. Mettre à jour le statut de la commande (si pas déjà fait par l'API)
-      console.log('🔄 Mise à jour directe du statut de la commande...');
-      const { error: updateError } = await supabase
-        .from('commandes')
-        .update({ 
-          status: 'cancelled',
-          date_annulation: new Date().toISOString(),
-          motif_annulation: commandeCancelReason || 'Annulation par le client'
-        })
-        .eq('id', commande.id)
-        .eq('particulier_id', userId); // Sécurité
-
-      console.log('📊 Résultat mise à jour commande:', { error: updateError });
-
-      if (updateError) {
-        console.error('❌ Erreur lors de l\'annulation:', updateError);
-        alert('Erreur lors de l\'annulation de la commande: ' + updateError.message);
-        setIsCancellingCommande(false);
-        return;
-      }
-
-      // 3. Envoyer une notification au prestataire
-      console.log('🔔 Envoi notification au prestataire...');
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: commande.prestataire_id,
-          type: 'commande',
-          contenu: `Commande annulée par le client${commande.status === 'paid' ? ' - Remboursement en cours' : ''}`
-        }]);
-
-      console.log('📊 Résultat notification:', { error: notifError });
-
-      if (notifError) {
-        console.error('❌ Erreur notification:', notifError);
-      }
-
-      // 4. Rafraîchir les commandes
-      console.log('🔄 Rafraîchissement des commandes...');
-      await fetchCommandes();
-      
-      // Message de succès adapté selon le statut de paiement
-      const successMessage = commande.status === 'paid' 
-        ? '✅ Commande annulée avec succès ! Le remboursement sera traité sous 2-3 jours ouvrés.'
-        : '✅ Commande annulée avec succès !';
-        
-      console.log('✅ FIN PROCESSUS ANNULATION - Succès complet !');
-      alert(successMessage);
-      
-    } catch (error) {
-      console.error('💥 Erreur générale dans handleCancelCommande:', error);
-      alert('Erreur lors de l\'annulation: ' + error.message);
-    } finally {
-      console.log('🔚 Fin du processus d\'annulation');
-      setIsCancellingCommande(false);
-    }
-  };
-
-  // Récupérer les quantités pour chaque commande
-  useEffect(() => {
-    async function fetchQuantities() {
-      if (commandes.length === 0) return;
-      const commandeIds = commandes.map(c => c.id);
-      const { data: lignes } = await supabase
-        .from("commande_modeles")
-        .select("commande_id, quantite")
-        .in("commande_id", commandeIds);
-      const quantities = {};
-      commandeIds.forEach(id => {
-        quantities[id] = lignes
-          ? lignes.filter(l => l.commande_id === id).reduce((sum, l) => sum + (l.quantite || 0), 0)
-          : 0;
-      });
-      setCommandeQuantities(quantities);
-    }
-    fetchQuantities();
-  }, [commandes]);
 
   // Récupérer les avis existants
   useEffect(() => {
@@ -306,7 +121,7 @@ function ParticularHomeMenu() {
 
       const { data: avisData, error } = await supabase
         .from('avis')
-        .select('commande_id, reservation_id, note')
+        .select('reservation_id, note')
         .eq('particulier_id', user.id)
 
       if (!error) {
@@ -345,9 +160,7 @@ function ParticularHomeMenu() {
 
   // Fonction pour vérifier si un avis existe
   const hasAvis = (type, id) => {
-    if (type === 'commande') {
-      return existingAvis.some(avis => avis.commande_id === id)
-    } else if (type === 'reservation') {
+    if (type === 'reservation') {
       return existingAvis.some(avis => avis.reservation_id === id)
     }
     return false
@@ -367,32 +180,7 @@ function ParticularHomeMenu() {
       let entityData = null;
       let annonceData = null;
       
-      if (showRatingForm.type === 'commande') {
-        const { data: commandeData, error: commandeError } = await supabase
-          .from('commandes')
-          .select('id, annonce_id, particulier_id')
-          .eq('id', showRatingForm.id)
-          .single();
-          
-        if (commandeError || !commandeData) {
-          alert('Impossible de trouver la commande');
-          return;
-        }
-        entityData = commandeData;
-        
-        // Récupérer l'annonce
-        const { data: annonceResult, error: annonceError } = await supabase
-          .from('annonces')
-          .select('id, prestataire, titre')
-          .eq('id', commandeData.annonce_id)
-          .single();
-          
-        if (annonceError || !annonceResult) {
-          alert('Impossible de trouver l\'annonce associée');
-          return;
-        }
-        annonceData = annonceResult;
-      } else if (showRatingForm.type === 'reservation') {
+      if (showRatingForm.type === 'reservation') {
         const { data: reservationData, error: reservationError } = await supabase
           .from('reservations')
           .select('id, annonce_id, particulier_id')
@@ -423,7 +211,6 @@ function ParticularHomeMenu() {
       const avisData = {
         particulier_id: userId,
         prestataire_id: annonceData.prestataire,
-        commande_id: showRatingForm.type === 'commande' ? entityData.id : null,
         reservation_id: showRatingForm.type === 'reservation' ? entityData.id : null,
         note: ratingValue,
         commentaire: ratingComment && ratingComment.trim() ? ratingComment.trim() : null,
@@ -449,7 +236,6 @@ function ParticularHomeMenu() {
           contenu: 'Votre annonce a reçu un avis. Vous trouverez plus de détails dans la page dédiée aux annonces',
           lu: false,
           annonce_id: annonceData.id,
-          commande_id: showRatingForm.type === 'commande' ? entityData.id : null,
           reservation_id: showRatingForm.type === 'reservation' ? entityData.id : null
         }]);
 
@@ -460,7 +246,7 @@ function ParticularHomeMenu() {
       // Rafraîchir les avis existants
       const { data: updatedAvis, error } = await supabase
         .from('avis')
-        .select('commande_id, reservation_id, note')
+        .select('reservation_id, note')
         .eq('particulier_id', userId);
 
       if (!error) {
@@ -482,181 +268,7 @@ function ParticularHomeMenu() {
     }
   };
 
-  // Fonction de debug pour tester la structure de la BDD
-  const debugCommandes = async () => {
-    console.log('🔍 Debug: structure des commandes...')
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    
-    const { data, error } = await supabase
-      .from('commandes')
-      .select('*')
-      .limit(1)
-    
-    console.log('📊 Exemple de commande:', data?.[0])
-    console.log('🔑 Colonnes disponibles:', data?.[0] ? Object.keys(data[0]) : 'Aucune')
-    console.log('👤 User ID actuel:', user.id)
-  }
 
-  // Fonction pour marquer une commande comme livrée (côté particulier)
-  const markCommandeAsDelivered = async (commandeId) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      alert('Vous devez être connecté pour effectuer cette action')
-      return
-    }
-
-    try {
-      console.log(`🎯 Particulier ${user.id} marque commande ${commandeId} comme livrée`)
-      
-      // Vérification que la commande appartient bien à l'utilisateur
-      // Essayer d'abord avec 'particulier', puis avec 'particulier_id' si échec
-      let commandeCheck = null;
-      let checkError = null;
-
-      // Première tentative avec 'particulier'
-      const { data: commandeCheck1, error: checkError1 } = await supabase
-        .from('commandes')
-        .select('*')
-        .eq('id', commandeId)
-        .eq('particulier', user.id)
-        .maybeSingle()
-
-      if (checkError1) {
-        console.log('⚠️ Tentative avec colonne "particulier" échouée:', checkError1)
-        
-        // Deuxième tentative avec 'particulier_id'
-        const { data: commandeCheck2, error: checkError2 } = await supabase
-          .from('commandes')
-          .select('*')
-          .eq('id', commandeId)
-          .eq('particulier_id', user.id)
-          .maybeSingle()
-          
-        commandeCheck = commandeCheck2
-        checkError = checkError2
-        
-        if (checkError2) {
-          console.error('❌ Les deux tentatives ont échoué:', { checkError1, checkError2 })
-        } else {
-          console.log('✅ Succès avec colonne "particulier_id"')
-        }
-      } else {
-        commandeCheck = commandeCheck1
-        checkError = checkError1
-        console.log('✅ Succès avec colonne "particulier"')
-      }
-
-      if (checkError || !commandeCheck) {
-        console.error('❌ Erreur vérification commande:', checkError)
-        alert(`Cette commande ne vous appartient pas ou n'existe pas. Erreur: ${checkError?.message || 'Commande non trouvée'}`)
-        return
-      }
-      
-      console.log('📋 Commande trouvée:', commandeCheck)
-
-      if (commandeCheck.status === 'delivered') {
-        alert('Cette commande est déjà marquée comme livrée')
-        return
-      }
-
-      console.log('✅ Commande vérifiée, appartient à l\'utilisateur')
-      
-      // 1. Mise à jour du statut de la commande
-      console.log('1️⃣ Mise à jour du statut de la commande...')
-      
-      // Déterminer quelle colonne utiliser en fonction de la vérification précédente
-      const userColumn = 'particulier' in commandeCheck ? 'particulier' : 'particulier_id'
-      console.log(`🔑 Utilisation de la colonne: ${userColumn}`)
-      
-      const currentDateTime = new Date().toISOString()
-      
-      const updateQuery = supabase
-        .from('commandes')
-        .update({ 
-          status: 'delivered',
-          date_livraison: currentDateTime
-        })
-        .eq('id', commandeId)
-        
-      // Utiliser la bonne colonne pour la vérification de sécurité
-      const { error: commandeError } = await updateQuery.eq(userColumn, user.id)
-
-      if (commandeError) {
-        console.error('❌ Erreur mise à jour commande:', commandeError)
-        alert(`Erreur lors de la mise à jour de la commande: ${commandeError.message}`)
-        return
-      }
-      console.log('✅ Statut commande mis à jour avec date_livraison:', currentDateTime)
-
-      // 2. Mise à jour ou création de l'entrée livraison
-      console.log('2️⃣ Mise à jour de la livraison...')
-      
-      // Vérifier si une livraison existe déjà
-      const { data: existingLivraison, error: livraisonSelectError } = await supabase
-        .from('livraisons')
-        .select('id, status')
-        .eq('commande_id', commandeId)
-        .maybeSingle() // Utiliser maybeSingle au lieu de single pour éviter l'erreur si pas de résultat
-
-      if (livraisonSelectError) {
-        console.error('❌ Erreur lors de la recherche de livraison:', livraisonSelectError)
-        alert(`Erreur lors de la recherche de livraison: ${livraisonSelectError.message}`)
-        return
-      }
-
-      if (existingLivraison) {
-        // Mise à jour de l'entrée existante
-        console.log('📦 Mise à jour de la livraison existante...')
-        const { error: updateLivraisonError } = await supabase
-          .from('livraisons')
-          .update({
-            status: 'delivered',
-            delivery_date: currentDateTime,
-            update_date: currentDateTime
-          })
-          .eq('commande_id', commandeId)
-
-        if (updateLivraisonError) {
-          console.error('❌ Erreur mise à jour livraison:', updateLivraisonError)
-          alert(`Erreur lors de la mise à jour de la livraison: ${updateLivraisonError.message}`)
-          return
-        }
-        console.log('✅ Livraison existante mise à jour avec delivery_date:', currentDateTime)
-      } else {
-        // Création d'une nouvelle entrée livraison
-        console.log('📦 Création d\'une nouvelle livraison...')
-        const { error: insertLivraisonError } = await supabase
-          .from('livraisons')
-          .insert({
-            commande_id: commandeId,
-            status: 'delivered',
-            delivery_date: currentDateTime
-          })
-
-        if (insertLivraisonError) {
-          console.error('❌ Erreur création livraison:', insertLivraisonError)
-          alert(`Erreur lors de la création de la livraison: ${insertLivraisonError.message}`)
-          return
-        }
-        console.log('✅ Nouvelle livraison créée avec delivery_date:', currentDateTime)
-      }
-
-      // 3. La notification de notation sera créée automatiquement par le trigger Supabase ! ✨
-      console.log('3️⃣ Notification de notation sera créée automatiquement par le trigger Supabase')
-
-      alert('Commande marquée comme livrée ✅\nVous allez recevoir une invitation à noter cette commande.')
-      
-      // Recharger les données
-      console.log('4️⃣ Rechargement des données...')
-      await fetchCommandes()
-      console.log('✅ Données rechargées')
-      
-    } catch (error) {
-      console.error('❌ Erreur générale lors du marquage comme livré:', error)
-      alert(`Erreur inattendue: ${error.message}`)
-    }
-  }
 
   // Fonction pour vérifier si une réservation peut être annulée selon les conditions d'annulation
   const checkCancellationConditions = async (reservation) => {
@@ -1015,10 +627,19 @@ function ParticularHomeMenu() {
 
   function StatusBadge({ status }) {
     let color = '#b7e4c7', bg = '#eafaf1', label = 'Confirmé'
-    if (status === 'pending') { color = '#e67c73'; bg = '#fbeaea'; label = 'En attente' }
-    if (status === 'refused') { color = '#e67c73'; bg = '#fbeaea'; label = 'Rejetée' }
-    if (status === 'cancelled') { color = '#e67c73'; bg = '#fbeaea'; label = 'Annulée' }
-    if (status === 'confirmed' || status === 'accepted') { color = '#3cb371'; bg = '#eafaf1'; label = 'Confirmé' }
+    
+    // Statuts pour les réservations
+    if (status === 'pending') { color = '#f59e0b'; bg = '#fef3c7'; label = 'En attente de paiement' }
+    if (status === 'paid') { color = '#3b82f6'; bg = '#dbeafe'; label = 'En attente confirmation du prestataire' }
+    if (status === 'confirmed') { color = '#10b981'; bg = '#d1fae5'; label = 'Confirmée' }
+    if (status === 'cancelled') { color = '#ef4444'; bg = '#fee2e2'; label = 'Annulée' }
+    if (status === 'finished' || status === 'delivered') { color = '#8b5cf6'; bg = '#ede9fe'; label = 'Terminé' }
+    
+    // Statuts pour les devis
+    if (status === 'answered') { color = '#10b981'; bg = '#d1fae5'; label = 'Réponse reçue' }
+    if (status === 'accepted') { color = '#059669'; bg = '#d1fae5'; label = 'Accepté' }
+    if (status === 'refused') { color = '#ef4444'; bg = '#fee2e2'; label = 'Refusé' }
+    
     return (
       <span style={{
         background: bg,
@@ -1663,263 +1284,8 @@ function ParticularHomeMenu() {
     )
   }
 
-  // Pop-up pour afficher les infos de la commande - Version moderne
-  function CommandeInfoModal({ commande, onClose, quantity }) {
-    if (!commande) return null;
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        zIndex: 3000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}>
-        <div style={{
-          background: '#fff',
-          borderRadius: 20,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-          minWidth: 320,
-          maxWidth: 700,
-          width: '100%',
-          textAlign: 'left',
-          position: 'relative',
-          maxHeight: '90vh',
-          overflowY: 'auto'
-        }}>
-          <button
-            style={{
-              position: 'absolute',
-              top: 16,
-              right: 20,
-              background: '#f5f5f5',
-              border: 'none',
-              borderRadius: '50%',
-              width: 32,
-              height: 32,
-              fontSize: 18,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10,
-              transition: 'background 0.2s'
-            }}
-            onClick={onClose}
-            aria-label="Fermer"
-            onMouseOver={(e) => e.target.style.background = '#e5e5e5'}
-            onMouseOut={(e) => e.target.style.background = '#f5f5f5'}
-          >×</button>
-          
-          {/* En-tête */}
-          <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '32px',
-            borderRadius: '20px 20px 0 0',
-            color: 'white'
-          }}>
-            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-              🛒 Détail de la commande {commande.num_commande && <span style={{fontSize: 18, opacity: 0.9}}>#{commande.num_commande}</span>}
-            </h2>
-            <p style={{ margin: 0, opacity: 0.9, fontSize: 16 }}>
-              Commande du {commande.date_commande ? new Date(commande.date_commande).toLocaleDateString('fr-FR') : 'N/A'}
-            </p>
-          </div>
-
-          {/* Contenu */}
-          <div style={{ padding: '32px' }}>
-            {/* Informations principales */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: 24,
-              marginBottom: 32
-            }}>
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  👤 Prestataire
-                </h2>
-                <div style={{ fontSize: 16, color: '#555', marginBottom: 8 }}>
-                  <strong>{commande.profiles?.nom || commande.prestataire_nom || 'Non renseigné'}</strong>
-                </div>
-                <div style={{ fontSize: 14, color: '#888' }}>
-                  Service : {commande.annonces?.titre || 'Non renseigné'}
-                </div>
-              </div>
-
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  📦 Commande
-                </h2>
-                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
-                  <strong>Quantité :</strong> {quantity || 0} article{quantity > 1 ? 's' : ''}
-                </div>
-                <div style={{ fontSize: 14, color: '#555' }}>
-                  <strong>Mode :</strong> {commande.mode_livraison || 'Non renseigné'}
-                </div>
-              </div>
-            </div>
-
-            {/* Détails financiers */}
-            <div style={{
-              background: '#f8f9fa',
-              borderRadius: 12,
-              padding: 20,
-              marginBottom: 24
-            }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
-                💰 Facturation
-              </h2>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 14, color: '#555' }}>Montant articles :</span>
-                <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{commande.montant || 0} MAD</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 14, color: '#555' }}>Frais de livraison :</span>
-                <span style={{ fontSize: 16, fontWeight: 600, color: '#f39c12' }}>{commande.frais_livraison || 0} MAD</span>
-              </div>
-              <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #dee2e6' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>Total :</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: '#6bbf7b' }}>
-                  {((commande.montant || 0) + (commande.frais_livraison || 0))} MAD
-                </span>
-              </div>
-            </div>
-
-            {/* Adresse de livraison */}
-            <div style={{
-              background: '#e3f2fd',
-              border: '1px solid #bbdefb',
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 24
-            }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#1565c0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                🏠 Adresse de livraison
-              </h4>
-              <p style={{ margin: 0, fontSize: 14, color: '#1565c0' }}>
-                {commande.adresse_livraison || 'Non renseignée'}
-              </p>
-            </div>
-
-            {/* Commentaire */}
-            {commande.commentaire && (
-              <div style={{
-                background: '#fff3cd',
-                border: '1px solid #ffeaa7',
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 24
-              }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#856404', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  💬 Votre message
-                </h4>
-                <p style={{ margin: 0, fontSize: 14, color: '#856404', fontStyle: 'italic' }}>
-                  "{commande.commentaire}"
-                </p>
-              </div>
-            )}
-
-            {/* Photos */}
-            {Array.isArray(commande.photos) && commande.photos.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  📸 Photos jointes
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 12 }}>
-                  {commande.photos.map((b64, idx) => (
-                    <img
-                      key={idx}
-                      src={`data:image/*;base64,${b64}`}
-                      alt={`Photo ${idx + 1}`}
-                      style={{
-                        width: '100%',
-                        height: 80,
-                        objectFit: 'cover',
-                        borderRadius: 8,
-                        border: '2px solid #e5e7eb',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s'
-                      }}
-                      onClick={() => {
-                        const modal = document.createElement('div');
-                        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
-                        modal.innerHTML = `<img src="data:image/*;base64,${b64}" style="max-width:90%;max-height:90%;border-radius:8px">`;
-                        modal.onclick = () => document.body.removeChild(modal);
-                        document.body.appendChild(modal);
-                      }}
-                      onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-                      onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Informations de statut */}
-            {(commande.status === 'confirmed' || commande.status === 'cancelled' || commande.status === 'refused') && (
-              <div style={{
-                background: commande.status === 'confirmed' ? '#d4edda' : '#f8d7da',
-                border: `1px solid ${commande.status === 'confirmed' ? '#c3e6cb' : '#f5c6cb'}`,
-                borderRadius: 12,
-                padding: 16
-              }}>
-                <h4 style={{ 
-                  fontSize: 14, 
-                  fontWeight: 600, 
-                  marginBottom: 8, 
-                  color: commande.status === 'confirmed' ? '#155724' : '#721c24' 
-                }}>
-                  {commande.status === 'confirmed' ? '✅ Confirmée' : commande.status === 'cancelled' ? '❌ Annulée' : '🚫 Refusée'}
-                </h4>
-                {commande.status === 'confirmed' && commande.date_confirmation && (
-                  <p style={{ margin: 0, fontSize: 14, color: '#155724' }}>
-                    Confirmée le {new Date(commande.date_confirmation).toLocaleDateString('fr-FR')}
-                  </p>
-                )}
-                {commande.status === 'cancelled' && (
-                  <>
-                    {commande.date_annulation && (
-                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
-                        Annulée le {new Date(commande.date_annulation).toLocaleDateString('fr-FR')}
-                      </p>
-                    )}
-                    {commande.motif_annulation && (
-                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
-                        Motif : {commande.motif_annulation}
-                      </p>
-                    )}
-                  </>
-                )}
-                {commande.status === 'refused' && (
-                  <>
-                    {commande.date_refus && (
-                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
-                        Refusée le {new Date(commande.date_refus).toLocaleDateString('fr-FR')}
-                      </p>
-                    )}
-                    {commande.motif_refus && (
-                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
-                        Motif : {commande.motif_refus}
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Bloc Commandes
-  function CommandeCard({ r }) {
-    const livraison = livraisons.find(l => l.commande_id === r.id);
-    
+  // Bloc Devis
+  function DevisCard({ r }) {
     return (
       <div style={{
         background: '#fff',
@@ -1933,24 +1299,23 @@ function ParticularHomeMenu() {
         <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:18}}>
           <div style={{flex:1}}>
             <div style={{fontWeight:700, fontSize:18}}>
-              {r.annonces?.titre || 'Annonce'} {r.num_commande && <span style={{color: '#666', fontSize: 14, fontWeight: 400}}>#{r.num_commande}</span>}
+              {r.annonces?.titre || 'Annonce'}
             </div>
             <div style={{color:'#888', fontSize:15, marginTop:2}}>
-              Date de la commande : {r.date_commande ? new Date(r.date_commande).toLocaleDateString('fr-FR') : ''}
+              Date du devis : {r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : ''}
             </div>
             <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
-              Mode de livraison : {r.mode_livraison || 'Non renseigné'}
+              Endroit : {r.endroit || 'Non renseigné'}
+            </div>
+            <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
+              Date : {r.date ? new Date(r.date).toLocaleDateString('fr-FR') : ''}
             </div>
           </div>
           <div style={{marginLeft: 16}}>
             <StatusBadge status={r.status} />
           </div>
         </div>
-        
-        {/* Affichage du suivi de livraison pour les commandes payées */}
-        <LivraisonTracker commande={r} livraison={livraison} />
-        
-        <div style={{marginTop:16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
+        <div style={{marginTop:16, textAlign:'right'}}>
           <button
             style={{
               background:'#eafaf1',
@@ -1962,13 +1327,10 @@ function ParticularHomeMenu() {
               fontSize:15,
               cursor:'pointer'
             }}
-            onClick={() => setSelectedCommande(r)}
+            onClick={() => setSelectedDevis(r)}
           >
-            Afficher les détails
+            Afficher les informations
           </button>
-          
-          {/* Bouton d'annulation pour les commandes non expédiées */}
-          <CancelCommandeButton commande={r} />
         </div>
       </div>
     )
@@ -2045,7 +1407,7 @@ function ParticularHomeMenu() {
           <CancelReservationButton reservation={r} />
         )}
         
-        {/* Zone d'affichage des avis existants pour commandes livrées */}
+        {/* Zone d'affichage des avis existants pour réservations */}
         {r.status === 'delivered' && hasAvis('reservation', r.id) && (
           <div style={{ 
             marginTop: 12, 
@@ -2182,50 +1544,7 @@ function ParticularHomeMenu() {
     );
   }
 
-  // Composant bouton d'annulation pour commandes
-  function CancelCommandeButton({ commande }) {
-    // Vérifier si la commande peut être annulée
-    const canCancel = ['pending', 'paid'].includes(commande.status);
-    
-    if (!canCancel) return null;
 
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleCancelCommande(commande);
-        }}
-        disabled={isCancelling}
-        style={{
-          background: isCancelling ? '#f5f5f5' : '#fef2f2',
-          color: isCancelling ? '#999' : '#dc2626',
-          border: '1px solid #fecaca',
-          borderRadius: 8,
-          padding: '8px 16px',
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: isCancelling ? 'not-allowed' : 'pointer',
-          transition: 'all 0.2s',
-          marginTop: 8,
-          opacity: isCancelling ? 0.6 : 1
-        }}
-        onMouseOver={(e) => {
-          if (!isCancelling) {
-            e.target.style.background = '#fee2e2';
-            e.target.style.borderColor = '#fca5a5';
-          }
-        }}
-        onMouseOut={(e) => {
-          if (!isCancelling) {
-            e.target.style.background = '#fef2f2';
-            e.target.style.borderColor = '#fecaca';
-          }
-        }}
-      >
-        {isCancelling ? 'Annulation en cours...' : '❌ Annuler la commande'}
-      </button>
-    );
-  }
 
   const ConfirmCancelModal = ({ onConfirm, onCancel }) => (
     <div style={{
@@ -2248,10 +1567,10 @@ function ParticularHomeMenu() {
       }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>❗</div>
         <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 10, color: '#e67c73' }}>
-          Annuler la commande/réservation ?
+          Annuler la réservation ?
         </h2>
         <p style={{ fontSize: 16, color: '#444', marginBottom: 22 }}>
-          Êtes-vous sûr de vouloir annuler cette commande/réservation ?<br />
+          Êtes-vous sûr de vouloir annuler cette réservation ?<br />
           Cette action est irréversible.
         </p>
         <div style={{ display: 'flex', gap: 18, justifyContent: 'center' }}>
@@ -2327,252 +1646,9 @@ function ParticularHomeMenu() {
   // Tri des listes par date décroissante (plus récent en haut)
   const devisSorted = [...devis].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const reservationsSorted = [...reservations].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const commandesSorted = [...commandes].sort((a, b) => new Date(b.date_commande) - new Date(a.date_commande));
 
-  // Composant de suivi de livraison
-  function LivraisonTracker({ commande, livraison }) {
-    if (!commande) return null;
 
-    const getStatutLivraison = () => {
-      if (!livraison) return 'paid'; // Par défaut si pas de livraison trouvée
-      return livraison.status || 'paid';
-    };
 
-    const statutActuel = getStatutLivraison();
-    const commandeStatus = commande.status;
-
-    const etapes = [
-      { id: 'paid', label: 'Commandé', completed: ['paid','confirmed', 'shipped', 'delivered'].includes(statutActuel) || ['paid','confirmed', 'shipped', 'delivered'].includes(commandeStatus) },
-      { id: 'confirmed', label: 'Confirmé', completed: ['confirmed', 'shipped', 'delivered'].includes(statutActuel) || ['confirmed', 'shipped', 'delivered'].includes(commandeStatus) },
-      { id: 'shipped', label: 'Expédié', completed: ['shipped', 'delivered'].includes(statutActuel) || ['shipped', 'delivered'].includes(commandeStatus) },
-      { id: 'delivered', label: 'Livré', completed: ['delivered'].includes(statutActuel) || ['delivered'].includes(commandeStatus) }
-    ];
-
-    // Cas spécial pour annulation
-    if (statutActuel === 'cancelled') {
-      return (
-        <div style={{ marginTop: 12, padding: 16, backgroundColor: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 20, height: 20, borderRadius: '50%',
-              backgroundColor: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>✕</span>
-            </div>
-            <span style={{ fontWeight: 600, color: '#dc2626' }}>Annulée</span>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div style={{ marginTop: 12, padding: 16, backgroundColor: '#f8fffe', borderRadius: 8, border: '1px solid #d1fae5' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-          {/* Section suivi principal */}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#065f46' }}>Suivi de livraison</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {etapes.map((etape, index) => (
-                <div key={etape.id} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: '50%',
-                      backgroundColor: etape.completed ? '#10b981' : '#e5e7eb',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      marginBottom: 4
-                    }}>
-                      {etape.completed && (
-                        <span style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>✓</span>
-                      )}
-                    </div>
-                    <span style={{
-                      fontSize: 12, fontWeight: 500,
-                      color: etape.completed ? '#065f46' : '#6b7280'
-                    }}>{etape.label}</span>
-                    {etape.id === 'delivered' && livraison?.delivery_date && (
-                      <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, textAlign: 'center' }}>
-                        Livraison prévue le {new Date(livraison.delivery_date).toLocaleDateString('fr-FR')}
-                      </span>
-                    )}
-                  </div>
-                  {index < etapes.length - 1 && (
-                    <div style={{
-                      height: 2, flex: 1, backgroundColor: etapes[index + 1].completed ? '#10b981' : '#e5e7eb',
-                      marginLeft: 8, marginRight: 8, marginTop: -20
-                    }} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Section informations de suivi et actions (à droite) */}
-          <div style={{ 
-            minWidth: 200, 
-            paddingLeft: 16, 
-            borderLeft: '1px solid #d1fae5',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8
-          }}>
-            {livraison?.delivery_provider && (
-              <div style={{ fontSize: 12, color: '#065f46' }}>
-                <span style={{ fontWeight: 600 }}>Transporteur :</span>
-                <br />
-                <span>{livraison.delivery_provider}</span>
-              </div>
-            )}
-            {livraison?.tracking_number && (
-              <div style={{ fontSize: 12, color: '#065f46' }}>
-                <span style={{ fontWeight: 600 }}>N° de suivi :</span>
-                <br />
-                <span style={{ 
-                  fontFamily: 'monospace', 
-                  backgroundColor: '#f0fdf4', 
-                  padding: '2px 6px', 
-                  borderRadius: 4,
-                  fontSize: 11
-                }}>{livraison.tracking_number}</span>
-              </div>
-            )}
-            
-            {/* Bouton pour marquer comme livré (seulement si expédié mais pas encore livré) */}
-            {(statutActuel === 'shipped' || commandeStatus === 'shipped') && 
-             !['delivered'].includes(statutActuel) && commandeStatus !== 'delivered' && (
-              <div style={{ marginTop: 8 }}>
-                <button
-                  onClick={async () => {
-                    if (confirm('Avez-vous bien reçu votre commande ? Cela marquera la commande comme livrée.')) {
-                      console.log('🎯 DEBUT: Bouton marquage livraison cliqué pour commande:', commande.id)
-                      console.log('📦 Info commande:', { id: commande.id, status: commande.status })
-                      
-                      try {
-                        await markCommandeAsDelivered(commande.id)
-                      } catch (error) {
-                        console.error('💥 ERREUR CAPTUREE dans onClick:', error)
-                        alert(`Erreur capturée: ${error.message}`)
-                      }
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '8px 12px',
-                    fontWeight: 600,
-                    fontSize: 12,
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
-                  }}
-                  onMouseOver={(e) => e.target.style.transform = 'translateY(-1px)'}
-                  onMouseOut={(e) => e.target.style.transform = 'translateY(0px)'}
-                >
-                  ✅ J'ai reçu ma commande
-                </button>
-                <div style={{
-                  fontSize: 10,
-                  color: '#6b7280',
-                  textAlign: 'center',
-                  marginTop: 4,
-                  fontStyle: 'italic'
-                }}>
-                  Vous recevrez une invitation à noter
-                </div>
-              </div>
-            )}
-            
-            {/* Zone d'affichage des avis existants pour commandes livrées */}
-            {(statutActuel === 'delivered' || commandeStatus === 'delivered') && hasAvis('commande', commande.id) && (
-              <div style={{ 
-                marginTop: 12, 
-                padding: '12px', 
-                backgroundColor: '#f0f9ff', 
-                borderRadius: 8, 
-                border: '1px solid #0ea5e9' 
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 8
-                }}>
-                  <span style={{ 
-                    fontSize: 13, 
-                    fontWeight: 600, 
-                    color: '#0369a1'
-                  }}>
-                    ✅ Avis déjà donné
-                  </span>
-                  <span style={{
-                    fontSize: 12,
-                    color: '#0369a1',
-                    backgroundColor: '#e0f2fe',
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    fontWeight: 500
-                  }}>
-                    {existingAvis.find(a => a.commande_id === commande.id)?.note || 0}⭐
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, color: '#0369a1', fontStyle: 'italic' }}>
-                  Merci d'avoir partagé votre expérience !
-                </div>
-              </div>
-            )}
-
-            {/* Zone de notation ergonomique pour commandes livrées */}
-            {(statutActuel === 'delivered' || commandeStatus === 'delivered') && !hasAvis('commande', commande.id) && (
-              <div style={{ 
-                marginTop:4, 
-                padding: '12px', 
-                backgroundColor: '#fef3cd', 
-                borderRadius: 8, 
-                border: '1px solid #fbbf24' 
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  marginBottom: 2 
-                }}>
-                  <button
-                    onClick={() => {
-                      // Créer une pseudo-notification pour déclencher la modal d'avis
-                      const pseudoNotification = {
-                        id: `avis-commande-${commande.id}`,
-                        type: 'avis',
-                        commande_id: commande.id,
-                        annonce_id: commande.annonce_id,
-                        contenu: 'Félicitations ! Votre commande vient d\'être livrée. Partagez votre expérience avec la communauté en donnant votre avis sur cette prestation.',
-                        user_id: userId
-                      }
-                      console.log('🎯 Déclenchement modal d\'avis pour commande:', commande.id)
-                      setTriggerAvisNotification(pseudoNotification)
-                    }}
-                    style={{
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 6,
-                      padding: '6px 12px',
-                      fontWeight: 600,
-                      fontSize: 12,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ⭐ Noter maintenant
-                  </button>
-                </div>
-              </div>
-            )}
-            
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -2685,14 +1761,14 @@ function ParticularHomeMenu() {
               {/* Greeting Section */}
               <div className="flex-1">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <div>
                     <User className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
                       Bonjour {profile?.nom ? profile.nom.split(" ")[0] : ""}!
                     </h1>
-                    <p className="text-gray-600">Gérez vos commandes, réservations et devis en un coup d'œil</p>
+                    <p className="text-gray-600">Gérez vos réservations et devis en un coup d'œil</p>
                   </div>
                 </div>
               </div>
@@ -2701,7 +1777,7 @@ function ParticularHomeMenu() {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 mt-6">
               <button
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-800 to-blue-800 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
                 onClick={() => router.push("/particuliers/search")}
               >
                 <Search className="w-5 h-5" />
@@ -2709,7 +1785,7 @@ function ParticularHomeMenu() {
               </button>
               <button
                 className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
-                onClick={() => router.push("/particuliers/favoris")}
+                onClick={() => router.push("/particuliers/profil#favoris")}
               >
                 <Heart className="w-5 h-5" />
                 Mes favoris
@@ -2822,38 +1898,7 @@ function ParticularHomeMenu() {
               </div>
             </button>
 
-            {/* Onglet Commandes */}
-            <button
-              onClick={() => setActiveTab('commandes')}
-              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
-                activeTab === 'commandes'
-                  ? 'border-purple-500 bg-purple-50 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  activeTab === 'commandes' ? 'bg-purple-500' : 'bg-purple-100'
-                }`}>
-                  <Package className={`w-5 h-5 ${
-                    activeTab === 'commandes' ? 'text-white' : 'text-purple-600'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`font-semibold ${
-                    activeTab === 'commandes' ? 'text-purple-900' : 'text-gray-900'
-                  }`}>Commandes</h2>
-                  <p className="text-sm text-gray-500">Créations commandées</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`text-2xl font-bold ${
-                  activeTab === 'commandes' ? 'text-purple-700' : 'text-purple-600'
-                }`}>
-                  {commandes.length}
-                </div>
-              </div>
-            </button>
+
           </div>
 
           {/* Vue d'ensemble - Affiche toutes les sections */}
@@ -3366,256 +2411,11 @@ function ParticularHomeMenu() {
             </section>
           )}
 
-          {/* Vue d'ensemble - Section Commandes */}
-          {activeTab === 'overview' && commandesSorted.length > 0 && (
-            <section className="mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-50 to-violet-50 px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Package className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">Mes commandes</h2>
-                        <p className="text-sm text-gray-600">{commandesSorted.length} commandes au total</p>
-                      </div>
-                    </div>
-                    <button
-                      className="flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-colors"
-                      onClick={() => setActiveTab('commandes')}
-                    >
-                      <span className="text-sm font-medium">Voir tout</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="grid gap-4">
-                    {commandesSorted.slice(0, 3).map((r) => (
-                      <CommandeCard key={r.id} r={r} />
-                    ))}
-                    {commandesSorted.length > 3 && (
-                      <div className="text-center py-4">
-                        <button
-                          onClick={() => setActiveTab('commandes')}
-                          className="text-purple-600 hover:text-purple-800 font-medium text-sm"
-                        >
-                          Voir {commandesSorted.length - 3} autres commandes...
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
 
-          {/* Section Commandes uniquement */}
-          {activeTab === 'commandes' && commandesSorted.length > 0 && (
-            <section className="mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-50 to-violet-50 px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setActiveTab('overview')}
-                        className="text-purple-600 hover:text-purple-800 transition-colors"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </button>
-                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Package className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">Toutes mes commandes</h2>
-                        <p className="text-sm text-gray-600">{commandesSorted.length} commandes au total</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="grid gap-4">
-                    {commandesSorted.map((r) => (
-                      <CommandeCard key={r.id} r={r} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <CommandeInfoModal
-                commande={selectedCommande}
-                onClose={() => setSelectedCommande(null)}
-                quantity={selectedCommande ? commandeQuantities[selectedCommande.id] : 0}
-              />
 
-              {/* Modal d'annulation de commande */}
-              {showCancelCommandeModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-                  <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 animate-in slide-in-from-bottom-4 duration-300">
-                    {/* Header avec icône d'alerte */}
-                    <div className="relative px-6 py-5 border-b border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h2 className="text-xl font-bold text-gray-900">
-                            Annuler la commande
-                          </h2>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Cette action est irréversible.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setShowCancelCommandeModal(false);
-                          setSelectedCancelCommande(null);
-                          setCommandeCancelReason('');
-                        }}
-                        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors group"
-                        disabled={isCancellingCommande}
-                      >
-                        <svg className="w-4 h-4 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    <div className="px-6 py-5 space-y-5">
-                      {selectedCancelCommande && (
-                        <>
-                          {/* Informations de la commande avec design amélioré */}
-                          <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-gray-900 text-base mb-2">
-                                  {selectedCancelCommande.titre} {selectedCancelCommande.num_commande && <span className="text-gray-500 text-sm font-normal">#{selectedCancelCommande.num_commande}</span>}
-                                </h4>
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                    </svg>
-                                    <span className="font-medium text-gray-700">{selectedCancelCommande.montant}€</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${
-                                      selectedCancelCommande.status === 'paid' ? 'bg-green-500' : 
-                                      selectedCancelCommande.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
-                                    }`} />
-                                    <span className="text-gray-600 capitalize">{selectedCancelCommande.status}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Zone de saisie de la raison avec design amélioré */}
-                          <div className="space-y-3">
-                            <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                              </svg>
-                              Raison de l'annulation
-                              <span className="text-xs font-normal text-gray-500 ml-1">(optionnel)</span>
-                            </label>
-                            <div className="relative">
-                              <textarea
-                                value={commandeCancelReason}
-                                onChange={(e) => setCommandeCancelReason(e.target.value)}
-                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-300 transition-all resize-none text-sm placeholder-gray-400"
-                                rows="3"
-                                maxLength="300"
-                                placeholder="Dites-nous pourquoi vous annulez cette commande (cela nous aide à améliorer nos services)..."
-                                disabled={isCancellingCommande}
-                              />
-                              <div className="absolute bottom-2 right-3 text-xs text-gray-400">
-                                {commandeCancelReason.length}/300
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Information de remboursement avec design amélioré */}
-                          {selectedCancelCommande.status === 'paid' && selectedCancelCommande.montant > 0 && (
-                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-400 rounded-xl p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-blue-900 text-sm mb-1">
-                                    Remboursement automatique
-                                  </p>
-                                  <p className="text-xs text-blue-700 leading-relaxed">
-                                    Vous serez remboursé selon nos conditions d'annulation. Le remboursement sera effectué sous 2-3 jours ouvrés sur votre moyen de paiement.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    
-                    {/* Footer avec boutons améliorés */}
-                    <div className="px-6 py-5 bg-gray-50 rounded-b-2xl border-t border-gray-100">
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => {
-                            setShowCancelCommandeModal(false);
-                            setSelectedCancelCommande(null);
-                            setCommandeCancelReason('');
-                          }}
-                          className="flex-1 px-4 py-3 text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={isCancellingCommande}
-                        >
-                          <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          Garder ma commande
-                        </button>
-                        <button
-                          onClick={confirmCancelCommande}
-                          disabled={isCancellingCommande}
-                          className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-                        >
-                          {isCancellingCommande ? (
-                            <>
-                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Annulation en cours...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                              Confirmer l'annulation
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500 text-center mt-3">
-                        En confirmant, vous acceptez l'annulation définitive de cette commande
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
+
+
+
 
           {/* Section vide selon l'onglet actif */}
           {activeTab === 'devis' && devisSorted.length === 0 && (
@@ -3656,27 +2456,10 @@ function ParticularHomeMenu() {
             </div>
           )}
 
-          {activeTab === 'commandes' && commandesSorted.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Package className="w-12 h-12 text-purple-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucune commande passée</h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Commandez des créations personnalisées auprès de nos artisans talentueux.
-              </p>
-              <button
-                className="bg-gradient-to-r from-purple-600 to-violet-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-purple-700 hover:to-violet-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => router.push("/particuliers/search")}
-              >
-                <Search className="w-5 h-5 inline mr-2" />
-                Découvrir les créations
-              </button>
-            </div>
-          )}
+
 
           {/* Section vide globale */}
-          {activeTab === 'overview' && devisSorted.length === 0 && reservationsSorted.length === 0 && commandesSorted.length === 0 && (
+          {activeTab === 'overview' && devisSorted.length === 0 && reservationsSorted.length === 0 && (
             <div className="text-center py-16">
               <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Search className="w-12 h-12 text-gray-400" />
@@ -3688,7 +2471,7 @@ function ParticularHomeMenu() {
                 Découvrez des prestataires exceptionnels pour votre mariage et commencez à créer des souvenirs inoubliables.
               </p>
               <button
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                className="bg-gradient-to-r from-blue-600 to-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
                 onClick={() => router.push("/particuliers/search")}
               >
                 <Search className="w-5 h-5 inline mr-2" />

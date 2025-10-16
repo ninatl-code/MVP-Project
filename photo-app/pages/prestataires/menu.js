@@ -22,35 +22,94 @@ import {
   Share2,
   AlertTriangle,
   Star,
+  TrendingUp,
+  Package,
+  Settings,
+  MapPin,
+  Camera,
+  Users,
+  Briefcase,
+  BarChart3,
+  Plus,
+  ArrowRight,
+  Send,
+  HelpCircle,
 } from "lucide-react";
 
-// Palette Wedoria
-const GOLD = "#D4AF37";
-const SAGE = "#A3B18A";
-const ROSE = "#F6DCE8";
+// Palette Shooty - Variables CSS
+const COLORS = {
+  primary: 'var(--primary)',     // #635BFF
+  secondary: 'var(--secondary)', // #FFD369
+  accent: 'var(--accent)',       // #FF7F50
+  background: 'var(--background)', // #F8F9FB
+  text: 'var(--text)',           // #1C1C1E
+};
 
-// Composant Card simple
-function Card({ className = "", children }) {
+// Composant Card moderne
+function Card({ className = "", children, hover = false }) {
   return (
-    <div className={`bg-white shadow-sm ${className}`} style={{ borderRadius: 16 }}>
+    <div 
+      className={`bg-white rounded-2xl shadow-sm border border-gray-100 ${hover ? 'hover:shadow-md transition-all duration-200 hover:-translate-y-1' : ''} ${className}`}
+    >
       {children}
     </div>
   );
 }
+
 function CardContent({ className = "", children }) {
-  return <div className={className}>{children}</div>;
+  return <div className={`p-6 ${className}`}>{children}</div>;
 }
 
-// Composant Button simple
-function Button({ className = "", children, variant, ...props }) {
-  let base =
-    "px-4 py-2 font-semibold rounded-xl transition-colors focus:outline-none";
-  let color =
-    variant === "outline"
-      ? "border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-100"
-      : "bg-[#D4AF37] text-white hover:bg-[#c7a13a]";
+// Composant Button moderne avec couleurs Shooty
+function Button({ className = "", children, variant = "primary", size = "md", ...props }) {
+  const baseStyles = "font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center gap-2";
+  
+  const sizeStyles = {
+    sm: "px-3 py-2 text-sm",
+    md: "px-4 py-2.5 text-sm",
+    lg: "px-6 py-3 text-base"
+  };
+  
+  const variantStyles = {
+    primary: "text-white shadow-sm",
+    secondary: "text-white shadow-sm",
+    outline: "border border-gray-300 bg-white hover:bg-gray-50",
+    ghost: "hover:bg-gray-100"
+  };
+
+  const getButtonStyle = () => {
+    switch(variant) {
+      case 'primary':
+        return { backgroundColor: COLORS.primary, color: 'white' };
+      case 'secondary':
+        return { backgroundColor: COLORS.secondary, color: COLORS.text };
+      case 'accent':
+        return { backgroundColor: COLORS.accent, color: 'white' };
+      default:
+        return {};
+    }
+  };
+
+  const handleMouseEnter = (e) => {
+    if (variant === 'primary') e.target.style.backgroundColor = COLORS.accent;
+    if (variant === 'secondary') e.target.style.backgroundColor = '#f0c65a';
+    if (variant === 'accent') e.target.style.backgroundColor = '#ff6b3d';
+  };
+
+  const handleMouseLeave = (e) => {
+    if (variant === 'primary') e.target.style.backgroundColor = COLORS.primary;
+    if (variant === 'secondary') e.target.style.backgroundColor = COLORS.secondary;
+    if (variant === 'accent') e.target.style.backgroundColor = COLORS.accent;
+  };
+
   return (
-    <button className={`${base} ${color} ${className}`} {...props}>
+    <button 
+      className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
+      style={getButtonStyle()}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      {...props}
+    >
       {children}
     </button>
   );
@@ -146,7 +205,8 @@ function NotificationsPopup({ userId }) {
           </div>
           <div className="p-3 text-center">
             <button
-              className="text-pink-600 font-semibold hover:underline"
+              className="font-semibold hover:underline"
+              style={{ color: COLORS.primary }}
               onClick={() => {
                 setOpen(false);
                 router.push("/prestataires/notification");
@@ -201,36 +261,52 @@ const shareAnnonce = (annonceId, titre) => {
       }
     ];
 
-    // Créer un menu de partage personnalisé
+      // Créer un menu de partage personnalisé moderne
     const shareMenu = document.createElement('div');
     shareMenu.style.cssText = `
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-      padding: 20px; z-index: 1000; max-width: 320px; width: 90%;
+      background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      padding: 24px; z-index: 1000; max-width: 340px; width: 90%;
+      border: 1px solid ${COLORS.background};
     `;
     
     shareMenu.innerHTML = `
-      <h3 style="margin: 0 0 15px 0; font-weight: 600; color: #333;">Partager cette annonce</h3>
+      <h3 style="margin: 0 0 20px 0; font-weight: 600; color: ${COLORS.text}; font-size: 18px; text-align: center;">Partager cette annonce</h3>
       ${shareOptions.map(option => 
         `<a href="${option.url}" target="_blank" style="
-          display: flex; align-items: center; gap: 12px; padding: 12px;
+          display: flex; align-items: center; gap: 15px; padding: 14px 18px;
           text-decoration: none; color: white; background: ${option.color};
-          border-radius: 8px; margin-bottom: 8px; font-weight: 500;
-        ">
-          <span>${option.name}</span>
+          border-radius: 12px; margin-bottom: 10px; font-weight: 500;
+          transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(${option.color}40);
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(${option.color}60)';" 
+           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(${option.color}40)';">
+          <span style="font-size: 16px;">${option.name}</span>
         </a>`
       ).join('')}
-      <button onclick="this.parentElement.remove()" style="
-        width: 100%; padding: 10px; background: #f3f4f6; border: none;
-        border-radius: 6px; color: #6b7280; font-weight: 500; margin-top: 8px; cursor: pointer;
-      ">Fermer</button>
-      <button onclick="navigator.clipboard.writeText('${url}').then(() => alert('Lien copié !')); this.parentElement.remove();" style="
-        width: 100%; padding: 10px; background: #e5e7eb; border: none;
-        border-radius: 6px; color: #374151; font-weight: 500; margin-top: 4px; cursor: pointer;
-      ">Copier le lien</button>
-    `;
-
-    document.body.appendChild(shareMenu);
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button onclick="navigator.clipboard.writeText('${url}').then(() => { 
+          const btn = this; 
+          const originalText = btn.innerHTML; 
+          btn.innerHTML = '✓ Copié !'; 
+          btn.style.background = '${COLORS.primary}'; 
+          btn.style.color = 'white'; 
+          setTimeout(() => { btn.innerHTML = originalText; btn.style.background = '${COLORS.background}'; btn.style.color = '${COLORS.text}'; }, 2000); 
+        });" style="
+          flex: 1; padding: 12px; background: ${COLORS.background}; border: 1px solid #e5e7eb;
+          border-radius: 10px; color: ${COLORS.text}; font-weight: 500; cursor: pointer;
+          transition: all 0.2s ease;
+        " onmouseover="this.style.background='#f3f4f6';" onmouseout="this.style.background='${COLORS.background}';">
+          📋 Copier le lien
+        </button>
+        <button onclick="this.parentElement.parentElement.remove()" style="
+          flex: 1; padding: 12px; background: #f87171; border: none; color: white;
+          border-radius: 10px; font-weight: 500; cursor: pointer;
+          transition: all 0.2s ease;
+        " onmouseover="this.style.background='#ef4444';" onmouseout="this.style.background='#f87171';">
+          Fermer
+        </button>
+      </div>
+    `;    document.body.appendChild(shareMenu);
     
     // Supprimer le menu après 10 secondes
     setTimeout(() => {
@@ -373,7 +449,13 @@ function StartupChecklist({ userId, onHide }) {
   const progressPercent = Math.round((completedCount / (totalCount - 1)) * 100);
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200 relative">
+    <div 
+      className="rounded-2xl p-6 mb-8 border relative overflow-hidden"
+      style={{ 
+        background: `linear-gradient(135deg, ${COLORS.primary}15, ${COLORS.secondary}15)`,
+        borderColor: COLORS.primary + '30'
+      }}
+    >
       {/* Bouton fermer */}
       <button
         onClick={onHide}
@@ -382,25 +464,43 @@ function StartupChecklist({ userId, onHide }) {
         <X className="w-4 h-4 text-blue-600" />
       </button>
 
-      <div className="mb-4">
-        <h3 className="text-lg font-bold text-blue-900 mb-1 flex items-center gap-2">
-          🚀 Commencez votre aventure
+      <div className="mb-6">
+        <h3 
+          className="text-xl font-bold mb-2 flex items-center gap-3"
+          style={{ color: COLORS.text }}
+        >
+          <span className="text-2xl">🚀</span>
+          Lancez votre activité Shooty
         </h3>
-        <p className="text-sm text-blue-700 mb-3">
-          Complétez ces étapes pour recevoir vos premiers clients.
+        <p 
+          className="text-sm mb-4"
+          style={{ color: COLORS.text + 'CC' }}
+        >
+          Complétez ces étapes essentielles pour attirer vos premiers clients et maximiser vos réservations.
         </p>
         
         {/* Barre de progression */}
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <div className="w-full bg-blue-200 rounded-full h-1.5">
+            <div 
+              className="w-full rounded-full h-2" 
+              style={{ backgroundColor: COLORS.background }}
+            >
               <div
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
+                className="h-2 rounded-full transition-all duration-500"
+                style={{ 
+                  width: `${progressPercent}%`,
+                  background: `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.accent})`
+                }}
               ></div>
             </div>
           </div>
-          <span className="text-xs text-blue-600 font-medium">{completedCount}/{totalCount - 1}</span>
+          <span 
+            className="text-xs font-semibold"
+            style={{ color: COLORS.primary }}
+          >
+            {completedCount}/{totalCount - 1}
+          </span>
         </div>
       </div>
 
@@ -469,6 +569,379 @@ function StartupChecklist({ userId, onHide }) {
   );
 }
 
+// Composant Formulaire de Support
+function SupportModal({ isOpen, onClose, userProfile }) {
+  const [formData, setFormData] = useState({
+    objet: '',
+    description: '',
+    nom: userProfile?.nom || '',
+    email: userProfile?.email || ''
+  });
+  const [sending, setSending] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSending(true);
+
+    try {
+      // Envoyer la demande de support à l'API
+      const response = await fetch('/api/support/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          userId: userProfile?.id,
+          timestamp: new Date().toISOString()
+        }),
+      });
+
+      if (response.ok) {
+        setSuccess(true);
+        setTimeout(() => {
+          onClose();
+          setSuccess(false);
+          setFormData({
+            objet: '',
+            description: '',
+            nom: userProfile?.nom || '',
+            email: userProfile?.email || ''
+          });
+        }, 4000);
+      } else {
+        alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur lors de l\'envoi du message. Veuillez réessayer.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px'
+      }}
+      onClick={onClose}
+    >
+      <div 
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '20px',
+          maxWidth: '600px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* En-tête */}
+        <div 
+          style={{
+            padding: '24px',
+            borderBottom: `1px solid ${COLORS.background}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div 
+              style={{
+                backgroundColor: COLORS.primary + '20',
+                padding: '10px',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <HelpCircle style={{ width: '24px', height: '24px', color: COLORS.primary }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: COLORS.text, margin: 0 }}>
+                Contactez le Support
+              </h2>
+              <p style={{ fontSize: '13px', color: COLORS.text + 'AA', margin: '4px 0 0 0' }}>
+                Décrivez votre problème, nous vous répondrons rapidement
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = COLORS.background}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+          >
+            <X style={{ width: '20px', height: '20px', color: COLORS.text }} />
+          </button>
+        </div>
+
+        {/* Formulaire */}
+        <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+          {success ? (
+            <div 
+              style={{
+                textAlign: 'center',
+                padding: '40px 20px',
+                color: '#10b981'
+              }}
+            >
+              <CheckCircle style={{ width: '64px', height: '64px', margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>
+                Message envoyé !
+              </h3>
+              <p style={{ color: COLORS.text + 'CC' }}>
+                Nous avons bien reçu votre demande. Un email de confirmation vous a été envoyé.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Nom */}
+              <div style={{ marginBottom: '20px' }}>
+                <label 
+                  style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600',
+                    color: COLORS.text 
+                  }}
+                >
+                  Nom complet
+                </label>
+                <input
+                  type="text"
+                  value={formData.nom}
+                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '10px',
+                    border: `1px solid #e5e7eb`,
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = COLORS.primary}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+              </div>
+
+              {/* Email */}
+              <div style={{ marginBottom: '20px' }}>
+                <label 
+                  style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600',
+                    color: COLORS.text 
+                  }}
+                >
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '10px',
+                    border: `1px solid #e5e7eb`,
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = COLORS.primary}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+              </div>
+
+              {/* Objet */}
+              <div style={{ marginBottom: '20px' }}>
+                <label 
+                  style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600',
+                    color: COLORS.text 
+                  }}
+                >
+                  Objet de la demande
+                </label>
+                <select
+                  value={formData.objet}
+                  onChange={(e) => setFormData({ ...formData, objet: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '10px',
+                    border: `1px solid #e5e7eb`,
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    backgroundColor: 'white'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = COLORS.primary}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                >
+                  <option value="">Sélectionnez un sujet</option>
+                  <option value="probleme_technique">Problème technique</option>
+                  <option value="question_facturation">Question sur la facturation</option>
+                  <option value="gestion_compte">Gestion de compte</option>
+                  <option value="probleme_reservation">Problème avec une réservation</option>
+                  <option value="question_paiement">Question sur les paiements</option>
+                  <option value="amelioration">Suggestion d'amélioration</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
+
+              {/* Description */}
+              <div style={{ marginBottom: '24px' }}>
+                <label 
+                  style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    fontSize: '14px', 
+                    fontWeight: '600',
+                    color: COLORS.text 
+                  }}
+                >
+                  Description détaillée
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  required
+                  rows={6}
+                  placeholder="Décrivez votre problème ou votre question en détail..."
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '10px',
+                    border: `1px solid #e5e7eb`,
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = COLORS.primary}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+              </div>
+
+              {/* Boutons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'white',
+                    color: COLORS.text,
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = COLORS.background}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={sending}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    backgroundColor: sending ? '#9CA3AF' : COLORS.primary,
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: sending ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => !sending && (e.target.style.backgroundColor = COLORS.accent)}
+                  onMouseLeave={(e) => !sending && (e.target.style.backgroundColor = COLORS.primary)}
+                >
+                  {sending ? (
+                    <>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid white',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Send style={{ width: '16px', height: '16px' }} />
+                      Envoyer
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function ProviderHomeMenu() {
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState(null);
@@ -480,6 +953,7 @@ export default function ProviderHomeMenu() {
   const [nbDevisAccepted, setNbDevisAccepted] = useState(0);
   const [showChecklist, setShowChecklist] = useState(true);
   const [userId, setUserId] = useState(null);
+  const [showSupportModal, setShowSupportModal] = useState(false);
   const router = useRouter();
 
   // Vérifier si la checklist a été masquée
@@ -562,56 +1036,89 @@ export default function ProviderHomeMenu() {
 
   const tiles = [
     {
-      title: "Mes annonces",
-      desc: "Gérer vos annonces",
-      icon: Images,
-      onClick: () => router.push("/prestataires/prestations"),
-    },
-    {
       title: "Devis",
-      desc: "Gérer vos devis",
-      icon: ClipboardList,
+      desc: "Gérer et suivre vos devis clients",
+      icon: FileText,
       onClick: () => router.push("/prestataires/devis"),
+      gradient: `linear-gradient(135deg, #3d3d3d)`, // Primary gradient
+      iconBg: '#820615'
     },
     {
       title: "Réservations",
-      desc: "Gérer vos réservations",
-      icon: ClipboardList,
+      desc: "Gérer vos réservations et confirmations",
+      icon: Calendar,
       onClick: () => router.push("/prestataires/reservations"),
+      gradient: `linear-gradient(135deg, #3d3d3d)`, // Accent gradient
+      iconBg: '#820615'
     },
-    
+    {
+      title: "Mes annonces",
+      desc: "Créer et gérer vos annonces",
+      icon: Images,
+      onClick: () => router.push("/prestataires/prestations"),
+      gradient: `linear-gradient(135deg,#3d3d3d)`, // Secondary gradient
+      iconBg: '#820615'
+    },
+    {
+      title: "Planning",
+      desc: "Visualiser votre calendrier",
+      icon: ClipboardList,
+      onClick: () => router.push("/prestataires/calendrier"),
+      gradient: `linear-gradient(135deg, #3d3d3d)`, // Primary to Accent
+      iconBg: '#820615'
+    },
   ];
 
   return (
     <>
       <Header />
-      <div style={{ minHeight: "100vh", background: "#F9F9F9", color: "#222" }}>
+      <div 
+        style={{ 
+          minHeight: "100vh", 
+          background: COLORS.background,
+          color: COLORS.text 
+        }}
+      >
         <main
           style={{
-            maxWidth: 1100,
+            maxWidth: 1200,
             margin: "0 auto",
-            padding: "40px 0 0 0",
+            padding: "32px 24px",
           }}
         >
-          {/* Welcome & search */}
+          {/* En-tête de bienvenue moderne */}
           <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "flex-end",
-              justifyContent: "space-between",
-              gap: 24,
-              marginBottom: 36,
-            }}
+            className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-8"
           >
-            <div>
-              <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6 }}>
-                Bonjour {profile?.nom ? profile.nom.split(" ")[0] : ""}
-                <span> 👋</span>
-              </h1>
-              <p style={{ color: "#666" }}>
-                Voici un aperçu de votre activité aujourd'hui.
-              </p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 
+                  className="text-3xl lg:text-4xl font-bold mb-2 flex items-center gap-3"
+                  style={{ color: COLORS.text }}
+                >
+                  Bonjour {profile?.nom ? profile.nom.split(" ")[0] : ""}
+                  <span className="text-4xl">👋</span>
+                </h1>
+                <p 
+                  className="text-lg"
+                  style={{ color: COLORS.text + 'CC' }}
+                >
+                  Voici votre tableau de bord professionnel Shooty.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions rapides */}
+            <div className="flex gap-3">
+              <Button 
+                variant="primary" 
+                size="md"
+                onClick={() => router.push("/prestataires/prestations")}
+                className="hidden lg:flex"
+              >
+                <Plus className="w-4 h-4" />
+                Nouvelle annonce
+              </Button>
             </div>
           </div>
 
@@ -623,239 +1130,252 @@ export default function ProviderHomeMenu() {
             />
           )}
 
-          {/* Stats */}
-          <section
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 24,
-              marginBottom: 36,
-            }}
-          >
-            <Card>
-              <CardContent
-                className="p-5 flex items-center justify-between"
-                style={{
-                  padding: 28,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <p style={{ fontSize: 15, color: "#888" }}>Annonces actives</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>
+          {/* Statistiques modernes */}
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            
+            {/* Annonces actives */}
+            <Card hover={true}>
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: COLORS.primary + '20' }}
+                    >
+                      <TrendingUp className="w-5 h-5" style={{ color: COLORS.primary }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      Annonces actives
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: COLORS.text }}>
                     {nbActivePrestations}
                   </p>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent
-                className="p-5 flex items-center justify-between"
-                style={{
-                  padding: 28,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <p style={{ fontSize: 15, color: "#888" }}>Devis en attente</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>
+
+            {/* Devis */}
+            <Card hover={true}>
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: COLORS.secondary + '40' }}
+                    >
+                      <Package className="w-5 h-5" style={{ color: COLORS.text }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      Devis en attente
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
                     {nbDevisPending}
                   </p>
-                  <p style={{ fontSize: 15, color: "#888", marginTop: 8 }}>Devis acceptés : <b>{nbDevisAccepted}</b></p>
+                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
+                    Acceptés : <span className="font-semibold">{nbDevisAccepted}</span>
+                  </p>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent
-                className="p-5 flex items-center justify-between"
-                style={{
-                  padding: 28,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <p style={{ fontSize: 15, color: "#888" }}>Réservations acceptées</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>
+
+            {/* Réservations */}
+            <Card hover={true} className="md:col-span-2 lg:col-span-1">
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: COLORS.accent + '20' }}
+                    >
+                      <Calendar className="w-5 h-5" style={{ color: COLORS.accent }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      Réservations confirmées
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
                     {nbAccepted}
                   </p>
-                  <p style={{ fontSize: 15, color: "#888", marginTop: 8 }}>Réservations en attente : <b>{nbPending}</b></p>
+                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
+                    En attente : <span className="font-semibold">{nbPending}</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Chiffre d'affaires */}
+            <Card hover={true}>
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: COLORS.primary + '20' }}
+                    >
+                      <BarChart3 className="w-5 h-5" style={{ color: COLORS.primary }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      CA ce mois
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: COLORS.text }}>
+                    -
+                  </p>
+                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
+                    Bientôt disponible
+                  </p>
                 </div>
               </CardContent>
             </Card>
             
           </section>
 
-          {/* Tiles (boutons) */}
-          <section
-            style={{
-              display: "grid",
-              gap: 24,
-              gridTemplateColumns: "repeat(2, 1fr)",
-              marginBottom: 36,
-            }}
-          >
-            {tiles.map((t, idx) => (
-              <motion.div
-                key={t.title}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * idx }}
-                style={{ textDecoration: "none", cursor: "pointer" }}
-                onClick={t.onClick}
-              >
-                <Card className="hover:shadow-lg transition-shadow group">
-                  <CardContent
-                    className="p-5 flex items-start gap-4"
-                    style={{
-                      padding: 32,
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 20,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 16,
-                        display: "grid",
-                        placeItems: "center",
-                        background: ROSE,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {t.icon && (
-                        <t.icon style={{ width: 28, height: 28, color: GOLD }} />
-                      )}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <h2
+          {/* Actions principales - 2 par ligne */}
+          <section className="mb-8">
+            <h2 
+              className="text-xl font-bold mb-6"
+              style={{ color: COLORS.text }}
+            >
+              Actions rapides
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {tiles.map((tile, idx) => (
+                <motion.div
+                  key={tile.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * idx, duration: 0.3 }}
+                  onClick={tile.onClick}
+                  className="cursor-pointer"
+                >
+                  <Card hover={true} className="group h-full">
+                    <CardContent className="flex items-center gap-4 p-8">
+                      <div
+                        className="p-4 rounded-2xl transition-all duration-200 group-hover:scale-110"
                         style={{
-                          fontWeight: 400,
-                          fontSize: 18,
-                          marginBottom: 2,
-                          textDecoration: "none",
-                          color: "#222", // Titre en noir
+                          background: tile.gradient,
+                          boxShadow: '0 4px 12px rgba(99, 91, 255, 0.15)'
                         }}
-                        className="group-hover:underline"
                       >
-                        {t.title}
-                      </h2>
-                      <p style={{ fontSize: 15, color: "#666" }}>{t.desc}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                        {tile.icon && (
+                          <tile.icon className="w-7 h-7 text-white" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 
+                          className="text-xl font-bold mb-1.5 group-hover:opacity-80 transition-all"
+                          style={{ color: COLORS.text }}
+                        >
+                          {tile.title}
+                        </h3>
+                        <p 
+                          className="text-sm leading-relaxed"
+                          style={{ color: COLORS.text + 'AA' }}
+                        >
+                          {tile.desc}
+                        </p>
+                      </div>
+                      <ArrowRight 
+                        className="w-6 h-6 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200"
+                        style={{ color: COLORS.primary }}
+                      />
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           </section>
 
-          {/* Calendrier en dessous des boutons */}
-          <section
-            style={{
-              marginBottom: 36,
-              width: "100%",
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              style={{ textDecoration: "none", cursor: "pointer", width: "100%" }}
-              onClick={() => router.push("/prestataires/calendrier")}
-            >
-              <Card className="hover:shadow-lg transition-shadow group" style={{ marginBottom: 10 }}>
-                <CardContent
-                  className="p-5 flex items-start gap-4"
-                  style={{
-                    padding: 24,
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 16,
-                  }}
-                >
+          {/* Section Raccourcis professionnels */}
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 
+                className="text-xl font-bold"
+                style={{ color: COLORS.text }}
+              >
+                Raccourcis
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Raccourci Zones d'intervention */}
+              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/prestataires/profil#zones")}>
+                <CardContent className="flex items-center gap-4">
                   <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 16,
-                      display: "grid",
-                      placeItems: "center",
-                      background: ROSE,
-                      flexShrink: 0,
-                    }}
+                    className="p-3 rounded-xl"
+                    style={{ backgroundColor: COLORS.primary + '20' }}
                   >
-                    <Calendar style={{ width: 28, height: 28, color: GOLD }} />
+                    <MapPin className="w-5 h-5" style={{ color: COLORS.primary }} />
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <h2
-                      style={{
-                        fontWeight: 400,
-                        fontSize: 18,
-                        marginBottom: 2,
-                        textDecoration: "none",
-                        color: "#222", // Titre en noir
-                      }}
-                      className="group-hover:underline"
-                    >
-                      Mon calendrier
-                    </h2>
-                    <p style={{ fontSize: 15, color: "#666" }}>Gérer vos disponibilités</p>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-sm mb-1" style={{ color: COLORS.text }}>
+                      Zones d'intervention
+                    </h4>
+                    <p className="text-xs" style={{ color: COLORS.text + 'CC' }}>
+                      Définir où vous intervenez
+                    </p>
                   </div>
+                  <ArrowRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
                 </CardContent>
               </Card>
-            </motion.div>
+
+              {/* Raccourci Gestion documents */}
+              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/prestataires/profil#documents")}>
+                <CardContent className="flex items-center gap-4">
+                  <div
+                    className="p-3 rounded-xl"
+                    style={{ backgroundColor: COLORS.secondary + '40' }}
+                  >
+                    <Briefcase className="w-5 h-5" style={{ color: COLORS.text }} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-sm mb-1" style={{ color: COLORS.text }}>
+                      Documents professionnels
+                    </h4>
+                    <p className="text-xs" style={{ color: COLORS.text + 'CC' }}>
+                      Gérer vos certifications
+                    </p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+                </CardContent>
+              </Card>
+            </div>
           </section>
 
-          {/* Conseil élargi */}
-          <section
-            style={{
-              marginBottom: 36,
-              gridColumn: "1 / span 2",
-            }}
-          >
-            <Card>
-              <CardContent style={{ padding: 24 }}>
-                <h4 style={{ fontWeight: 600, marginBottom: 10 }}>Conseil</h4>
-                <p style={{ fontSize: 15, color: "#444", marginBottom: 14 }}>
-                  Ajoutez jusqu’à 5 photos par prestation. Les annonces avec 3+ photos reçoivent plus de demandes.
+          {/* Footer avec déconnexion */}
+          <section className="pt-8 border-t" style={{ borderColor: COLORS.background }}>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium" style={{ color: COLORS.text }}>
+                  Shooty Business
                 </p>
-              </CardContent>
-            </Card>
-          </section>
+                <p className="text-xs" style={{ color: COLORS.text + '80' }}>
+                  Votre plateforme professionnelle de photographie
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowSupportModal(true)}
+              >
+                <HelpCircle className="w-4 h-4 mr-2" />
+                Aide & Support
+              </Button>
 
-          {/* Footer */}
-          <footer
-            style={{
-              padding: "24px 0 40px 0",
-              fontSize: 13,
-              color: "#888",
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "16px",
-              alignItems: "center",
-            }}
-          >
-            <a href="#" style={{ textDecoration: "underline" }}>
-              Support
-            </a>
-            <a href="#" style={{ textDecoration: "underline" }}>
-              Centre d’aide
-            </a>
-            <a href="#" style={{ textDecoration: "underline" }}>
-              CGU
-            </a>
-            <span style={{ marginLeft: "auto" }}>
-              © {new Date().getFullYear()} Wedoria
-            </span>
-          </footer>
+           </div>
+          </section>
         </main>
+
+        {/* Modal de support */}
+        <SupportModal 
+          isOpen={showSupportModal}
+          onClose={() => setShowSupportModal(false)}
+          userProfile={profile ? { ...profile, id: userId } : null}
+        />
       </div>
     </>
   );
 }
+                  

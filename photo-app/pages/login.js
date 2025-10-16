@@ -2,6 +2,18 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
+import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
+
+// Palette Shooty
+const COLORS = {
+  primary: '#E8EAF6',     // Violet
+  secondary: '#5C6BC0',   // Jaune doré
+  accent: '#130183',      // Orange
+  background: '#F8F9FB',  // Gris clair
+  text: '#1C1C1E',        // Noir
+  error: '#ef4444',       // Rouge
+  success: '#10b981'      // Vert
+};
 
 function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
@@ -59,55 +71,255 @@ function Login() {
   return (
     <>
       <Headerhomepage />
-    <main style={{
-      maxWidth: 400,
-      margin: "80px auto",
-      padding: 24,
-      background: "#fff",
-      borderRadius: 16,
-      boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
-      textAlign: "center"
-    }}>
-      <h1 style={{ fontWeight: 700, fontSize: 28, marginBottom: 24 }}>Connexion</h1>
-      {errorMsg && (
-        <div style={{ color: "#e67c73", marginBottom: 16, fontWeight: 500 }}>
-          {errorMsg}
-        </div>
-      )}
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={e => setForm({ ...form, email: e.target.value })}
-          style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
-        /><br />
-        <input
-          type="password"
-          placeholder="Mot de passe"
-          value={form.password}
-          onChange={e => setForm({ ...form, password: e.target.value })}
-          style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
-        /><br />
-        <button
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "12px 0",
-            borderRadius: 10,
-            background: "#D4AF37",
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: 16,
-            border: "none",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1
-          }}
-        >
-          {loading ? 'Connexion...' : 'Se connecter'}
-        </button>
-      </form>
-    </main>
+      <div style={{
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${COLORS.primary}15, ${COLORS.secondary}15)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <main style={{
+          maxWidth: 440,
+          width: '100%',
+          padding: '40px 32px',
+          background: '#fff',
+          borderRadius: 20,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.08)',
+          textAlign: 'center'
+        }}>
+          {/* Logo/Icône */}
+          <div style={{
+            width: '64px',
+            height: '64px',
+            margin: '0 auto 24px',
+            background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.accent})`,
+            borderRadius: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: `0 8px 24px ${COLORS.primary}40`
+          }}>
+            <LogIn style={{ width: '32px', height: '32px', color: 'white' }} />
+          </div>
+
+          <h1 style={{ 
+            fontWeight: 700, 
+            fontSize: 32, 
+            marginBottom: 8,
+            color: COLORS.text,
+            background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent})`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            Connexion
+          </h1>
+          <p style={{ 
+            fontSize: 14, 
+            color: COLORS.text + 'AA', 
+            marginBottom: 32 
+          }}>
+            Accédez à votre espace Shooty
+          </p>
+
+          {errorMsg && (
+            <div style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              marginBottom: 24,
+              background: COLORS.error + '10',
+              border: `1px solid ${COLORS.error}30`,
+              borderRadius: 12,
+              color: COLORS.error,
+              fontSize: 14,
+              fontWeight: 500,
+              textAlign: 'left'
+            }}>
+              <AlertCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleLogin}>
+            {/* Email Input */}
+            <div style={{ marginBottom: 20, textAlign: 'left' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: 8, 
+                fontSize: 14, 
+                fontWeight: 600,
+                color: COLORS.text 
+              }}>
+                Email
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Mail style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '20px',
+                  height: '20px',
+                  color: COLORS.text + '60'
+                }} />
+                <input
+                  type="email"
+                  placeholder="votre.email@exemple.com"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  required
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px 12px 44px', 
+                    borderRadius: 12, 
+                    border: '2px solid #e5e7eb',
+                    fontSize: 15,
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = COLORS.primary}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+              </div>
+            </div>
+
+            {/* Password Input */}
+            <div style={{ marginBottom: 24, textAlign: 'left' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: 8, 
+                fontSize: 14, 
+                fontWeight: 600,
+                color: COLORS.text 
+              }}>
+                Mot de passe
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Lock style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '20px',
+                  height: '20px',
+                  color: COLORS.text + '60'
+                }} />
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  required
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px 12px 44px', 
+                    borderRadius: 12, 
+                    border: '2px solid #e5e7eb',
+                    fontSize: 15,
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = COLORS.primary}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                borderRadius: 12,
+                background: loading ? '#9CA3AF' : `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.accent})`,
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: 16,
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.3s',
+                boxShadow: loading ? 'none' : `0 4px 20px ${COLORS.primary}40`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = `0 6px 28px ${COLORS.primary}50`;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = `0 4px 20px ${COLORS.primary}40`;
+                }
+              }}
+            >
+              {loading ? (
+                <>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid white',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  Connexion en cours...
+                </>
+              ) : (
+                <>
+                  <LogIn style={{ width: '20px', height: '20px' }} />
+                  Se connecter
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Lien vers inscription */}
+          <div style={{ 
+            marginTop: 24, 
+            fontSize: 14, 
+            color: COLORS.text + 'AA' 
+          }}>
+            Pas encore de compte ?{' '}
+            <a 
+              href="/signup" 
+              style={{ 
+                color: COLORS.primary, 
+                fontWeight: 600,
+                textDecoration: 'none',
+                borderBottom: `2px solid ${COLORS.primary}40`,
+                paddingBottom: '2px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.borderBottomColor = COLORS.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.borderBottomColor = COLORS.primary + '40';
+              }}
+            >
+              Créer un compte
+            </a>
+          </div>
+        </main>
+      </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   )
 }

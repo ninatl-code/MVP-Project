@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../../lib/supabaseClient";
-import { Calendar, Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import { Calendar, Clock, AlertTriangle, CheckCircle, MapPin } from "lucide-react";
 import Header from "../../../components/HeaderParti";
 
 export default function DemandeDevisForm() {
@@ -26,6 +26,12 @@ export default function DemandeDevisForm() {
   const [availabilityStatus, setAvailabilityStatus] = useState(null); // 'available', 'unavailable', 'checking'
   const [alternativeSlots, setAlternativeSlots] = useState([]);
   const [prestataireId, setPrestataireId] = useState(null);
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const addressInputRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
+  const [annonceData, setAnnonceData] = useState(null); // Pour stocker les infos de l'annonce (unit_tarif, nb_heure)
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -38,23 +44,115 @@ export default function DemandeDevisForm() {
         checkAvailability(newForm.date, newForm.heure, prestataireId);
       }
     }
+
+    // Recherche d'adresse instantanée dès la première lettre (style Airbnb)
+    if (name === 'lieu') {
+      // Annuler la recherche précédente
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      if (value.length >= 1) {
+        // Afficher immédiatement le loader
+        setIsLoadingAddress(true);
+        setShowSuggestions(true);
+        
+        // Délai très court (200ms) pour éviter trop de requêtes tout en restant réactif
+        searchTimeoutRef.current = setTimeout(() => {
+          searchAddress(value);
+        }, 200);
+      } else {
+        setShowSuggestions(false);
+        setAddressSuggestions([]);
+        setIsLoadingAddress(false);
+      }
+    }
   };
 
-  // Récupérer l'ID du prestataire au chargement
+  // Fonction pour rechercher des adresses via notre API route
+  const searchAddress = async (query) => {
+    if (!query || query.length < 1) return;
+    
+    setIsLoadingAddress(true);
+    try {
+      // Appeler notre API route Next.js pour éviter les problèmes CORS
+      const response = await fetch(
+        `/api/search-address?query=${encodeURIComponent(query)}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Erreur de recherche');
+      }
+      
+      const data = await response.json();
+      setAddressSuggestions(data);
+      setShowSuggestions(data.length > 0);
+    } catch (error) {
+      console.error('Erreur lors de la recherche d\'adresse:', error);
+      // Fallback silencieux : désactiver les suggestions sans perturber l'utilisateur
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsLoadingAddress(false);
+    }
+  };
+
+  // Sélectionner une adresse suggérée
+  const selectAddress = (place) => {
+    const address = place.address || {};
+    
+    // Construire l'adresse sans la ville
+    const addressParts = [];
+    if (address.road) addressParts.push(address.road);
+    if (address.house_number) addressParts.unshift(address.house_number);
+    if (address.suburb) addressParts.push(address.suburb);
+    
+    const streetAddress = addressParts.join(' ') || place.display_name.split(',')[0];
+    
+    // Extraire la ville
+    const city = address.city || address.town || address.village || address.municipality || '';
+    
+    setForm({
+      ...form,
+      lieu: streetAddress,
+      ville: city
+    });
+    
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+  };
+
+  // Récupérer les infos de l'annonce au chargement
   useEffect(() => {
-    const fetchPrestataireId = async () => {
+    const fetchAnnonceData = async () => {
       if (annonceId) {
         const { data: annonce } = await supabase
           .from("annonces")
-          .select("prestataire")
+          .select("prestataire, unit_tarif, nb_heure")
           .eq("id", annonceId)
           .single();
         if (annonce) {
           setPrestataireId(annonce.prestataire);
+          setAnnonceData(annonce);
+          
+          // Initialiser automatiquement la durée selon l'unité tarifaire
+          if (annonce.unit_tarif) {
+            const unit = annonce.unit_tarif;
+            if (unit === 'seance' || unit === 'forfait') {
+              // Pour séance/forfait, utiliser nb_heure de l'annonce
+              setForm(prev => ({ ...prev, duree: annonce.nb_heure?.toString() || "1" }));
+            } else if (unit === 'demi_journee') {
+              // Pour demi-journée, 4 heures
+              setForm(prev => ({ ...prev, duree: "4" }));
+            } else if (unit === 'jour') {
+              // Pour jour, 8 heures
+              setForm(prev => ({ ...prev, duree: "8" }));
+            }
+          }
         }
       }
     };
-    fetchPrestataireId();
+    fetchAnnonceData();
   }, [annonceId]);
 
   // Fonction pour vérifier la disponibilité d'un créneau
@@ -307,13 +405,33 @@ export default function DemandeDevisForm() {
       return;
     }
 
+    // Calculer duree et duree_heure selon l'unité tarifaire
+    let duree = form.duree;
+    let dureeHeure = null;
+    
+    if (annonceData?.unit_tarif) {
+      const unit = annonceData.unit_tarif;
+      if (unit === 'seance' || unit === 'forfait') {
+        duree = 1; // Toujours 1 pour séance/forfait
+        dureeHeure = annonceData.nb_heure || null; // Utiliser la valeur de nb_heure de l'annonce
+      } else if (unit === 'demi_journee') {
+        duree = 1; // Toujours 1
+        dureeHeure = 4; // 4 heures pour une demi-journée
+      } else if (unit === 'jour') {
+        duree = 1; // Toujours 1
+        dureeHeure = 8; // 8 heures pour un jour
+      }
+      // Sinon (heure), garder la durée saisie et dureeHeure reste null
+    }
+
     // Envoi à la table devis
     const { error, data: devisData } = await supabase.from("devis").insert({
       annonce_id: annonceId,
       particulier_id: user.id,
       titre: form.titre,
       date: dateTime,
-      duree: form.duree,
+      duree: duree,
+      duree_heure: dureeHeure,
       endroit,
       participants: form.participants,
       comment_client: form.description,
@@ -456,40 +574,111 @@ export default function DemandeDevisForm() {
           )}
         </div>
 
-        {/* Durée */}
-        <div>
-          <label className="block font-semibold">Durée (heures)</label>
-          <input
-            type="number"
-            name="duree"
-            value={form.duree}
-            min="1"
-            onChange={handleChange}
-            className="w-full border rounded-lg p-2"
-          />
-        </div>
+        {/* Durée - Masqué pour séance, forfait, demi_journee, jour */}
+        {annonceData?.unit_tarif && 
+         !['seance', 'forfait', 'demi_journee', 'jour'].includes(annonceData.unit_tarif) && (
+          <div>
+            <label className="block font-semibold">Durée (heures)</label>
+            <input
+              type="number"
+              name="duree"
+              value={form.duree}
+              min="1"
+              onChange={handleChange}
+              className="w-full border rounded-lg p-2"
+            />
+          </div>
+        )}
 
-        {/* Lieu et ville */}
-        <div>
-          <label className="block font-semibold">Adresse du lieu</label>
-          <input
-            type="text"
-            name="lieu"
-            value={form.lieu}
-            onChange={handleChange}
-            placeholder="Ex : Rue Mohammed V"
-            className="w-full border rounded-lg p-2"
-          />
+        {/* Lieu et ville avec autocomplétion */}
+        <div className="relative">
+          <label className="block font-semibold mb-2">Adresse du lieu</label>
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              ref={addressInputRef}
+              type="text"
+              name="lieu"
+              value={form.lieu}
+              onChange={handleChange}
+              placeholder="Commencez à taper une adresse..."
+              className="w-full border rounded-lg p-2 pl-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              autoComplete="off"
+            />
+            {isLoadingAddress && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-500 border-t-transparent"></div>
+              </div>
+            )}
+          </div>
+          
+          {/* Suggestions d'adresses - Style Airbnb */}
+          {showSuggestions && (
+            <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-fadeIn">
+              {isLoadingAddress && addressSuggestions.length === 0 ? (
+                <div className="p-4 flex items-center justify-center gap-3 text-gray-500">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-500 border-t-transparent"></div>
+                  <span className="text-sm">Recherche en cours...</span>
+                </div>
+              ) : addressSuggestions.length > 0 ? (
+                <div className="max-h-80 overflow-y-auto">
+                  {addressSuggestions.map((place, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => selectAddress(place)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-all duration-150 border-b border-gray-50 last:border-b-0 group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 p-2 bg-gray-100 rounded-lg group-hover:bg-purple-100 transition-colors">
+                          <MapPin className="w-4 h-4 text-gray-600 group-hover:text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 text-sm truncate group-hover:text-purple-600 transition-colors">
+                            {place.display_name.split(',')[0]}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                            {place.display_name.split(',').slice(1).join(',')}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  Aucune adresse trouvée
+                </div>
+              )}
+            </div>
+          )}
+          
+          <style jsx>{`
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+                transform: translateY(-10px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            .animate-fadeIn {
+              animation: fadeIn 0.2s ease-out;
+            }
+          `}</style>
         </div>
+        
         <div>
-          <label className="block font-semibold">Ville / Région</label>
+          <label className="block font-semibold mb-2">Ville / Région</label>
           <input
             type="text"
             name="ville"
             value={form.ville}
             onChange={handleChange}
             placeholder="Ex : Casablanca"
-            className="w-full border rounded-lg p-2"
+            className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           />
         </div>
 
