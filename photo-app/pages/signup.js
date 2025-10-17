@@ -123,7 +123,7 @@ export default function Signup() {
           width: "100%",
           padding: '14px 24px',
           borderRadius: 12,
-          background: loading ? '#9CA3AF' : `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.accent})`,
+          background: loading ? '#9CA3AF' : `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent})`,
           color: "#fff",
           fontWeight: 600,
           fontSize: 16,

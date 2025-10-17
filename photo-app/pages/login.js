@@ -73,7 +73,7 @@ function Login() {
       <Headerhomepage />
       <div style={{
         minHeight: '100vh',
-        background: `linear-gradient(135deg, ${COLORS.primary}15, ${COLORS.secondary}15)`,
+        background: `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}15)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -93,7 +93,7 @@ function Login() {
             width: '64px',
             height: '64px',
             margin: '0 auto 24px',
-            background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.accent})`,
+            background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent})`,
             borderRadius: '16px',
             display: 'flex',
             alignItems: 'center',
@@ -238,7 +238,7 @@ function Login() {
                 width: '100%',
                 padding: '14px 24px',
                 borderRadius: 12,
-                background: loading ? '#9CA3AF' : `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.accent})`,
+                background: loading ? '#9CA3AF' : `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent})`,
                 color: '#fff',
                 fontWeight: 600,
                 fontSize: 16,
@@ -295,10 +295,9 @@ function Login() {
             <a 
               href="/signup" 
               style={{ 
-                color: COLORS.primary, 
+                color: COLORS.accent, 
                 fontWeight: 600,
                 textDecoration: 'none',
-                borderBottom: `2px solid ${COLORS.primary}40`,
                 paddingBottom: '2px',
                 transition: 'all 0.2s'
               }}
@@ -306,7 +305,7 @@ function Login() {
                 e.target.style.borderBottomColor = COLORS.primary;
               }}
               onMouseLeave={(e) => {
-                e.target.style.borderBottomColor = COLORS.primary + '40';
+                e.target.style.borderBottomColor = COLORS.accent + '40';
               }}
             >
               Créer un compte

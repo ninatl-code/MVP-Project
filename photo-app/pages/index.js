@@ -6,9 +6,9 @@ import Headerhomepage from '../components/Headerhomepage';
 
 // Couleurs Shooty
 const COLORS = {
-  primary: '#635BFF',
-  secondary: '#FFD369',
-  accent: '#FF7F50',
+  primary: '#E8EAF6',
+  secondary: '#5C6BC0',
+  accent: '#130183',
   background: '#F8F9FB',
   text: '#1C1C1E'
 };
@@ -214,18 +214,18 @@ export default function Homepage() {
             <button
               variant="outline"
               className="px-6 py-3 text-lg rounded-2xl border-2 transition font-semibold"
-              style={{borderColor: COLORS.primary, color: COLORS.primary, backgroundColor: 'transparent'}}
-              onMouseEnter={e => {e.target.style.backgroundColor = COLORS.primary; e.target.style.color = 'white'}}
-              onMouseLeave={e => {e.target.style.backgroundColor = 'transparent'; e.target.style.color = COLORS.primary}}
+              style={{borderColor: COLORS.accent, color: COLORS.accent, backgroundColor: 'transparent'}}
+              onMouseEnter={e => {e.target.style.backgroundColor = COLORS.primary; e.target.style.color = COLORS.accent}}
+              onMouseLeave={e => {e.target.style.backgroundColor = 'transparent'; e.target.style.color = COLORS.accent}}
               onClick={() => router.push("/signup")}
             >
               Rejoindre en tant que photographe
             </button>
             <button
               className="text-white px-6 py-3 text-lg rounded-2xl shadow-lg transition font-semibold"
-              style={{backgroundColor: COLORS.primary}}
+              style={{backgroundColor: COLORS.accent}}
               onMouseEnter={e => e.target.style.backgroundColor = '#5048E5'}
-              onMouseLeave={e => e.target.style.backgroundColor = COLORS.primary}
+              onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}
               onClick={() => {
                 const section = document.getElementById('categories');
                 if (section) {
@@ -302,7 +302,7 @@ export default function Homepage() {
             <div className="flex gap-4">
               <div className="w-1/3">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.primary}}>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.accent}}>
                     <span className="text-white text-3xl font-bold">1</span>
                   </div>
                   <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Inscription</h2>
@@ -324,7 +324,7 @@ export default function Homepage() {
               </div>
               <div className="w-1/3">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.secondary}}>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.accent}}>
                     <span className="text-white text-3xl font-bold">3</span>
                   </div>
                   <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Réservation</h2>

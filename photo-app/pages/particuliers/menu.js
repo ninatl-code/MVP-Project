@@ -1365,23 +1365,25 @@ function ParticularHomeMenu() {
             <StatusBadge status={r.status} />
           </div>
           <div style={{color:'#888', fontSize:15, marginTop:2}}>{r.profiles?.email}</div>
-          <div style={{color:'#6bbf7b', fontSize:15, marginTop:6, fontWeight:600}}>
-            {r.annonces?.titre ? `Annonce réservée : ${r.annonces.titre}` : ''} {r.num_reservation && <span style={{color: '#666', fontSize: 14, fontWeight: 400}}>#{r.num_reservation}</span>}
+          <div style={{color:'#130183', fontSize:15, marginTop:6, fontWeight:600}}>
+            {<span style={{color: '#130183', fontSize: 15, fontWeight: 600}}>Annonce réservée : </span>}
+	          {<span style={{color: '#000000', fontSize: 15, fontWeight: 400}}>{r.annonces.titre}</span>}
+            {<span style={{color: '#666', fontSize: 14, fontWeight: 400}}> #{r.num_reservation}</span>}
           </div>
-          <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
+          <div style={{color:'#130183', fontSize:15, marginTop:2, fontWeight:600}}>
             {r.prestation ? `Prestation : ${prestations.find(p => p.id === r.prestation)?.nom || ''}` : ''}
           </div>
           <div style={{display:'flex', alignItems:'center', gap:18, marginTop:10, flexWrap:'wrap'}}>
             <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
-              <svg width="16" height="16" fill="none"><path d="M8 2C5.24 2 3 4.24 3 7c0 4.25 5 7 5 7s5-2.75 5-7c0-2.76-2.24-5-5-5Zm0 7.5A2.5 2.5 0 1 1 8 4a2.5 2.5 0 0 1 0 5.5Z" fill="#bdbdbd"/></svg>
+              <svg width="16" height="16" fill="none"><path d="M8 2C5.24 2 3 4.24 3 7c0 4.25 5 7 5 7s5-2.75 5-7c0-2.76-2.24-5-5-5Zm0 7.5A2.5 2.5 0 1 1 8 4a2.5 2.5 0 0 1 0 5.5Z" fill="#130183"/></svg>
               {r.endroit || 'Lieu inconnu'}
             </span>
             <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
-              <svg width="16" height="16" fill="none"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 1c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4Z" fill="#bdbdbd"/></svg>
+              <svg width="16" height="16" fill="none"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 1c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4Z" fill="#130183"/></svg>
               {r.nb_personnes ? `${r.nb_personnes} ws` : '' }
             </span>
             <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
-              <svg width="16" height="16" fill="none"><path d="M8 1.333A6.667 6.667 0 1 0 8 14.667 6.667 6.667 0 0 0 8 1.333Zm0 12A5.333 5.333 0 1 1 8 2.667a5.333 5.333 0 0 1 0 10.666Zm.667-8.666H7.333v4l3.5 2.1.667-1.1-3-1.8V4.667Z" fill="#bdbdbd"/></svg>
+              <svg width="16" height="16" fill="none"><path d="M8 1.333A6.667 6.667 0 1 0 8 14.667 6.667 6.667 0 0 0 8 1.333Zm0 12A5.333 5.333 0 1 1 8 2.667a5.333 5.333 0 0 1 0 10.666Zm.667-8.666H7.333v4l3.5 2.1.667-1.1-3-1.8V4.667Z" fill="#130183"/></svg>
               {r.date ? new Date(r.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : ''}, {r.heure ? `${r.heure}:00` : ''}
             </span>
           </div>
