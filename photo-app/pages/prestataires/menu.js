@@ -38,10 +38,10 @@ import {
 
 // Palette Shooty
 const COLORS = {
-  primary: '#E8EAF6',     // Violet
-  secondary: '#5C6BC0',   // Jaune doré
-  accent: '#130183',      // Orange
-  background: '#F8F9FB',  // Gris clair
+  primary: '#E8EAF6',     
+  secondary: '#5C6BC0',    
+  accent: '#130183',      
+  background: '#F8F9FB',  
   text: '#1C1C1E',        // Noir - Utilisé pour les titres Devis, Réservations, Mes annonces, Planning
 };
 
@@ -92,8 +92,8 @@ function Button({ className = "", children, variant = "primary", size = "md", ..
 
   const handleMouseEnter = (e) => {
     if (variant === 'primary') e.target.style.backgroundColor = COLORS.accent;
-    if (variant === 'secondary') e.target.style.backgroundColor = '#f0c65a';
-    if (variant === 'accent') e.target.style.backgroundColor = '#ff6b3d';
+    if (variant === 'secondary') e.target.style.backgroundColor = COLORS.prim;
+    if (variant === 'accent') e.target.style.backgroundColor = COLORS.secondary;
   };
 
   const handleMouseLeave = (e) => {
@@ -157,7 +157,7 @@ function NotificationsPopup({ userId }) {
       >
         <Bell className="w-6 h-6 text-gray-700" />
         {/* Badge */}
-        <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+        <span className="absolute -top-1 -right-1 bg-black-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
           {notifications.filter((n) => !n.lu).length}
         </span>
       </button>

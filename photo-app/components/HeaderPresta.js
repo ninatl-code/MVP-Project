@@ -221,7 +221,7 @@ function NotificationsPopup({ router }) {
           </div>
           <div className="p-3 text-center">
             <button
-              className="text-pink-600 font-semibold hover:underline"
+              className="text-black-600 font-semibold hover:underline"
               onClick={() => { setOpen(false); router.push("/prestataires/notification"); }}
             >
               Voir toutes les notifications
