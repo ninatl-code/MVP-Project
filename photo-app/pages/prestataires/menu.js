@@ -42,7 +42,7 @@ const COLORS = {
   secondary: '#5C6BC0',   // Jaune doré
   accent: '#130183',      // Orange
   background: '#F8F9FB',  // Gris clair
-  text: '#1C1C1E',        // Noir
+  text: '#1C1C1E',        // Noir - Utilisé pour les titres Devis, Réservations, Mes annonces, Planning
 };
 
 // Composant Card moderne
@@ -1034,41 +1034,37 @@ export default function ProviderHomeMenu() {
     fetchProfileAndStats();
   }, []);
 
-  // ========================================
-  // 📋 CONFIGURATION DES TUILES
-  // ========================================
-  // Personnalisez les tuiles d'action rapide ici
   const tiles = [
     {
       title: "Devis",
       desc: "Gérer et suivre vos devis clients",
       icon: FileText,
       onClick: () => router.push("/prestataires/devis"),
-      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
-      iconBg: COLORS.accent
+      gradient: `linear-gradient(135deg, #130183)`, // Accent gradient
+      iconBg: '#820615'
     },
     {
       title: "Réservations",
       desc: "Gérer vos réservations et confirmations",
       icon: Calendar,
       onClick: () => router.push("/prestataires/reservations"),
-      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
-      iconBg: COLORS.accent
+      gradient: `linear-gradient(135deg, #130183)`, // Accent gradient
+      iconBg: '#820615'
     },
     {
       title: "Mes annonces",
       desc: "Créer et gérer vos annonces",
       icon: Images,
       onClick: () => router.push("/prestataires/prestations"),
-      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
-      iconBg: COLORS.accent
+      gradient: `linear-gradient(135deg,#130183)`, // Secondary gradient
+      iconBg: '#820615'
     },
     {
       title: "Planning",
       desc: "Visualiser votre calendrier",
       icon: ClipboardList,
       onClick: () => router.push("/prestataires/calendrier"),
-      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
+      gradient: COLORS.accent, // Primary to Accent
       iconBg: COLORS.accent
     },
   ];
@@ -1076,7 +1072,6 @@ export default function ProviderHomeMenu() {
   return (
     <>
       <Header />
-      
       <div 
         style={{ 
           minHeight: "100vh", 
@@ -1269,15 +1264,15 @@ export default function ProviderHomeMenu() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <h3 
-                          className="text-xl font-bold mb-1.5 group-hover:opacity-80 transition-all"
-                          style={{ color: COLORS.text }}
+                        <h2 
+                          className="font-bold mb-1.5 group-hover:opacity-80 transition-all"
+                          style={{ color: '#1C1C1E', fontSize: '1.25rem' }}
                         >
                           {tile.title}
-                        </h3>
+                        </h2>
                         <p 
                           className="text-sm leading-relaxed"
-                          style={{ color: COLORS.text + 'CC' }}
+                          style={{ color: COLORS.text + 'AA' }}
                         >
                           {tile.desc}
                         </p>
@@ -1312,7 +1307,7 @@ export default function ProviderHomeMenu() {
                     className="p-3 rounded-xl"
                     style={{ backgroundColor: COLORS.primary + '20' }}
                   >
-                    <MapPin className="w-5 h-5" style={{ color: COLORS.primary }} />
+                    <MapPin className="w-5 h-5" style={{ color: COLORS.accent }} />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-sm mb-1" style={{ color: COLORS.text }}>
@@ -1331,9 +1326,9 @@ export default function ProviderHomeMenu() {
                 <CardContent className="flex items-center gap-4">
                   <div
                     className="p-3 rounded-xl"
-                    style={{ backgroundColor: COLORS.secondary + '40' }}
+                    style={{ backgroundColor: 'transparent' + '40' }}
                   >
-                    <Briefcase className="w-5 h-5" style={{ color: COLORS.text }} />
+                    <Briefcase className="w-5 h-5" style={{ color: COLORS.accent }} />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-sm mb-1" style={{ color: COLORS.text }}>
