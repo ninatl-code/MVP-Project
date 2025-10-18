@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
 import Header from '../../components/HeaderParti'
 import RealTimeNotifications from '../../components/RealTimeNotifications'
+import { useCameraSplashNavigation } from '../../components/CameraSplash'
 import { 
   Search, Minus, Plus, Calendar, Package, FileText, 
   Star, Clock, CheckCircle, AlertCircle, User, 
@@ -11,6 +12,8 @@ import {
 } from "lucide-react";
 
 function ParticularHomeMenu() {
+  const router = useRouter();
+  const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000);
   const [profile, setProfile] = useState(null);
   const [userId, setUserId] = useState(null);
   const [devis, setDevis] = useState([]);
@@ -39,7 +42,6 @@ function ParticularHomeMenu() {
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationConditions, setCancellationConditions] = useState(null);
-  const router = useRouter();
 
 
 
@@ -1296,7 +1298,7 @@ function ParticularHomeMenu() {
         <div style={{marginLeft: 'auto'}}>
           <button
             style={{
-              background:'#635BFF',
+              background:'#130183',
               color:'#fff',
               border:'none',
               borderRadius:8,
@@ -1307,8 +1309,8 @@ function ParticularHomeMenu() {
               transition: 'all 0.2s'
             }}
             onClick={() => setSelectedDevis(r)}
-            onMouseOver={(e) => e.target.style.background = '#5048E5'}
-            onMouseOut={(e) => e.target.style.background = '#635BFF'}
+            onMouseOver={(e) => e.target.style.background = '#E8EAF6'}
+            onMouseOut={(e) => e.target.style.background = '#130183'}
           >
             Afficher les informations
           </button>
@@ -1372,7 +1374,7 @@ function ParticularHomeMenu() {
         <div style={{marginLeft: 'auto'}}>
           <button
             style={{
-              background:'#FF7F50',
+              background:'#130183',
               color:'#fff',
               border:'none',
               borderRadius:8,
@@ -1383,8 +1385,8 @@ function ParticularHomeMenu() {
               transition: 'all 0.2s'
             }}
             onClick={() => setSelectedReservation(r)}
-            onMouseOver={(e) => e.target.style.background = '#FF6347'}
-            onMouseOut={(e) => e.target.style.background = '#FF7F50'}
+            onMouseOver={(e) => e.target.style.background = '#E8EAF6'}
+            onMouseOut={(e) => e.target.style.background = '#130183'}
           >
             Afficher les détails
           </button>
@@ -1764,21 +1766,21 @@ function ParticularHomeMenu() {
             <div className="flex flex-wrap gap-3 mt-6">
               <button
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-800 to-blue-800 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => router.push("/particuliers/search")}
+                onClick={() => navigateWithSplash("/particuliers/search", "Recherche de prestataires...")}
               >
                 <Search className="w-5 h-5" />
                 Trouver un prestataire
               </button>
               <button
                 className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
-                onClick={() => router.push("/particuliers/profil#favoris")}
+                onClick={() => navigateWithSplash("/particuliers/profil#favoris", "Chargement de vos favoris...")}
               >
                 <Heart className="w-5 h-5" />
                 Mes favoris
               </button>
               <button
                 className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
-                onClick={() => router.push("/particuliers/messages")}
+                onClick={() => navigateWithSplash("/particuliers/messages", "Ouverture de la messagerie...")}
               >
                 <Activity className="w-5 h-5" />
                 Messages
@@ -1906,8 +1908,21 @@ function ParticularHomeMenu() {
                           </div>
                         </div>
                         <button
+                          style={{
+                            background:'transparent',
+                            color:'#130183',
+                            border:'none',
+                            borderRadius:8,
+                            padding:'8px 18px',
+                            fontWeight:600,
+                            fontSize:15,
+                            cursor:'pointer',
+                            transition: 'all 0.2s'
+                          }}
                           className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
                           onClick={() => setActiveTab('devis')}
+                          onMouseOver={(e) => e.target.style.color = '#3E27D6'}
+                          onMouseOut={(e) => e.target.style.color = '#130183'}
                         >
                           <span className="text-sm font-medium">Voir tout</span>
                           <ArrowRight className="w-5 h-5" />
@@ -1988,8 +2003,21 @@ function ParticularHomeMenu() {
                       </div>
                     </div>
                     <button
-                      className="flex items-center gap-2 text-green-600 hover:text-green-800 transition-colors"
-                      onClick={() => setActiveTab('reservations')}
+                      style={{
+                            background:'transparent',
+                            color:'#008727',
+                            border:'none',
+                            borderRadius:8,
+                            padding:'8px 18px',
+                            fontWeight:600,
+                            fontSize:15,
+                            cursor:'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          className="flex items-center gap-2 text-green-600 hover:text-green-800 transition-colors"
+                          onClick={() => setActiveTab('reservations')}
+                          onMouseOver={(e) => e.target.style.color = '#14C446'}
+                          onMouseOut={(e) => e.target.style.color = '#008727'}
                     >
                       <span className="text-sm font-medium">Voir tout</span>
                       <ArrowRight className="w-5 h-5" />
@@ -2415,7 +2443,7 @@ function ParticularHomeMenu() {
               </p>
               <button
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => router.push("/particuliers/search")}
+                onClick={() => navigateWithSplash("/particuliers/search", "Recherche de prestataires...")}
               >
                 <Search className="w-5 h-5 inline mr-2" />
                 Trouver des prestataires
@@ -2434,7 +2462,7 @@ function ParticularHomeMenu() {
               </p>
               <button
                 className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => router.push("/particuliers/search")}
+                onClick={() => navigateWithSplash("/particuliers/search", "Recherche de services...")}
               >
                 <Search className="w-5 h-5 inline mr-2" />
                 Rechercher des services
@@ -2467,6 +2495,9 @@ function ParticularHomeMenu() {
           )}
         </div>
       </div>
+
+      {/* Animation caméra lors de la navigation */}
+      {CameraSplashComponent}
     </>
   );
 }

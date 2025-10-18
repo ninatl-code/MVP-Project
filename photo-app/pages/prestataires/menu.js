@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
 import { motion } from "framer-motion";
 import Header from '../../components/HeaderPresta';
+import { useCameraSplashNavigation } from '../../components/CameraSplash';
 
 import {
   Calendar,
@@ -956,6 +957,9 @@ export default function ProviderHomeMenu() {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const router = useRouter();
 
+  // Hook pour la navigation avec animation caméra
+  const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000);
+
   // Vérifier si la checklist a été masquée
   useEffect(() => {
     const checklistHidden = localStorage.getItem('checklist-hidden');
@@ -1039,7 +1043,7 @@ export default function ProviderHomeMenu() {
       title: "Devis",
       desc: "Gérer et suivre vos devis clients",
       icon: FileText,
-      onClick: () => router.push("/prestataires/devis"),
+      onClick: () => navigateWithSplash("/prestataires/devis", "Chargement de vos devis..."),
       gradient: `linear-gradient(135deg, #130183)`, // Accent gradient
       iconBg: '#820615'
     },
@@ -1047,7 +1051,7 @@ export default function ProviderHomeMenu() {
       title: "Réservations",
       desc: "Gérer vos réservations et confirmations",
       icon: Calendar,
-      onClick: () => router.push("/prestataires/reservations"),
+      onClick: () => navigateWithSplash("/prestataires/reservations", "Chargement des réservations..."),
       gradient: `linear-gradient(135deg, #130183)`, // Accent gradient
       iconBg: '#820615'
     },
@@ -1055,7 +1059,7 @@ export default function ProviderHomeMenu() {
       title: "Mes annonces",
       desc: "Créer et gérer vos annonces",
       icon: Images,
-      onClick: () => router.push("/prestataires/prestations"),
+      onClick: () => navigateWithSplash("/prestataires/prestations", "Chargement de vos annonces..."),
       gradient: `linear-gradient(135deg,#130183)`, // Secondary gradient
       iconBg: '#820615'
     },
@@ -1063,7 +1067,7 @@ export default function ProviderHomeMenu() {
       title: "Planning",
       desc: "Visualiser votre calendrier",
       icon: ClipboardList,
-      onClick: () => router.push("/prestataires/calendrier"),
+      onClick: () => navigateWithSplash("/prestataires/calendrier", "Chargement du planning..."),
       gradient: COLORS.accent, // Primary to Accent
       iconBg: COLORS.accent
     },
@@ -1374,6 +1378,9 @@ export default function ProviderHomeMenu() {
           onClose={() => setShowSupportModal(false)}
           userProfile={profile ? { ...profile, id: userId } : null}
         />
+
+        {/* Animation caméra lors de la navigation */}
+        {CameraSplashComponent}
       </div>
     </>
   );

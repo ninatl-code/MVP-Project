@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
+import { useCameraSplashNavigation } from '../components/CameraSplash';
 
 // Palette Shooty
 const COLORS = {
@@ -20,6 +21,7 @@ function Login() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const router = useRouter()
+  const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
 
   // Timeout de sécurité pour le chargement
   const timeoutRef = useState(null)
@@ -92,12 +94,13 @@ function Login() {
         return
       }
 
-      // Redirection selon le rôle
+      // Redirection selon le rôle avec animation
       const targetPath = profile?.role === 'prestataire' ? '/prestataires/menu' : '/particuliers/menu'
+      const message = profile?.role === 'prestataire' ? 'Accès à votre espace professionnel...' : 'Accès à votre espace...'
       console.log('6. Redirection vers:', targetPath)
       
       clearTimeout(timeout)
-      router.push(targetPath)
+      navigateWithSplash(targetPath, message)
       
       // Le loading sera arrêté après la redirection
 
@@ -358,6 +361,9 @@ function Login() {
           </div>
         </main>
       </div>
+
+      {/* Animation caméra lors de la connexion */}
+      {CameraSplashComponent}
 
       <style jsx>{`
         @keyframes spin {

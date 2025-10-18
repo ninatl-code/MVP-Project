@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
+import { useCameraSplashNavigation } from '../components/CameraSplash';
 
 // Palette Shooty
 const COLORS = {
@@ -16,6 +17,8 @@ const COLORS = {
 };
 
 export default function Signup() {
+  const router = useRouter()
+  const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nom, setNom] = useState('')
@@ -137,10 +140,13 @@ export default function Signup() {
           gap: '8px'
         }}
       >
-        S’inscrire
+        S'inscrire
       </button>
     </main>
     }
+
+    {/* Animation caméra lors de l'inscription */}
+    {CameraSplashComponent}
     </>
   )
 }

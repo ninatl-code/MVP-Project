@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
+import { useCameraSplashNavigation } from '../components/CameraSplash';
 
 import Headerhomepage from '../components/Headerhomepage';
 
@@ -15,6 +16,7 @@ const COLORS = {
 
 export default function Homepage() {
   const router = useRouter();
+  const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000);
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [stepMsg, setStepMsg] = useState("");
@@ -217,7 +219,7 @@ export default function Homepage() {
               style={{borderColor: COLORS.accent, color: COLORS.accent, backgroundColor: 'transparent'}}
               onMouseEnter={e => {e.target.style.backgroundColor = COLORS.primary; e.target.style.color = COLORS.accent}}
               onMouseLeave={e => {e.target.style.backgroundColor = 'transparent'; e.target.style.color = COLORS.accent}}
-              onClick={() => router.push("/signup")}
+              onClick={() => navigateWithSplash("/signup", "Redirection vers l'inscription...")}
             >
               Rejoindre en tant que photographe
             </button>
@@ -430,6 +432,9 @@ export default function Homepage() {
       </footer>
     </div>
   }
+
+  {/* Animation caméra lors de la navigation */}
+  {CameraSplashComponent}
   </>
   ); 
 }
