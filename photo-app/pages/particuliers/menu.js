@@ -58,13 +58,13 @@ function ParticularHomeMenu() {
 
       const { data: devisData } = await supabase
         .from("devis")
-        .select("*, annonces!devis_annonce_id_fkey(titre)")
+        .select("*, annonces!devis_annonce_id_fkey(titre), profiles!devis_prestataire_id_fkey(nom, email)")
         .eq("particulier_id", user.id);
       setDevis(devisData || []);
 
       const { data: reservationsData } = await supabase
         .from("reservations")
-        .select("*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre)")
+        .select("*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre, conditions_annulation)")
         .eq("particulier_id", user.id);
       setReservations(reservationsData || []);
     };
@@ -752,7 +752,7 @@ function ParticularHomeMenu() {
     // Optionnel: rafraîchir la liste des devis
   }
 
-  // Pop-up pour afficher les infos du devis - Version moderne
+  // Pop-up pour afficher les infos du devis - Couleurs Shooty
   function DevisInfoModal({ devis, onClose }) {
     if (!devis) return null;
     return (
@@ -770,140 +770,123 @@ function ParticularHomeMenu() {
           background: '#fff',
           borderRadius: 20,
           boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-          minWidth: 600,
-          maxWidth: 900,
+          padding: 0,
           width: '100%',
+          maxWidth: 650,
           textAlign: 'left',
           position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
           maxHeight: '90vh',
           overflowY: 'auto'
         }}>
-          <button
-            style={{
-              position: 'absolute',
-              top: 16,
-              right: 20,
-              background: '#f5f5f5',
-              border: 'none',
-              borderRadius: '50%',
-              width: 32,
-              height: 32,
-              fontSize: 18,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10,
-              transition: 'background 0.2s'
-            }}
-            onClick={onClose}
-            aria-label="Fermer"
-            onMouseOver={(e) => e.target.style.background = '#e5e5e5'}
-            onMouseOut={(e) => e.target.style.background = '#f5f5f5'}
-          >×</button>
-          
-          {/* En-tête */}
+          {/* Header avec couleurs Shooty */}
           <div style={{
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            padding: '32px',
+            background: 'linear-gradient(135deg, #635BFF 0%, #5048E5 100%)',
+            padding: '24px 32px',
             borderRadius: '20px 20px 0 0',
-            color: 'white'
+            color: '#fff',
+            position: 'relative'
           }}>
-            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-              📋 Informations du devis
-            </h2>
+            <button
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 24,
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                borderRadius: '50%',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                color: '#fff',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onClick={onClose}
+              onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
+              onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+              aria-label="Fermer"
+            >×</button>
+            <h2 style={{ fontWeight: 700, fontSize: 24, marginBottom: 8, margin: 0 }}>📋 Devis</h2>
             <p style={{ margin: 0, opacity: 0.9, fontSize: 16 }}>
-              Devis créé le {devis.created_at ? new Date(devis.created_at).toLocaleDateString('fr-FR') : 'N/A'}
+              Demandé le {devis.created_at ? new Date(devis.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
             </p>
           </div>
 
           {/* Contenu */}
           <div style={{ padding: '32px' }}>
-            {/* Informations principales en grid */}
+            {/* Informations principales */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: 32,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: 24,
               marginBottom: 32
             }}>
-              {/* Section Prestataire et Service */}
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  👤 Prestataire & Service
+                  👤 Prestataire
                 </h2>
-                <div style={{ fontSize: 16, color: '#555', marginBottom: 12 }}>
-                  <strong>{devis.nom_prestataire || devis.prestataire_nom || devis.prestataire || 'Non renseigné'}</strong>
+                <div style={{ fontSize: 16, color: '#555', marginBottom: 8 }}>
+                  <strong>{devis.profiles?.nom || devis.nom_prestataire || 'Non renseigné'}</strong>
                 </div>
-                <div style={{ fontSize: 14, color: '#888', marginBottom: 16 }}>
-                  Service : {devis.annonces?.titre || devis.titre || 'Non renseigné'}
+                <div style={{ fontSize: 14, color: '#888' }}>
+                  {devis.profiles?.email || 'Email non disponible'}
                 </div>
-                
-                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
-                  <strong>📍 Lieu :</strong> {devis.endroit || 'Non renseigné'}
-                </div>
-                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
-                  <strong>📅 Date :</strong> {devis.date ? new Date(devis.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Non définie'}
-                </div>
-                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
-                  <strong>👥 Participants :</strong> {devis.participants || devis.nb_personnes || 'Non renseigné'}
-                </div>
-                <div style={{ fontSize: 14, color: '#555' }}>
-                  <strong>⏱️ Durée :</strong> {devis.duree || 'Non renseigné'} {devis.unit_tarif || ''}
+                <div style={{ fontSize: 14, color: '#888', marginTop: 8 }}>
+                  Service : {devis.annonces?.titre || 'Non renseigné'}
                 </div>
               </div>
 
-              {/* Section Réponse du prestataire */}
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  💼 Réponse du prestataire
+                  � Détails
                 </h2>
-                
-                {(devis.status === 'answered' || devis.status === 'refused' || devis.status === 'accepted') && devis.date_reponse && (
-                  <div style={{ fontSize: 14, color: '#555', marginBottom: 12 }}>
-                    <strong>Répondu le :</strong> {new Date(devis.date_reponse).toLocaleDateString('fr-FR')}
-                  </div>
-                )}
-                
-                {devis.comment_presta && (
-                  <div style={{
-                    background: '#e3f2fd',
-                    border: '1px solid #bbdefb',
-                    borderRadius: 8,
-                    padding: 12,
-                    marginBottom: 16,
-                    fontSize: 14,
-                    color: '#1565c0',
-                    fontStyle: 'italic'
-                  }}>
-                    "{devis.comment_presta}"
-                  </div>
-                )}
-                
-                {/* Montants */}
-                <div style={{
-                  background: '#f8f9fa',
-                  borderRadius: 12,
-                  padding: 16
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, color: '#555' }}>Montant total :</span>
-                    <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{devis.montant || 'Non renseigné'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 14, color: '#555' }}>Acompte demandé :</span>
-                    <span style={{ fontSize: 16, fontWeight: 600, color: '#f39c12' }}>{devis.montant_acompte || 'Non renseigné'}</span>
-                  </div>
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>Date :</strong> {devis.date ? new Date(devis.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Non définie'}
+                </div>
+                <div style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+                  <strong>Durée :</strong> {devis.duree || 'Non renseignée'} {devis.unit_tarif || ''}
+                </div>
+                <div style={{ fontSize: 14, color: '#555' }}>
+                  <strong>Lieu :</strong> {devis.endroit || 'Non renseigné'}
                 </div>
               </div>
             </div>
 
+            {/* Détails financiers */}
+            {(devis.montant || devis.montant_acompte) && (
+              <div style={{
+                background: '#F8F9FB',
+                borderRadius: 12,
+                padding: 20,
+                marginBottom: 24
+              }}>
+                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#333', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  � Tarification
+                </h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: 14, color: '#555' }}>Montant total :</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{devis.montant || 0} MAD</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 14, color: '#555' }}>Acompte demandé :</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: '#635BFF' }}>{devis.montant_acompte || 0} MAD</span>
+                </div>
+                {(devis.participants || devis.nb_personnes) && (
+                  <div style={{ marginTop: 12, fontSize: 14, color: '#555' }}>
+                    <strong>Participants :</strong> {devis.participants || devis.nb_personnes} personne{(devis.participants || devis.nb_personnes) > 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Commentaire client */}
             {devis.comment_client && (
               <div style={{
-                background: '#fff3cd',
-                border: '1px solid #ffeaa7',
+                background: '#FFF9E6',
+                border: '1px solid #FFD369',
                 borderRadius: 12,
                 padding: 16,
                 marginBottom: 24
@@ -917,11 +900,34 @@ function ParticularHomeMenu() {
               </div>
             )}
 
+            {/* Réponse du prestataire */}
+            {devis.comment_presta && (
+              <div style={{
+                background: '#EEF2FF',
+                border: '1px solid #C7D2FE',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 24
+              }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#4338CA', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  � Réponse du prestataire
+                </h4>
+                <p style={{ margin: 0, fontSize: 14, color: '#4338CA', fontStyle: 'italic' }}>
+                  "{devis.comment_presta}"
+                </p>
+                {devis.date_reponse && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#6366F1' }}>
+                    Répondu le {new Date(devis.date_reponse).toLocaleDateString('fr-FR')}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Informations de statut */}
             {(devis.status === 'accepted' || devis.status === 'refused') && (
               <div style={{
-                background: devis.status === 'accepted' ? '#d4edda' : '#f8d7da',
-                border: `1px solid ${devis.status === 'accepted' ? '#c3e6cb' : '#f5c6cb'}`,
+                background: devis.status === 'accepted' ? '#D1FAE5' : '#FEE2E2',
+                border: `1px solid ${devis.status === 'accepted' ? '#10B981' : '#EF4444'}`,
                 borderRadius: 12,
                 padding: 16,
                 marginBottom: devis.status === 'answered' ? 24 : 0
@@ -930,24 +936,24 @@ function ParticularHomeMenu() {
                   fontSize: 14, 
                   fontWeight: 600, 
                   marginBottom: 8, 
-                  color: devis.status === 'accepted' ? '#155724' : '#721c24' 
+                  color: devis.status === 'accepted' ? '#065F46' : '#991B1B'
                 }}>
                   {devis.status === 'accepted' ? '✅ Devis accepté' : '🚫 Devis refusé'}
                 </h4>
                 {devis.status === 'accepted' && devis.date_confirmation && (
-                  <p style={{ margin: 0, fontSize: 14, color: '#155724' }}>
+                  <p style={{ margin: 0, fontSize: 14, color: '#065F46' }}>
                     Accepté le {new Date(devis.date_confirmation).toLocaleDateString('fr-FR')}
                   </p>
                 )}
                 {devis.status === 'refused' && (
                   <>
                     {devis.date_refus && (
-                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#991B1B' }}>
                         Refusé le {new Date(devis.date_refus).toLocaleDateString('fr-FR')}
                       </p>
                     )}
                     {devis.motif_refus && (
-                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                      <p style={{ margin: 0, fontSize: 14, color: '#991B1B', fontStyle: 'italic' }}>
                         Motif : {devis.motif_refus}
                       </p>
                     )}
@@ -955,50 +961,57 @@ function ParticularHomeMenu() {
                 )}
               </div>
             )}
+
+            {/* Boutons Accepter/Refuser si status = answered */}
+            {devis.status === 'answered' && (
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
+                <button
+                  style={{
+                    background: '#10B981',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '12px 24px',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  disabled={loadingDevisAction}
+                  onClick={() => handleAcceptDevis(devis)}
+                  onMouseOver={(e) => !loadingDevisAction && (e.target.style.background = '#059669')}
+                  onMouseOut={(e) => !loadingDevisAction && (e.target.style.background = '#10B981')}
+                >
+                  {loadingDevisAction ? "Traitement..." : "✓ Accepter le devis"}
+                </button>
+                <button
+                  style={{
+                    background: '#EF4444',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '12px 24px',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  disabled={loadingDevisAction}
+                  onClick={() => handleRefuseDevis(devis)}
+                  onMouseOver={(e) => !loadingDevisAction && (e.target.style.background = '#DC2626')}
+                  onMouseOut={(e) => !loadingDevisAction && (e.target.style.background = '#EF4444')}
+                >
+                  {loadingDevisAction ? "Traitement..." : "✕ Refuser le devis"}
+                </button>
+              </div>
+            )}
           </div>
-          {/* Boutons Accepter/Refuser si status = answered */}
-          {devis.status === 'answered' && (
-            <div style={{marginTop:24, display:'flex', gap:16, justifyContent:'flex-end'}}>
-              <button
-                style={{
-                  background:'#6bbf7b',
-                  color:'#fff',
-                  border:'none',
-                  borderRadius:8,
-                  padding:'10px 22px',
-                  fontWeight:600,
-                  fontSize:16,
-                  cursor:'pointer'
-                }}
-                disabled={loadingDevisAction}
-                onClick={() => handleAcceptDevis(devis)}
-              >
-                {loadingDevisAction ? "Traitement..." : "Accepter le devis"}
-              </button>
-              <button
-                style={{
-                  background:'#e67c73',
-                  color:'#fff',
-                  border:'none',
-                  borderRadius:8,
-                  padding:'10px 22px',
-                  fontWeight:600,
-                  fontSize:16,
-                  cursor:'pointer'
-                }}
-                disabled={loadingDevisAction}
-                onClick={() => handleRefuseDevis(devis)}
-              >
-                {loadingDevisAction ? "Traitement..." : "Refuser le devis"}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     );
   }
 
-  // Pop-up pour afficher les infos de la réservation
+  // Pop-up pour afficher les infos de la réservation - Couleurs Shooty
   function ReservationInfoModal({ reservation, onClose }) {
     if (!reservation) return null;
     return (
@@ -1024,9 +1037,9 @@ function ParticularHomeMenu() {
           maxHeight: '90vh',
           overflowY: 'auto'
         }}>
-          {/* Header avec couleur */}
+          {/* Header avec couleurs Shooty */}
           <div style={{
-            background: 'linear-gradient(135deg, #6bbf7b 0%, #5aa169 100%)',
+            background: 'linear-gradient(135deg, #FF7F50 0%, #FF6347 100%)',
             padding: '24px 32px',
             borderRadius: '20px 20px 0 0',
             color: '#fff',
@@ -1098,7 +1111,7 @@ function ParticularHomeMenu() {
 
             {/* Détails financiers */}
             <div style={{
-              background: '#f8f9fa',
+              background: '#F8F9FB',
               borderRadius: 12,
               padding: 20,
               marginBottom: 24
@@ -1112,7 +1125,7 @@ function ParticularHomeMenu() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 14, color: '#555' }}>Acompte payé :</span>
-                <span style={{ fontSize: 16, fontWeight: 600, color: '#6bbf7b' }}>{reservation.montant_acompte || 0} MAD</span>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#FF7F50' }}>{reservation.montant_acompte || 0} MAD</span>
               </div>
               {reservation.nb_personnes && (
                 <div style={{ marginTop: 12, fontSize: 14, color: '#555' }}>
@@ -1124,8 +1137,8 @@ function ParticularHomeMenu() {
             {/* Commentaire */}
             {reservation.commentaire && (
               <div style={{
-                background: '#fff3cd',
-                border: '1px solid #ffeaa7',
+                background: '#FFF9E6',
+                border: '1px solid #FFD369',
                 borderRadius: 12,
                 padding: 16,
                 marginBottom: 24
@@ -1178,8 +1191,8 @@ function ParticularHomeMenu() {
             {/* Informations de statut */}
             {(reservation.status === 'confirmed' || reservation.status === 'cancelled' || reservation.status === 'refused') && (
               <div style={{
-                background: reservation.status === 'confirmed' ? '#d4edda' : '#f8d7da',
-                border: `1px solid ${reservation.status === 'confirmed' ? '#c3e6cb' : '#f5c6cb'}`,
+                background: reservation.status === 'confirmed' ? '#D1FAE5' : '#FEE2E2',
+                border: `1px solid ${reservation.status === 'confirmed' ? '#10B981' : '#EF4444'}`,
                 borderRadius: 12,
                 padding: 16
               }}>
@@ -1187,24 +1200,24 @@ function ParticularHomeMenu() {
                   fontSize: 14, 
                   fontWeight: 600, 
                   marginBottom: 8, 
-                  color: reservation.status === 'confirmed' ? '#155724' : '#721c24' 
+                  color: reservation.status === 'confirmed' ? '#065F46' : '#991B1B'
                 }}>
                   {reservation.status === 'confirmed' ? '✅ Confirmée' : reservation.status === 'cancelled' ? '❌ Annulée' : '🚫 Refusée'}
                 </h4>
                 {reservation.status === 'confirmed' && reservation.date_confirmation && (
-                  <p style={{ margin: 0, fontSize: 14, color: '#155724' }}>
+                  <p style={{ margin: 0, fontSize: 14, color: '#065F46' }}>
                     Confirmée le {new Date(reservation.date_confirmation).toLocaleDateString('fr-FR')}
                   </p>
                 )}
                 {reservation.status === 'cancelled' && (
                   <>
                     {reservation.date_annulation && (
-                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#991B1B' }}>
                         Annulée le {new Date(reservation.date_annulation).toLocaleDateString('fr-FR')}
                       </p>
                     )}
                     {reservation.motif_annulation && (
-                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                      <p style={{ margin: 0, fontSize: 14, color: '#991B1B', fontStyle: 'italic' }}>
                         Motif : {reservation.motif_annulation}
                       </p>
                     )}
@@ -1213,12 +1226,12 @@ function ParticularHomeMenu() {
                 {reservation.status === 'refused' && (
                   <>
                     {reservation.date_refus && (
-                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#721c24' }}>
+                      <p style={{ margin: '0 0 8px 0', fontSize: 14, color: '#991B1B' }}>
                         Refusée le {new Date(reservation.date_refus).toLocaleDateString('fr-FR')}
                       </p>
                     )}
                     {reservation.motif_refus && (
-                      <p style={{ margin: 0, fontSize: 14, color: '#721c24', fontStyle: 'italic' }}>
+                      <p style={{ margin: 0, fontSize: 14, color: '#991B1B', fontStyle: 'italic' }}>
                         Motif : {reservation.motif_refus}
                       </p>
                     )}
@@ -1232,7 +1245,7 @@ function ParticularHomeMenu() {
     );
   }
 
-  // Bloc Devis
+  // Bloc Devis - Format unifié avec Réservations
   function DevisCard({ r }) {
     return (
       <div style={{
@@ -1241,93 +1254,61 @@ function ParticularHomeMenu() {
         boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
         padding: 24,
         marginBottom: 18,
-        border: '1px solid #f1f1f1',
-        position: 'relative'
+        display: 'flex',
+        alignItems: 'center',
+        gap: 18,
+        border: '1px solid #f1f1f1'
       }}>
-        <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:18}}>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:700, fontSize:18}}>
-              {r.annonces?.titre || 'Annonce'}
-            </div>
-            <div style={{color:'#888', fontSize:15, marginTop:2}}>
-              Date du devis : {r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : ''}
-            </div>
-            <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
-              Endroit : {r.endroit || 'Non renseigné'}
-            </div>
-            <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
-              Date : {r.date ? new Date(r.date).toLocaleDateString('fr-FR') : ''}
-            </div>
-          </div>
-          <div style={{marginLeft: 16}}>
-            <StatusBadge status={r.status} />
+        <div>
+          <div style={{
+            width: 54, height: 54, borderRadius: '50%',
+            background: '#f3f3f3', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 700, fontSize: 22, color: '#888'
+          }}>
+            {r.profiles?.nom || r.nom_prestataire ? (r.profiles?.nom || r.nom_prestataire).split(' ').map(n=>n[0]).join('').toUpperCase() : '?'}
           </div>
         </div>
-        <div style={{marginTop:16, textAlign:'right'}}>
+        <div style={{flex:1}}>
+          <div style={{display:'flex', alignItems:'center', gap:8}}>
+            <span style={{fontWeight:700, fontSize:18}}>{r.profiles?.nom || r.nom_prestataire || 'Prestataire inconnu'}</span>
+            <StatusBadge status={r.status} />
+          </div>
+          <div style={{color:'#888', fontSize:15, marginTop:2}}>{r.profiles?.email || 'Email non disponible'}</div>
+          <div style={{color:'#130183', fontSize:15, marginTop:6, fontWeight:600}}>
+            {<span style={{color: '#130183', fontSize: 15, fontWeight: 600}}>Service demandé : </span>}
+            {<span style={{color: '#000000', fontSize: 15, fontWeight: 400}}>{r.annonces?.titre || 'Service'}</span>}
+          </div>
+          <div style={{display:'flex', alignItems:'center', gap:18, marginTop:10, flexWrap:'wrap'}}>
+            <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
+              <svg width="16" height="16" fill="none"><path d="M8 2C5.24 2 3 4.24 3 7c0 4.25 5 7 5 7s5-2.75 5-7c0-2.76-2.24-5-5-5Zm0 7.5A2.5 2.5 0 1 1 8 4a2.5 2.5 0 0 1 0 5.5Z" fill="#130183"/></svg>
+              {r.endroit || 'Lieu inconnu'}
+            </span>
+            <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
+              <svg width="16" height="16" fill="none"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 1c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4Z" fill="#130183"/></svg>
+              {r.participants || r.nb_personnes ? `${r.participants || r.nb_personnes} pers.` : 'Non renseigné'}
+            </span>
+            <span style={{display:'flex', alignItems:'center', gap:4, color:'#666', fontSize:15}}>
+              <svg width="16" height="16" fill="none"><path d="M8 1.333A6.667 6.667 0 1 0 8 14.667 6.667 6.667 0 0 0 8 1.333Zm0 12A5.333 5.333 0 1 1 8 2.667a5.333 5.333 0 0 1 0 10.666Zm.667-8.666H7.333v4l3.5 2.1.667-1.1-3-1.8V4.667Z" fill="#130183"/></svg>
+              {r.date ? new Date(r.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : 'Date non définie'}
+            </span>
+          </div>
+        </div>
+        <div style={{marginLeft: 'auto'}}>
           <button
             style={{
-              background:'#eafaf1',
-              color:'#222',
-              border:'1px solid #b7e4c7',
+              background:'#635BFF',
+              color:'#fff',
+              border:'none',
               borderRadius:8,
               padding:'8px 18px',
               fontWeight:600,
               fontSize:15,
-              cursor:'pointer'
+              cursor:'pointer',
+              transition: 'all 0.2s'
             }}
             onClick={() => setSelectedDevis(r)}
-          >
-            Afficher les informations
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Bloc Devis
-  function DevisCard({ r }) {
-    return (
-      <div style={{
-        background: '#fff',
-        borderRadius: 14,
-        boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
-        padding: 24,
-        marginBottom: 18,
-        border: '1px solid #f1f1f1',
-        position: 'relative'
-      }}>
-        <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:18}}>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:700, fontSize:18}}>
-              {r.annonces?.titre || 'Annonce'}
-            </div>
-            <div style={{color:'#888', fontSize:15, marginTop:2}}>
-              Date du devis : {r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : ''}
-            </div>
-            <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
-              Endroit : {r.endroit || 'Non renseigné'}
-            </div>
-            <div style={{color:'#6bbf7b', fontSize:15, marginTop:2, fontWeight:600}}>
-              Date : {r.date ? new Date(r.date).toLocaleDateString('fr-FR') : ''}
-            </div>
-          </div>
-          <div style={{marginLeft: 16}}>
-            <StatusBadge status={r.status} />
-          </div>
-        </div>
-        <div style={{marginTop:16, textAlign:'right'}}>
-          <button
-            style={{
-              background:'#eafaf1',
-              color:'#222',
-              border:'1px solid #b7e4c7',
-              borderRadius:8,
-              padding:'8px 18px',
-              fontWeight:600,
-              fontSize:15,
-              cursor:'pointer'
-            }}
-            onClick={() => setSelectedDevis(r)}
+            onMouseOver={(e) => e.target.style.background = '#5048E5'}
+            onMouseOut={(e) => e.target.style.background = '#635BFF'}
           >
             Afficher les informations
           </button>
@@ -1391,16 +1372,19 @@ function ParticularHomeMenu() {
         <div style={{marginLeft: 'auto'}}>
           <button
             style={{
-              background:'#eafaf1',
-              color:'#222',
-              border:'1px solid #b7e4c7',
+              background:'#FF7F50',
+              color:'#fff',
+              border:'none',
               borderRadius:8,
               padding:'8px 18px',
               fontWeight:600,
               fontSize:15,
-              cursor:'pointer'
+              cursor:'pointer',
+              transition: 'all 0.2s'
             }}
             onClick={() => setSelectedReservation(r)}
+            onMouseOver={(e) => e.target.style.background = '#FF6347'}
+            onMouseOut={(e) => e.target.style.background = '#FF7F50'}
           >
             Afficher les détails
           </button>

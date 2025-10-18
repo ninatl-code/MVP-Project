@@ -36,13 +36,13 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-// Palette Shooty - Variables CSS
+// Palette Shooty
 const COLORS = {
-  primary: 'var(--primary)',     // #635BFF
-  secondary: 'var(--secondary)', // #FFD369
-  accent: 'var(--accent)',       // #FF7F50
-  background: 'var(--background)', // #F8F9FB
-  text: 'var(--text)',           // #1C1C1E
+  primary: '#E8EAF6',     // Violet
+  secondary: '#5C6BC0',   // Jaune doré
+  accent: '#130183',      // Orange
+  background: '#F8F9FB',  // Gris clair
+  text: '#1C1C1E',        // Noir
 };
 
 // Composant Card moderne
@@ -1011,7 +1011,7 @@ export default function ProviderHomeMenu() {
       const { count: devisPending } = await supabase
         .from("devis")
         .select("*", { count: "exact", head: true })
-        .eq("artist_id", user.id)
+        .eq("prestataire_id", user.id)
         .eq("status", "pending");
       setNbDevisPending(devisPending || 0);
 
@@ -1019,7 +1019,7 @@ export default function ProviderHomeMenu() {
       const { count: devisAccepted } = await supabase
         .from("devis")
         .select("*", { count: "exact", head: true })
-        .eq("artist_id", user.id)
+        .eq("prestataire_id", user.id)
         .eq("status", "accepted");
       setNbDevisAccepted(devisAccepted || 0);
 
@@ -1034,44 +1034,49 @@ export default function ProviderHomeMenu() {
     fetchProfileAndStats();
   }, []);
 
+  // ========================================
+  // 📋 CONFIGURATION DES TUILES
+  // ========================================
+  // Personnalisez les tuiles d'action rapide ici
   const tiles = [
     {
       title: "Devis",
       desc: "Gérer et suivre vos devis clients",
       icon: FileText,
       onClick: () => router.push("/prestataires/devis"),
-      gradient: `linear-gradient(135deg, #3d3d3d)`, // Primary gradient
-      iconBg: '#820615'
+      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
+      iconBg: COLORS.accent
     },
     {
       title: "Réservations",
       desc: "Gérer vos réservations et confirmations",
       icon: Calendar,
       onClick: () => router.push("/prestataires/reservations"),
-      gradient: `linear-gradient(135deg, #3d3d3d)`, // Accent gradient
-      iconBg: '#820615'
+      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
+      iconBg: COLORS.accent
     },
     {
       title: "Mes annonces",
       desc: "Créer et gérer vos annonces",
       icon: Images,
       onClick: () => router.push("/prestataires/prestations"),
-      gradient: `linear-gradient(135deg,#3d3d3d)`, // Secondary gradient
-      iconBg: '#820615'
+      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
+      iconBg: COLORS.accent
     },
     {
       title: "Planning",
       desc: "Visualiser votre calendrier",
       icon: ClipboardList,
       onClick: () => router.push("/prestataires/calendrier"),
-      gradient: `linear-gradient(135deg, #3d3d3d)`, // Primary to Accent
-      iconBg: '#820615'
+      gradient: `linear-gradient(135deg, ${COLORS.accent})`,
+      iconBg: COLORS.accent
     },
   ];
 
   return (
     <>
       <Header />
+      
       <div 
         style={{ 
           minHeight: "100vh", 
@@ -1111,7 +1116,7 @@ export default function ProviderHomeMenu() {
             {/* Actions rapides */}
             <div className="flex gap-3">
               <Button 
-                variant="primary" 
+                variant="accent" 
                 size="md"
                 onClick={() => router.push("/prestataires/prestations")}
                 className="hidden lg:flex"
@@ -1140,9 +1145,9 @@ export default function ProviderHomeMenu() {
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.primary + '20' }}
+                      style={{ backgroundColor: COLORS.secondary + '20' }}
                     >
-                      <TrendingUp className="w-5 h-5" style={{ color: COLORS.primary }} />
+                      <TrendingUp className="w-5 h-5" style={{ color: COLORS.accent }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
                       Annonces actives
@@ -1164,7 +1169,7 @@ export default function ProviderHomeMenu() {
                       className="p-2 rounded-xl"
                       style={{ backgroundColor: COLORS.secondary + '40' }}
                     >
-                      <Package className="w-5 h-5" style={{ color: COLORS.text }} />
+                      <Package className="w-5 h-5" style={{ color: COLORS.accent }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
                       Devis en attente
@@ -1187,19 +1192,19 @@ export default function ProviderHomeMenu() {
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.accent + '20' }}
+                      style={{ backgroundColor: COLORS.secondary + '20' }}
                     >
                       <Calendar className="w-5 h-5" style={{ color: COLORS.accent }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Réservations confirmées
+                      Réservations en attente
                     </p>
                   </div>
                   <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
-                    {nbAccepted}
+                    {nbPending}
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    En attente : <span className="font-semibold">{nbPending}</span>
+                    Acceptées : <span className="font-semibold">{nbAccepted}</span>
                   </p>
                 </div>
               </CardContent>
@@ -1212,9 +1217,9 @@ export default function ProviderHomeMenu() {
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.primary + '20' }}
+                      style={{ backgroundColor: COLORS.secondary + '20' }}
                     >
-                      <BarChart3 className="w-5 h-5" style={{ color: COLORS.primary }} />
+                      <BarChart3 className="w-5 h-5" style={{ color: COLORS.accent }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
                       CA ce mois
@@ -1272,7 +1277,7 @@ export default function ProviderHomeMenu() {
                         </h3>
                         <p 
                           className="text-sm leading-relaxed"
-                          style={{ color: COLORS.text + 'AA' }}
+                          style={{ color: COLORS.text + 'CC' }}
                         >
                           {tile.desc}
                         </p>

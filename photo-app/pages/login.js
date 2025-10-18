@@ -21,51 +21,92 @@ function Login() {
   const [errorMsg, setErrorMsg] = useState('')
   const router = useRouter()
 
+  // Timeout de sécurité pour le chargement
+  const timeoutRef = useState(null)
+
   const handleLogin = async (e) => {
     e.preventDefault()
+    console.log('=== DÉBUT DE LA CONNEXION ===')
+    console.log('Email:', form.email)
     setLoading(true)
     setErrorMsg('')
 
-    // Vérifier d'abord si l'email existe
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .eq('email', form.email)
-      .single()
-
-    if (!existingUser) {
-      setErrorMsg('Cette adresse email n\'est pas enregistrée. Veuillez créer un compte ou vérifier votre email.')
+    // Timeout de sécurité (10 secondes)
+    const timeout = setTimeout(() => {
+      console.error('TIMEOUT: La connexion prend trop de temps')
+      setErrorMsg('La connexion prend trop de temps. Veuillez vérifier votre connexion internet.')
       setLoading(false)
-      return
-    }
+    }, 10000)
 
-    // Tentative de connexion
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: form.email,
-      password: form.password,
-    })
+    try {
+      // Tentative de connexion directement
+      console.log('1. Tentative de connexion Supabase...')
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      })
 
-    if (error) {
-      // Gérer les différents types d'erreurs
-      if (error.message === 'Invalid login credentials') {
-        setErrorMsg('Mot de passe incorrect. Veuillez réessayer.')
-      } else if (error.message === 'Email not confirmed') {
-        setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
-      } else if (error.message === 'Too many requests') {
-        setErrorMsg('Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
-      } else {
-        setErrorMsg('Erreur de connexion. Veuillez réessayer plus tard.')
+      console.log('2. Résultat connexion:', { data: data?.user?.id, error: error?.message })
+
+      if (error) {
+        clearTimeout(timeout)
+        console.error('Erreur de connexion:', error.message)
+        // Gérer les différents types d'erreurs
+        if (error.message === 'Invalid login credentials') {
+          setErrorMsg('Email ou mot de passe incorrect. Veuillez réessayer.')
+        } else if (error.message === 'Email not confirmed') {
+          setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
+        } else if (error.message.includes('Too many')) {
+          setErrorMsg('Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
+        } else {
+          setErrorMsg(`Erreur: ${error.message}`)
+        }
+        setLoading(false)
+        return
       }
+
+      if (!data.user) {
+        clearTimeout(timeout)
+        setErrorMsg('Erreur de connexion. Aucun utilisateur trouvé.')
+        setLoading(false)
+        return
+      }
+
+      console.log('3. Utilisateur connecté, ID:', data.user.id)
+
+      // Vérifier le rôle
+      console.log('4. Récupération du profil...')
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single()
+
+      console.log('5. Profil récupéré:', { role: profile?.role, error: profileError?.message })
+      
+      if (profileError) {
+        clearTimeout(timeout)
+        console.error('Erreur profil:', profileError)
+        setErrorMsg('Erreur lors de la récupération du profil.')
+        setLoading(false)
+        return
+      }
+
+      // Redirection selon le rôle
+      const targetPath = profile?.role === 'prestataire' ? '/prestataires/menu' : '/particuliers/menu'
+      console.log('6. Redirection vers:', targetPath)
+      
+      clearTimeout(timeout)
+      router.push(targetPath)
+      
+      // Le loading sera arrêté après la redirection
+
+    } catch (err) {
+      clearTimeout(timeout)
+      console.error('=== ERREUR INATTENDUE ===', err)
+      setErrorMsg('Une erreur inattendue s\'est produite. Veuillez réessayer.')
       setLoading(false)
-      return
     }
-
-    // Vérifier le rôle
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
-    if (profile?.role === 'prestataire') router.push('/prestataires/menu')
-    else router.push('/particuliers/menu')
-
-    setLoading(false)
   }
 
   return (
@@ -234,6 +275,10 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
+              onClick={(e) => {
+                console.log('Bouton cliqué')
+                // Ne pas empêcher la propagation pour laisser le form onSubmit fonctionner
+              }}
               style={{
                 width: '100%',
                 padding: '14px 24px',
