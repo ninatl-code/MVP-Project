@@ -1312,7 +1312,7 @@ function ParticularHomeMenu() {
             onMouseOver={(e) => e.target.style.background = '#E8EAF6'}
             onMouseOut={(e) => e.target.style.background = '#130183'}
           >
-            Afficher les informations
+            Afficher les détails
           </button>
         </div>
       </div>
@@ -1490,29 +1490,64 @@ function ParticularHomeMenu() {
     const [isChecking, setIsChecking] = useState(false);
 
     const handleCancelClick = async () => {
+      console.log('=== BOUTON ANNULER CLIQUÉ ===');
+      console.log('Réservation:', reservation);
+      console.log('Type de checkCancellationConditions:', typeof checkCancellationConditions);
+      console.log('Type de setShowCancelModal:', typeof setShowCancelModal);
+      console.log('Type de setCancellationConditions:', typeof setCancellationConditions);
+      
       setIsChecking(true);
       try {
+        console.log('1. Vérification des conditions...');
+        
+        if (typeof checkCancellationConditions !== 'function') {
+          throw new Error('checkCancellationConditions n\'est pas une fonction !');
+        }
+        
         const conditions = await checkCancellationConditions(reservation);
+        console.log('2. Conditions récupérées:', conditions);
         setCancellationInfo(conditions);
         setCancellationConditions(conditions);
         
         if (conditions.canCancel) {
+          console.log('3. Annulation possible, ouverture du modal');
+          console.log('3a. Avant setSelectedCancelReservation, valeur:', selectedCancelReservation);
           setSelectedCancelReservation(reservation);
+          console.log('3b. Avant setShowCancelModal, valeur:', showCancelModal);
           setShowCancelModal(true);
+          console.log('3c. États mis à jour - Le modal devrait être visible maintenant');
+          
+          // Vérifier après un court délai que les états sont bien mis à jour
+          setTimeout(() => {
+            console.log('3d. Vérification après 100ms:');
+            console.log('   - showCancelModal devrait être true');
+            console.log('   - selectedCancelReservation devrait être défini');
+          }, 100);
         } else {
+          console.log('3. Annulation impossible:', conditions.reason);
           alert(conditions.reason);
         }
       } catch (error) {
-        alert('Erreur lors de la vérification des conditions d\'annulation');
+        console.error('❌ ERREUR CAPTURÉE lors de la vérification:');
+        console.error('Message:', error.message);
+        console.error('Stack:', error.stack);
+        console.error('Error complet:', error);
+        alert('Erreur: ' + error.message);
       } finally {
         setIsChecking(false);
+        console.log('4. Fin de la vérification');
       }
     };
 
     return (
       <div style={{display:'flex', flexDirection:'column', gap:8}}>
         <button
-          onClick={handleCancelClick}
+          onClick={(e) => {
+            console.log('🔴 CLIC DÉTECTÉ SUR LE BOUTON ANNULER !');
+            console.log('Event:', e);
+            console.log('Reservation:', reservation);
+            handleCancelClick();
+          }}
           disabled={isChecking}
           style={{
             background: isChecking ? '#f5f5f5' : '#fbe7ee', 
@@ -1523,7 +1558,8 @@ function ParticularHomeMenu() {
             fontWeight:600, 
             fontSize:15, 
             cursor: isChecking ? 'not-allowed' : 'pointer',
-            opacity: isChecking ? 0.6 : 1
+            opacity: isChecking ? 0.6 : 1,
+            pointerEvents: isChecking ? 'none' : 'auto'
           }}
         >
           {isChecking ? 'Vérification...' : 'Annuler'}
@@ -1765,6 +1801,9 @@ function ParticularHomeMenu() {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 mt-6">
               <button
+                style={{
+                  cursor: 'pointer'
+                }}
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-800 to-blue-800 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
                 onClick={() => navigateWithSplash("/particuliers/search", "Recherche de prestataires...")}
               >
@@ -1772,18 +1811,44 @@ function ParticularHomeMenu() {
                 Trouver un prestataire
               </button>
               <button
+                style={{
+                  background:'#transparent',
+                  color:'#23232B',
+                  borderColor:'#E6E6E6',
+                  borderRadius:10,
+                  padding:'8px 18px',
+                  fontWeight:600,
+                  fontSize:15,
+                  cursor:'pointer',
+                  transition: 'all 0.2s'
+                }}
                 className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
                 onClick={() => navigateWithSplash("/particuliers/profil#favoris", "Chargement de vos favoris...")}
+                onMouseOver={(e) => e.target.style.background = 'F8F9FB'}
+                onMouseOut={(e) => e.target.style.background = 'transparent'}
               >
                 <Heart className="w-5 h-5" />
                 Mes favoris
               </button>
               <button
+                style={{
+                  background:'#transparent',
+                  color:'#23232B',
+                  borderColor:'#E6E6E6',
+                  borderRadius:10,
+                  padding:'8px 18px',
+                  fontWeight:600,
+                  fontSize:15,
+                  cursor:'pointer',
+                  transition: 'all 0.2s'
+                }}
                 className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
                 onClick={() => navigateWithSplash("/particuliers/messages", "Ouverture de la messagerie...")}
+                onMouseOver={(e) => e.target.style.background = 'F8F9FB'}
+                onMouseOut={(e) => e.target.style.background = 'transparent'}
               >
                 <Activity className="w-5 h-5" />
-                Messages
+                Mes messages
               </button>
             </div>
           </div>
@@ -1983,7 +2048,7 @@ function ParticularHomeMenu() {
                   </div>
                 </div>
               </div>
-              <DevisInfoModal devis={selectedDevis} onClose={() => setSelectedDevis(null)} />
+              {/* Le modal DevisInfoModal a été déplacé en bas du composant pour être toujours accessible */}
             </section>
           )}
 
@@ -2117,7 +2182,7 @@ function ParticularHomeMenu() {
                       <ReservationCard key={r.id} r={r} />
                     ))}
                   </div>
-                  <ReservationInfoModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+                  {/* Le modal ReservationInfoModal a été déplacé en bas du composant pour être toujours accessible */}
                   {showConfirm && (
                     <ConfirmCancelModal
                       onConfirm={() => handleUpdate(pendingCancelId, 'cancelled')}
@@ -2128,298 +2193,7 @@ function ParticularHomeMenu() {
                     />
                   )}
                   
-                  {/* Modal d'annulation simplifié */}
-                  {showCancelModal && selectedCancelReservation && (
-                    <div 
-                      style={{
-                        position: 'fixed',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.5)',
-                        zIndex: 3000,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '20px'
-                      }}
-                      onClick={() => {
-                        setShowCancelModal(false);
-                        setSelectedCancelReservation(null);
-                        setCancelReason('');
-                        setCancellationConditions(null);
-                      }}
-                    >
-                      <div 
-                        style={{
-                          background: '#fff',
-                          borderRadius: 20,
-                          maxWidth: 600,
-                          width: '100%',
-                          maxHeight: '90vh',
-                          overflowY: 'auto'
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div style={{
-                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                          padding: '32px',
-                          borderRadius: '20px 20px 0 0',
-                          color: 'white',
-                          textAlign: 'center'
-                        }}>
-                          <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
-                          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
-                            Annuler la réservation
-                          </h2>
-                        </div>
-
-                        <div style={{ padding: '32px' }}>
-                          {/* Informations sur la réservation */}
-                          <div style={{ marginBottom: 24, padding: 20, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                            <h2 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700, color: '#334155' }}>
-                              📅 Détails de la réservation
-                            </h2>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontSize: 14 }}>
-                              <strong style={{ color: '#475569' }}>Service :</strong>
-                              <span style={{ color: '#64748b' }}>{selectedCancelReservation?.annonces?.titre || 'Service non spécifié'}</span>
-                              
-                              <strong style={{ color: '#475569' }}>Prestataire :</strong>
-                              <span style={{ color: '#64748b' }}>{selectedCancelReservation?.profiles?.nom || 'Prestataire non spécifié'}</span>
-                              
-                              <strong style={{ color: '#475569' }}>Date :</strong>
-                              <span style={{ color: '#64748b' }}>
-                                {selectedCancelReservation?.date ? new Date(selectedCancelReservation.date).toLocaleDateString('fr-FR', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                }) : 'Date non spécifiée'}
-                              </span>
-                              
-                              {selectedCancelReservation?.prix && (
-                                <>
-                                  <strong style={{ color: '#475569' }}>Montant payé :</strong>
-                                  <span style={{ color: '#64748b', fontWeight: 600 }}>{selectedCancelReservation.prix}€</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Affichage des conditions d'annulation */}
-                          {cancellationConditions && (
-                            <div style={{ marginBottom: 24, padding: 20, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                              <h2 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700, color: '#334155' }}>
-                                📋 Conditions d'annulation
-                              </h2>
-                              
-                              <div style={{ marginBottom: 16 }}>
-                                <div style={{ 
-                                  display: 'inline-block',
-                                  padding: '8px 16px', 
-                                  borderRadius: 20, 
-                                  fontSize: 13,
-                                  fontWeight: 600,
-                                  background: cancellationConditions.canCancel ? '#dcfce7' : '#fecaca',
-                                  color: cancellationConditions.canCancel ? '#15803d' : '#dc2626'
-                                }}>
-                                  {cancellationConditions.canCancel ? '✅ Annulation autorisée' : '❌ Annulation non autorisée'}
-                                </div>
-                              </div>
-
-                              <div style={{ marginBottom: 12 }}>
-                                <strong style={{ fontSize: 14, color: '#475569' }}>Politique :</strong>
-                                <span style={{ marginLeft: 8, fontSize: 14, color: '#64748b' }}>
-                                  {selectedCancelReservation?.annonces?.conditions_annulation || 'Standard'}
-                                </span>
-                              </div>
-
-                              {selectedCancelReservation?.date && (
-                                <div style={{ marginBottom: 12 }}>
-                                  <strong style={{ fontSize: 14, color: '#475569' }}>Temps restant :</strong>
-                                  <span style={{ marginLeft: 8, fontSize: 14, color: '#64748b' }}>
-                                    {(() => {
-                                      const reservationDate = new Date(selectedCancelReservation.date);
-                                      const currentDate = new Date();
-                                      const timeDiff = reservationDate.getTime() - currentDate.getTime();
-                                      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                                      const hoursDiff = Math.ceil(timeDiff / (1000 * 3600));
-                                      
-                                      if (daysDiff > 1) {
-                                        return `${daysDiff} jours`;
-                                      } else if (hoursDiff > 1) {
-                                        return `${hoursDiff} heures`;
-                                      } else {
-                                        return 'Moins d\'une heure';
-                                      }
-                                    })()}
-                                  </span>
-                                </div>
-                              )}
-
-                              {cancellationConditions.canCancel && (
-                                <>
-                                  <div style={{ marginBottom: 12 }}>
-                                    <strong style={{ fontSize: 14, color: '#475569' }}>Remboursement :</strong>
-                                    <span style={{ 
-                                      marginLeft: 8, 
-                                      fontSize: 14,
-                                      fontWeight: 600,
-                                      color: cancellationConditions.refundPercentage === 100 ? '#059669' : 
-                                             cancellationConditions.refundPercentage === 50 ? '#d97706' : '#dc2626'
-                                    }}>
-                                      {cancellationConditions.refundPercentage}% du montant payé
-                                      {selectedCancelReservation?.prix && (
-                                        <span style={{ marginLeft: 8, fontSize: 13, color: '#64748b' }}>
-                                          (soit {Math.round((selectedCancelReservation.prix * cancellationConditions.refundPercentage) / 100)}€)
-                                        </span>
-                                      )}
-                                    </span>
-                                  </div>
-                                  
-                                  <div style={{ 
-                                    padding: 12, 
-                                    background: '#f1f5f9', 
-                                    borderRadius: 8, 
-                                    borderLeft: '4px solid #3b82f6' 
-                                  }}>
-                                    <span style={{ fontSize: 13, color: '#475569' }}>
-                                      {cancellationConditions.message}
-                                    </span>
-                                  </div>
-                                </>
-                              )}
-
-                              {!cancellationConditions.canCancel && (
-                                <div style={{ 
-                                  padding: 12, 
-                                  background: '#fef2f2', 
-                                  borderRadius: 8, 
-                                  borderLeft: '4px solid #ef4444' 
-                                }}>
-                                  <span style={{ fontSize: 13, color: '#dc2626' }}>
-                                    {cancellationConditions.reason}
-                                  </span>
-                                </div>
-                              )}
-
-                              {cancellationConditions.forceMajeure && (
-                                <div style={{ 
-                                  marginTop: 12,
-                                  padding: 12, 
-                                  background: '#fffbeb', 
-                                  borderRadius: 8, 
-                                  borderLeft: '4px solid #f59e0b' 
-                                }}>
-                                  <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
-                                    ⚠️ Annulation pour force majeure uniquement
-                                  </span>
-                                  <br />
-                                  <span style={{ fontSize: 12, color: '#92400e' }}>
-                                    Une justification détaillée est requise (minimum 20 caractères)
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Champ motif d'annulation */}
-                          {cancellationConditions && cancellationConditions.canCancel && (
-                            <div style={{ marginBottom: 24 }}>
-                              <label style={{
-                                display: 'block',
-                                marginBottom: 8,
-                                fontSize: 14,
-                                fontWeight: 600,
-                                color: '#333'
-                              }}>
-                                {cancellationConditions.forceMajeure ? 'Justification détaillée (obligatoire)' : 'Motif d\'annulation'}
-                                {cancellationConditions.forceMajeure && (
-                                  <span style={{ color: '#ef4444', marginLeft: 4 }}>*</span>
-                                )}
-                              </label>
-                              <textarea
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                                placeholder={
-                                  cancellationConditions.forceMajeure 
-                                    ? "Veuillez expliquer en détail les circonstances exceptionnelles justifiant cette annulation..."
-                                    : "Pourquoi souhaitez-vous annuler cette réservation ?"
-                                }
-                                style={{
-                                  width: '100%',
-                                  minHeight: cancellationConditions.forceMajeure ? 120 : 80,
-                                  padding: '12px',
-                                  border: '1px solid #d1d5db',
-                                  borderRadius: 8,
-                                  fontSize: 14,
-                                  resize: 'vertical',
-                                  fontFamily: 'inherit'
-                                }}
-                              />
-                              {cancellationConditions.forceMajeure && cancelReason && cancelReason.trim().length < 20 && (
-                                <div style={{ marginTop: 6, fontSize: 12, color: '#ef4444' }}>
-                                  Justification trop courte ({cancelReason.trim().length}/20 caractères minimum)
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                            <button
-                              onClick={() => {
-                                setShowCancelModal(false);
-                                setSelectedCancelReservation(null);
-                                setCancelReason('');
-                                setCancellationConditions(null);
-                              }}
-                              style={{
-                                background: '#6b7280',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: 12,
-                                padding: '14px 24px',
-                                fontSize: 14,
-                                fontWeight: 600,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Fermer
-                            </button>
-                            
-                            {cancellationConditions && cancellationConditions.canCancel && (
-                              <button
-                                onClick={handleCancelReservation}
-                                disabled={
-                                  isCancelling || 
-                                  (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20))
-                                }
-                                style={{
-                                  background: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
-                                    ? '#d1d5db' : '#ef4444',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: 12,
-                                  padding: '14px 24px',
-                                  fontSize: 14,
-                                  fontWeight: 600,
-                                  cursor: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
-                                    ? 'not-allowed' : 'pointer',
-                                  opacity: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
-                                    ? 0.7 : 1
-                                }}
-                              >
-                                {isCancelling ? 'Annulation...' : 
-                                 cancellationConditions.refundPercentage === 100 ? 'Confirmer l\'annulation (remboursement intégral)' :
-                                 cancellationConditions.refundPercentage === 50 ? 'Confirmer l\'annulation (remboursement 50%)' :
-                                 'Confirmer l\'annulation (aucun remboursement)'
-                                }
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Le modal d'annulation a été déplacé en bas du composant pour être toujours accessible */}
                 </div>
               </div>
             </section>
@@ -2495,6 +2269,309 @@ function ParticularHomeMenu() {
           )}
         </div>
       </div>
+
+      {/* Modal de détails du devis - Accessible depuis n'importe quel onglet */}
+      <DevisInfoModal devis={selectedDevis} onClose={() => setSelectedDevis(null)} />
+
+      {/* Modal de détails de la réservation - Accessible depuis n'importe quel onglet */}
+      <ReservationInfoModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+
+      {/* Modal d'annulation - Accessible depuis n'importe quel onglet */}
+      {(() => {
+        console.log('🔵 RENDU DU MODAL - showCancelModal:', showCancelModal, 'selectedCancelReservation:', selectedCancelReservation);
+        return showCancelModal && selectedCancelReservation;
+      })() && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => {
+            console.log('🔴 FERMETURE DU MODAL (clic sur overlay)');
+            setShowCancelModal(false);
+            setSelectedCancelReservation(null);
+            setCancelReason('');
+            setCancellationConditions(null);
+          }}
+        >
+          <div 
+            style={{
+              background: '#fff',
+              borderRadius: 20,
+              maxWidth: 600,
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              padding: '32px',
+              borderRadius: '20px 20px 0 0',
+              color: 'white',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
+                Annuler la réservation
+              </h2>
+            </div>
+
+            <div style={{ padding: '32px' }}>
+              {/* Informations sur la réservation */}
+              <div style={{ marginBottom: 24, padding: 20, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                <h2 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+                  📅 Détails de la réservation
+                </h2>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontSize: 14 }}>
+                  <strong style={{ color: '#475569' }}>Service :</strong>
+                  <span style={{ color: '#64748b' }}>{selectedCancelReservation?.annonces?.titre || 'Service non spécifié'}</span>
+                  
+                  <strong style={{ color: '#475569' }}>Prestataire :</strong>
+                  <span style={{ color: '#64748b' }}>{selectedCancelReservation?.profiles?.nom || 'Prestataire non spécifié'}</span>
+                  
+                  <strong style={{ color: '#475569' }}>Date :</strong>
+                  <span style={{ color: '#64748b' }}>
+                    {selectedCancelReservation?.date ? new Date(selectedCancelReservation.date).toLocaleDateString('fr-FR', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    }) : 'Date non spécifiée'}
+                  </span>
+                  
+                  {selectedCancelReservation?.prix && (
+                    <>
+                      <strong style={{ color: '#475569' }}>Montant payé :</strong>
+                      <span style={{ color: '#64748b', fontWeight: 600 }}>{selectedCancelReservation.prix}€</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Affichage des conditions d'annulation */}
+              {cancellationConditions && (
+                <div style={{ marginBottom: 24, padding: 20, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                  <h2 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+                    📋 Conditions d'annulation
+                  </h2>
+                  
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ 
+                      display: 'inline-block',
+                      padding: '8px 16px', 
+                      borderRadius: 20, 
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: cancellationConditions.canCancel ? '#dcfce7' : '#fecaca',
+                      color: cancellationConditions.canCancel ? '#15803d' : '#dc2626'
+                    }}>
+                      {cancellationConditions.canCancel ? '✅ Annulation autorisée' : '❌ Annulation non autorisée'}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <strong style={{ fontSize: 14, color: '#475569' }}>Politique :</strong>
+                    <span style={{ marginLeft: 8, fontSize: 14, color: '#64748b' }}>
+                      {selectedCancelReservation?.annonces?.conditions_annulation || 'Standard'}
+                    </span>
+                  </div>
+
+                  {selectedCancelReservation?.date && (
+                    <div style={{ marginBottom: 12 }}>
+                      <strong style={{ fontSize: 14, color: '#475569' }}>Temps restant :</strong>
+                      <span style={{ marginLeft: 8, fontSize: 14, color: '#64748b' }}>
+                        {(() => {
+                          const reservationDate = new Date(selectedCancelReservation.date);
+                          const currentDate = new Date();
+                          const timeDiff = reservationDate.getTime() - currentDate.getTime();
+                          const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                          const hoursDiff = Math.ceil(timeDiff / (1000 * 3600));
+                          
+                          if (daysDiff > 1) {
+                            return `${daysDiff} jours`;
+                          } else if (hoursDiff > 1) {
+                            return `${hoursDiff} heures`;
+                          } else {
+                            return 'Moins d\'une heure';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                  )}
+
+                  {cancellationConditions.canCancel && (
+                    <>
+                      <div style={{ marginBottom: 12 }}>
+                        <strong style={{ fontSize: 14, color: '#475569' }}>Remboursement :</strong>
+                        <span style={{ 
+                          marginLeft: 8, 
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: cancellationConditions.refundPercentage === 100 ? '#059669' : 
+                                 cancellationConditions.refundPercentage === 50 ? '#d97706' : '#dc2626'
+                        }}>
+                          {cancellationConditions.refundPercentage}% du montant payé
+                          {selectedCancelReservation?.prix && (
+                            <span style={{ marginLeft: 8, fontSize: 13, color: '#64748b' }}>
+                              (soit {Math.round((selectedCancelReservation.prix * cancellationConditions.refundPercentage) / 100)}€)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      
+                      <div style={{ 
+                        padding: 12, 
+                        background: '#f1f5f9', 
+                        borderRadius: 8, 
+                        borderLeft: '4px solid #3b82f6' 
+                      }}>
+                        <span style={{ fontSize: 13, color: '#475569' }}>
+                          {cancellationConditions.message}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {!cancellationConditions.canCancel && (
+                    <div style={{ 
+                      padding: 12, 
+                      background: '#fef2f2', 
+                      borderRadius: 8, 
+                      borderLeft: '4px solid #ef4444' 
+                    }}>
+                      <span style={{ fontSize: 13, color: '#dc2626' }}>
+                        {cancellationConditions.reason}
+                      </span>
+                    </div>
+                  )}
+
+                  {cancellationConditions.forceMajeure && (
+                    <div style={{ 
+                      marginTop: 12,
+                      padding: 12, 
+                      background: '#fffbeb', 
+                      borderRadius: 8, 
+                      borderLeft: '4px solid #f59e0b' 
+                    }}>
+                      <span style={{ fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+                        ⚠️ Annulation pour force majeure uniquement
+                      </span>
+                      <br />
+                      <span style={{ fontSize: 12, color: '#92400e' }}>
+                        Une justification détaillée est requise (minimum 20 caractères)
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Champ motif d'annulation */}
+              {cancellationConditions && cancellationConditions.canCancel && (
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#333'
+                  }}>
+                    {cancellationConditions.forceMajeure ? 'Justification détaillée (obligatoire)' : 'Motif d\'annulation'}
+                    {cancellationConditions.forceMajeure && (
+                      <span style={{ color: '#ef4444', marginLeft: 4 }}>*</span>
+                    )}
+                  </label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder={
+                      cancellationConditions.forceMajeure 
+                        ? "Veuillez expliquer en détail les circonstances exceptionnelles justifiant cette annulation..."
+                        : "Pourquoi souhaitez-vous annuler cette réservation ?"
+                    }
+                    style={{
+                      width: '100%',
+                      minHeight: cancellationConditions.forceMajeure ? 120 : 80,
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 8,
+                      fontSize: 14,
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                  {cancellationConditions.forceMajeure && cancelReason && cancelReason.trim().length < 20 && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: '#ef4444' }}>
+                      Justification trop courte ({cancelReason.trim().length}/20 caractères minimum)
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setSelectedCancelReservation(null);
+                    setCancelReason('');
+                    setCancellationConditions(null);
+                  }}
+                  style={{
+                    background: '#6b7280',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '14px 24px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Fermer
+                </button>
+                
+                {cancellationConditions && cancellationConditions.canCancel && (
+                  <button
+                    onClick={handleCancelReservation}
+                    disabled={
+                      isCancelling || 
+                      (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20))
+                    }
+                    style={{
+                      background: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
+                        ? '#d1d5db' : '#ef4444',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 12,
+                      padding: '14px 24px',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
+                        ? 'not-allowed' : 'pointer',
+                      opacity: (isCancelling || (cancellationConditions.forceMajeure && (!cancelReason || cancelReason.trim().length < 20)))
+                        ? 0.7 : 1
+                    }}
+                  >
+                    {isCancelling ? 'Annulation...' : 
+                     cancellationConditions.refundPercentage === 100 ? 'Confirmer l\'annulation (remboursement intégral)' :
+                     cancellationConditions.refundPercentage === 50 ? 'Confirmer l\'annulation (remboursement 50%)' :
+                     'Confirmer l\'annulation (aucun remboursement)'
+                    }
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Animation caméra lors de la navigation */}
       {CameraSplashComponent}

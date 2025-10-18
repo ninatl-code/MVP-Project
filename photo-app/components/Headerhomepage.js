@@ -31,7 +31,7 @@ export default function Headerhomepage() {
           Aide
         </a>
         <button
-          className="px-6 py-2.5 rounded-xl font-semibold border-2 transition-all hover:opacity-90"
+          className="cursor-pointer px-6 py-2.5 rounded-xl font-semibold border-2 transition-all hover:opacity-90"
           style={{ 
             borderColor: 'var(--accent)', 
             color: 'var(--accent)',
@@ -41,7 +41,7 @@ export default function Headerhomepage() {
           Connexion
         </button>
         <button
-          className="px-6 py-2.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 shadow-sm"
+          className="cursor-pointer px-6 py-2.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 shadow-sm"
           style={{ 
             backgroundColor: 'var(--accent)',
           }}

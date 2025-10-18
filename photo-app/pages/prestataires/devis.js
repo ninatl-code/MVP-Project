@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import PrestataireHeader from '../../components/HeaderPresta'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 export default function DevisPrestataire() {
   const [devisList, setDevisList] = useState([])
@@ -12,10 +14,14 @@ export default function DevisPrestataire() {
   const [reponse, setReponse] = useState({
     comment_presta: "",
     montant: "",
-    montant_acompte: ""
+    montant_acompte: "",
+    validite_jours: "30"
   })
   const [sending, setSending] = useState(false)
   const [unites, setUnites] = useState([]);
+  const [prestataireInfo, setPrestataireInfo] = useState(null)
+  const [generatingPDF, setGeneratingPDF] = useState(false)
+  const devisRef = useRef(null)
 
   // Récupère les annonces du prestataire
   useEffect(() => {
@@ -31,6 +37,25 @@ export default function DevisPrestataire() {
     fetchAnnonces()
   }, [])
 
+  // Charger les infos du prestataire pour le PDF
+  useEffect(() => {
+    const fetchPrestataireInfo = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('nom, email, telephone, adresse, code_postal, ville, siret, tva_intracom, logo_facture')
+        .eq('id', user.id)
+        .single()
+      
+      if (!error && profile) {
+        setPrestataireInfo(profile)
+      }
+    }
+    fetchPrestataireInfo()
+  }, [])
+
   // Récupère les devis du prestataire
   useEffect(() => {
     const fetchDevis = async () => {
@@ -39,7 +64,7 @@ export default function DevisPrestataire() {
 
       let query = supabase
         .from('devis')
-        .select('*, profiles!devis_particulier_id_fkey(nom, email), annonces!devis_annonce_id_fkey(titre)')
+        .select('*, profiles!devis_particulier_id_fkey(nom, email), annonces!devis_annonce_id_fkey(titre, conditions_annulation)')
         .eq('prestataire_id', user.id)
 
       if (statusFilter !== 'all') {
@@ -65,25 +90,70 @@ export default function DevisPrestataire() {
     fetchUnites();
   }, [])
 
+  // Fonction pour remplacer les placeholders dans le message
+  const updateMessageWithValues = (message, montant, montantAcompte) => {
+    let updatedMessage = message;
+    
+    // Remplacer [Prix à compléter] par le montant
+    if (montant && parseFloat(montant) > 0) {
+      updatedMessage = updatedMessage.replace(/\[Prix à compléter\]/g, `${parseFloat(montant).toFixed(2)}`);
+    }
+    
+    // Remplacer "%" par le pourcentage calculé
+    if (montantAcompte && parseFloat(montantAcompte) > 0 && montant && parseFloat(montant) > 0) {
+      const pourcentage = ((parseFloat(montantAcompte) / parseFloat(montant)) * 100).toFixed(0);
+      // Remplacer "%" ou le pourcentage existant
+      updatedMessage = updatedMessage.replace(/"%" d'acompte/g, `${pourcentage}% d'acompte`);
+      updatedMessage = updatedMessage.replace(/\d+% d'acompte/g, `${pourcentage}% d'acompte`);
+    }
+    
+    // Si le montant est vide, remettre le placeholder
+    if (!montant || parseFloat(montant) <= 0) {
+      updatedMessage = updatedMessage.replace(/\d+\.?\d* EURO pour ce service/g, '[Prix à compléter] EURO pour ce service');
+    }
+    
+    // Si l'acompte est vide, remettre le placeholder
+    if (!montantAcompte || parseFloat(montantAcompte) <= 0) {
+      updatedMessage = updatedMessage.replace(/\d+% d'acompte/g, '"%" d\'acompte');
+    }
+    
+    return updatedMessage;
+  }
+
   // Ouvre la pop-up réponse
   const handleAnswerClick = (devis) => {
     setSelectedDevis(devis);
     setShowPopup(true);
     const prenomClient = devis.profiles?.nom ? devis.profiles.nom.split(' ')[0] : '';
     const titreAnnonce = devis.annonces?.titre || '';
+    
+    // Définir le texte d'annulation selon les conditions de l'annonce
+    let textAnnulation = '';
+    const conditions = devis.annonces?.conditions_annulation;
+    
+    if (conditions === 'Flexible') {
+      textAnnulation = 'Annulation gratuite jusqu\'à 24h avant, remboursement 100%';
+    } else if (conditions === 'Modéré') {
+      textAnnulation = 'Annulation gratuite jusqu\'à 7 jours avant, remboursement 50% si <7 jours';
+    } else if (conditions === 'Strict') {
+      textAnnulation = 'Pas de remboursement sauf cas de force majeure';
+    } else {
+      textAnnulation = 'Annulation possible jusqu\'à [X jours] avant la date prévue';
+    }
+    
     // Message par défaut
     const defaultComment = `Bonjour ${prenomClient},
 
 Merci pour votre demande concernant ${titreAnnonce}.
-Je vous propose un tarif de [Prix à compléter] MAD pour ce service.
+Je vous propose un tarif de [Prix à compléter] EURO pour ce service.
 
 Ce devis inclut :
 ✔️ Point fort 1, ex : déplacement inclus dans la ville de Casablanca
 ✔️ Point fort 2, ex : matériel fourni par mes soins
 
 Conditions :
-Réservation confirmée après paiement de "%" d’acompte
-Annulation possible jusqu’à [X jours] avant la date prévue
+Réservation confirmée après paiement de "%" d'acompte
+${textAnnulation}
 Si cela vous convient, vous pouvez accepter ce devis et finaliser la réservation directement depuis la plateforme.
 
 Bien à vous,
@@ -91,45 +161,105 @@ Bien à vous,
     setReponse({
       comment_presta: defaultComment,
       montant: "",
-      montant_acompte: ""
+      montant_acompte: "",
+      validite_jours: "30"
     });
+  }
+
+  // Générer le PDF du devis
+  const generateDevisPDF = async () => {
+    if (!selectedDevis || !reponse.montant) {
+      alert('⚠️ Veuillez remplir le montant avant de générer le PDF')
+      return null
+    }
+
+    setGeneratingPDF(true)
+    try {
+      const canvas = await html2canvas(devisRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      })
+      
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      const pdfBase64 = pdf.output('dataurlstring').split(',')[1]
+
+      setGeneratingPDF(false)
+      return pdfBase64
+    } catch (error) {
+      console.error('Erreur génération PDF:', error)
+      setGeneratingPDF(false)
+      alert('Erreur lors de la génération du PDF: ' + error.message)
+      return null
+    }
   }
 
   // Envoie la réponse du prestataire
   const handleSendReponse = async () => {
     if (!selectedDevis) return
-    setSending(true)
-    const now = new Date().toISOString()
-    // Récupère unit_tarif depuis l'annonce liée
-    const unitTarif = selectedDevis.annonces?.unit_tarif || "";
-    const { error } = await supabase
-      .from('devis')
-      .update({
-        comment_presta: reponse.comment_presta,
-        montant: reponse.montant,
-        montant_acompte: reponse.montant_acompte,
-        unit_tarif: unitTarif,
-        date_reponse: now,
-        status: 'answered'
-      })
-      .eq('id', selectedDevis.id)
-
-    // Notification au particulier
-    if (selectedDevis.particulier_id) {
-      await supabase
-        .from('notifications')
-        .insert([{
-          user_id: selectedDevis.particulier_id,
-          type: 'devis',
-          contenu: 'Votre demande de devis a été répondue.',
-          lu: false
-        }])
+    
+    // Vérifier que le montant est renseigné
+    if (!reponse.montant || parseFloat(reponse.montant) <= 0) {
+      alert('⚠️ Veuillez renseigner un montant valide')
+      return
     }
 
-    setSending(false)
-    setShowPopup(false)
-    if (error) alert(error.message)
-    else alert('Réponse envoyée ✅')
+    setSending(true)
+    
+    try {
+      // Générer le PDF du devis
+      const pdfBase64 = await generateDevisPDF()
+      if (!pdfBase64) {
+        setSending(false)
+        return
+      }
+
+      const now = new Date().toISOString()
+      // Récupère unit_tarif depuis l'annonce liée
+      const unitTarif = selectedDevis.annonces?.unit_tarif || "";
+      
+      const { error } = await supabase
+        .from('devis')
+        .update({
+          comment_presta: reponse.comment_presta,
+          montant: reponse.montant,
+          montant_acompte: reponse.montant_acompte,
+          unit_tarif: unitTarif,
+          date_reponse: now,
+          status: 'answered',
+          devis_pdf: [pdfBase64]
+        })
+        .eq('id', selectedDevis.id)
+
+      if (error) throw error
+
+      // Notification au particulier
+      if (selectedDevis.particulier_id) {
+        await supabase
+          .from('notifications')
+          .insert([{
+            user_id: selectedDevis.particulier_id,
+            type: 'devis',
+            contenu: 'Votre demande de devis a été répondue avec un devis PDF.',
+            lu: false
+          }])
+      }
+
+      setSending(false)
+      setShowPopup(false)
+      alert('✅ Réponse envoyée avec succès ! Le devis PDF a été joint.')
+      
+    } catch (error) {
+      console.error('Erreur:', error)
+      setSending(false)
+      alert('❌ Erreur lors de l\'envoi: ' + error.message)
+    }
   }
 
   function StatusBadge({ status }) {
@@ -346,69 +476,130 @@ Bien à vous,
       {showPopup && selectedDevis && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0,0,0,0.18)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+          background: 'rgba(0,0,0,0.18)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflowY: 'auto'
         }}>
           <div style={{
             background: '#fff', borderRadius: 18, boxShadow: '0 2px 24px rgba(0,0,0,0.12)',
-            display: 'flex', minWidth: 900, maxWidth: 1200, width: '95vw', padding: 0, overflow: 'hidden'
+            display: 'flex', minWidth: 900, maxWidth: 1200, width: '95vw', padding: 0, overflow: 'hidden',
+            maxHeight: '90vh', margin: '20px 0'
           }}>
             {/* Partie réponse à gauche élargie */}
-            <div style={{ flex: 1.7, padding: 32, borderRight: '1px solid #eee' }}>
+            <div style={{ flex: 1.7, padding: 32, borderRight: '1px solid #eee', overflowY: 'auto' }}>
               <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Votre réponse</h2>
+              
               <div style={{ marginBottom: 18 }}>
                 <label style={{ fontWeight: 600 }}>Commentaire</label>
                 <textarea
-                  style={{ width: '100%', borderRadius: 8, border: '1px solid #e5e7eb', padding: 10, marginTop: 6, minHeight: 120, fontSize: 16 }}
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid #e5e7eb', padding: 10, marginTop: 6, minHeight: 150, fontSize: 16 }}
                   value={reponse.comment_presta}
                   onChange={e => setReponse(r => ({ ...r, comment_presta: e.target.value }))}
                   placeholder="Votre commentaire pour le client"
                 />
               </div>
+              
               <div style={{ marginBottom: 18 }}>
-                <label style={{ fontWeight: 600 }}>Montant proposé (MAD)</label>
+                <label style={{ fontWeight: 600 }}>Montant proposé (EURO)</label>
                 <input
                   type="number"
                   style={{ width: '100%', borderRadius: 8, border: '1px solid #e5e7eb', padding: 10, marginTop: 6 }}
                   value={reponse.montant}
-                  onChange={e => setReponse(r => ({ ...r, montant: e.target.value }))}
+                  onChange={e => {
+                    const newMontant = e.target.value;
+                    setReponse(r => ({ ...r, montant: newMontant }));
+                  }}
+                  onBlur={e => {
+                    const newMontant = e.target.value;
+                    setReponse(r => {
+                      const updatedMessage = updateMessageWithValues(r.comment_presta, newMontant, r.montant_acompte);
+                      return { ...r, comment_presta: updatedMessage };
+                    });
+                  }}
                   placeholder="Montant total"
                 />
               </div>
-              {/* Champ unité supprimé */}
               <div style={{ marginBottom: 18 }}>
-                <label style={{ fontWeight: 600 }}>Acompte nécessaire (MAD)</label>
+                <label style={{ fontWeight: 600 }}>Acompte nécessaire (EURO)</label>
                 <input
                   type="number"
                   style={{ width: '100%', borderRadius: 8, border: '1px solid #e5e7eb', padding: 10, marginTop: 6 }}
                   value={reponse.montant_acompte}
-                  onChange={e => setReponse(r => ({ ...r, montant_acompte: e.target.value }))}
+                  onChange={e => {
+                    const newAcompte = e.target.value;
+                    setReponse(r => ({ ...r, montant_acompte: newAcompte }));
+                  }}
+                  onBlur={e => {
+                    const newAcompte = e.target.value;
+                    setReponse(r => {
+                      const updatedMessage = updateMessageWithValues(r.comment_presta, r.montant, newAcompte);
+                      return { ...r, comment_presta: updatedMessage };
+                    });
+                  }}
                   placeholder="Montant acompte"
                 />
               </div>
-              <button
-                onClick={handleSendReponse}
-                disabled={sending}
-                style={{
-                  background: '#e67c73', color: '#fff', border: 'none', borderRadius: 8,
-                  padding: '12px 28px', fontWeight: 700, fontSize: 17, cursor: 'pointer',
-                  marginTop: 24, float: 'right'
-                }}
-              >
-                {sending ? "Envoi..." : "Envoyer votre réponse"}
-              </button>
-              <button
-                onClick={() => setShowPopup(false)}
-                style={{
-                  background: '#eee', color: '#888', border: 'none', borderRadius: 8,
-                  padding: '8px 18px', fontWeight: 600, fontSize: 15, cursor: 'pointer',
-                  marginTop: 24, marginRight: 12
-                }}
-              >
-                Annuler
-              </button>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontWeight: 600 }}>Validité du devis (jours)</label>
+                <input
+                  type="number"
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid #e5e7eb', padding: 10, marginTop: 6 }}
+                  value={reponse.validite_jours}
+                  onChange={e => setReponse(r => ({ ...r, validite_jours: e.target.value }))}
+                  placeholder="Nombre de jours de validité (ex: 30)"
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                <button
+                  onClick={() => setShowPopup(false)}
+                  style={{
+                    background: '#eee', color: '#888', border: 'none', borderRadius: 8,
+                    padding: '8px 18px', fontWeight: 600, fontSize: 15, cursor: 'pointer'
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!reponse.montant) {
+                      alert('⚠️ Veuillez renseigner un montant avant de prévisualiser')
+                      return
+                    }
+                    setGeneratingPDF(true)
+                    const pdfBase64 = await generateDevisPDF()
+                    if (pdfBase64) {
+                      const link = document.createElement('a')
+                      link.href = `data:application/pdf;base64,${pdfBase64}`
+                      link.download = `Devis-PREVIEW-${selectedDevis.num_devis}.pdf`
+                      link.click()
+                    }
+                    setGeneratingPDF(false)
+                  }}
+                  disabled={generatingPDF}
+                  style={{
+                    background: '#5C6BC0', color: '#fff', border: 'none', borderRadius: 8,
+                    padding: '8px 18px', fontWeight: 600, fontSize: 15, cursor: 'pointer',
+                    opacity: generatingPDF ? 0.7 : 1
+                  }}
+                >
+                  {generatingPDF ? '📄 Génération...' : '📄 Prévisualiser PDF'}
+                </button>
+                <button
+                  onClick={handleSendReponse}
+                  disabled={sending || generatingPDF}
+                  style={{
+                    background: '#e67c73', color: '#fff', border: 'none', borderRadius: 8,
+                    padding: '12px 28px', fontWeight: 700, fontSize: 17, cursor: 'pointer',
+                    opacity: (sending || generatingPDF) ? 0.7 : 1,
+                    marginLeft: 'auto'
+                  }}
+                >
+                  {sending ? "📤 Envoi..." : "📤 Envoyer avec PDF"}
+                </button>
+              </div>
+              
             </div>
             {/* Partie infos devis à droite moins large */}
-            <div style={{ flex: 1, padding: 32 }}>
+            <div style={{ flex: 1, padding: 32, overflowY: 'auto' }}>
               <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 18 }}>Informations du devis</h2>
               <div style={{ marginBottom: 12 }}>
                 <b>Client :</b> {selectedDevis.profiles?.nom}
@@ -435,6 +626,150 @@ Bien à vous,
           </div>
         </div>
       )}
+
+      {/* Template PDF du devis (caché, utilisé pour la génération) */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={devisRef} style={{
+          width: '210mm',
+          minHeight: '297mm',
+          padding: '20mm',
+          background: '#fff',
+          fontFamily: 'Arial, sans-serif',
+          color: '#333'
+        }}>
+          {/* En-tête avec logo */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 40, borderBottom: '3px solid #130183', paddingBottom: 20 }}>
+            <div>
+              {prestataireInfo?.logo_facture && (
+                <img src={prestataireInfo.logo_facture} alt="Logo" style={{ maxWidth: 120, maxHeight: 80, marginBottom: 10 }} />
+              )}
+              <h1 style={{ margin: 0, fontSize: 28, color: '#130183', fontWeight: 700 }}>
+                {prestataireInfo?.nom || 'Prestataire'}
+              </h1>
+              <div style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
+                {prestataireInfo?.adresse && <div>{prestataireInfo.adresse}</div>}
+                {prestataireInfo?.code_postal && prestataireInfo?.ville && (
+                  <div>{prestataireInfo.code_postal} {prestataireInfo.ville}</div>
+                )}
+                {prestataireInfo?.email && <div>Email: {prestataireInfo.email}</div>}
+                {prestataireInfo?.telephone && <div>Tél: {prestataireInfo.telephone}</div>}
+                {prestataireInfo?.siret && <div>SIRET: {prestataireInfo.siret}</div>}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <h2 style={{ margin: 0, fontSize: 32, color: '#130183', fontWeight: 700 }}>DEVIS</h2>
+              <div style={{ fontSize: 14, marginTop: 10 }}>
+                <div><strong>N° :</strong> {selectedDevis?.num_devis || `DEVIS-${selectedDevis?.id}`}</div>
+                <div><strong>Date :</strong> {new Date().toLocaleDateString('fr-FR')}</div>
+                <div style={{ marginTop: 10, padding: 8, background: '#E8EAF6', borderRadius: 4 }}>
+                  <strong>Valable jusqu'au :</strong><br />
+                  {new Date(Date.now() + (parseInt(reponse.validite_jours) || 30) * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Informations client */}
+          <div style={{ marginBottom: 30 }}>
+            <h2 style={{ fontSize: 16, color: '#130183', marginBottom: 10, borderBottom: '2px solid #E8EAF6', paddingBottom: 5 }}>
+              CLIENT
+            </h2>
+            <div style={{ fontSize: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 5 }}>{selectedDevis?.profiles?.nom}</div>
+              {selectedDevis?.profiles?.email && <div>Email: {selectedDevis.profiles.email}</div>}
+              {selectedDevis?.endroit && <div>Lieu: {selectedDevis.endroit}</div>}
+            </div>
+          </div>
+
+          {/* Détails de la prestation */}
+          <div style={{ marginBottom: 30 }}>
+            <h2 style={{ fontSize: 16, color: '#130183', marginBottom: 10, borderBottom: '2px solid #E8EAF6', paddingBottom: 5 }}>
+              DÉTAILS DE LA PRESTATION
+            </h2>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr style={{ background: '#E8EAF6' }}>
+                  <th style={{ padding: 10, textAlign: 'left', border: '1px solid #ddd' }}>Description</th>
+                  <th style={{ padding: 10, textAlign: 'center', border: '1px solid #ddd', width: 100 }}>Quantité</th>
+                  <th style={{ padding: 10, textAlign: 'right', border: '1px solid #ddd', width: 120 }}>Prix unitaire</th>
+                  <th style={{ padding: 10, textAlign: 'right', border: '1px solid #ddd', width: 120 }}>Total HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: 10, border: '1px solid #ddd' }}>
+                    <strong>{selectedDevis?.annonces?.titre || 'Prestation photo'}</strong>
+                    <div style={{ fontSize: 12, color: '#666', marginTop: 5 }}>
+                      Date: {selectedDevis?.date ? new Date(selectedDevis.date).toLocaleDateString('fr-FR') : '-'}<br />
+                      Durée: {selectedDevis?.duree || '-'}h<br />
+                      Participants: {selectedDevis?.participants || '-'}
+                    </div>
+                  </td>
+                  <td style={{ padding: 10, textAlign: 'center', border: '1px solid #ddd' }}>1</td>
+                  <td style={{ padding: 10, textAlign: 'right', border: '1px solid #ddd' }}>
+                    {reponse.montant ? parseFloat(reponse.montant).toFixed(2) : '0.00'} EURO
+                  </td>
+                  <td style={{ padding: 10, textAlign: 'right', border: '1px solid #ddd', fontWeight: 700 }}>
+                    {reponse.montant ? parseFloat(reponse.montant).toFixed(2) : '0.00'} EURO
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totaux */}
+          <div style={{ marginLeft: 'auto', width: 300, marginBottom: 30 }}>
+            <table style={{ width: '100%', fontSize: 14 }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: 8, textAlign: 'right' }}>Total HT:</td>
+                  <td style={{ padding: 8, textAlign: 'right', fontWeight: 700 }}>
+                    {reponse.montant ? parseFloat(reponse.montant).toFixed(2) : '0.00'} EURO
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: 8, textAlign: 'right' }}>TVA (20%):</td>
+                  <td style={{ padding: 8, textAlign: 'right' }}>
+                    {reponse.montant ? (parseFloat(reponse.montant) * 0.2).toFixed(2) : '0.00'} EURO
+                  </td>
+                </tr>
+                <tr style={{ borderTop: '2px solid #130183', background: '#E8EAF6' }}>
+                  <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, fontSize: 16 }}>Total TTC:</td>
+                  <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, fontSize: 18, color: '#130183' }}>
+                    {reponse.montant ? (parseFloat(reponse.montant) * 1.2).toFixed(2) : '0.00'} EURO
+                  </td>
+                </tr>
+                {reponse.montant_acompte && parseFloat(reponse.montant_acompte) > 0 && (
+                  <tr style={{ background: '#FFF9E6' }}>
+                    <td style={{ padding: 8, textAlign: 'right', color: '#d97706' }}>Acompte requis:</td>
+                    <td style={{ padding: 8, textAlign: 'right', fontWeight: 700, color: '#d97706' }}>
+                      {parseFloat(reponse.montant_acompte).toFixed(2)} EURO
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Conditions */}
+          <div style={{ marginTop: 40, padding: 15, background: '#f8fafc', borderRadius: 4 }}>
+            <h2 style={{ fontSize: 14, color: '#130183', marginBottom: 10 }}>CONDITIONS GÉNÉRALES</h2>
+            <div style={{ fontSize: 11, lineHeight: 1.6, color: '#666' }}>
+              <p style={{ margin: '5px 0' }}>• Ce devis est valable {reponse.validite_jours || '30'} jours à compter de sa date d'émission.</p>
+              <p style={{ margin: '5px 0' }}>• Un acompte de {reponse.montant_acompte || '30%'} est requis pour confirmer la réservation.</p>
+              <p style={{ margin: '5px 0' }}>• Le solde est à régler le jour de la prestation.</p>
+              <p style={{ margin: '5px 0' }}>• Toute annulation doit être notifiée par écrit selon les conditions d'annulation de l'annonce.</p>
+              <p style={{ margin: '5px 0' }}>• Les droits d'utilisation des photos sont définis dans le contrat de prestation.</p>
+            </div>
+          </div>
+
+          {/* Pied de page */}
+          <div style={{ marginTop: 40, paddingTop: 20, borderTop: '1px solid #ddd', textAlign: 'center', fontSize: 11, color: '#999' }}>
+            <p>Devis généré via la plateforme Shooty</p>
+            <p>Pour toute question, contactez-nous à {prestataireInfo?.email || 'contact@shooty.com'}</p>
+          </div>
+        </div>
+      </div>
     </>
   )
 }

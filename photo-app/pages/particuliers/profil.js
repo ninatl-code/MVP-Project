@@ -231,11 +231,37 @@ function UserProfile() {
               console.error('❌ Erreur annonces favorites:', annoncesError);
             } else {
               console.log('✅ Annonces favorites chargées:', annoncesData?.length);
-              annoncesList = (annoncesData || []).map(a => ({
-                id: a.id,
-                titre: a.titre,
-                photo: Array.isArray(a.photos) && a.photos.length > 0 ? a.photos[0] : DEFAULT_ANNONCE_IMG
-              }));
+              annoncesList = (annoncesData || []).map(a => {
+                // Gérer les photos (text array en base64 ou URLs)
+                let photosArray = [];
+                if (a.photos && Array.isArray(a.photos)) {
+                  photosArray = a.photos;
+                }
+                
+                // Récupérer la première photo et la formater correctement
+                let firstPhoto = DEFAULT_ANNONCE_IMG;
+                if (photosArray.length > 0) {
+                  const photoData = photosArray[0];
+                  // Si la photo commence déjà par data:image, l'utiliser directement
+                  if (photoData && photoData.startsWith('data:image')) {
+                    firstPhoto = photoData;
+                  } 
+                  // Si c'est du base64 pur, ajouter le préfixe data URL
+                  else if (photoData && photoData.length > 100) {
+                    firstPhoto = `data:image/jpeg;base64,${photoData}`;
+                  }
+                  // Sinon, si c'est une URL normale
+                  else if (photoData && (photoData.startsWith('http') || photoData.startsWith('/'))) {
+                    firstPhoto = photoData;
+                  }
+                }
+                
+                return {
+                  id: a.id,
+                  titre: a.titre,
+                  photo: firstPhoto
+                };
+              });
             }
           }
         }
