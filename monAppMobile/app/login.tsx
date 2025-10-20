@@ -1,16 +1,16 @@
 import { useState } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import { supabase } from '../lib/supabaseClient'
-import { useRouter } from 'next/router'
-import Headerhomepage from '../components/Headerhomepage';
+import { useNavigation } from '@react-navigation/native'
+import Headerhomepage from '../components/Headerhomepage'
 
-function Login() {
+export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const router = useRouter()
+  const navigation = useNavigation()
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
+  const handleLogin = async () => {
     setLoading(true)
     setErrorMsg('')
 
@@ -50,66 +50,119 @@ function Login() {
 
     // Vérifier le rôle
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
-    if (profile?.role === 'prestataire') router.push('/prestataires/menu')
-    else router.push('/particuliers/menu')
+    if (profile?.role === 'prestataire') (navigation as any).navigate('prestataires/menu')
+    else (navigation as any).navigate('particuliers/menu')
 
     setLoading(false)
   }
 
   return (
-    <>
-      <Headerhomepage />
-    <main style={{
-      maxWidth: 400,
-      margin: "80px auto",
-      padding: 24,
-      background: "#fff",
-      borderRadius: 16,
-      boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
-      textAlign: "center"
-    }}>
-      <h1 style={{ fontWeight: 700, fontSize: 28, marginBottom: 24 }}>Connexion</h1>
-      {errorMsg && (
-        <div style={{ color: "#e67c73", marginBottom: 16, fontWeight: 500 }}>
-          {errorMsg}
-        </div>
-      )}
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={e => setForm({ ...form, email: e.target.value })}
-          style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
-        /><br />
-        <input
-          type="password"
-          placeholder="Mot de passe"
-          value={form.password}
-          onChange={e => setForm({ ...form, password: e.target.value })}
-          style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
-        /><br />
-        <button
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "12px 0",
-            borderRadius: 10,
-            background: "#D4AF37",
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: 16,
-            border: "none",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1
-          }}
-        >
-          {loading ? 'Connexion...' : 'Se connecter'}
-        </button>
-      </form>
-    </main>
-    </>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Headerhomepage />
+        <View style={styles.main}>
+          <Text style={styles.title}>Connexion</Text>
+          {errorMsg && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
+          <View style={styles.form}>
+            <TextInput
+              placeholder="Email"
+              value={form.email}
+              onChangeText={(text) => setForm({ ...form, email: text })}
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              placeholder="Mot de passe"
+              value={form.password}
+              onChangeText={(text) => setForm({ ...form, password: text })}
+              style={styles.input}
+              secureTextEntry
+            />
+            <TouchableOpacity
+              disabled={loading}
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
-export default Login;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff'
+  },
+  scrollContent: {
+    flexGrow: 1
+  },
+  main: {
+    maxWidth: 400,
+    width: '100%',
+    alignSelf: 'center',
+    marginTop: 80,
+    padding: 24,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3
+  },
+  title: {
+    fontWeight: '700',
+    fontSize: 28,
+    marginBottom: 24,
+    textAlign: 'center'
+  },
+  errorBox: {
+    marginBottom: 16
+  },
+  errorText: {
+    color: '#e67c73',
+    fontWeight: '500',
+    textAlign: 'center'
+  },
+  form: {
+    width: '100%'
+  },
+  input: {
+    width: '100%',
+    marginBottom: 14,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    fontSize: 16
+  },
+  button: {
+    width: '100%',
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#D4AF37',
+    alignItems: 'center'
+  },
+  buttonDisabled: {
+    opacity: 0.7
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16
+  }
+});
