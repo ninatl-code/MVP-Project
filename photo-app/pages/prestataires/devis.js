@@ -1,10 +1,13 @@
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
 import PrestataireHeader from '../../components/HeaderPresta'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { useCameraSplashNavigation } from '../../components/CameraSplash'
 
 export default function DevisPrestataire() {
+  const router = useRouter()
   const [devisList, setDevisList] = useState([])
   const [annonces, setAnnonces] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
@@ -22,6 +25,7 @@ export default function DevisPrestataire() {
   const [prestataireInfo, setPrestataireInfo] = useState(null)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const devisRef = useRef(null)
+  const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
 
   // Récupère les annonces du prestataire
   useEffect(() => {
@@ -221,20 +225,26 @@ Bien à vous,
       }
 
       const now = new Date().toISOString()
-      // Récupère unit_tarif depuis l'annonce liée
-      const unitTarif = selectedDevis.annonces?.unit_tarif || "";
+      
+      // Préparer les données à mettre à jour
+      const updateData = {
+        comment_presta: reponse.comment_presta,
+        montant: reponse.montant,
+        montant_acompte: reponse.montant_acompte,
+        date_reponse: now,
+        status: 'answered',
+        devis_pdf: [pdfBase64]
+      }
+      
+      // Ajouter unit_tarif seulement s'il existe
+      const unitTarif = selectedDevis.annonces?.unit_tarif;
+      if (unitTarif) {
+        updateData.unit_tarif = unitTarif;
+      }
       
       const { error } = await supabase
         .from('devis')
-        .update({
-          comment_presta: reponse.comment_presta,
-          montant: reponse.montant,
-          montant_acompte: reponse.montant_acompte,
-          unit_tarif: unitTarif,
-          date_reponse: now,
-          status: 'answered',
-          devis_pdf: [pdfBase64]
-        })
+        .update(updateData)
         .eq('id', selectedDevis.id)
 
       if (error) throw error
@@ -253,7 +263,9 @@ Bien à vous,
 
       setSending(false)
       setShowPopup(false)
-      alert('✅ Réponse envoyée avec succès ! Le devis PDF a été joint.')
+      
+      // Déclencher le camera splash et rafraîchir la page
+      navigateWithSplash(router.asPath)
       
     } catch (error) {
       console.error('Erreur:', error)
@@ -770,6 +782,9 @@ Bien à vous,
           </div>
         </div>
       </div>
+      
+      {/* Camera Splash Component */}
+      {CameraSplashComponent}
     </>
   )
 }

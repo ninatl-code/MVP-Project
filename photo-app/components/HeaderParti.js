@@ -103,7 +103,7 @@ export default function Header() {
                         <MessageCircle className="w-5 h-5" />
                       </IconButton>
                       {nbUnread > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-black-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                        <span className="cursor-pointer absolute -top-1 -right-1 bg-red-800 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                           {nbUnread}
                         </span>
                       )}
@@ -199,7 +199,7 @@ function NotificationsPopup({ router }) {
       >
         <Bell className="w-5 h-5" />
         {notifications.filter((n) => !n.lu).length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-black-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+          <span className="cursor-pointer absolute -top-1 -right-1 bg-red-800 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
             {notifications.filter((n) => !n.lu).length}
           </span>
         )}

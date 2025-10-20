@@ -869,7 +869,7 @@ function ParticularHomeMenu() {
                   � Tarification
                 </h2>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span style={{ fontSize: 14, color: '#555' }}>Montant total :</span>
+                  <span style={{ fontSize: 14, color: '#555' }}>Montant total HT :</span>
                   <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{devis.montant || 0} MAD</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -912,7 +912,7 @@ function ParticularHomeMenu() {
                 marginBottom: 24
               }}>
                 <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#4338CA', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  � Réponse du prestataire
+                  💬 Réponse du prestataire
                 </h4>
                 <p style={{ margin: 0, fontSize: 14, color: '#4338CA', fontStyle: 'italic' }}>
                   "{devis.comment_presta}"
@@ -920,6 +920,67 @@ function ParticularHomeMenu() {
                 {devis.date_reponse && (
                   <div style={{ marginTop: 8, fontSize: 12, color: '#6366F1' }}>
                     Répondu le {new Date(devis.date_reponse).toLocaleDateString('fr-FR')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PDF du devis */}
+            {devis.devis_pdf && devis.devis_pdf.length > 0 && devis.devis_pdf[0] && (
+              <div style={{
+                background: 'linear-gradient(135deg, #E8EAF6 0%, #F8F9FB 100%)',
+                border: '2px solid #635BFF',
+                borderRadius: 12,
+                padding: 20,
+                marginBottom: 24
+              }}>
+                <h4 style={{ 
+                  fontSize: 16, 
+                  fontWeight: 600, 
+                  marginBottom: 12, 
+                  color: '#130183', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 8 
+                }}>
+                  📄 Devis PDF
+                </h4>
+                <p style={{ margin: '0 0 16px 0', fontSize: 13, color: '#4B5563' }}>
+                  Le prestataire a généré un devis détaillé au format PDF
+                </p>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <button
+                    style={{
+                      background: '#635BFF',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 10,
+                      padding: '12px 20px',
+                      fontWeight: 600,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flex: '1 1 auto',
+                      justifyContent: 'center'
+                    }}
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = 'data:application/pdf;base64,' + devis.devis_pdf[0];
+                      link.download = `Devis-${devis.num_devis || devis.id}.pdf`;
+                      link.click();
+                    }}
+                    onMouseOver={(e) => e.target.style.background = '#4F46E5'}
+                    onMouseOut={(e) => e.target.style.background = '#635BFF'}
+                  >
+                    ⬇️ Télécharger le PDF
+                  </button>
+                </div>
+                {devis.num_devis && (
+                  <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
+                    Numéro de devis : {devis.num_devis}
                   </div>
                 )}
               </div>
@@ -1122,7 +1183,7 @@ function ParticularHomeMenu() {
                 💰 Facturation
               </h2>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 14, color: '#555' }}>Montant total :</span>
+                <span style={{ fontSize: 14, color: '#555' }}>Montant total HT :</span>
                 <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>{reservation.montant || 0} MAD</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>

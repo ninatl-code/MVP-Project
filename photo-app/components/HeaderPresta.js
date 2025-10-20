@@ -4,14 +4,25 @@ import { supabase } from "../lib/supabaseClient";
 import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, BarChart3 } from "lucide-react";
 import { ShootyLogoSimple } from "./ShootyLogo";
 
-const GOLD = "#FFD600";
+// Palette Shooty
+const COLORS = {
+  primary: '#E8EAF6',     
+  secondary: '#5C6BC0',    
+  accent: '#130183',      
+  background: '#F8F9FB',  
+  text: '#1C1C1E',        // Noir - Utilisé pour les titres Devis, Réservations, Mes annonces, Planning
+};
 
 function IconButton({ children, onClick, className = "" }) {
   return (
     <button
-      className={`w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 hover:bg-yellow-400 text-white hover:text-slate-900 transition-colors shadow ${className}`}
+      className={`cursor-pointer w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 hover:bg-yellow-400 text-white hover:text-slate-900 transition-colors shadow ${className}`}
+      style={{backgroundColor: COLORS.accent}}
+      onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
+      onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}
       onClick={onClick}
       type="button"
+
     >
       {children}
     </button>
@@ -77,16 +88,16 @@ export default function Header() {
         <div className="flex items-center gap-2">
           <IconButton onClick={() => router.push("/prestataires/menu")}
             className="text-white"
-            style={{backgroundColor: 'var(--primary)'}}
-            onMouseEnter={e => e.target.style.backgroundColor = 'var(--accent)'}
-            onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}>
+            style={{backgroundColor: COLORS.primary}}
+            onMouseEnter={e => e.target.style.backgroundColor = COLORS.accent}
+            onMouseLeave={e => e.target.style.backgroundColor = COLORS.primary}>
             <Menu className="w-5 h-5" />
           </IconButton>
           <IconButton onClick={() => router.push("/prestataires/kpis")}
             className="text-white"
-            style={{backgroundColor: 'var(--primary)'}}
-            onMouseEnter={e => e.target.style.backgroundColor = 'var(--accent)'}
-            onMouseLeave={e => e.target.style.backgroundColor = 'var(--primary)'}
+            style={{backgroundColor: COLORS.primary}}
+            onMouseEnter={e => e.target.style.backgroundColor = COLORS.accent}
+            onMouseLeave={e => e.target.style.backgroundColor = COLORS.primary}
             title="Statistiques et KPIs">
             <BarChart3 className="w-5 h-5" />
           </IconButton>
@@ -97,7 +108,7 @@ export default function Header() {
               <MessageCircle className="w-5 h-5" />
             </IconButton>
             {nbUnread > 0 && (
-              <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+              <span className="cursor-pointer absolute -top-1 -right-1 bg-red-800 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                 {nbUnread}
               </span>
             )}
@@ -106,7 +117,7 @@ export default function Header() {
             <LogOut className="w-5 h-5" />
           </IconButton>
           <button
-            className="ml-2 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-slate-700 overflow-hidden hover:border-slate-800 transition-colors"
+            className="cursor-pointer ml-2 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-blue-700 overflow-hidden hover:border-slate-800 transition-colors"
             onClick={() => router.push("/prestataires/profil")}
             type="button"
           >
@@ -180,6 +191,9 @@ function NotificationsPopup({ router }) {
   return (
     <div className="relative">
       <button
+        style={{backgroundColor: COLORS.accent}}
+        onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
+        onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}
         onClick={async () => {
           setOpen(!open);
           if (!open) await markAllAsRead();
@@ -188,7 +202,7 @@ function NotificationsPopup({ router }) {
       >
         <Bell className="w-5 h-5" />
         {notifications.filter((n) => !n.lu).length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+          <span className="cursor-pointer absolute -top-1 -right-1 bg-red-800 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
             {notifications.filter((n) => !n.lu).length}
           </span>
         )}
