@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F8F9FB;
+  --foreground: #1C1C1E;
+  --primary: #E8EAF6;
+  --secondary: #5C6BC0;
+  --accent: #130183;
+}
+
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1C1C1E;
+    --foreground: #F8F9FB;
+  }
+}
+
+/* Shooty Color Palette */
+:root {
+  --primary: #E8EAF6;
+  --secondary: #5C6BC0;
+  --accent: #130183;
+  --background: #F8F9FB;
+  --text: #1C1C1E;
+  
+  /* Variations pour hover et états */
+  --primary-hover: #5248e6;
+  --secondary-hover: #5C6BC0;
+  --accent-hover: #130183;
+  
+  /* Couleurs fonctionnelles */
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--text);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.fc .fc-button, .fc .fc-button-primary {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.fc .fc-button-active, .fc .fc-button:active, .fc .fc-button-primary:active {
+  background: var(--accent) !important;
+}
+.fc .fc-button:hover, .fc .fc-button-primary:hover {
+  background: var(--accent) !important;
+}
+/* Styles pour les titres avec la nouvelle palette Shooty */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--foreground) !important;
+}
+h3 {
+  color: var(--primary) !important;
+}
+
+/* Utilities pour l'UI améliorée */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.group:hover .group-hover\:text-pink-600 {
+  color: #820615 !important;
+}
+
+/* Animation pour les boutons */
+button {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Styles pour les badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Hover effects améliorés */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+}
