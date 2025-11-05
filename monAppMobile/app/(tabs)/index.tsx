@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../../lib/supabaseClient";
-import Headerhomepage from '../../components/Headerhomepage';
+import BottomNavBar from '../../components/BottomNavBar';
 
 const COLORS = {
-  primary: '#E8EAF6',
-  secondary: '#5C6BC0',
-  accent: '#130183',
+  primary: '#fff',
+  accent: '#635BFF',
   background: '#F8F9FB',
-  text: '#1C1C1E'
+  text: '#222',
+  card: '#fff',
+  cardInactive: '#f3f3f3',
+  border: '#E5E7EB',
+  shadow: '#000',
 };
 
 export default function Homepage() {
@@ -106,494 +109,246 @@ export default function Homepage() {
           )}
         </View>
         <View style={styles.cardContent}>
-          <Text style={styles.cardMeta}>
-            <Text style={styles.cardLabel}>Photographe : </Text>
-            {profiles[prestation.prestataire] || prestation.prestataire}
-          </Text>
-          <Text style={styles.cardMeta}>
-            <Text style={styles.cardLabel}>Date : </Text>
-            {prestation.created_at ? new Date(prestation.created_at).toLocaleDateString('fr-FR') : ''}
-          </Text>
           <Text style={styles.cardTitle}>{prestation.titre}</Text>
-          <Text style={styles.cardInfo}>
-            <Text style={styles.cardLabel}>Spécialité : </Text>
-            {getCategorieNom(prestation.prestation)}
-          </Text>
-          <Text style={styles.cardInfo}>
-            <Text style={styles.cardLabel}>Tarif : </Text>
-            {prestation.tarification}
-          </Text>
-          <Text style={styles.cardInfo}>
-            <Text style={styles.cardLabel}>Ville : </Text>
-            {villes[prestation.ville] || "-"}
-          </Text>
-          <Text style={styles.cardInfo}>
-            <Text style={styles.cardLabel}>Région : </Text>
-            {regions[prestation.region] || "-"}
-          </Text>
+          <Text style={styles.cardMeta}>{getCategorieNom(prestation.prestation)} • {villes[prestation.ville] || "-"} • {regions[prestation.region] || "-"}</Text>
+          <Text style={styles.cardInfo}>Tarif : {prestation.tarification}</Text>
+          <Text style={styles.cardInfo}>Photographe : {profiles[prestation.prestataire] || prestation.prestataire}</Text>
+          <Text style={styles.cardInfo}>Date : {prestation.created_at ? new Date(prestation.created_at).toLocaleDateString('fr-FR') : ''}</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Headerhomepage />
-      
-      {/* Hero Section */}
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle}>
-          Réservez votre photographe idéal en quelques clics
-        </Text>
-        <Text style={styles.heroSubtitle}>
-          Trouvez des photographes talentueux, découvrez leurs portfolios, comparez les tarifs et réservez votre shooting facilement.
-        </Text>
-        <View style={styles.heroButtons}>
-          <TouchableOpacity
-            style={styles.outlineButton}
-            onPress={() => (navigation as any).navigate("signup")}
-          >
-            <Text style={styles.outlineButtonText}>Rejoindre en tant que photographe</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Découvrir les photographes</Text>
-          </TouchableOpacity>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Hero Section */}
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Réservez votre photographe idéal</Text>
+          <Text style={styles.heroSubtitle}>Trouvez des photographes talentueux, découvrez leurs portfolios, comparez les tarifs et réservez facilement.</Text>
+          
         </View>
-      </View>
-
-      {/* Main Content */}
-      <View style={styles.content}>
-        {/* Section Catégories */}
+        {/* Catégories */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Photographes disponibles</Text>
-          <View style={styles.categoriesGrid}>
+          <Text style={styles.sectionTitle}>Catégories</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
             {categories.map((cat: any) => (
               <TouchableOpacity
                 key={cat.id}
+                style={[styles.categoryCard, selectedCategory === cat.id && styles.categoryCardSelected]}
                 onPress={() => handleCategorieClick(cat.id)}
-                style={[
-                  styles.categoryCard,
-                  selectedCategory === cat.id && styles.categoryCardSelected
-                ]}
               >
-                <Text style={[styles.categoryTitle, selectedCategory === cat.id && styles.categoryTitleSelected]}>
-                  {cat.nom}
-                </Text>
-                <Text style={[styles.categoryDesc, selectedCategory === cat.id && styles.categoryDescSelected]}>
-                  Découvrez des photographes spécialisés en {cat.nom.toLowerCase()}.
-                </Text>
+                <Text style={[styles.categoryTitle, selectedCategory === cat.id && styles.categoryTitleSelected]}>{cat.nom}</Text>
               </TouchableOpacity>
             ))}
-          </View>
-          
-          {loading && <Text style={styles.loadingText}>Chargement...</Text>}
-          {stepMsg !== "" && <Text style={styles.stepMsg}>{stepMsg}</Text>}
-          
-          {selectedCategory && !loading && searchResults.length === 0 && (
-            <Text style={styles.noResults}>
-              OUPS, aucun photographe n'est disponible dans cette catégorie pour le moment.
-            </Text>
-          )}
-          
+          </ScrollView>
+        </View>
+        {/* Résultats */}
+        <View style={styles.section}>
+          {stepMsg ? <Text style={styles.stepMsg}>{stepMsg}</Text> : null}
+          {loading && <ActivityIndicator size="large" color={COLORS.accent} style={{ marginVertical: 24 }} />}
+          {!loading && searchResults.length === 0 && !stepMsg ? (
+            <Text style={styles.noResults}>Aucune annonce trouvée</Text>
+          ) : null}
           <View style={styles.resultsGrid}>
             {searchResults.map((prestation: any) => (
               <PrestationCard key={prestation.id} prestation={prestation} />
             ))}
           </View>
         </View>
-
-        {/* Section Comment ça marche */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Comment ça marche</Text>
-          <View style={styles.stepsContainer}>
-            <View style={styles.stepCard}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
-              </View>
-              <Text style={styles.stepTitle}>Inscription</Text>
-              <Text style={styles.stepDesc}>
-                Créez un compte gratuitement en quelques étapes simples.
-              </Text>
-            </View>
-            <View style={styles.stepCard}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <Text style={styles.stepTitle}>Recherche</Text>
-              <Text style={styles.stepDesc}>
-                Trouvez le photographe idéal selon votre style et votre budget.
-              </Text>
-            </View>
-            <View style={styles.stepCard}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <Text style={styles.stepTitle}>Réservation</Text>
-              <Text style={styles.stepDesc}>
-                Réservez votre shooting en ligne et sécurisez votre date facilement.
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Section FAQ */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Questions fréquentes</Text>
-          <View style={styles.faqContainer}>
-            <View style={styles.faqItem}>
-              <Text style={styles.faqQuestion}>Q : Comment puis-je contacter un photographe ?</Text>
-              <Text style={styles.faqAnswer}>
-                R : Vous pouvez contacter un photographe directement via notre plateforme en cliquant sur le bouton "Contacter" sur son profil.
-              </Text>
-            </View>
-            <View style={styles.faqItem}>
-              <Text style={styles.faqQuestion}>Q : Les paiements sont-ils sécurisés ?</Text>
-              <Text style={styles.faqAnswer}>
-                R : Oui, tous les paiements sont traités de manière sécurisée via notre partenaire de paiement.
-              </Text>
-            </View>
-            <View style={styles.faqItem}>
-              <Text style={styles.faqQuestion}>Q : Puis-je annuler mon shooting ?</Text>
-              <Text style={styles.faqAnswer}>
-                R : Oui, vous pouvez annuler votre shooting sous certaines conditions. Veuillez consulter notre politique d'annulation pour plus de détails.
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerContent}>
-          <View style={styles.footerSection}>
-            <Text style={styles.footerTitle}>Liens utiles</Text>
-            <Text style={styles.footerLink}>Comment ça marche</Text>
-            <Text style={styles.footerLink}>Photographes</Text>
-            <Text style={styles.footerLink}>Aide</Text>
-            <Text style={styles.footerLink}>Connexion</Text>
-            <Text style={styles.footerLink}>S'inscrire</Text>
-          </View>
-          <View style={styles.footerSection}>
-            <Text style={styles.footerTitle}>Contact</Text>
-            <Text style={styles.footerText}>
-              Vous avez des questions ? N'hésitez pas à nous contacter.
-            </Text>
-            <Text style={styles.footerEmail}>contact@shooty.fr</Text>
-          </View>
-        </View>
-        <Text style={styles.footerCopyright}>
-          © 2023 Wedoria. Tous droits réservés.
-        </Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+      <BottomNavBar />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: COLORS.background
+    backgroundColor: COLORS.background,
+    position: 'relative',
+    paddingTop: 64, // Ajout d'une marge en haut
+  },
+  container: {
+    paddingBottom: 80,
+    paddingHorizontal: 0,
   },
   hero: {
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 80,
-    backgroundColor: '#fff'
+    paddingHorizontal: 18,
+    paddingTop: 32,
+    paddingBottom: 32,
+    backgroundColor: COLORS.primary,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
   },
   heroTitle: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
     textAlign: 'center',
     color: COLORS.text,
-    maxWidth: 600,
-    marginBottom: 24
+    marginBottom: 12,
   },
   heroSubtitle: {
-    fontSize: 18,
+    fontSize: 16,
     textAlign: 'center',
     color: '#666',
-    maxWidth: 500,
-    marginBottom: 40,
-    lineHeight: 26
+    marginBottom: 24,
+    lineHeight: 22,
   },
   heroButtons: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
     flexWrap: 'wrap',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   outlineButton: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: COLORS.accent
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
+    marginLeft: 8,
   },
   outlineButtonText: {
     color: COLORS.accent,
     fontWeight: '600',
-    fontSize: 16
+    fontSize: 16,
   },
   primaryButton: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 16,
-    backgroundColor: COLORS.accent
+    backgroundColor: COLORS.accent,
   },
   primaryButtonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 16
-  },
-  content: {
-    maxWidth: 1200,
-    width: '100%',
-    alignSelf: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 64
+    fontSize: 16,
   },
   section: {
-    marginBottom: 64
+    marginBottom: 24,
+    paddingHorizontal: 18,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 24,
-    color: COLORS.text
+    marginBottom: 16,
+    color: COLORS.text,
   },
-  categoriesGrid: {
-    gap: 32,
-    marginBottom: 24
+  categoriesScroll: {
+    marginBottom: 8,
   },
   categoryCard: {
     borderRadius: 16,
-    padding: 24,
-    backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
+    borderColor: COLORS.border,
+    marginRight: 12,
+    elevation: 2,
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 2
   },
   categoryCardSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-    transform: [{ scale: 1.02 }]
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+    transform: [{ scale: 1.04 }],
   },
   categoryTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
-    color: COLORS.text
+    color: COLORS.text,
   },
   categoryTitleSelected: {
-    color: '#fff'
-  },
-  categoryDesc: {
-    color: '#6B7280',
-    fontSize: 16,
-    lineHeight: 24
-  },
-  categoryDescSelected: {
-    color: '#E5E7EB'
-  },
-  loadingText: {
-    textAlign: 'center',
-    fontWeight: '600',
-    paddingVertical: 32,
-    color: COLORS.primary,
-    fontSize: 16
+    color: '#fff',
   },
   stepMsg: {
     textAlign: 'center',
     fontWeight: '600',
-    paddingVertical: 16,
+    paddingVertical: 12,
     color: COLORS.accent,
-    fontSize: 14
+    fontSize: 14,
   },
   noResults: {
     textAlign: 'center',
-    paddingVertical: 48,
+    paddingVertical: 32,
     fontWeight: '600',
-    fontSize: 18,
-    color: COLORS.accent
+    fontSize: 16,
+    color: COLORS.accent,
   },
   resultsGrid: {
-    gap: 18,
-    flexDirection: 'row',
-    flexWrap: 'wrap'
+    gap: 12,
+    flexDirection: 'column',
+    flexWrap: 'wrap',
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 22,
-    width: 340,
-    marginBottom: 18,
-    marginRight: 18,
-    shadowColor: '#000',
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    marginBottom: 14,
+    elevation: 2,
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 2,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   cardInactive: {
-    backgroundColor: '#f3f3f3',
-    opacity: 0.6
+    backgroundColor: COLORS.cardInactive,
+    opacity: 0.6,
   },
   cardImageContainer: {
     width: '100%',
-    height: 180,
-    backgroundColor: '#f3f3f3'
+    height: 160,
+    backgroundColor: COLORS.cardInactive,
   },
   cardImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover'
+    resizeMode: 'cover',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
   },
   noImage: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ededed'
+    backgroundColor: '#ededed',
   },
   noImageText: {
     color: '#bbb',
-    fontSize: 32
+    fontSize: 24,
   },
   cardContent: {
-    padding: 20,
-    backgroundColor: '#fff'
-  },
-  cardMeta: {
-    fontSize: 15,
-    color: '#888',
-    marginBottom: 6
-  },
-  cardLabel: {
-    color: COLORS.primary,
-    fontWeight: 'bold'
+    padding: 16,
+    backgroundColor: COLORS.card,
   },
   cardTitle: {
     fontWeight: '700',
-    fontSize: 22,
-    marginBottom: 6,
-    lineHeight: 26,
-    color: COLORS.text
+    fontSize: 18,
+    marginBottom: 4,
+    lineHeight: 22,
+    color: COLORS.text,
+  },
+  cardMeta: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 4,
   },
   cardInfo: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#444',
-    marginBottom: 6
+    marginBottom: 4,
   },
-  stepsContainer: {
-    flexDirection: 'row',
-    gap: 16,
-    flexWrap: 'wrap'
-  },
-  stepCard: {
-    flex: 1,
-    minWidth: 200,
-    alignItems: 'center'
-  },
-  stepNumber: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16
-  },
-  stepNumberText: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold'
-  },
-  stepTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: COLORS.text,
-    textAlign: 'center'
-  },
-  stepDesc: {
-    color: '#666',
-    textAlign: 'center',
-    fontSize: 16,
-    lineHeight: 24
-  },
-  faqContainer: {
-    gap: 16
-  },
-  faqItem: {
-    padding: 16,
-    borderRadius: 8,
-    backgroundColor: COLORS.background,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1
-  },
-  faqQuestion: {
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-    fontSize: 16
-  },
-  faqAnswer: {
-    color: '#666',
-    fontSize: 16,
-    lineHeight: 24
-  },
-  footer: {
-    backgroundColor: COLORS.text,
-    paddingVertical: 32
-  },
-  footerContent: {
-    maxWidth: 1200,
-    marginHorizontal: 48,
-    flexDirection: 'row',
-    gap: 32,
-    flexWrap: 'wrap',
-    marginBottom: 32
-  },
-  footerSection: {
-    flex: 1,
-    minWidth: 200
-  },
-  footerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: COLORS.secondary
-  },
-  footerLink: {
-    color: '#E5E7EB',
-    marginBottom: 8,
-    fontSize: 16
-  },
-  footerText: {
-    color: '#D1D5DB',
-    marginBottom: 8,
-    fontSize: 16,
-    lineHeight: 24
-  },
-  footerEmail: {
-    color: COLORS.secondary,
-    fontWeight: '600',
-    fontSize: 16
-  },
-  footerCopyright: {
-    textAlign: 'center',
-    color: '#D1D5DB',
-    fontSize: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#4B5563',
-    paddingTop: 16,
-    marginHorizontal: 48
-  }
 });

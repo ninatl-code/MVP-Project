@@ -76,12 +76,12 @@ function Login() {
 
       console.log('3. Utilisateur connecté, ID:', data.user.id)
 
-      // Vérifier le rôle
+      // Vérifier le rôle dans la nouvelle table users
       console.log('4. Récupération du profil...')
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
+        .from('users')
+        .select('role, language, full_name')
+        .eq('auth_id', data.user.id)
         .single()
 
       console.log('5. Profil récupéré:', { role: profile?.role, error: profileError?.message })
@@ -94,9 +94,9 @@ function Login() {
         return
       }
 
-      // Redirection selon le rôle avec animation
-      const targetPath = profile?.role === 'prestataire' ? '/prestataires/menu' : '/particuliers/menu'
-      const message = profile?.role === 'prestataire' ? 'Accès à votre espace professionnel...' : 'Accès à votre espace...'
+      // Redirection vers le dashboard de gestion de projet
+      const targetPath = '/projectman'
+      const message = `Bienvenue ${profile?.full_name || 'back'}!`
       console.log('6. Redirection vers:', targetPath)
       
       clearTimeout(timeout)

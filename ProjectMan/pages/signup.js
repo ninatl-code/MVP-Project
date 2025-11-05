@@ -21,33 +21,66 @@ export default function Signup() {
   const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [nom, setNom] = useState('')
-  const [role, setRole] = useState('')
-  const [telephone, setTelephone] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [role, setRole] = useState('user')
+  const [language, setLanguage] = useState('en')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSignup = async () => {
-    if (!telephone) {
-      alert("Le numéro de téléphone est obligatoire")
+    setLoading(true)
+    setError('')
+
+    if (!fullName || !email || !password) {
+      setError("Tous les champs sont obligatoires")
+      setLoading(false)
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          nom,
-          role,
-          telephone
-        }
-      }
-    })
+    try {
+      // 1. Créer l'utilisateur dans auth.users
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password
+      })
 
-    if (error) {
-      alert(error.message)
-    } else {
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+        return
+      }
+
+      if (!authData.user) {
+        setError("Erreur lors de la création du compte")
+        setLoading(false)
+        return
+      }
+
+      // 2. Créer l'entrée dans public.users
+      const { error: userError } = await supabase
+        .from('users')
+        .insert([{
+          auth_id: authData.user.id,
+          full_name: fullName,
+          role: role,
+          language: language
+        }])
+
+      if (userError) {
+        console.error('Error creating user profile:', userError)
+        setError("Erreur lors de la création du profil")
+        setLoading(false)
+        return
+      }
+
       alert('Inscription réussie ! Vérifiez votre mail pour confirmer votre compte.')
+      router.push('/login')
+      
+    } catch (err) {
+      console.error('Signup error:', err)
+      setError("Une erreur est survenue")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -84,8 +117,8 @@ export default function Signup() {
 
       <input
         placeholder="Nom et Prénom"
-        value={nom}
-        onChange={e => setNom(e.target.value)}
+        value={fullName}
+        onChange={e => setFullName(e.target.value)}
         style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
       /><br />
 
@@ -97,28 +130,43 @@ export default function Signup() {
         style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
       /><br />
 
-      <input
-        type="text"
-        placeholder="Téléphone"
-        value={telephone}
-        onChange={e => setTelephone(e.target.value)}
-        style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
-        required
-      /><br />
-
       <div style={{ marginBottom: 18, textAlign: "left" }}>
-        <label style={{ fontWeight: 500, marginBottom: 6, display: "block" }}>Je suis :</label>
+        <label style={{ fontWeight: 500, marginBottom: 6, display: "block" }}>Rôle :</label>
         <select
           value={role}
           onChange={e => setRole(e.target.value)}
           style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #eee" }}
-          required
         >
-          <option value="">Sélectionner...</option>
-          <option value="prestataire">Prestataire</option>
-          <option value="particulier">Particulier</option>
+          <option value="user">Utilisateur</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Administrateur</option>
         </select>
       </div>
+
+      <div style={{ marginBottom: 18, textAlign: "left" }}>
+        <label style={{ fontWeight: 500, marginBottom: 6, display: "block" }}>Langue :</label>
+        <select
+          value={language}
+          onChange={e => setLanguage(e.target.value)}
+          style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #eee" }}
+        >
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+        </select>
+      </div>
+
+      {error && (
+        <div style={{ 
+          marginBottom: 14, 
+          padding: 10, 
+          borderRadius: 8, 
+          backgroundColor: '#FEE2E2', 
+          color: '#DC2626',
+          fontSize: 14
+        }}>
+          {error}
+        </div>
+      )}
 
       <button
         onClick={handleSignup}
