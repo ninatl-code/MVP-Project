@@ -57,7 +57,7 @@ export default function Signup() {
       }
 
       // 2. Créer l'entrée dans public.users
-      const { error: userError } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .insert([{
           auth_id: authData.user.id,
@@ -65,13 +65,16 @@ export default function Signup() {
           role: role,
           language: language
         }])
+        .select()
 
       if (userError) {
         console.error('Error creating user profile:', userError)
-        setError("Erreur lors de la création du profil")
+        setError(`Erreur lors de la création du profil: ${userError.message}`)
         setLoading(false)
         return
       }
+
+      console.log('User profile created:', userData)
 
       alert('Inscription réussie ! Vérifiez votre mail pour confirmer votre compte.')
       router.push('/login')
