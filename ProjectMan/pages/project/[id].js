@@ -2,62 +2,81 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
-import HeaderParti from '../../components/HeaderParti';
 
-// Removed: DELIVERABLES_BY_PHASE - now loaded dynamically from deliverable_types table
-
-// Noms des phases
-const PHASE_NAMES = {
-  en: ['Initiation', 'Planning', 'Execution', 'Monitoring & Control', 'Closure'],
-  fr: ['Initialisation', 'Planification', 'Exécution', 'Suivi & Contrôle', 'Clôture']
-};
-
-// Couleurs des statuts de phase
+// Couleurs des statuts
 const STATUS_COLORS = {
-  not_started: '#93c5fd', // 🩵 Bleu clair
-  in_progress: '#fb923c', // 🟠 Orange
-  completed: '#4ade80'    // 🟢 Vert
+  draft: '#f59e0b',
+  active: '#3b82f6', 
+  completed: '#10b981',
+  archived: '#6b7280',
+  not_started: '#93c5fd',
+  in_progress: '#fb923c',
+  validated: '#10b981'
 };
 
 // Traductions
 const LANGUAGES = {
   en: {
-    backToProjects: '← Back',
-    overview: 'Overview',
-    editProject: 'Edit',
-    changeStatus: 'Change Status',
+    backToProjects: '← Back to Projects',
+    projectOverview: 'Project Overview',
+    projectPhases: 'Project Phases',
+    documents: 'Documents',
+    createDocument: 'Create Document',
+    editProject: 'Edit Project',
+    projectDetails: 'Project Details',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    status: 'Status',
+    progress: 'Progress',
+    availableDocuments: 'Available Document Types',
+    existingDocuments: 'Existing Documents',
+    noDocuments: 'No documents created yet',
+    createFirst: 'Create your first document',
+    phase: 'Phase',
+    type: 'Type',
+    lastModified: 'Last Modified',
+    actions: 'Actions',
+    edit: 'Edit',
+    view: 'View',
     draft: 'Draft',
     active: 'Active',
     completed: 'Completed',
     archived: 'Archived',
-    deliverables: 'Deliverables',
-    selectDeliverable: 'Select a deliverable to view or edit',
-    addDeliverable: '+ Add Deliverable',
     notStarted: 'Not Started',
     inProgress: 'In Progress',
-    statusDraft: 'Draft',
-    statusInReview: 'In Review',
-    statusValidated: 'Validated',
-    loading: 'Loading...'
+    validated: 'Validated',
+    loading: 'Loading project...'
   },
   fr: {
-    backToProjects: '← Retour',
-    overview: 'Vue d\'ensemble',
-    editProject: 'Modifier',
-    changeStatus: 'Changer le Statut',
+    backToProjects: '← Retour aux Projets',
+    projectOverview: 'Aperçu du Projet',
+    projectPhases: 'Phases du Projet',
+    documents: 'Documents',
+    createDocument: 'Créer un Document',
+    editProject: 'Modifier le Projet',
+    projectDetails: 'Détails du Projet',
+    startDate: 'Date de Début',
+    endDate: 'Date de Fin',
+    status: 'Statut',
+    progress: 'Avancement',
+    availableDocuments: 'Types de Documents Disponibles',
+    existingDocuments: 'Documents Existants',
+    noDocuments: 'Aucun document créé',
+    createFirst: 'Créez votre premier document',
+    phase: 'Phase',
+    type: 'Type',
+    lastModified: 'Dernière Modification',
+    actions: 'Actions',
+    edit: 'Modifier',
+    view: 'Voir',
     draft: 'Brouillon',
-    active: 'Actif',
+    active: 'Actif', 
     completed: 'Terminé',
     archived: 'Archivé',
-    deliverables: 'Livrables',
-    selectDeliverable: 'Sélectionnez un livrable à voir ou modifier',
-    addDeliverable: '+ Ajouter un Livrable',
     notStarted: 'Non Commencé',
     inProgress: 'En Cours',
-    statusDraft: 'Brouillon',
-    statusInReview: 'En Révision',
-    statusValidated: 'Validé',
-    loading: 'Chargement...'
+    validated: 'Validé',
+    loading: 'Chargement du projet...'
   }
 };
 
@@ -66,26 +85,23 @@ export default function ProjectDetailPage() {
   const { id } = router.query;
   
   const [project, setProject] = useState(null);
+  const [phases, setPhases] = useState([]);
   const [projectPhases, setProjectPhases] = useState([]);
-  const [selectedPhaseIndex, setSelectedPhaseIndex] = useState(0);
   const [deliverableTypes, setDeliverableTypes] = useState([]);
-  const [projectDeliverables, setProjectDeliverables] = useState([]);
-  const [selectedDeliverableType, setSelectedDeliverableType] = useState(null);
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [templates, setTemplates] = useState([]);
+  const [existingDeliverables, setExistingDeliverables] = useState([]);
+  const [selectedPhase, setSelectedPhase] = useState(null);
+  const [user, setUser] = useState(null);
   const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
   
   const t = LANGUAGES[language];
-  const phaseNames = PHASE_NAMES[language];
   
   useEffect(() => {
     if (id) {
       loadProjectData();
     }
   }, [id]);
-  
+
   async function loadProjectData() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -94,6 +110,7 @@ export default function ProjectDetailPage() {
         return;
       }
 
+      // Get user data
       const { data: userData } = await supabase
         .from('users')
         .select('*')
@@ -101,10 +118,11 @@ export default function ProjectDetailPage() {
         .single();
       
       if (userData) {
+        setUser(userData);
         setLanguage(userData.language || 'en');
-        setCurrentUser(userData);
       }
 
+      // Get project data
       const { data: projectData, error: projectError } = await supabase
         .from('projects')
         .select('*')
@@ -112,203 +130,161 @@ export default function ProjectDetailPage() {
         .single();
         
       if (projectError) {
-        console.error('Error:', projectError);
+        console.error('Error loading project:', projectError);
         setLoading(false);
         return;
       }
 
       setProject(projectData);
 
-      // Get project phases
+      // Get all phases with detailed error handling
+      console.log('🔍 Tentative de chargement des phases...');
+      console.log('👤 Session utilisateur:', session?.user?.id);
       const { data: phasesData, error: phasesError } = await supabase
+        .from('phases')
+        .select('*');
+      
+      if (phasesError) {
+        console.error('❌ Erreur lors du chargement des phases:', phasesError);
+        console.error('❌ Détails de l\'erreur:', phasesError.message, phasesError.details, phasesError.hint);
+        
+        // Essayer avec seulement quelques colonnes
+        console.log('🔄 Tentative avec colonnes spécifiques...');
+        const { data: phasesDataRetry, error: phasesErrorRetry } = await supabase
+          .from('phases')
+          .select('id, name, description, order_index');
+        
+        if (phasesErrorRetry) {
+          console.error('❌ Erreur phases (2ème tentative):', phasesErrorRetry);
+        } else {
+          console.log('✅ Phases chargées (2ème tentative):', phasesDataRetry);
+          setPhases(phasesDataRetry || []);
+          if (phasesDataRetry && phasesDataRetry.length > 0) {
+            setSelectedPhase(phasesDataRetry[0]);
+          }
+        }
+      } else {
+        console.log('✅ Phases chargées avec succès:', phasesData);
+        console.log('📊 Nombre de phases:', phasesData?.length || 0);
+        setPhases(phasesData || []);
+        if (phasesData && phasesData.length > 0) {
+          setSelectedPhase(phasesData[0]);
+          console.log('🎯 Phase sélectionnée:', phasesData[0]);
+        }
+      }
+
+      // Get project phases status
+      const { data: projectPhasesData } = await supabase
         .from('project_phases')
-        .select('*')
+        .select(`
+          *,
+          phase:phases(*)
+        `)
         .eq('project_id', id)
         .order('phase_id');
-
-      console.log('Project Phases loaded:', phasesData);
-      console.log('Project Phases error:', phasesError);
       
-      setProjectPhases(phasesData || []);
+      setProjectPhases(projectPhasesData || []);
       
-      // Load deliverable types for all phases
-      await loadDeliverableTypes();
-      
-      // Load existing deliverables for this project
-      await loadProjectDeliverables();
-
-      setLoading(false);
-
-    } catch (error) {
-      console.error('Error:', error);
-      setLoading(false);
-    }
-  }
-
-  async function loadDeliverableTypes() {
-    try {
-      const { data, error } = await supabase
+      // Get all deliverable types
+      const { data: typesData } = await supabase
         .from('deliverable_types')
-        .select('*')
+        .select(`
+          *,
+          phase:phases(*)
+        `)
         .order('phase_id');
       
-      console.log('Loading deliverable types - data:', data);
-      console.log('Loading deliverable types - error:', error);
+      setDeliverableTypes(typesData || []);
       
-      if (!error) {
-        setDeliverableTypes(data || []);
-      } else {
-        console.error('Error loading deliverable types:', error);
-      }
-    } catch (error) {
-      console.error('Error loading deliverable types:', error);
-    }
-  }
-
-  async function loadProjectDeliverables() {
-    try {
-      const { data, error } = await supabase
+      // Get existing deliverables for this project
+      const { data: deliverablesData } = await supabase
         .from('deliverables')
         .select(`
           *,
-          deliverable_type:deliverable_types!deliverables_type_id_fkey(id, name, phase_id),
-          assignee_user:users!deliverables_assigned_to_fkey(id, full_name)
+          deliverable_types(name),
+          phases(name, order_index)
         `)
-        .eq('project_id', id);
+        .eq('project_id', id)
+        .order('updated_at', { ascending: false });
       
-      if (!error) {
-        setProjectDeliverables(data || []);
-      }
+      setExistingDeliverables(deliverablesData || []);
+
+      setLoading(false);
+
     } catch (error) {
-      console.error('Error loading deliverables:', error);
+      console.error('Error loading project data:', error);
+      setLoading(false);
     }
   }
 
-  async function loadTemplates(typeId) {
-    try {
-      const { data, error } = await supabase
-        .from('deliverable_templates')
-        .select('*')
-        .eq('type_id', typeId);
-      
-      if (!error) {
-        setTemplates(data || []);
-      }
-    } catch (error) {
-      console.error('Error loading templates:', error);
-    }
-  }
-
-  const getPhaseStatus = (phaseIndex) => {
-    if (!projectPhases.length) return 'not_started';
-    const phase = projectPhases[phaseIndex];
-    return phase ? phase.status : 'not_started';
-  };
-
-  const handlePhaseClick = async (phaseIndex) => {
-    setSelectedPhaseIndex(phaseIndex);
-    setSelectedDeliverableType(null);
-    setShowTemplateModal(false);
+  const handleCreateDocument = (typeId) => {
+    const selectedType = deliverableTypes.find(type => type.id === typeId);
     
-    // Update phase to in_progress if not_started
-    if (getPhaseStatus(phaseIndex) === 'not_started' && projectPhases[phaseIndex]) {
-      await supabase
-        .from('project_phases')
-        .update({ 
-          status: 'in_progress',
-          started_at: new Date().toISOString()
-        })
-        .eq('id', projectPhases[phaseIndex].id);
-      
-      loadProjectData();
+    if (!selectedType) {
+      console.error('Type de document non trouvé');
+      return;
     }
-  };
 
-  const handleDeliverableTypeClick = async (deliverableType) => {
-    setSelectedDeliverableType(deliverableType);
-    
-    // Load templates for this deliverable type
-    await loadTemplates(deliverableType.id);
-    
-    // Show template selection modal
-    setShowTemplateModal(true);
-  };
+    console.log('Type sélectionné:', selectedType.name);
 
-  const handleCreateFromTemplate = async (templateId) => {
-    try {
-      // Get template content first
-      const { data: template } = await supabase
-        .from('deliverable_templates')
-        .select('content')
-        .eq('id', templateId)
-        .single();
+    // Mapping des types vers les générateurs spécialisés (plus large)
+    const typeGenerators = {
+      'planning': 'planning',
+      'plan': 'planning',
+      'planification': 'planning',
+      'gantt': 'planning',
+      'calendrier': 'planning',
+      'workflow': 'workflow-interactive',
+      'processus': 'workflow-interactive',
+      'procedure': 'workflow-interactive',
+      'flux': 'workflow-interactive',
+      'étapes': 'workflow-interactive',
+      'etapes': 'workflow-interactive',
+      'diagramme': 'workflow-interactive'
+    };
 
-      // Create new deliverable from template
-      const { data: newDeliverable, error } = await supabase
-        .from('deliverables')
-        .insert({
-          project_id: id,
-          phase_id: currentPhaseId,
-          type_id: selectedDeliverableType.id,
-          template_id: templateId,
-          type: selectedDeliverableType.name,
-          title: selectedDeliverableType.name,
-          content: template?.content || {},
-          data: template?.content || {},
-          status: 'draft',
-          created_by: currentUser.id,
-          assigned_to: currentUser.id
-        })
-        .select()
-        .single();
+    // Normaliser le nom du type pour la comparaison
+    const typeName = selectedType.name.toLowerCase();
+    let generatorPath = null;
 
-      if (error) {
-        console.error('Error creating deliverable:', error);
-        return;
+    // Chercher une correspondance exacte ou partielle
+    for (const [key, generator] of Object.entries(typeGenerators)) {
+      if (typeName.includes(key)) {
+        generatorPath = generator;
+        console.log(`Correspondance trouvée: "${key}" -> ${generator}`);
+        break;
       }
+    }
 
-      // Redirect to deliverable page
-      router.push(`/project/${id}/${newDeliverable.id}`);
-    } catch (error) {
-      console.error('Error:', error);
+    if (generatorPath) {
+      // Rediriger vers le générateur spécialisé
+      console.log(`Redirection vers: /documents/generators/${generatorPath}`);
+      router.push(`/documents/generators/${generatorPath}?projectId=${id}&typeId=${typeId}`);
+    } else {
+      // Pour les autres types, rediriger vers un générateur générique ou une page de choix
+      console.log('Aucun générateur spécialisé trouvé, redirection vers générateur planning par défaut');
+      router.push(`/documents/generators/planning?projectId=${id}&typeId=${typeId}`);
     }
   };
 
-  const handleCreateFromScratch = async () => {
-    try {
-      // Create new deliverable without template
-      const { data: newDeliverable, error } = await supabase
-        .from('deliverables')
-        .insert({
-          project_id: id,
-          phase_id: currentPhaseId,
-          type_id: selectedDeliverableType.id,
-          template_id: null,
-          type: selectedDeliverableType.name,
-          title: selectedDeliverableType.name,
-          content: {},
-          data: {},
-          status: 'draft',
-          created_by: currentUser.id,
-          assigned_to: currentUser.id
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating deliverable:', error);
-        return;
-      }
-
-      // Redirect to deliverable page
-      router.push(`/project/${id}/${newDeliverable.id}`);
-    } catch (error) {
-      console.error('Error:', error);
-    }
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US');
   };
 
-  const handleOpenExistingDeliverable = (deliverableId) => {
-    router.push(`/project/${id}/${deliverableId}`);
+  const calculateProjectProgress = () => {
+    if (projectPhases.length === 0) return 0;
+    const completedPhases = projectPhases.filter(p => p.status === 'completed').length;
+    return Math.round((completedPhases / projectPhases.length) * 100);
+  };
+
+  const getPhaseDeliverableTypes = (phaseId) => {
+    return deliverableTypes.filter(type => type.phase_id === phaseId);
+  };
+
+  const getPhaseDeliverables = (phaseId) => {
+    return existingDeliverables.filter(deliverable => deliverable.phase_id === phaseId);
   };
 
   if (loading) {
@@ -321,372 +297,192 @@ export default function ProjectDetailPage() {
   }
 
   if (!project) {
-    return <div style={styles.errorContainer}>Project not found</div>;
+    return (
+      <div style={styles.container}>
+        <div style={styles.errorContainer}>
+          <h2>Project not found</h2>
+          <button 
+            style={styles.backButton}
+            onClick={() => router.push('/projectman')}
+          >
+            {t.backToProjects}
+          </button>
+        </div>
+      </div>
+    );
   }
-
-  // Get current phase ID
-  const currentPhase = projectPhases[selectedPhaseIndex];
-  const currentPhaseId = currentPhase?.phase_id;
-  
-  // Debug: log pour voir ce qui se passe
-  console.log('Selected Phase Index:', selectedPhaseIndex);
-  console.log('Current Phase:', currentPhase);
-  console.log('Current Phase ID:', currentPhaseId);
-  console.log('All Deliverable Types:', deliverableTypes);
-  console.log('Project Phases:', projectPhases);
-  
-  // Filter deliverable types for the selected phase
-  const phaseDeliverableTypes = deliverableTypes.filter(dt => {
-    console.log(`Comparing dt.phase_id (${dt.phase_id}) with currentPhaseId (${currentPhaseId})`);
-    return dt.phase_id === currentPhaseId;
-  });
-  
-  console.log('Filtered Phase Deliverable Types:', phaseDeliverableTypes);
-  
-  // Get existing deliverables for current phase
-  const phaseExistingDeliverables = projectDeliverables.filter(d => 
-    d.phase_id === currentPhaseId || 
-    (d.deliverable_type && phaseDeliverableTypes.some(dt => dt.id === d.type_id))
-  );
 
   return (
     <>
       <Head>
         <title>{project.name} - ProjectHub</title>
-        <style>{`
-          * {
-            scroll-behavior: smooth;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-          }
-          ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
-          }
-          ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 10px;
-          }
-          ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-          }
-          ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-          }
-        `}</style>
       </Head>
-
-      <HeaderParti />
-
+      
       <div style={styles.container}>
-        {/* HEADER - Zone 1 */}
+        {/* Header */}
         <header style={styles.header}>
-          <div style={styles.headerLeft}>
-            <button style={styles.backButton} onClick={() => router.push('/projectman')}>
+          <div style={styles.headerContent}>
+            <button 
+              style={styles.backButton}
+              onClick={() => router.push('/projectman')}
+            >
               {t.backToProjects}
             </button>
-            <h1 style={styles.projectTitle}>{project.name}</h1>
-            <span style={{
-              ...styles.statusBadge,
-              backgroundColor: project.status === 'active' ? '#10b981' :
-                              project.status === 'completed' ? '#3b82f6' :
-                              project.status === 'archived' ? '#6b7280' : '#9ca3af'
-            }}>
-              {t[project.status] || project.status}
-            </span>
-          </div>
-          
-          <div style={styles.headerRight}>
-            <button 
-              style={styles.overviewButton}
-              onClick={() => router.push(`/project/${id}/overview`)}
-            >
-              {t.overview}
-            </button>
-            <button style={styles.editButton}>{t.editProject}</button>
+            
+            <div style={styles.projectHeader}>
+              <div style={styles.projectInfo}>
+                <h1 style={styles.projectTitle}>{project.name}</h1>
+                <p style={styles.projectDescription}>{project.description}</p>
+              </div>
+              
+              <div style={styles.projectMeta}>
+                <div style={styles.metaItem}>
+                  <span style={styles.metaLabel}>{t.status}:</span>
+                  <span style={{
+                    ...styles.statusBadge,
+                    backgroundColor: STATUS_COLORS[project.status] || '#6b7280'
+                  }}>
+                    {t[project.status] || project.status}
+                  </span>
+                </div>
+                
+                <div style={styles.metaItem}>
+                  <span style={styles.metaLabel}>{t.progress}:</span>
+                  <div style={styles.progressContainer}>
+                    <div style={styles.progressBar}>
+                      <div style={{
+                        ...styles.progressFill,
+                        width: `${calculateProjectProgress()}%`
+                      }}></div>
+                    </div>
+                    <span style={styles.progressText}>{calculateProjectProgress()}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </header>
 
-        {/* PHASES - Zone 2 (horizontal) */}
-        <div style={styles.phasesBar}>
-          {phaseNames.map((phaseName, index) => {
-            const status = getPhaseStatus(index);
-            const isSelected = selectedPhaseIndex === index;
-            
-            return (
-              <div
-                key={index}
-                style={{
-                  ...styles.phaseCard,
-                  backgroundColor: STATUS_COLORS[status],
-                  border: isSelected ? '4px solid #1e293b' : '2px solid transparent',
-                  transform: isSelected ? 'scale(1.08)' : 'scale(1)',
-                  boxShadow: isSelected 
-                    ? '0 8px 24px rgba(30, 41, 59, 0.25), 0 0 0 4px rgba(59, 130, 246, 0.2)' 
-                    : '0 2px 8px rgba(0, 0, 0, 0.08)',
-                  filter: isSelected ? 'brightness(1.1)' : 'brightness(1)',
-                  outline: isSelected ? '3px solid rgba(59, 130, 246, 0.3)' : 'none',
-                  outlineOffset: '2px'
-                }}
-                onClick={() => handlePhaseClick(index)}
-              >
-                {isSelected && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '-8px',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.75rem',
-                    fontWeight: '700',
-                    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)'
-                  }}>
-                    ✓
-                  </div>
-                )}
-                <div style={styles.phaseIcon}>
-                  {status === 'not_started' && '○'}
-                  {status === 'in_progress' && '◐'}
-                  {status === 'completed' && '●'}
-                </div>
-                <div style={styles.phaseText}>
-                  <div style={{
-                    ...styles.phaseName,
-                    color: isSelected ? '#0f172a' : '#111827',
-                    fontWeight: isSelected ? '700' : '600'
-                  }}>
-                    {phaseName}
-                  </div>
-                  <div style={{
-                    ...styles.phaseStatusText,
-                    fontWeight: isSelected ? '600' : '500'
-                  }}>
-                    {status === 'not_started' && t.notStarted}
-                    {status === 'in_progress' && t.inProgress}
-                    {status === 'completed' && t.completed}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* MAIN CONTENT - Zone 3 (2 colonnes) */}
-        <div style={styles.mainContent}>
-          {/* LEFT PANEL: Deliverables List */}
-          <div style={styles.leftPanel}>
-            <h3 style={styles.panelTitle}>
-              📄 {t.deliverables}
-            </h3>
-            
-            <div style={styles.deliverablesList}>
-              {/* Existing deliverables */}
-              {phaseExistingDeliverables.map((deliverable) => (
-                <div
-                  key={deliverable.id}
+        {/* Phases Navigation */}
+        <nav style={styles.phasesNav}>
+          <div style={styles.phasesContent}>
+            <div style={styles.phasesHeader}>
+              <h3 style={styles.phasesTitle}>🎯 Phases du Projet</h3>
+              <p style={styles.phasesSubtitle}>Cliquez sur une phase pour voir les documents disponibles</p>
+            </div>
+            <div style={styles.phasesButtons}>
+            {/* Debug: Afficher le nombre de phases */}
+            {phases.map((phase, index) => {
+              const phaseStatus = projectPhases.find(p => p.phase_id === phase.id);
+              return (
+                <button
+                  key={phase.id}
                   style={{
-                    ...styles.deliverableItem,
-                    backgroundColor: '#e0f2fe',
-                    borderLeft: '5px solid #10b981'
+                    ...styles.phaseButton,
+                    ...(selectedPhase?.id === phase.id ? styles.activePhaseButton : {})
                   }}
-                  onClick={() => handleOpenExistingDeliverable(deliverable.id)}
+                  onClick={() => setSelectedPhase(phase)}
                 >
-                  <div style={styles.deliverableIcon}>✅</div>
-                  <div style={styles.deliverableContent}>
-                    <div style={styles.deliverableName}>{deliverable.title}</div>
-                    <div style={{
-                      ...styles.deliverableStatusBadge,
-                      backgroundColor: 
-                        deliverable.status === 'validated' ? '#10b981' :
-                        deliverable.status === 'in_review' ? '#fbbf24' : '#9ca3af'
-                    }}>
-                      {deliverable.status === 'draft' && t.statusDraft}
-                      {deliverable.status === 'in_review' && t.statusInReview}
-                      {deliverable.status === 'validated' && t.statusValidated}
-                    </div>
-                  </div>
-                  <div style={{
-                    marginLeft: 'auto',
-                    color: '#10b981',
-                    fontSize: '1.25rem',
-                    fontWeight: '700'
-                  }}>
-                    →
-                  </div>
-                </div>
-              ))}
-              
-              {/* Available deliverable types to create */}
-              {phaseDeliverableTypes.map((deliverableType) => {
-                const isSelected = selectedDeliverableType?.id === deliverableType.id;
-                const alreadyExists = phaseExistingDeliverables.some(d => 
-                  d.type_id === deliverableType.id || d.type === deliverableType.name
-                );
-                
-                // Don't show if already created
-                if (alreadyExists) return null;
-                
-                return (
-                  <div
-                    key={deliverableType.id}
-                    style={{
-                      ...styles.deliverableItem,
-                      backgroundColor: isSelected ? '#dbeafe' : '#ffffff',
-                      borderLeft: isSelected ? '5px solid #3b82f6' : '5px solid transparent',
-                      borderRight: isSelected ? '2px solid #3b82f6' : '2px solid #e2e8f0',
-                      borderTop: isSelected ? '2px solid #3b82f6' : '2px solid #e2e8f0',
-                      borderBottom: isSelected ? '2px solid #3b82f6' : '2px solid #e2e8f0',
-                      boxShadow: isSelected 
-                        ? '0 4px 16px rgba(59, 130, 246, 0.25)' 
-                        : '0 1px 3px rgba(0, 0, 0, 0.05)',
-                      transform: isSelected ? 'translateX(8px) scale(1.02)' : 'translateX(0) scale(1)'
-                    }}
-                    onClick={() => handleDeliverableTypeClick(deliverableType)}
-                  >
-                    <div style={{
-                      ...styles.deliverableIcon,
-                      fontSize: isSelected ? '1.5rem' : '1.25rem',
-                      filter: isSelected ? 'brightness(1.2)' : 'brightness(1)'
-                    }}>
-                      📄
-                    </div>
-                    <div style={styles.deliverableContent}>
-                      <div style={{
-                        ...styles.deliverableName,
-                        fontWeight: isSelected ? '700' : '500',
-                        color: isSelected ? '#1e40af' : '#111827'
-                      }}>
-                        {deliverableType.name}
-                      </div>
-                      <div style={{
-                        ...styles.deliverableStatusBadge,
-                        backgroundColor: '#6b7280'
-                      }}>
-                        + Create New
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <div style={{
-                        marginLeft: 'auto',
-                        color: '#3b82f6',
-                        fontSize: '1.25rem',
-                        fontWeight: '700'
-                      }}>
-                        +
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  <span style={styles.phaseNumber}>{index + 1}</span>
+                  <span style={styles.phaseName}>{phase.name}</span>
+                  {phaseStatus && (
+                    <span style={{
+                      ...styles.phaseStatusIndicator,
+                      backgroundColor: STATUS_COLORS[phaseStatus.status] || '#6b7280'
+                    }}></span>
+                  )}
+                </button>
+              );
+            })}
             </div>
           </div>
+        </nav>
 
-          {/* RIGHT PANEL: Template Selection or Empty State */}
-          <div style={styles.rightPanel}>
-            {showTemplateModal && selectedDeliverableType ? (
-              <div style={styles.templateSelectionContainer}>
-                <div style={styles.editorHeader}>
-                  <h2 style={styles.editorTitle}>
-                    Create: {selectedDeliverableType.name}
-                  </h2>
-                  <button 
-                    style={styles.closeButton}
-                    onClick={() => {
-                      setShowTemplateModal(false);
-                      setSelectedDeliverableType(null);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-                
-                <div style={styles.editorContent}>
-                  {/* Create from Scratch Option */}
-                  <div 
-                    style={styles.createOption}
-                    onClick={handleCreateFromScratch}
-                  >
-                    <div style={styles.createOptionIcon}>✨</div>
-                    <div>
-                      <h3 style={styles.createOptionTitle}>Start from Scratch</h3>
-                      <p style={styles.createOptionDesc}>
-                        Create a blank {selectedDeliverableType.name} document
-                      </p>
-                    </div>
-                    <div style={styles.createOptionArrow}>→</div>
-                  </div>
-
-                  {/* Templates Section */}
-                  {templates.length > 0 && (
-                    <>
-                      <div style={styles.templatesDivider}>
-                        <span>OR USE A TEMPLATE</span>
+        {/* Main Content */}
+        <main style={styles.main}>
+          <div style={styles.contentGrid}>
+            {/* Available Document Types */}
+            <section style={styles.availableSection}>
+              <h2 style={styles.sectionTitle}>
+                📋 {t.availableDocuments} {selectedPhase ? `- ${selectedPhase.name}` : ''}
+              </h2>
+              
+              {selectedPhase && (
+                <div style={styles.documentTypes}>
+                  {getPhaseDeliverableTypes(selectedPhase.id).length > 0 ? (
+                    getPhaseDeliverableTypes(selectedPhase.id).map(type => (
+                      <div key={type.id} style={styles.documentTypeCard}>
+                        <div style={styles.typeIcon}>📄</div>
+                        <h3 style={styles.typeName}>{type.name}</h3>
+                        <p style={styles.typeDescription}>
+                          {type.description || 'Document description'}
+                        </p>
+                        <button 
+                          style={styles.createTypeButton}
+                          onClick={() => handleCreateDocument(type.id)}
+                        >
+                          {t.createDocument}
+                        </button>
                       </div>
-                      
-                      <div style={styles.templatesGrid}>
-                        {templates.map((template) => (
-                          <div
-                            key={template.id}
-                            style={styles.templateCard}
-                            onClick={() => handleCreateFromTemplate(template.id)}
+                    ))
+                  ) : (
+                    <div style={styles.emptyState}>
+                      <div style={styles.emptyIcon}>📋</div>
+                      <h3 style={styles.emptyTitle}>Aucun type de document</h3>
+                      <p style={styles.emptyText}>Aucun type de document n'est disponible pour cette phase</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* Existing Documents */}
+            <section style={styles.documentsSection}>
+              <h2 style={styles.sectionTitle}>
+                📊 {t.existingDocuments} {selectedPhase ? `- ${selectedPhase.name}` : ''}
+              </h2>
+              
+              {selectedPhase && (
+                <div style={styles.existingDocuments}>
+                  {getPhaseDeliverables(selectedPhase.id).length > 0 ? (
+                    getPhaseDeliverables(selectedPhase.id).map(doc => (
+                      <div key={doc.id} style={styles.documentCard}>
+                        <div style={styles.docIcon}>📄</div>
+                        <div style={styles.docInfo}>
+                          <h3 style={styles.docTitle}>{doc.title}</h3>
+                          <p style={styles.docType}>{doc.deliverable_types?.name}</p>
+                          <p style={styles.docDate}>
+                            {t.lastModified}: {formatDate(doc.updated_at)}
+                          </p>
+                        </div>
+                        <div style={styles.docActions}>
+                          <span style={{
+                            ...styles.docStatus,
+                            backgroundColor: STATUS_COLORS[doc.status] || '#6b7280'
+                          }}>
+                            {t[doc.status] || doc.status}
+                          </span>
+                          <button 
+                            style={styles.editDocButton}
+                            onClick={() => router.push(`/documents/edit/${doc.id}`)}
                           >
-                            <div style={styles.templateIcon}>📋</div>
-                            <h4 style={styles.templateName}>{template.name}</h4>
-                            <p style={styles.templateDesc}>{template.description}</p>
-                            <button style={styles.useTemplateBtn}>Use Template</button>
-                          </div>
-                        ))}
+                            {t.edit}
+                          </button>
+                        </div>
                       </div>
-                    </>
-                  )}
-
-                  {templates.length === 0 && (
-                    <div style={styles.noTemplates}>
-                      <p>No templates available for this deliverable type.</p>
-                      <p style={{fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.5rem'}}>
-                        You can create from scratch or contact your administrator to add templates.
-                      </p>
+                    ))
+                  ) : (
+                    <div style={styles.emptyState}>
+                      <div style={styles.emptyIcon}>📄</div>
+                      <h3 style={styles.emptyTitle}>{t.noDocuments}</h3>
+                      <p style={styles.emptyText}>{t.createFirst}</p>
                     </div>
                   )}
                 </div>
-              </div>
-            ) : (
-              <div style={styles.emptyState}>
-                <div style={{
-                  fontSize: '4rem',
-                  marginBottom: '1.5rem',
-                  opacity: 0.3
-                }}>
-                  📝
-                </div>
-                <p style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '600',
-                  color: '#64748b',
-                  marginBottom: '0.5rem'
-                }}>
-                  {t.selectDeliverable}
-                </p>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#94a3b8'
-                }}>
-                  Sélectionnez un livrable dans la liste de gauche pour commencer
-                </p>
-              </div>
-            )}
+              )}
+            </section>
           </div>
-        </div>
+        </main>
       </div>
     </>
   );
@@ -695,511 +491,396 @@ export default function ProjectDetailPage() {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f8fafc',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    paddingTop: '0'
+    backgroundColor: '#f5f7fa',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   },
-  
-  // HEADER STYLES
+
   header: {
     backgroundColor: '#ffffff',
-    borderBottom: '2px solid #e2e8f0',
-    padding: '1.5rem 2.5rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10
+    borderBottom: '1px solid #e5e7eb',
+    padding: '2rem',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
   },
-  
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1.5rem'
+
+  headerContent: {
+    maxWidth: '1280px',
+    margin: '0 auto'
   },
-  
-  headerRight: {
-    display: 'flex',
-    gap: '0.75rem'
-  },
-  
+
   backButton: {
-    backgroundColor: '#f1f5f9',
-    border: 'none',
+    backgroundColor: 'transparent',
     color: '#3b82f6',
-    fontSize: '0.9rem',
+    border: 'none',
+    fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
-    padding: '0.625rem 1rem',
-    borderRadius: '8px',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#e2e8f0'
-    }
+    marginBottom: '1.5rem',
+    padding: '0.5rem 0'
   },
-  
+
+  projectHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '2rem'
+  },
+
+  projectInfo: {
+    flex: 1
+  },
+
   projectTitle: {
-    fontSize: '1.5rem',
+    fontSize: '2.25rem',
     fontWeight: '700',
     color: '#111827',
+    marginBottom: '0.5rem'
+  },
+
+  projectDescription: {
+    fontSize: '1.125rem',
+    color: '#6b7280',
     margin: 0
   },
-  
+
+  projectMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    minWidth: '300px'
+  },
+
+  metaItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem'
+  },
+
+  metaLabel: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#374151',
+    minWidth: '80px'
+  },
+
   statusBadge: {
     color: '#ffffff',
-    padding: '0.375rem 0.875rem',
+    padding: '0.25rem 0.75rem',
     borderRadius: '12px',
-    fontSize: '0.8125rem',
-    fontWeight: '600',
-    textTransform: 'capitalize'
+    fontSize: '0.75rem',
+    fontWeight: '600'
   },
-  
-  overviewButton: {
+
+  progressContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    flex: 1
+  },
+
+  progressBar: {
+    flex: 1,
+    height: '8px',
+    backgroundColor: '#e5e7eb',
+    borderRadius: '4px',
+    overflow: 'hidden'
+  },
+
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    transition: 'width 0.3s ease',
+    borderRadius: '4px'
+  },
+
+  progressText: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#3b82f6',
+    minWidth: '40px'
+  },
+
+  phasesNav: {
+    backgroundColor: '#f8fafc',
+    borderBottom: '2px solid #e2e8f0',
+    borderTop: '1px solid #e2e8f0',
+    padding: '1.5rem 2rem',
+    overflow: 'auto',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+  },
+
+  phasesContent: {
+    maxWidth: '1280px',
+    margin: '0 auto'
+  },
+
+  phasesHeader: {
+    marginBottom: '1.5rem',
+    textAlign: 'center'
+  },
+
+  phasesTitle: {
+    fontSize: '1.25rem',
+    fontWeight: '700',
+    color: '#1e293b',
+    margin: '0 0 0.5rem 0'
+  },
+
+  phasesSubtitle: {
+    fontSize: '0.875rem',
+    color: '#64748b',
+    margin: 0
+  },
+
+  phasesButtons: {
+    display: 'flex',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
+    justifyContent: 'center'
+  },
+
+  phaseButton: {
+    backgroundColor: '#ffffff',
+    border: '2px solid #e5e7eb',
+    borderRadius: '10px',
+    padding: '1rem 1.25rem',
+    cursor: 'pointer',
+    transition: 'all 0.3s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    whiteSpace: 'nowrap',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#64748b',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    '&:hover': {
+      borderColor: '#cbd5e1',
+      backgroundColor: '#f1f5f9'
+    }
+  },
+
+  activePhaseButton: {
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+    borderColor: '#3b82f6',
+    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
+    transform: 'translateY(-1px)'
+  },
+
+  phaseNumber: {
+    fontSize: '0.75rem',
+    fontWeight: '700',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    color: 'inherit',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '6px',
+    minWidth: '28px',
+    textAlign: 'center',
+    lineHeight: '1.2'
+  },
+
+  phaseName: {
+    fontSize: '0.875rem',
+    fontWeight: '600'
+  },
+
+  phaseStatusIndicator: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    marginLeft: '0.25rem'
+  },
+
+  main: {
+    padding: '2rem',
+    maxWidth: '1280px',
+    margin: '0 auto'
+  },
+
+  contentGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '2rem'
+  },
+
+  availableSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    padding: '2rem',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+  },
+
+  documentsSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    padding: '2rem',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+  },
+
+  sectionTitle: {
+    fontSize: '1.25rem',
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: '1.5rem'
+  },
+
+  documentTypes: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem'
+  },
+
+  documentTypeCard: {
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    padding: '1.5rem',
+    transition: 'all 0.2s'
+  },
+
+  typeIcon: {
+    fontSize: '2rem',
+    marginBottom: '1rem'
+  },
+
+  typeName: {
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: '0.5rem'
+  },
+
+  typeDescription: {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    marginBottom: '1.5rem',
+    lineHeight: '1.5'
+  },
+
+  createTypeButton: {
     backgroundColor: '#3b82f6',
     color: '#ffffff',
     border: 'none',
-    borderRadius: '10px',
+    borderRadius: '6px',
     padding: '0.75rem 1.5rem',
-    fontSize: '0.9rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
-    ':hover': {
-      backgroundColor: '#2563eb',
-      boxShadow: '0 4px 8px rgba(59, 130, 246, 0.3)'
-    }
-  },
-  
-  editButton: {
-    backgroundColor: '#ffffff',
-    color: '#64748b',
-    border: '2px solid #e2e8f0',
-    borderRadius: '10px',
-    padding: '0.75rem 1.5rem',
-    fontSize: '0.9rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    ':hover': {
-      borderColor: '#cbd5e1',
-      backgroundColor: '#f8fafc'
-    }
-  },
-  
-  // PHASES BAR STYLES
-  phasesBar: {
-    backgroundColor: '#ffffff',
-    borderBottom: '2px solid #e2e8f0',
-    padding: '2rem 2.5rem',
-    display: 'flex',
-    gap: '1.25rem',
-    overflowX: 'auto',
-    position: 'sticky',
-    top: '84px',
-    zIndex: 9,
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
-  },
-  
-  phaseCard: {
-    minWidth: '190px',
-    padding: '1.5rem 1.25rem',
-    borderRadius: '16px',
-    cursor: 'pointer',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    position: 'relative',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-    ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12)'
-    }
-  },
-  
-  phaseIcon: {
-    fontSize: '1.75rem',
-    fontWeight: '700'
-  },
-  
-  phaseText: {
-    flex: 1
-  },
-  
-  phaseName: {
-    fontSize: '0.9375rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '0.25rem'
-  },
-  
-  phaseStatusText: {
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    color: '#374151'
-  },
-  
-  // MAIN CONTENT STYLES
-  mainContent: {
-    display: 'grid',
-    gridTemplateColumns: '380px 1fr',
-    gap: '2rem',
-    padding: '2rem 2.5rem',
-    minHeight: 'calc(100vh - 280px)',
-    alignItems: 'start'
-  },
-  
-  // LEFT PANEL
-  leftPanel: {
-    backgroundColor: '#ffffff',
-    borderRadius: '16px',
-    border: '2px solid #e2e8f0',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'visible',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-    position: 'sticky',
-    top: '220px',
-    maxHeight: 'calc(100vh - 240px)'
-  },
-  
-  panelTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '700',
-    color: '#1e293b',
-    padding: '1.5rem 1.5rem 1rem',
-    borderBottom: '2px solid #e2e8f0',
-    margin: 0,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  },
-  
-  deliverablesList: {
-    padding: '1.25rem',
-    overflowY: 'auto',
-    flex: 1,
-    scrollBehavior: 'smooth'
-  },
-  
-  deliverableItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    padding: '1rem 1.125rem',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    marginBottom: '0.75rem',
-    border: '2px solid #e2e8f0',
-    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-    ':hover': {
-      transform: 'translateX(4px)',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-    }
-  },
-  
-  deliverableIcon: {
-    fontSize: '1.25rem'
-  },
-  
-  deliverableContent: {
-    flex: 1
-  },
-  
-  deliverableName: {
     fontSize: '0.875rem',
-    fontWeight: '500',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    width: '100%'
+  },
+
+  existingDocuments: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem'
+  },
+
+  documentCard: {
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    padding: '1.5rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    transition: 'all 0.2s'
+  },
+
+  docIcon: {
+    fontSize: '1.5rem'
+  },
+
+  docInfo: {
+    flex: 1
+  },
+
+  docTitle: {
+    fontSize: '1rem',
+    fontWeight: '600',
     color: '#111827',
     marginBottom: '0.25rem'
   },
-  
-  deliverableStatusBadge: {
-    display: 'inline-block',
-    color: '#ffffff',
-    padding: '0.125rem 0.5rem',
-    borderRadius: '8px',
-    fontSize: '0.6875rem',
-    fontWeight: '600'
-  },
-  
-  addButton: {
-    width: '100%',
-    backgroundColor: '#f8fafc',
+
+  docType: {
+    fontSize: '0.875rem',
     color: '#3b82f6',
-    border: '2px dashed #cbd5e1',
-    borderRadius: '12px',
-    padding: '1rem',
-    fontSize: '0.9rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    marginTop: '0.75rem',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#f1f5f9',
-      borderColor: '#3b82f6',
-      color: '#2563eb'
-    }
+    marginBottom: '0.25rem'
   },
-  
-  // RIGHT PANEL
-  rightPanel: {
-    backgroundColor: '#ffffff',
-    borderRadius: '16px',
-    border: '2px solid #e2e8f0',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '600px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
-  },
-  
-  deliverableEditor: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  
-  editorHeader: {
-    borderBottom: '2px solid #e2e8f0',
-    padding: '1.75rem 2rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc'
-  },
-  
-  editorTitle: {
-    fontSize: '1.375rem',
-    fontWeight: '700',
-    color: '#1e293b',
+
+  docDate: {
+    fontSize: '0.75rem',
+    color: '#6b7280',
     margin: 0
   },
-  
-  editorActions: {
+
+  docActions: {
     display: 'flex',
+    alignItems: 'center',
     gap: '0.75rem'
   },
-  
-  actionButton: {
-    backgroundColor: '#ffffff',
-    color: '#475569',
-    border: '2px solid #e2e8f0',
-    borderRadius: '10px',
-    padding: '0.625rem 1.125rem',
+
+  docStatus: {
+    color: '#ffffff',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '12px',
+    fontSize: '0.75rem',
+    fontWeight: '600'
+  },
+
+  editDocButton: {
+    backgroundColor: '#10b981',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '0.5rem 1rem',
     fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#f1f5f9',
-      borderColor: '#cbd5e1',
-      transform: 'translateY(-1px)',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-    }
+    transition: 'all 0.2s'
   },
-  
-  editorContent: {
-    flex: 1,
-    padding: '2rem 2.5rem',
-    overflowY: 'auto',
-    backgroundColor: '#ffffff'
-  },
-  
-  editorPlaceholder: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '400px',
-    textAlign: 'center',
-    padding: '2rem',
-    backgroundColor: '#f8fafc',
-    borderRadius: '12px',
-    border: '2px dashed #cbd5e1'
-  },
-  
+
   emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    color: '#94a3b8',
-    fontSize: '1rem',
-    padding: '3rem'
+    textAlign: 'center',
+    padding: '3rem 1rem',
+    color: '#6b7280'
   },
-  
-  // LOADING
+
+  emptyIcon: {
+    fontSize: '3rem',
+    marginBottom: '1rem'
+  },
+
+  emptyTitle: {
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    marginBottom: '0.5rem'
+  },
+
+  emptyText: {
+    fontSize: '0.875rem'
+  },
+
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '100vh'
+    minHeight: '100vh',
+    gap: '1rem'
   },
-  
+
   spinner: {
     width: '40px',
     height: '40px',
     border: '4px solid #e5e7eb',
     borderTop: '4px solid #3b82f6',
     borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-    marginBottom: '1rem'
+    animation: 'spin 1s linear infinite'
   },
-  
+
   errorContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '100vh',
-    fontSize: '1.125rem',
-    color: '#6b7280'
-  },
-  
-  // TEMPLATE SELECTION STYLES
-  templateSelectionContainer: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  
-  closeButton: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#64748b',
-    fontSize: '1.5rem',
-    cursor: 'pointer',
-    padding: '0.5rem',
-    lineHeight: 1,
-    transition: 'color 0.2s',
-    ':hover': {
-      color: '#1e293b'
-    }
-  },
-  
-  createOption: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1.5rem',
-    padding: '2rem',
-    backgroundColor: '#f8fafc',
-    border: '3px solid #e2e8f0',
-    borderRadius: '16px',
-    cursor: 'pointer',
-    transition: 'all 0.3s',
-    marginBottom: '2rem',
-    ':hover': {
-      backgroundColor: '#dbeafe',
-      borderColor: '#3b82f6',
-      transform: 'translateY(-2px)',
-      boxShadow: '0 8px 24px rgba(59, 130, 246, 0.2)'
-    }
-  },
-  
-  createOptionIcon: {
-    fontSize: '3rem',
-    lineHeight: 1
-  },
-  
-  createOptionTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    color: '#1e293b',
-    margin: '0 0 0.5rem 0'
-  },
-  
-  createOptionDesc: {
-    fontSize: '0.9375rem',
-    color: '#64748b',
-    margin: 0
-  },
-  
-  createOptionArrow: {
-    marginLeft: 'auto',
-    fontSize: '2rem',
-    color: '#3b82f6',
-    fontWeight: '700'
-  },
-  
-  templatesDivider: {
     textAlign: 'center',
-    margin: '2rem 0',
-    position: 'relative'
-  },
-  
-  'templatesDivider span': {
-    backgroundColor: '#ffffff',
-    padding: '0 1rem',
-    color: '#94a3b8',
-    fontSize: '0.8125rem',
-    fontWeight: '700',
-    letterSpacing: '0.05em'
-  },
-  
-  templatesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '1.5rem',
-    marginTop: '1.5rem'
-  },
-  
-  templateCard: {
-    backgroundColor: '#ffffff',
-    border: '2px solid #e2e8f0',
-    borderRadius: '14px',
-    padding: '1.75rem',
-    cursor: 'pointer',
-    transition: 'all 0.3s',
-    textAlign: 'center',
-    ':hover': {
-      borderColor: '#3b82f6',
-      boxShadow: '0 8px 24px rgba(59, 130, 246, 0.15)',
-      transform: 'translateY(-4px)'
-    }
-  },
-  
-  templateIcon: {
-    fontSize: '3rem',
-    marginBottom: '1rem'
-  },
-  
-  templateName: {
-    fontSize: '1.125rem',
-    fontWeight: '700',
-    color: '#1e293b',
-    margin: '0 0 0.75rem 0'
-  },
-  
-  templateDesc: {
-    fontSize: '0.875rem',
-    color: '#64748b',
-    margin: '0 0 1.5rem 0',
-    lineHeight: 1.5
-  },
-  
-  useTemplateBtn: {
-    backgroundColor: '#3b82f6',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '0.75rem 1.5rem',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    width: '100%',
-    transition: 'background-color 0.2s',
-    ':hover': {
-      backgroundColor: '#2563eb'
-    }
-  },
-  
-  noTemplates: {
-    textAlign: 'center',
-    padding: '3rem',
-    color: '#64748b'
+    padding: '4rem 2rem'
   }
 };

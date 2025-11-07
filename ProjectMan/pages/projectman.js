@@ -9,7 +9,11 @@ const LANGUAGES = {
     title: "ProjectHub",
     createProject: "+ Create Project",
     myProjects: "My Projects",
+    documentTools: "Document Tools",
+    recentDocuments: "Recent Documents",
+    browseTemplates: "Browse Templates",
     noProjects: "No projects yet. Create your first project!",
+    noDocuments: "No documents yet. Start creating from templates!",
     projectName: "Project Name",
     startDate: "Start Date",
     endDate: "End Date (optional)",
@@ -22,13 +26,22 @@ const LANGUAGES = {
     progress: "Progress",
     lastActivity: "Last activity",
     logout: "Logout",
-    creatingProject: "Creating project..."
+    creatingProject: "Creating project...",
+    createDocument: "Create Document",
+    viewAll: "View All",
+    quickActions: "Quick Actions",
+    templates: "Templates",
+    documents: "Documents"
   },
   fr: {
     title: "ProjectHub",
     createProject: "+ Créer un Projet",
     myProjects: "Mes Projets",
+    documentTools: "Outils Documents",
+    recentDocuments: "Documents Récents",
+    browseTemplates: "Parcourir les Modèles",
     noProjects: "Aucun projet. Créez votre premier projet !",
+    noDocuments: "Aucun document. Commencez avec nos modèles !",
     projectName: "Nom du Projet",
     startDate: "Date de Début",
     endDate: "Date de Fin (optionnel)",
@@ -41,7 +54,12 @@ const LANGUAGES = {
     progress: "Avancement",
     lastActivity: "Dernière activité",
     logout: "Déconnexion",
-    creatingProject: "Création du projet..."
+    creatingProject: "Création du projet...",
+    createDocument: "Créer un Document",
+    viewAll: "Voir Tout",
+    quickActions: "Actions Rapides",
+    templates: "Modèles",
+    documents: "Documents"
   }
 };
 
@@ -56,6 +74,8 @@ export default function ProjectManPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [recentDocuments, setRecentDocuments] = useState([]);
+  const [deliverableTypes, setDeliverableTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -128,6 +148,36 @@ export default function ProjectManPage() {
         });
         
         setProjects(projectsWithProgress);
+      }
+
+      // Get recent documents
+      const { data: documentsData, error: documentsError } = await supabase
+        .from('deliverables')
+        .select(`
+          *,
+          deliverable_types (name, description),
+          projects (name)
+        `)
+        .eq('created_by', userData.id)
+        .order('updated_at', { ascending: false })
+        .limit(6);
+      
+      if (documentsError) {
+        console.error('Error fetching documents:', documentsError);
+      } else {
+        setRecentDocuments(documentsData || []);
+      }
+
+      // Get deliverable types for quick actions
+      const { data: typesData, error: typesError } = await supabase
+        .from('deliverable_types')
+        .select('*')
+        .order('name');
+      
+      if (typesError) {
+        console.error('Error fetching deliverable types:', typesError);
+      } else {
+        setDeliverableTypes(typesData || []);
       }
       
     } catch (error) {
@@ -234,6 +284,7 @@ export default function ProjectManPage() {
     <>
       <Head>
         <title>{t.title}</title>
+        <link rel="stylesheet" href="/styles/projectman.css" />
       </Head>
       
       <div style={styles.container}>
@@ -261,57 +312,167 @@ export default function ProjectManPage() {
 
         {/* Main Content */}
         <main style={styles.main}>
-          <h2 style={styles.sectionTitle}>{t.myProjects}</h2>
-          
-          {projects.length === 0 ? (
-            <div style={styles.emptyState}>
-              <p style={styles.emptyText}>{t.noProjects}</p>
-              <button style={styles.createButtonLarge} onClick={() => setShowModal(true)}>
-                {t.createProject}
+          {/* Quick Actions Section */}
+          <section style={styles.quickActionsSection}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>{t.quickActions}</h2>
+            </div>
+            <div style={styles.quickActionsGrid}>
+              <div className="quick-action-card" style={styles.quickActionCard} onClick={() => setShowModal(true)}>
+                <div style={styles.quickActionIcon}>📋</div>
+                <h3 style={styles.quickActionTitle}>{t.createProject}</h3>
+                <p style={styles.quickActionDesc}>Start a new project</p>
+              </div>
+              <div className="quick-action-card" style={styles.quickActionCard} onClick={() => router.push('/documents/templates')}>
+                <div style={styles.quickActionIcon}>📄</div>
+                <h3 style={styles.quickActionTitle}>{t.browseTemplates}</h3>
+                <p style={styles.quickActionDesc}>Choose from document templates</p>
+              </div>
+              <div className="quick-action-card" style={styles.quickActionCard} onClick={() => router.push('/documents')}>
+                <div style={styles.quickActionIcon}>📊</div>
+                <h3 style={styles.quickActionTitle}>{t.documents}</h3>
+                <p style={styles.quickActionDesc}>View all your documents</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Document Tools Section */}
+          <section style={styles.documentSection}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>{t.documentTools}</h2>
+              <button 
+                style={styles.viewAllButton}
+                onClick={() => router.push('/documents/templates')}
+              >
+                {t.viewAll} →
               </button>
             </div>
-          ) : (
-            <div style={styles.projectsGrid}>
-              {projects.map(project => (
-                <div 
-                  key={project.id} 
-                  style={styles.projectCard}
-                  onClick={() => router.push(`/project/${project.id}`)}
-                >
-                  <div style={styles.cardHeader}>
-                    <h3 style={styles.projectName}>{project.name}</h3>
-                    <span style={{
-                      ...styles.statusBadge,
-                      backgroundColor: STATUS_COLORS[project.status]
-                    }}>
-                      {t[project.status]}
-                    </span>
+            
+            {deliverableTypes.length > 0 ? (
+              <div style={styles.toolsGrid}>
+                {deliverableTypes.slice(0, 6).map(type => (
+                  <div 
+                    key={type.id} 
+                    style={styles.toolCard}
+                    onClick={() => router.push(`/documents/create/${type.id}`)}
+                  >
+                    <div style={styles.toolIcon}>📋</div>
+                    <h3 style={styles.toolName}>{type.name}</h3>
+                    <p style={styles.toolDesc}>{type.description || 'Create document'}</p>
                   </div>
-                  
-                  <div style={styles.cardBody}>
-                    <div style={styles.progressSection}>
-                      <div style={styles.progressLabel}>
-                        <span>{t.progress}</span>
-                        <span style={styles.progressValue}>{project.progress}%</span>
-                      </div>
-                      <div style={styles.progressBar}>
-                        <div style={{
-                          ...styles.progressFill,
-                          width: `${project.progress}%`
-                        }}></div>
-                      </div>
-                    </div>
-                    
-                    <div style={styles.cardFooter}>
-                      <span style={styles.lastActivity}>
-                        {t.lastActivity}: {formatDate(project.updated_at)}
+                ))}
+              </div>
+            ) : (
+              <div style={styles.emptyState}>
+                <p style={styles.emptyText}>Loading document tools...</p>
+              </div>
+            )}
+          </section>
+
+          {/* Recent Documents Section */}
+          <section style={styles.documentsSection}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>{t.recentDocuments}</h2>
+              <button 
+                style={styles.viewAllButton}
+                onClick={() => router.push('/documents')}
+              >
+                {t.viewAll} →
+              </button>
+            </div>
+            
+            {recentDocuments.length === 0 ? (
+              <div style={styles.emptyState}>
+                <p style={styles.emptyText}>{t.noDocuments}</p>
+                <button 
+                  style={styles.createButtonLarge} 
+                  onClick={() => router.push('/documents/templates')}
+                >
+                  {t.browseTemplates}
+                </button>
+              </div>
+            ) : (
+              <div style={styles.documentsGrid}>
+                {recentDocuments.map(doc => (
+                  <div 
+                    key={doc.id} 
+                    style={styles.documentCard}
+                    onClick={() => router.push(`/documents/edit/${doc.id}`)}
+                  >
+                    <div style={styles.docIcon}>📄</div>
+                    <h3 style={styles.docTitle}>{doc.title}</h3>
+                    <p style={styles.docType}>{doc.deliverable_types?.name}</p>
+                    <p style={styles.docProject}>{doc.projects?.name}</p>
+                    <div style={styles.docStatus}>
+                      <span style={{
+                        ...styles.statusBadge,
+                        backgroundColor: doc.status === 'draft' ? '#f59e0b' : doc.status === 'validated' ? '#10b981' : '#6b7280'
+                      }}>
+                        {doc.status}
                       </span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Projects Section */}
+          <section style={styles.projectsSection}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>{t.myProjects}</h2>
             </div>
-          )}
+            
+            {projects.length === 0 ? (
+              <div style={styles.emptyState}>
+                <p style={styles.emptyText}>{t.noProjects}</p>
+                <button style={styles.createButtonLarge} onClick={() => setShowModal(true)}>
+                  {t.createProject}
+                </button>
+              </div>
+            ) : (
+              <div style={styles.projectsGrid}>
+                {projects.slice(0, 4).map(project => (
+                  <div 
+                    key={project.id} 
+                    style={styles.projectCard}
+                    onClick={() => router.push(`/project/${project.id}`)}
+                  >
+                    <div style={styles.cardHeader}>
+                      <h3 style={styles.projectName}>{project.name}</h3>
+                      <span style={{
+                        ...styles.statusBadge,
+                        backgroundColor: STATUS_COLORS[project.status]
+                      }}>
+                        {t[project.status]}
+                      </span>
+                    </div>
+                    
+                    <div style={styles.cardBody}>
+                      <div style={styles.progressSection}>
+                        <div style={styles.progressLabel}>
+                          <span>{t.progress}</span>
+                          <span style={styles.progressValue}>{project.progress}%</span>
+                        </div>
+                        <div style={styles.progressBar}>
+                          <div style={{
+                            ...styles.progressFill,
+                            width: `${project.progress}%`
+                          }}></div>
+                        </div>
+                      </div>
+                      
+                      <div style={styles.cardFooter}>
+                        <span style={styles.lastActivity}>
+                          {t.lastActivity}: {formatDate(project.updated_at)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </main>
 
         {/* Create Project Modal */}
@@ -471,6 +632,162 @@ const styles = {
     fontWeight: '700',
     color: '#111827',
     marginBottom: '1.5rem'
+  },
+
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1.5rem'
+  },
+
+  viewAllButton: {
+    backgroundColor: 'transparent',
+    color: '#3b82f6',
+    border: 'none',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    padding: '0.5rem 0',
+    transition: 'color 0.2s'
+  },
+
+  // Quick Actions Styles
+  quickActionsSection: {
+    marginBottom: '3rem'
+  },
+
+  quickActionsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '1.5rem',
+    maxWidth: '800px'
+  },
+
+  quickActionCard: {
+    backgroundColor: '#ffffff',
+    border: '2px solid #e5e7eb',
+    borderRadius: '12px',
+    padding: '2rem 1.5rem',
+    textAlign: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+  },
+
+  quickActionIcon: {
+    fontSize: '2.5rem',
+    marginBottom: '1rem'
+  },
+
+  quickActionTitle: {
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: '0.5rem'
+  },
+
+  quickActionDesc: {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    margin: 0
+  },
+
+  // Document Tools Styles
+  documentSection: {
+    marginBottom: '3rem'
+  },
+
+  toolsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: '1.25rem'
+  },
+
+  toolCard: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    padding: '1.5rem',
+    textAlign: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+  },
+
+  toolIcon: {
+    fontSize: '2rem',
+    marginBottom: '0.75rem'
+  },
+
+  toolName: {
+    fontSize: '1rem',
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: '0.5rem'
+  },
+
+  toolDesc: {
+    fontSize: '0.8125rem',
+    color: '#6b7280',
+    margin: 0
+  },
+
+  // Documents Styles
+  documentsSection: {
+    marginBottom: '3rem'
+  },
+
+  documentsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '1.25rem'
+  },
+
+  documentCard: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    padding: '1.25rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+  },
+
+  docIcon: {
+    fontSize: '1.5rem',
+    marginBottom: '0.75rem'
+  },
+
+  docTitle: {
+    fontSize: '1rem',
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: '0.5rem',
+    lineHeight: '1.4'
+  },
+
+  docType: {
+    fontSize: '0.8125rem',
+    color: '#3b82f6',
+    fontWeight: '500',
+    marginBottom: '0.25rem'
+  },
+
+  docProject: {
+    fontSize: '0.75rem',
+    color: '#6b7280',
+    marginBottom: '1rem'
+  },
+
+  docStatus: {
+    display: 'flex',
+    justifyContent: 'flex-end'
+  },
+
+  // Projects Styles
+  projectsSection: {
+    marginBottom: '2rem'
   },
   
   emptyState: {

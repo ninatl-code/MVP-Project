@@ -1,6 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# 📋 ProjectHub - Outil de Gestion de Documents de Projet
 
-## Getting Started
+## 🎯 **Vue d'ensemble**
+
+ProjectHub est un outil complet destiné aux chefs de projet pour créer, personnaliser et gérer des documents professionnels à travers toutes les phases d'un projet. L'outil utilise des modèles prédéfinis et permet une personnalisation avancée (logo, couleurs, polices, mise en page).
+
+## 🏗️ **Architecture**
+
+### **Stack Technique**
+
+- **Frontend**: Next.js (React) avec JavaScript
+- **Base de données**: Supabase (PostgreSQL)
+- **Styling**: CSS-in-JS avec styles personnalisés
+- **Export**: jsPDF + html2canvas pour génération PDF
+- **Authentification**: Supabase Auth
+
+### **Structure des Pages**
+
+```
+pages/
+├── projectman.js           # Dashboard principal
+├── documents/
+│   ├── index.js           # Liste de tous les documents
+│   ├── templates.js       # Sélection de modèles
+│   ├── create/[id].js     # Création par type de document
+│   └── edit/[id].js       # Éditeur de document complet
+├── project/[id].js        # Détails d'un projet
+├── login.js & signup.js   # Authentification
+```
+
+## 🚀 **Getting Started**
 
 First, run the development server:
 
