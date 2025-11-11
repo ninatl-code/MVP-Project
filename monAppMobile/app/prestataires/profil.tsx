@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { useNavigation } from 'expo-router';
-import Header from '../../components/HeaderPresta';
+import { useRouter } from 'expo-router';
+import FooterPresta from '../../components/FooterPresta';
 
 interface Profile {
   nom: string;
@@ -23,7 +23,7 @@ export default function ProfilPrestataire() {
     telephone: '',
     bio: ''
   });
-  const navigation = useNavigation();
+  const router = useRouter();
 
   useEffect(() => {
     fetchProfile();
@@ -72,17 +72,16 @@ export default function ProfilPrestataire() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#5C6BC0" />
         </View>
+        <FooterPresta />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header />
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
@@ -182,6 +181,7 @@ export default function ProfilPrestataire() {
           </View>
         </View>
       </ScrollView>
+      <FooterPresta />
     </View>
   );
 }
@@ -195,7 +195,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    padding: 24
+    padding: 24,
+    paddingBottom: 100, // Espace pour le footer
   },
   centerContainer: {
     flex: 1,

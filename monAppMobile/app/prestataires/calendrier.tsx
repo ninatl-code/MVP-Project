@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderPresta';
+import FooterPresta from '../../components/FooterPresta';
 
 interface Event {
   id: string;
@@ -44,7 +44,7 @@ export default function CalendrierPrestataire() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header />
+        
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#5C6BC0" />
         </View>
@@ -54,7 +54,7 @@ export default function CalendrierPrestataire() {
 
   return (
     <View style={styles.container}>
-      <Header />
+      
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <Text style={styles.title}>📅 Mon Planning</Text>
@@ -86,6 +86,7 @@ export default function CalendrierPrestataire() {
           ))
         )}
       </ScrollView>
+      <FooterPresta />
     </View>
   );
 }
@@ -99,7 +100,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    padding: 24
+    padding: 24,
+    paddingBottom: 100, // Espace pour le footer
   },
   centerContainer: {
     flex: 1,
@@ -170,3 +172,4 @@ const styles = StyleSheet.create({
     color: '#9CA3AF'
   }
 });
+

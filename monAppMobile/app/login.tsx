@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import { supabase } from '../lib/supabaseClient'
-import { useNavigation } from '@react-navigation/native'
+import { useRouter } from 'expo-router'
 import Headerhomepage from '../components/Headerhomepage'
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const navigation = useNavigation()
+  const router = useRouter()
 
   const handleLogin = async () => {
     setLoading(true)
@@ -50,8 +50,8 @@ export default function Login() {
 
     // Vérifier le rôle
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
-    if (profile?.role === 'prestataire') (navigation as any).navigate('prestataires/menu')
-    else (navigation as any).navigate('particuliers/menu')
+    if (profile?.role === 'prestataire') router.push('/prestataires/menu')
+    else router.push('/particuliers/menu')
 
     setLoading(false)
   }

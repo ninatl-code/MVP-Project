@@ -1,26 +1,26 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 export default function BottomNavBar() {
-  const navigation = useNavigation();
+  const router = useRouter();
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity style={styles.tab} onPress={() => router.push('/(tabs)/')}>
         <Ionicons name="home-outline" size={26} color="#635BFF" />
         <Text style={styles.label}>Accueil</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('Login')}>
+      <TouchableOpacity style={styles.tab} onPress={() => router.push('/login')}>
         <MaterialIcons name="login" size={26} color="#635BFF" />
         <Text style={styles.label}>Connexion</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('Signup')}>
+      <TouchableOpacity style={styles.tab} onPress={() => router.push('/signup')}>
         <MaterialIcons name="person-add-alt" size={26} color="#635BFF" />
         <Text style={styles.label}>Inscription</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('Profil')}>
+      <TouchableOpacity style={styles.tab} onPress={() => router.push('/profil')}>
         <Ionicons name="person-outline" size={26} color="#635BFF" />
         <Text style={styles.label}>Profil</Text>
       </TouchableOpacity>

@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { useNavigation } from 'expo-router';
-import Header from '../../components/HeaderPresta';
+import { useRouter } from 'expo-router';
+import FooterPresta from '../../components/FooterPresta';
 
 interface Annonce {
   id: string;
@@ -18,7 +18,7 @@ interface Annonce {
 export default function PrestationsPrestataire() {
   const [loading, setLoading] = useState(true);
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
-  const navigation = useNavigation();
+  const router = useRouter();
 
   useEffect(() => {
     fetchAnnonces();
@@ -55,17 +55,16 @@ export default function PrestationsPrestataire() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#5C6BC0" />
         </View>
+        <FooterPresta />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header />
       
       <View style={styles.content}>
         <View style={styles.header}>
@@ -121,6 +120,7 @@ export default function PrestationsPrestataire() {
           )}
         </ScrollView>
       </View>
+      <FooterPresta />
     </View>
   );
 }
@@ -132,7 +132,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24
+    padding: 24,
+    paddingBottom: 100, // Espace pour le footer
   },
   centerContainer: {
     flex: 1,

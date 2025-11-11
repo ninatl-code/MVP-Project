@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { useNavigation } from 'expo-router';
-import Header from '../../components/HeaderPresta';
+import { useRouter } from 'expo-router';
+import FooterPresta from '../../components/FooterPresta';
 
 export default function MenuPrestataire() {
   const [loading, setLoading] = useState(true);
@@ -13,7 +13,7 @@ export default function MenuPrestataire() {
     annonces: 0,
     messages: 0
   });
-  const navigation = useNavigation();
+  const router = useRouter();
 
   useEffect(() => {
     fetchData();
@@ -22,7 +22,7 @@ export default function MenuPrestataire() {
   const fetchData = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
-      (navigation as any).navigate('login');
+      router.push('/login');
       return;
     }
 
@@ -46,38 +46,19 @@ export default function MenuPrestataire() {
     setLoading(false);
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Déconnexion',
-      'Voulez-vous vraiment vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Déconnexion',
-          style: 'destructive',
-          onPress: async () => {
-            await supabase.auth.signOut();
-            (navigation as any).navigate('login');
-          }
-        }
-      ]
-    );
-  };
-
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#5C6BC0" />
         </View>
+        <FooterPresta />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header />
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
@@ -115,7 +96,7 @@ export default function MenuPrestataire() {
           
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/calendrier')}
+            onPress={() => router.push('/prestataires/calendrier')}
           >
             <Text style={styles.menuIcon}>📅</Text>
             <View style={styles.menuContent}>
@@ -127,7 +108,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/prestations')}
+            onPress={() => router.push('/prestataires/prestations')}
           >
             <Text style={styles.menuIcon}>📢</Text>
             <View style={styles.menuContent}>
@@ -139,7 +120,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/devis')}
+            onPress={() => router.push('/prestataires/devis')}
           >
             <Text style={styles.menuIcon}>📝</Text>
             <View style={styles.menuContent}>
@@ -151,7 +132,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/reservations')}
+            onPress={() => router.push('/prestataires/reservations')}
           >
             <Text style={styles.menuIcon}>📋</Text>
             <View style={styles.menuContent}>
@@ -160,66 +141,9 @@ export default function MenuPrestataire() {
             </View>
             <Text style={styles.menuArrow}>→</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/messages')}
-          >
-            <Text style={styles.menuIcon}>💬</Text>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Messages</Text>
-              <Text style={styles.menuSubtitle}>Communiquer avec mes clients</Text>
-            </View>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/kpis')}
-          >
-            <Text style={styles.menuIcon}>📊</Text>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Statistiques</Text>
-              <Text style={styles.menuSubtitle}>Voir mes performances</Text>
-            </View>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/profil')}
-          >
-            <Text style={styles.menuIcon}>👤</Text>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Mon profil</Text>
-              <Text style={styles.menuSubtitle}>Modifier mes informations</Text>
-            </View>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => (navigation as any).navigate('prestataires/notification')}
-          >
-            <Text style={styles.menuIcon}>🔔</Text>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Notifications</Text>
-              <Text style={styles.menuSubtitle}>Voir mes notifications</Text>
-            </View>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, styles.logoutButton]}
-            onPress={handleLogout}
-          >
-            <Text style={styles.menuIcon}>🚪</Text>
-            <View style={styles.menuContent}>
-              <Text style={[styles.menuTitle, { color: '#EF4444' }]}>Déconnexion</Text>
-            </View>
-          </TouchableOpacity>
         </View>
       </ScrollView>
+      <FooterPresta />
     </View>
   );
 }
@@ -233,7 +157,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    padding: 24
+    padding: 16,
+    paddingBottom: 100, // Espace pour le footer
   },
   centerContainer: {
     flex: 1,

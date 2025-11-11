@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderPresta';
+import FooterPresta from '../../components/FooterPresta';
 
 interface Notification {
   id: string;
@@ -96,7 +96,7 @@ export default function NotificationsPage() {
 
   return (
     <View style={styles.container}>
-      <Header />
+      
       
       <View style={styles.mainContent}>
         {/* Colonne gauche - Liste */}
@@ -352,3 +352,4 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace'
   }
 });
+

@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderPresta';
+import FooterPresta from '../../components/FooterPresta';
 
 interface Remboursement {
   id: string;
@@ -55,18 +55,16 @@ export default function RemboursementsPrestataire() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#5C6BC0" />
         </View>
+        <FooterPresta />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header />
-      
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <Text style={styles.title}>💰 Remboursements</Text>
 
@@ -111,6 +109,7 @@ export default function RemboursementsPrestataire() {
           ))
         )}
       </ScrollView>
+      <FooterPresta />
     </View>
   );
 }
@@ -124,7 +123,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   content: {
-    padding: 24
+    padding: 24,
+    paddingBottom: 100 // Espace pour le footer
   },
   centerContainer: {
     flex: 1,

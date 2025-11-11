@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 interface Remboursement {
   id: string;
@@ -22,13 +22,13 @@ export default function MesRemboursements() {
   const [remboursements, setRemboursements] = useState<Remboursement[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRemboursement, setSelectedRemboursement] = useState<Remboursement | null>(null);
-  const navigation = useNavigation();
+  const router = useRouter();
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        (navigation as any).navigate('login');
+        router.push('/login');
         return;
       }
       

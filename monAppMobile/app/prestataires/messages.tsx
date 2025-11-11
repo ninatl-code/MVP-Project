@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderPresta';
+import FooterPresta from '../../components/FooterPresta';
 
 interface Message {
   id: string;
@@ -97,7 +97,7 @@ export default function MessagesPrestataire() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header />
+        
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#5C6BC0" />
         </View>
@@ -107,7 +107,7 @@ export default function MessagesPrestataire() {
 
   return (
     <View style={styles.container}>
-      <Header />
+      
       
       <View style={styles.mainContent}>
         {/* Liste conversations */}
@@ -315,3 +315,4 @@ const styles = StyleSheet.create({
     fontSize: 24
   }
 });
+

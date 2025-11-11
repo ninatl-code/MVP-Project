@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderPresta';
+import FooterPresta from '../../components/FooterPresta';
 
 interface Devis {
   id: string;
@@ -64,7 +64,7 @@ export default function DevisPrestataire() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header />
+        
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#5C6BC0" />
         </View>
@@ -74,7 +74,7 @@ export default function DevisPrestataire() {
 
   return (
     <View style={styles.container}>
-      <Header />
+      
       
       <View style={styles.content}>
         <View style={styles.header}>
@@ -154,7 +154,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24
+    padding: 24,
+    paddingBottom: 100, // Espace pour le footer
   },
   centerContainer: {
     flex: 1,
@@ -267,3 +268,4 @@ const styles = StyleSheet.create({
     color: '#9CA3AF'
   }
 });
+
