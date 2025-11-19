@@ -29,3 +29,8 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
     throw error;
   }
 }
+
+// Export par défaut requis pour Expo Router
+export default function SendEmailAPI() {
+  return null; // Ce n'est pas un composant React, juste une fonction utilitaire
+}

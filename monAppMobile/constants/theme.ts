@@ -1,31 +1,35 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
+// Updated theme using the new design system
+import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../lib/constants';
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
 export const Colors = {
+  ...COLORS,
+  // Keep existing structure for compatibility but use new colors
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: COLORS.text.primary,
+    background: COLORS.white,
+    tint: COLORS.accent,
+    icon: COLORS.gray[500],
+    tabIconDefault: COLORS.gray[400],
+    tabIconSelected: COLORS.accent,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: COLORS.white,
+    background: COLORS.gray[900],
+    tint: COLORS.primary,
+    icon: COLORS.gray[400],
+    tabIconDefault: COLORS.gray[500],
+    tabIconSelected: COLORS.primary,
   },
+  // Direct access to design system colors
+  tint: COLORS.accent,
+  tabIconDefault: COLORS.gray[400],
+  tabIconSelected: COLORS.accent,
 };
+
+export const Typography = TYPOGRAPHY;
+export const Spacing = SPACING;
+export const Shadows = SHADOWS;
 
 export const Fonts = Platform.select({
   ios: {
@@ -51,3 +55,11 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+export default {
+  Colors,
+  Typography,
+  Spacing,
+  Shadows,
+  Fonts,
+};

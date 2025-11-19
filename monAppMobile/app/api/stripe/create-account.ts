@@ -7,3 +7,8 @@ export async function createStripeAccount(prestataire_id: string, email: string)
   if (!response.ok) throw new Error(await response.text());
   return await response.json();
 }
+
+// Export par défaut requis pour Expo Router
+export default function CreateStripeAccountAPI() {
+  return null; // Ce n'est pas un composant React, juste une fonction utilitaire
+}

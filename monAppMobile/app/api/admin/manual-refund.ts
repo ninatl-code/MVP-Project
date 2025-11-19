@@ -10,3 +10,8 @@ export async function manualRefund(remboursementId: string, forceRefund: boolean
   if (!response.ok) throw new Error(await response.text());
   return await response.json();
 }
+
+// Export par défaut requis pour Expo Router
+export default function ManualRefundAPI() {
+  return null; // Ce n'est pas un composant React, juste une fonction utilitaire
+}

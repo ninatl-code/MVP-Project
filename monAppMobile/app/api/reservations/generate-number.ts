@@ -41,3 +41,8 @@ export async function generateReservationNumber(): Promise<{ num_reservation: nu
     increment: nextNumber
   };
 }
+
+// Export par défaut requis pour Expo Router
+export default function GenerateReservationNumberAPI() {
+  return null; // Ce n'est pas un composant React, juste une fonction utilitaire
+}

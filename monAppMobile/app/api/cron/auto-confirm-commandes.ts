@@ -100,3 +100,8 @@ export async function autoConfirmCommandes(cronSecret: string): Promise<{
     success: errorCount === 0
   };
 }
+
+// Export par défaut requis pour Expo Router
+export default function AutoConfirmCommandesAPI() {
+  return null; // Ce n'est pas un composant React, juste une fonction utilitaire
+}

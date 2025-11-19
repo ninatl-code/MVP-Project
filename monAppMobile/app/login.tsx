@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'expo-router'
-import Headerhomepage from '../components/Headerhomepage'
+// Footer will be shown globally in the authenticated layout —
+// remove inline header usage to avoid duplicate footers.
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
@@ -48,11 +49,8 @@ export default function Login() {
       return
     }
 
-    // Vérifier le rôle
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
-    if (profile?.role === 'prestataire') router.push('/prestataires/menu')
-    else router.push('/particuliers/menu')
-
+    // Redirection vers le menu unique (adapté au rôle)
+    router.replace('/menu')
     setLoading(false)
   }
 
@@ -62,7 +60,6 @@ export default function Login() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Headerhomepage />
         <View style={styles.main}>
           <Text style={styles.title}>Connexion</Text>
           {errorMsg && (

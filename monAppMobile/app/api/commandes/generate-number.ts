@@ -41,3 +41,8 @@ export async function generateCommandeNumber(): Promise<{ num_commande: number; 
     increment: nextNumber
   };
 }
+
+// Export par défaut requis pour Expo Router
+export default function GenerateCommandeNumberAPI() {
+  return null; // Ce n'est pas un composant React, juste une fonction utilitaire
+}

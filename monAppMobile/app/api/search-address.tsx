@@ -31,3 +31,8 @@ export async function searchAddress(query: string): Promise<any[]> {
     throw new Error("Erreur lors de la recherche d'adresse");
   }
 }
+
+// Export par défaut requis pour Expo Router
+export default function SearchAddressAPI() {
+  return null; // Ce n'est pas un composant React, juste une fonction utilitaire
+}

@@ -30,30 +30,6 @@ export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [service, setService] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [connectionTest, setConnectionTest] = useState<string>('Testing...');
-
-  // Test de connectivité au montage du composant
-  useEffect(() => {
-    const testConnection = async () => {
-      try {
-        console.log('Testing Supabase connection...');
-        const { data, error } = await supabase.from('annonces').select('count').limit(1);
-        
-        if (error) {
-          setConnectionTest(`Connection error: ${error.message}`);
-          console.error('Connection test failed:', error);
-        } else {
-          setConnectionTest('Connection OK');
-          console.log('Connection test successful');
-        }
-      } catch (error) {
-        setConnectionTest(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        console.error('Network test failed:', error);
-      }
-    };
-    
-    testConnection();
-  }, []);
 
   useEffect(() => {
     if (id) {
@@ -63,43 +39,17 @@ export default function ServiceDetailScreen() {
 
   const fetchServiceDetails = async () => {
     try {
-      console.log('Fetching service with ID:', id);
-      
-      // Test de connectivité basique
       const { data, error } = await supabase
         .from('annonces')
         .select('*')
         .eq('id', id)
         .single();
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-      
-      console.log('Service data received:', data);
+      if (error) throw error;
       setService(data);
     } catch (error) {
-      console.error('Full error details:', error);
-      
-      // Gestion d'erreur plus détaillée
-      if (error instanceof Error) {
-        if (error.message.includes('Network request failed')) {
-          Alert.alert(
-            'Erreur de connexion', 
-            'Impossible de se connecter au serveur. Vérifiez:\n\n• Votre connexion internet\n• Les paramètres du simulateur\n• La configuration Supabase'
-          );
-        } else if (error.message.includes('Failed to fetch')) {
-          Alert.alert(
-            'Erreur réseau', 
-            'Problème de réseau détecté. Vérifiez votre connexion.'
-          );
-        } else {
-          Alert.alert('Erreur', `Impossible de charger le service: ${error.message}`);
-        }
-      } else {
-        Alert.alert('Erreur', 'Une erreur inattendue s\'est produite');
-      }
+      console.error('Error:', error);
+      Alert.alert('Erreur', 'Impossible de charger le service');
     } finally {
       setLoading(false);
     }
@@ -109,8 +59,6 @@ export default function ServiceDetailScreen() {
     return (
       <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <ThemedText style={styles.connectionStatus}>{connectionTest}</ThemedText>
-        <ThemedText style={styles.loadingText}>Chargement du service...</ThemedText>
       </ThemedView>
     );
   }
@@ -266,18 +214,6 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: '600' as any,
-    textAlign: 'center',
-  },
-  connectionStatus: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginTop: 8,
     textAlign: 'center',
   },
 });

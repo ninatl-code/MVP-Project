@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderParti';
+import FooterParti from '../../components/FooterParti';
 import RealTimeNotifications from '../../components/RealTimeNotifications';
 
 export default function ParticularHomeMenu() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const [profile, setProfile] = useState<{ nom: string; photos: string[] } | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [devis, setDevis] = useState<any[]>([]);
@@ -128,8 +128,7 @@ export default function ParticularHomeMenu() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f3f3f3' }}>
-      <Header />
-      <ScrollView>
+      <ScrollView style={{ flex: 1, paddingBottom: 100 }}>
         <View style={{ padding: 16 }}>
           {profile && (
             <View style={{ marginBottom: 24 }}>
@@ -146,6 +145,8 @@ export default function ParticularHomeMenu() {
           {reservations.map(r => <ReservationCard key={r.id} reservation={r} />)}
         </View>
       </ScrollView>
+      
+      <FooterParti />
       <RealTimeNotifications userId={userId} triggerNotification={null} />
       {selectedDevis && <SimpleModal item={selectedDevis} onClose={() => setSelectedDevis(null)} />}
       {selectedReservation && <SimpleModal item={selectedReservation} onClose={() => setSelectedReservation(null)} />}
