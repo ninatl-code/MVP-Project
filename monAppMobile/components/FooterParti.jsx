@@ -6,15 +6,18 @@ import ShootyLogoSimple from "./ShootyLogo";
 import { Ionicons } from '@expo/vector-icons';
 
 const COLORS = {
-  primary: '#fff',
-  accent: '#635BFF',
-  background: '#F8F9FB',
-  text: '#222',
+  primary: '#5C6BC0',
+  accent: '#130183',
+  text: '#1C1C1E',
+  white: '#FFFFFF',
+  error: '#EF4444',
+  border: '#E5E7EB',
 };
 
 export default function FooterParti() {
   const [profile, setProfile] = useState(null);
   const [nbUnread, setNbUnread] = useState(0);
+  const [nbNotifications, setNbNotifications] = useState(0);
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -35,53 +38,73 @@ export default function FooterParti() {
         .eq("id", user.id)
         .single();
       setProfile(profileData);
+      
+      // Messages non lus
       const { data: unreadConvs } = await supabase
         .from("conversations")
         .select("id")
         .eq("client_id", user.id)
         .eq("lu", false);
       setNbUnread(unreadConvs ? unreadConvs.length : 0);
+
+      // Notifications non lues
+      const { data: unreadNotifs } = await supabase
+        .from("notification")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("lu", false);
+      setNbNotifications(unreadNotifs ? unreadNotifs.length : 0);
     };
     checkAuth();
   }, []);
 
+  const getInitials = (name) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  };
+
   return (
     <View style={styles.footer}>
-      <View style={styles.left}>
-        <ShootyLogoSimple width={30} height={30} />
-        {profile && (
-          <View style={styles.profileWrap}>
-            <Image source={{ uri: profile.photos?.[0] || undefined }} style={styles.avatar} />
-            <Text style={styles.name} numberOfLines={1}>{profile.nom}</Text>
-          </View>
-        )}
-      </View>
-      
       <View style={styles.center}>
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/(tabs)/dashboard')}>
-          <Ionicons name="home-outline" size={20} color={COLORS.accent} />
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/menu')}>
+          <Ionicons name="home-outline" size={22} color={COLORS.accent} />
+          <Text style={styles.label}>Accueil</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/messages')}>
+          <View style={styles.tabContent}>
+            <Ionicons name="chatbubble-outline" size={22} color={COLORS.accent} />
+            {nbUnread > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{nbUnread}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.label}>Messages</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/(tabs)/search')}>
-          <Ionicons name="search-outline" size={20} color={COLORS.accent} />
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/profil')}>
+          <Ionicons name="person-outline" size={22} color={COLORS.accent} />
+          <Text style={styles.label}>Profil</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/(tabs)/payments')}>
-          <Ionicons name="card-outline" size={20} color={COLORS.accent} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/(tabs)/profile')}>
-          <Ionicons name="person-outline" size={20} color={COLORS.accent} />
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/notification')}>
+          <View style={styles.tabContent}>
+            <Ionicons name="notifications-outline" size={22} color={COLORS.accent} />
+            {nbNotifications > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{nbNotifications}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.label}>Notifs</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.right}>
-        <TouchableOpacity style={styles.iconBtn} onPress={handleLogout}>
-          <Text style={styles.logout}>Déconnexion</Text>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Ionicons name="log-out" size={22} color={COLORS.error} />
+          <Text style={styles.logoutText}>Déconnexion</Text>
         </TouchableOpacity>
-        {nbUnread > 0 && (
-          <View style={styles.badge}><Text style={styles.badgeText}>{nbUnread}</Text></View>
-        )}
       </View>
     </View>
   );
@@ -96,60 +119,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.07,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: COLORS.border,
     zIndex: 50,
   },
-  left: { 
-    flex: 1,
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
   center: {
-    flex: 2,
+    flex: 4,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
   },
+  right: {
+    flex: 1.5,
+    alignItems: 'flex-end',
+  },
   tab: {
-    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  tabContent: {
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileWrap: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginLeft: 8 
-  },
-  avatar: { 
-    width: 28, 
-    height: 28, 
-    borderRadius: 14, 
-    backgroundColor: '#eee', 
-    marginRight: 6 
-  },
-  name: { 
-    fontWeight: '600', 
-    fontSize: 12, 
+  label: {
+    fontSize: 11,
+    fontWeight: '600',
     color: COLORS.text,
-    maxWidth: 60,
+    marginTop: 4,
+    textAlign: 'center',
+    opacity: 0.7,
   },
-  right: { 
-    flex: 1,
-    flexDirection: 'row', 
+  logoutBtn: {
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    padding: 6,
   },
-  iconBtn: { marginRight: 8, padding: 8 },
-  logout: { color: COLORS.accent, fontWeight: 'bold', fontSize: 15 },
-  badge: { backgroundColor: '#FF385C', borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2 },
-  badgeText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  logoutText: {
+    fontSize: 10,
+    color: COLORS.error,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -10,
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  badgeText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
 });

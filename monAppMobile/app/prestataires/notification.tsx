@@ -1,7 +1,23 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, FlatList } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import FooterPresta from '../../components/FooterPresta';
+
+const COLORS = {
+  primary: '#5C6BC0',
+  accent: '#130183',
+  background: '#FFFFFF',
+  backgroundLight: '#F7F7F7',
+  text: '#1C1C1E',
+  textLight: '#717171',
+  border: '#E5E7EB',
+  unread: '#DC2626',
+  blue: '#007AFF',
+  green: '#34C759',
+  orange: '#FF9500'
+};
 
 interface Notification {
   id: string;
@@ -9,347 +25,172 @@ interface Notification {
   contenu: string;
   created_at: string;
   lu: boolean;
-  fullDetail?: string;
 }
 
-export default function NotificationsPage() {
-  const [selected, setSelected] = useState<Notification | null>(null);
+export default function NotificationsPrestataire() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [search, setSearch] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const router = useRouter();
 
   useEffect(() => {
-    fetchUserAndNotifications();
-  }, [search]);
+    fetchNotifications();
+  }, [filter]);
 
-  const fetchUserAndNotifications = async () => {
-    setLoading(true);
+  const fetchNotifications = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      setLoading(false);
+      router.replace('/login');
       return;
     }
-    setUserId(user.id);
 
-    let query = supabase
-      .from('notification')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    let query = supabase.from('notification').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (filter === 'unread') query = query.eq('lu', false);
 
-    if (search) {
-      query = query.ilike('contenu', `%${search}%`);
-    }
-
-    const { data, error } = await query;
-    if (!error) setNotifications(data || []);
+    const { data } = await query;
+    if (data) setNotifications(data);
     setLoading(false);
   };
 
-  const getIcon = (type: string) => {
-    if (type === 'reservation') return '📅';
-    if (type === 'message') return '💬';
-    if (type === 'review') return '⭐';
-    if (type === 'alert') return '⚠️';
-    return '🔔';
-  };
-
-  const getIconColor = (type: string) => {
-    if (type === 'reservation') return '#10B981';
-    if (type === 'message') return '#3B82F6';
-    if (type === 'review') return '#FBBF24';
-    if (type === 'alert') return '#EF4444';
-    return '#9CA3AF';
+  const markAsRead = async (id: string) => {
+    await supabase.from('notification').update({ lu: true }).eq('id', id);
+    fetchNotifications();
   };
 
   const markAllAsRead = async () => {
-    if (!userId) return;
-    await supabase
-      .from('notification')
-      .update({ lu: true })
-      .eq('user_id', userId)
-      .eq('lu', false);
-    
-    fetchUserAndNotifications();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('notification').update({ lu: true }).eq('user_id', user.id).eq('lu', false);
+    fetchNotifications();
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const getIcon = (type: string) => {
+    if (type === 'reservation') return 'calendar';
+    if (type === 'message') return 'chatbubble';
+    if (type === 'review') return 'star';
+    if (type === 'alert') return 'warning';
+    return 'notifications';
   };
 
-  const getTypeLabel = (type: string) => {
-    if (type === 'reservation') return 'Nouvelle réservation';
-    if (type === 'message') return 'Nouveau message';
-    if (type === 'review') return 'Nouvel avis';
-    if (type === 'alert') return 'Alerte';
-    return 'Notification';
+  const getIconColor = (type: string) => {
+    if (type === 'reservation') return COLORS.green;
+    if (type === 'message') return COLORS.blue;
+    if (type === 'review') return COLORS.orange;
+    if (type === 'alert') return COLORS.primary;
+    return COLORS.textLight;
   };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const diff = new Date().getTime() - date.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (minutes < 1) return 'À l\'instant';
+    if (minutes < 60) return `Il y a ${minutes}min`;
+    if (hours < 24) return `Il y a ${hours}h`;
+    if (days === 1) return 'Hier';
+    if (days < 7) return `Il y a ${days}j`;
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  };
+
+  const unreadCount = notifications.filter(n => !n.lu).length;
+
+  if (loading) return <View style={styles.loadingContainer}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
   return (
-    <View style={styles.container}>
-      
-      
-      <View style={styles.mainContent}>
-        {/* Colonne gauche - Liste */}
-        <View style={styles.leftColumn}>
-          <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Mes notifications</Text>
-            <TouchableOpacity onPress={markAllAsRead}>
-              <Text style={styles.markAllButton}>Tout marquer comme lu</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.searchContainer}>
-            <TextInput
-              placeholder="Rechercher..."
-              value={search}
-              onChangeText={setSearch}
-              style={styles.searchInput}
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
-          
-          <ScrollView style={styles.notificationsList}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#EC4899" style={styles.loader} />
-            ) : notifications.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>Aucune notification.</Text>
-              </View>
-            ) : (
-              notifications.map((notif) => (
-                <TouchableOpacity
-                  key={notif.id}
-                  onPress={() => setSelected(notif)}
-                  style={[
-                    styles.notificationItem,
-                    !notif.lu && styles.notificationItemUnread,
-                    selected?.id === notif.id && styles.notificationItemSelected
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.notifIcon, { color: getIconColor(notif.type) }]}>
-                    {getIcon(notif.type)}
-                  </Text>
-                  <View style={styles.notifContent}>
-                    <Text style={styles.notifTitle}>{getTypeLabel(notif.type)}</Text>
-                    <Text style={styles.notifText} numberOfLines={1}>
-                      {notif.contenu}
-                    </Text>
-                    <Text style={styles.notifDate}>{formatDate(notif.created_at)}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        </View>
-
-        {/* Colonne droite - Détail */}
-        <View style={styles.rightColumn}>
-          <View style={styles.detailHeader}>
-            <Text style={styles.detailTitle}>
-              {selected ? getTypeLabel(selected.type) : 'Sélectionnez une notification'}
-            </Text>
-          </View>
-          
-          <ScrollView style={styles.detailContent}>
-            {!selected ? (
-              <View style={styles.emptyDetail}>
-                <Text style={styles.emptyDetailText}>
-                  Cliquez sur une notification pour voir le détail.
-                </Text>
-              </View>
-            ) : (
-              <View>
-                <View style={styles.detailIconRow}>
-                  <Text style={[styles.detailIcon, { color: getIconColor(selected.type) }]}>
-                    {getIcon(selected.type)}
-                  </Text>
-                  <Text style={styles.detailLabel}>{getTypeLabel(selected.type)}</Text>
-                </View>
-                
-                <Text style={styles.detailContentText}>{selected.contenu}</Text>
-                <Text style={styles.detailDate}>{formatDate(selected.created_at)}</Text>
-                
-                {selected.fullDetail && (
-                  <View style={styles.fullDetailBox}>
-                    <Text style={styles.fullDetailText}>{selected.fullDetail}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </ScrollView>
-        </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.text} /></TouchableOpacity>
+        <Text style={styles.headerTitle}>Notifications</Text>
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
+            <Text style={styles.markAllText}>Tout lire</Text>
+          </TouchableOpacity>
+        )}
+        {unreadCount === 0 && <View style={{ width: 60 }} />}
       </View>
-    </View>
+
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Toutes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'unread' && styles.filterButtonActive]}
+          onPress={() => setFilter('unread')}
+        >
+          <Text style={[styles.filterText, filter === 'unread' && styles.filterTextActive]}>Non lues</Text>
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {notifications.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="notifications-outline" size={64} color={COLORS.textLight} />
+          <Text style={styles.emptyTitle}>Aucune notification</Text>
+          <Text style={styles.emptySubtitle}>Vos notifications apparaîtront ici</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.notificationItem, !item.lu && styles.notificationItemUnread]}
+              onPress={() => !item.lu && markAsRead(item.id)}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: getIconColor(item.type) + '15' }]}>
+                <Ionicons name={getIcon(item.type) as any} size={24} color={getIconColor(item.type)} />
+              </View>
+              <View style={styles.notificationContent}>
+                <Text style={[styles.notificationText, !item.lu && styles.boldText]}>{item.contenu}</Text>
+                <Text style={styles.timeText}>{formatTime(item.created_at)}</Text>
+              </View>
+              {!item.lu && <View style={styles.unreadDot} />}
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      <FooterPresta />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB'
-  },
-  mainContent: {
-    flex: 1,
-    flexDirection: 'row'
-  },
-  leftColumn: {
-    width: '35%',
-    borderRightWidth: 1,
-    borderRightColor: '#E5E7EB',
-    backgroundColor: '#fff'
-  },
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6'
-  },
-  listTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937'
-  },
-  markAllButton: {
-    fontSize: 14,
-    color: '#EC4899',
-    fontWeight: '500'
-  },
-  searchContainer: {
-    padding: 12
-  },
-  searchInput: {
-    width: '100%',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    fontSize: 14,
-    color: '#111827'
-  },
-  notificationsList: {
-    flex: 1
-  },
-  loader: {
-    marginTop: 40
-  },
-  emptyState: {
-    padding: 32,
-    alignItems: 'center'
-  },
-  emptyText: {
-    color: '#9CA3AF',
-    fontSize: 14
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    backgroundColor: '#fff'
-  },
-  notificationItemUnread: {
-    backgroundColor: '#FDF2F8'
-  },
-  notificationItemSelected: {
-    backgroundColor: '#F3F4F6'
-  },
-  notifIcon: {
-    fontSize: 20
-  },
-  notifContent: {
-    flex: 1
-  },
-  notifTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4
-  },
-  notifText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4
-  },
-  notifDate: {
-    fontSize: 12,
-    color: '#9CA3AF'
-  },
-  rightColumn: {
-    flex: 1,
-    backgroundColor: '#fff'
-  },
-  detailHeader: {
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6'
-  },
-  detailTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937'
-  },
-  detailContent: {
-    flex: 1,
-    padding: 32
-  },
-  emptyDetail: {
-    marginTop: 96,
-    alignItems: 'center'
-  },
-  emptyDetailText: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    textAlign: 'center'
-  },
-  detailIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16
-  },
-  detailIcon: {
-    fontSize: 24
-  },
-  detailLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937'
-  },
-  detailContentText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 8,
-    lineHeight: 24
-  },
-  detailDate: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 24
-  },
-  fullDetailBox: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    padding: 16
-  },
-  fullDetailText: {
-    fontSize: 14,
-    color: '#374151',
-    fontFamily: 'monospace'
-  }
+  container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.background },
+  backButton: { padding: 4 },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text },
+  markAllButton: { paddingHorizontal: 12, paddingVertical: 6 },
+  markAllText: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  filterContainer: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  filterButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: COLORS.backgroundLight },
+  filterButtonActive: { backgroundColor: COLORS.text },
+  filterText: { fontSize: 15, fontWeight: '500', color: COLORS.text },
+  filterTextActive: { color: 'white' },
+  badge: { marginLeft: 6, backgroundColor: COLORS.primary, borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  badgeText: { color: 'white', fontSize: 11, fontWeight: '600' },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 20, fontWeight: '600', color: COLORS.text, marginTop: 16 },
+  emptySubtitle: { fontSize: 14, color: COLORS.textLight, marginTop: 8, textAlign: 'center' },
+  listContent: { paddingVertical: 8 },
+  notificationItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, backgroundColor: COLORS.background, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  notificationItemUnread: { backgroundColor: COLORS.backgroundLight },
+  iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  notificationContent: { flex: 1 },
+  notificationText: { fontSize: 15, color: COLORS.text, lineHeight: 20, marginBottom: 4 },
+  boldText: { fontWeight: '600' },
+  timeText: { fontSize: 13, color: COLORS.textLight },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.unread, marginLeft: 8 }
 });
-

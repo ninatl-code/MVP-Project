@@ -1,454 +1,217 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, FlatList, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
-import Header from '../../components/HeaderParti';
-import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import FooterParti from '../../components/FooterParti';
 
-// Types
-interface Profile {
+const COLORS = {
+  primary: '#5C6BC0',
+  accent: '#130183',
+  background: '#FFFFFF',
+  backgroundLight: '#F7F7F7',
+  text: '#1C1C1E',
+  textLight: '#717171',
+  border: '#E5E7EB',
+  unread: '#DC2626'
+};
+
+interface Conversation {
   id: string;
-  nom: string;
-  role?: string;
-  photos?: string[] | string;
+  artist_id: string;
+  last_message: string;
+  updated: string;
+  lu: boolean;
+  prestataire: { nom: string; photos?: string[] };
 }
 
 interface Message {
   id: string;
-  conversation_id: string;
   sender_id: string;
-  receiver_id: string;
-  objet?: string;
   contenu: string;
   created_at: string;
-  deletion_dateParti?: string | null;
 }
-
-interface Conversation {
-  conversation: {
-    id: string;
-    artist_id: string;
-    client_id: string;
-    annonce_id?: string;
-    last_message?: string;
-    created_at: string;
-    updated: string;
-    deletion_dateParti?: string | null;
-    lu?: boolean;
-  };
-  user: Profile | null;
-  userId: string;
-  annonceId?: string;
-  messages: Message[];
-  prestatairePhoto?: string;
-}
-
-interface Attachment {
-  name: string;
-  type: string;
-  size: number;
-  data: string;
-}
-
-// Helpers
-const cleanBase64 = (s: string) => (s || '').replace(/\s+/g, '');
-const isProbablyBase64 = (s: string) => {
-  if (!s) return false;
-  const clean = cleanBase64(s);
-  return clean.length > 50 && /^[A-Za-z0-9+/=]+$/.test(clean);
-};
-const guessMime = (b64: string) => {
-  if (!b64) return 'image/jpeg';
-  if (b64.startsWith('/9j/')) return 'image/jpeg';
-  if (b64.startsWith('iVBORw0KGgo')) return 'image/png';
-  if (b64.startsWith('R0lGOD')) return 'image/gif';
-  if (b64.startsWith('UklGR')) return 'image/webp';
-  return 'image/jpeg';
-};
-const initialsFromName = (name: string = '') => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0) return 'U';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
-const stringToColor = (str: string) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const c = (hash & 0x00ffffff).toString(16).toUpperCase();
-  return '#' + '00000'.substring(0, 6 - c.length) + c;
-};
-const svgAvatarDataUrl = (name: string = '', size: number = 128) => {
-  const initials = initialsFromName(name);
-  const bg = stringToColor(name || 'user');
-  const fontSize = Math.round(size / 2.8);
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>
-    <rect width='100%' height='100%' fill='${bg}' rx='20' />
-    <text x='50%' y='50%' dy='.06em' text-anchor='middle' font-family='system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial' font-size='${fontSize}' fill='white'>${initials}</text>
-  </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-};
-const getPhotoUrlFromProfile = (profile: Profile | null) => {
-  if (!profile) return null;
-  let photos = profile.photos;
-  if (Array.isArray(photos) && photos.length > 0) photos = photos[0];
-  if (typeof photos === 'string') {
-    const trimmed = photos.trim();
-    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed) && parsed.length > 0) photos = parsed[0];
-        else if (typeof parsed === 'string') photos = parsed;
-      } catch (e) {}
-    }
-  }
-  if (!photos) return null;
-  if (typeof photos === 'string' && photos.startsWith('data:')) return photos;
-  if (typeof photos === 'string' && (photos.startsWith('http://') || photos.startsWith('https://'))) return photos;
-  if (typeof photos === 'string' && isProbablyBase64(photos)) {
-    const cleaned = cleanBase64(photos);
-    const mime = guessMime(cleaned);
-    return `data:${mime};base64,${cleaned}`;
-  }
-  return null;
-};
 
 export default function MessagesParticulier() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [checkedConvs, setCheckedConvs] = useState<string[]>([]);
-  const [search, setSearch] = useState<string>("");
-  const [user, setUser] = useState<Profile | null>(null);
-  const [messageInput, setMessageInput] = useState<string>("");
-  const [objetInput, setObjetInput] = useState<string>("");
-  const [annonceTitles, setAnnonceTitles] = useState<Record<string, string>>({});
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchUserAndConversations = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData?.user) return;
-      setUser({ id: authData.user.id, nom: authData.user.email || 'Utilisateur' });
-      // Récupère toutes les conversations de l'utilisateur (non supprimées)
-      const { data: conversationsData } = await supabase
-        .from("conversations")
-        .select("id, artist_id, client_id, annonce_id, last_message, created_at, updated, deletion_dateParti, lu")
-        .eq("client_id", authData.user.id)
-        .is("deletion_dateParti", null)
-        .order("updated", { ascending: false });
-      if (!conversationsData) return;
-      // Récupère tous les messages liés
-      const convIds = conversationsData.map((c: any) => c.id);
-      const { data: messages } = await supabase
-        .from("messages")
-        .select("id, conversation_id, sender_id, receiver_id, objet, contenu, created_at, deletion_dateParti")
-        .in("conversation_id", convIds)
-        .is("deletion_dateParti", null)
-        .order("created_at", { ascending: true });
-      if (!messages) return;
-      // Récupère tous les profils nécessaires
-      const userIds = Array.from(new Set(messages.flatMap((m: any) => [m.sender_id, m.receiver_id])));
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, nom, role, photos")
-        .in("id", userIds);
-      if (!profiles) return;
-      const profileMap: Record<string, Profile> = {};
-      profiles.forEach((p: Profile) => {
-        profileMap[p.id] = p;
-      });
-      // Récupère les titres d'annonces
-      const annonceIds = Array.from(new Set(conversationsData.map((c: any) => c.annonce_id).filter(Boolean)));
-      let annonceTitlesMap: Record<string, string> = {};
-      if (annonceIds.length > 0) {
-        const { data: annoncesData } = await supabase
-          .from("annonces")
-          .select("id, titre")
-          .in("id", annonceIds);
-        if (annoncesData) {
-          annoncesData.forEach((a: any) => {
-            annonceTitlesMap[a.id] = a.titre;
-          });
-        }
-      }
-      setAnnonceTitles(annonceTitlesMap);
-      // Regroupe les messages par conversation
-      const convMap: Record<string, Conversation> = {};
-      conversationsData.forEach((conv: any) => {
-        const otherId = conv.artist_id === authData.user.id ? conv.client_id : conv.artist_id;
-        const userProfile = profileMap[otherId] || null;
-        let photoUrl = getPhotoUrlFromProfile(userProfile);
-        if (!photoUrl) photoUrl = svgAvatarDataUrl(userProfile?.nom || 'U');
-        convMap[conv.id] = {
-          conversation: conv,
-          user: userProfile,
-          userId: otherId,
-          annonceId: conv.annonce_id,
-          messages: [],
-          prestatairePhoto: photoUrl,
-        };
-      });
-      messages.forEach((msg: any) => {
-        if (convMap[msg.conversation_id]) {
-          convMap[msg.conversation_id].messages.push(msg);
-        }
-      });
-      const convArr: Conversation[] = Object.values(convMap).sort((a, b) => {
-        const aDate = a.messages[a.messages.length - 1]?.created_at || "";
-        const bDate = b.messages[b.messages.length - 1]?.created_at || "";
-        return new Date(bDate).getTime() - new Date(aDate).getTime();
-      });
-      setConversations(convArr);
-      if (convArr.length > 0 && !selectedConv) setSelectedConv(convArr[0]);
-
-      // Marquer comme lus messages du premier conv
-      if (convArr.length > 0) {
-        const conv = convArr[0];
-        await supabase
-          .from("messages")
-          .update({ lu: true })
-          .eq("conversation_id", conv.conversation.id)
-          .eq("receiver_id", authData.user.id);
-        await supabase
-          .from("conversations")
-          .update({ lu: true })
-          .eq("id", conv.conversation.id);
-      }
-    };
-    fetchUserAndConversations();
+    fetchConversations();
   }, []);
 
-  // Marquer lu / non lu
-  const handleMarkReadUnread = async (markAsRead: boolean) => {
-    for (const convId of checkedConvs) {
-      await supabase
-        .from("conversations")
-        .update({ lu: markAsRead })
-        .eq("id", convId);
+  const fetchConversations = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      router.replace('/login');
+      return;
     }
-    setCheckedConvs([]);
-    setConversations(
-      conversations.map((conv) =>
-        checkedConvs.includes(conv.conversation.id)
-          ? { ...conv, conversation: { ...conv.conversation, lu: markAsRead } }
-          : conv
-      )
-    );
+    setUser(authUser);
+
+    const { data: convData } = await supabase
+      .from('conversations')
+      .select('id, artist_id, last_message, updated, lu, profiles!conversations_artist_id_fkey(nom, photos)')
+      .eq('client_id', authUser.id)
+      .order('updated', { ascending: false });
+
+    if (convData) {
+      const formatted = convData.map((conv: any) => ({ ...conv, prestataire: conv.profiles || { nom: 'Prestataire' }}));
+      setConversations(formatted);
+    }
+    setLoading(false);
   };
 
-  // Sélection d'une conv
+  const fetchMessages = async (convId: string) => {
+    const { data } = await supabase.from('messages').select('*').eq('conversation_id', convId).order('created_at', { ascending: true });
+    if (data) {
+      setMessages(data);
+      await supabase.from('messages').update({ lu: true }).eq('conversation_id', convId).eq('receiver_id', user.id);
+      await supabase.from('conversations').update({ lu: true }).eq('id', convId);
+    }
+  };
+
   const handleSelectConv = async (conv: Conversation) => {
     setSelectedConv(conv);
-    await supabase
-      .from("messages")
-      .update({ lu: true })
-      .eq("conversation_id", conv.conversation.id)
-      .eq("receiver_id", user?.id);
-    await supabase
-      .from("conversations")
-      .update({ lu: true })
-      .eq("id", conv.conversation.id);
-    setConversations(
-      conversations.map((c) =>
-        c.conversation.id === conv.conversation.id
-          ? { ...c, conversation: { ...c.conversation, lu: true } }
-          : c
-      )
-    );
+    await fetchMessages(conv.id);
   };
 
-  // Fonction pour convertir un fichier en base64
-  const fileToBase64 = (file: File) => {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  // Fonction pour gérer l'ajout de pièces jointes
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setIsUploading(true);
-    
-    try {
-      const newAttachments: Attachment[] = [];
-      
-      for (const file of files) {
-        if (file.size > 5 * 1024 * 1024) {
-          Alert.alert(`Le fichier ${file.name} est trop volumineux (max 5MB)`);
-          continue;
-        }
-        
-        const base64 = await fileToBase64(file);
-        newAttachments.push({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          data: base64
-        });
-      }
-      
-      setAttachments(prev => [...prev, ...newAttachments]);
-    } catch (error) {
-      console.error('Erreur lors de l\'encodage des fichiers:', error);
-      Alert.alert('Erreur lors de l\'ajout des fichiers');
-    } finally {
-      setIsUploading(false);
-      event.target.value = '';
-    }
-  };
-
-  // Fonction pour supprimer une pièce jointe
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Fonction pour naviguer vers le profil du prestataire
-  const handleViewProfile = () => {
-    if (selectedConv?.userId) {
-      // Remplacer par navigation native si besoin
-      // navigation.navigate('Profil', { userId: selectedConv.userId });
-      Alert.alert('Navigation', `Voir le profil de ${selectedConv.user?.nom}`);
-    }
-    setShowProfileMenu(false);
-  };
-
-  // Envoi message
   const handleSend = async () => {
-    if ((!messageInput.trim() && attachments.length === 0) || !selectedConv || !user?.id) return;
-    
-    let objetToUse = "";
-    if (selectedConv.messages.length > 0) {
-      objetToUse = selectedConv.messages[0].objet || "";
-    } else {
-      objetToUse = objetInput;
-    }
-    
-    let contenuToSend = messageInput;
-    
-    // Si on a des pièces jointes, les inclure dans le contenu
-    if (attachments.length > 0) {
-      const attachmentInfo = attachments.map(att => `[Fichier: ${att.name}]`).join(' ');
-      contenuToSend = messageInput ? `${messageInput}\n\n${attachmentInfo}` : attachmentInfo;
-    }
-    
-    const now = new Date().toISOString();
-    const { error } = await supabase.from("messages").insert([
-      {
-        conversation_id: selectedConv.conversation.id,
-        sender_id: user.id,
-        receiver_id: selectedConv.userId,
-        contenu: contenuToSend,
-        objet: objetToUse,
-        lu: false,
-        attachments: attachments.length > 0 ? JSON.stringify(attachments) : null,
-      },
-    ]);
-    
+    if (!messageInput.trim() || !selectedConv || !user) return;
+    setSending(true);
+    const { error } = await supabase.from('messages').insert({ conversation_id: selectedConv.id, sender_id: user.id, receiver_id: selectedConv.artist_id, contenu: messageInput, objet: 'Message' });
     if (!error) {
-      await supabase
-        .from("conversations")
-        .update({ last_message: contenuToSend, updated: now })
-        .eq("id", selectedConv.conversation.id);
-      await supabase
-        .from("messages")
-        .update({ deletion_dateParti: null })
-        .eq("conversation_id", selectedConv.conversation.id);
-      setMessageInput("");
-      setObjetInput("");
-      setAttachments([]);
-      await new Promise((res) => setTimeout(res, 300));
-      // Remplacer par navigation native si besoin
-      // navigation.navigate('MessagesParticulier');
-      Alert.alert('Succès', 'Message envoyé avec succès');
+      await supabase.from('conversations').update({ last_message: messageInput, updated: new Date().toISOString() }).eq('id', selectedConv.id);
+      setMessageInput('');
+      await fetchMessages(selectedConv.id);
+      await fetchConversations();
     }
+    setSending(false);
   };
 
-  const filteredConvs = conversations.filter(
-    (conv) =>
-      (conv.user?.nom || "").toLowerCase().includes(search.toLowerCase()) &&
-      conv.conversation.deletion_dateParti == null
-  );
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const diff = new Date().getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days === 0) return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if (days === 1) return 'Hier';
+    if (days < 7) return `${days}j`;
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  };
+
+  const getInitials = (name: string) => name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+
+  if (loading) return <View style={styles.loadingContainer}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+
+  if (!selectedConv) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.text} /></TouchableOpacity>
+          <Text style={styles.headerTitle}>Messages</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        {conversations.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="chatbubbles-outline" size={64} color={COLORS.textLight} />
+            <Text style={styles.emptyTitle}>Aucune conversation</Text>
+            <Text style={styles.emptySubtitle}>Vos messages apparaîtront ici</Text>
+          </View>
+        ) : (
+          <FlatList data={conversations} keyExtractor={(item) => item.id} contentContainerStyle={styles.listContent} ItemSeparatorComponent={() => <View style={styles.separator} />} renderItem={({ item }) => (
+            <TouchableOpacity style={styles.conversationItem} onPress={() => handleSelectConv(item)}>
+              <View style={styles.avatarContainer}>
+                {item.prestataire.photos?.[0] ? <Image source={{ uri: item.prestataire.photos[0] }} style={styles.avatar} /> : <View style={[styles.avatar, styles.avatarPlaceholder]}><Text style={styles.avatarText}>{getInitials(item.prestataire.nom)}</Text></View>}
+                {!item.lu && <View style={styles.unreadDot} />}
+              </View>
+              <View style={styles.conversationContent}>
+                <View style={styles.conversationHeader}>
+                  <Text style={[styles.prestataireNom, !item.lu && styles.boldText]}>{item.prestataire.nom}</Text>
+                  <Text style={styles.timeText}>{formatTime(item.updated)}</Text>
+                </View>
+                <Text style={[styles.lastMessage, !item.lu && styles.boldText]} numberOfLines={1}>{item.last_message}</Text>
+              </View>
+            </TouchableOpacity>
+          )} />
+        )}
+        <FooterParti />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-      <Header />
-      <View style={{ flex: 1, padding: 10 }}>
-        <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 10 }}>Messages</Text>
-        <TextInput
-          placeholder="Rechercher une conversation..."
-          value={search}
-          onChangeText={setSearch}
-          style={{ backgroundColor: '#fff', borderRadius: 8, padding: 10, marginBottom: 10 }}
-        />
-        <ScrollView>
-          {conversations.length === 0 ? (
-            <Text style={{ color: '#888', textAlign: 'center', marginTop: 40 }}>Aucun message</Text>
-          ) : (
-            conversations.map((conv) => (
-              <TouchableOpacity
-                key={conv.conversation.id}
-                onPress={() => handleSelectConv(conv)}
-                style={{ backgroundColor: selectedConv?.conversation.id === conv.conversation.id ? '#e0e0e0' : '#fff', borderRadius: 8, marginBottom: 8, padding: 10 }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Image
-                    source={{ uri: conv.prestatairePhoto || svgAvatarDataUrl(conv.user?.nom || 'U') }}
-                    style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10, backgroundColor: '#ccc' }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{conv.user?.nom || 'Utilisateur'}</Text>
-                    <Text style={{ color: '#666' }}>{conv.messages[conv.messages.length - 1]?.contenu?.slice(0, 45) || 'Nouvelle conversation'}</Text>
-                  </View>
-                  {conv.conversation.lu ? null : <Feather name="mail" size={20} color="#007AFF" />}
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-        {selectedConv && (
-          <View style={{ marginTop: 20, backgroundColor: '#fff', borderRadius: 8, padding: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-              <Image
-                source={{ uri: selectedConv.prestatairePhoto || svgAvatarDataUrl(selectedConv.user?.nom || 'U') }}
-                style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10, backgroundColor: '#ccc' }}
-              />
-              <View>
-                <Text style={{ fontWeight: 'bold', fontSize: 18 }}>{selectedConv.user?.nom || 'Utilisateur'}</Text>
-                <Text style={{ color: '#666' }}>{selectedConv.user?.role || ''}</Text>
-              </View>
-            </View>
-            <ScrollView style={{ maxHeight: 200 }}>
-              {selectedConv.messages.map((msg) => (
-                <View key={msg.id} style={{ marginBottom: 8, alignSelf: msg.sender_id === user?.id ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
-                  <View style={{ backgroundColor: msg.sender_id === user?.id ? '#007AFF' : '#eee', borderRadius: 12, padding: 8 }}>
-                    <Text style={{ color: msg.sender_id === user?.id ? '#fff' : '#333' }}>{msg.contenu}</Text>
-                  </View>
-                  <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
-                </View>
-              ))}
-            </ScrollView>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-              <TextInput
-                placeholder="Tapez votre message..."
-                value={messageInput}
-                onChangeText={setMessageInput}
-                style={{ flex: 1, backgroundColor: '#f0f0f0', borderRadius: 8, padding: 8 }}
-              />
-              <TouchableOpacity
-                onPress={() => {/* handleSend() à compléter */}}
-                style={{ marginLeft: 8, backgroundColor: '#007AFF', borderRadius: 8, padding: 10 }}
-              >
-                <Ionicons name="send" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }} keyboardVerticalOffset={90}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setSelectedConv(null)} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.text} /></TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <View style={styles.smallAvatar}>{selectedConv.prestataire.photos?.[0] ? <Image source={{ uri: selectedConv.prestataire.photos[0] }} style={styles.smallAvatarImage} /> : <Text style={styles.smallAvatarText}>{getInitials(selectedConv.prestataire.nom)}</Text>}</View>
+            <Text style={styles.headerName}>{selectedConv.prestataire.nom}</Text>
           </View>
-        )}
-      </View>
-    </View>
+          <TouchableOpacity style={styles.moreButton}><Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} /></TouchableOpacity>
+        </View>
+        <FlatList data={messages} keyExtractor={(item) => item.id} contentContainerStyle={styles.messagesContent} renderItem={({ item }) => (
+          <View style={[styles.messageBubble, item.sender_id === user.id ? styles.myMessage : styles.theirMessage]}>
+            <Text style={[styles.messageText, item.sender_id === user.id && styles.myMessageText]}>{item.contenu}</Text>
+            <Text style={[styles.messageTime, item.sender_id === user.id && styles.myMessageTime]}>{new Date(item.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
+          </View>
+        )} />
+        <View style={styles.inputContainer}>
+          <TextInput style={styles.input} placeholder="Écrivez un message..." placeholderTextColor={COLORS.textLight} value={messageInput} onChangeText={setMessageInput} multiline maxLength={500} />
+          <TouchableOpacity style={[styles.sendButton, (!messageInput.trim() || sending) && styles.sendButtonDisabled]} onPress={handleSend} disabled={!messageInput.trim() || sending}>
+            {sending ? <ActivityIndicator color="white" size="small" /> : <Ionicons name="send" size={20} color="white" />}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+      <FooterParti />
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.background },
+  backButton: { padding: 4 },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerName: { fontSize: 16, fontWeight: '600', color: COLORS.text },
+  moreButton: { padding: 4 },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 20, fontWeight: '600', color: COLORS.text, marginTop: 16 },
+  emptySubtitle: { fontSize: 14, color: COLORS.textLight, marginTop: 8, textAlign: 'center' },
+  listContent: { paddingVertical: 8 },
+  conversationItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.background },
+  separator: { height: 1, backgroundColor: COLORS.border, marginLeft: 76 },
+  avatarContainer: { position: 'relative', marginRight: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 24 },
+  avatarPlaceholder: { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: 'white', fontSize: 18, fontWeight: '600' },
+  unreadDot: { position: 'absolute', top: 0, right: 0, width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.unread, borderWidth: 2, borderColor: COLORS.background },
+  conversationContent: { flex: 1 },
+  conversationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  prestataireNom: { fontSize: 16, color: COLORS.text },
+  boldText: { fontWeight: '600' },
+  timeText: { fontSize: 13, color: COLORS.textLight },
+  lastMessage: { fontSize: 14, color: COLORS.textLight },
+  smallAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  smallAvatarImage: { width: 32, height: 32, borderRadius: 16 },
+  smallAvatarText: { color: 'white', fontSize: 14, fontWeight: '600' },
+  messagesContent: { paddingHorizontal: 16, paddingVertical: 16, flexGrow: 1 },
+  messageBubble: { maxWidth: '75%', marginVertical: 4, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
+  myMessage: { alignSelf: 'flex-end', backgroundColor: COLORS.primary, borderBottomRightRadius: 4 },
+  theirMessage: { alignSelf: 'flex-start', backgroundColor: COLORS.backgroundLight, borderBottomLeftRadius: 4 },
+  messageText: { fontSize: 15, color: COLORS.text, lineHeight: 20 },
+  myMessageText: { color: 'white' },
+  messageTime: { fontSize: 11, color: COLORS.textLight, marginTop: 4 },
+  myMessageTime: { color: 'rgba(255,255,255,0.7)' },
+  inputContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.background, gap: 8 },
+  input: { flex: 1, backgroundColor: COLORS.backgroundLight, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100, color: COLORS.text },
+  sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  sendButtonDisabled: { opacity: 0.5 }
+});

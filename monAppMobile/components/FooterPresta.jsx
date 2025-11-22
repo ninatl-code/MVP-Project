@@ -6,10 +6,12 @@ import { supabase } from '../lib/supabaseClient';
 import ShootyLogoSimple from './ShootyLogo';
 
 const COLORS = {
-  primary: '#fff',
-  accent: '#635BFF',
-  text: '#222',
+  primary: '#5C6BC0',
+  accent: '#130183',
+  text: '#1C1C1E',
+  white: '#FFFFFF',
   error: '#EF4444',
+  border: '#E5E7EB',
 };
 
 export default function FooterPresta() {
@@ -54,10 +56,6 @@ export default function FooterPresta() {
 
   return (
     <View style={styles.footer}>
-      <View style={styles.left}>
-        <ShootyLogoSimple width={35} height={35} />
-      </View>
-
       <View style={styles.center}>
         <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/messages')}>
           <View style={styles.tabContent}>
@@ -113,36 +111,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.07,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: COLORS.border,
     zIndex: 50,
   },
-  left: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
   center: {
-    flex: 3,
+    flex: 4,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
   },
   right: {
-    flex: 1,
+    flex: 1.5,
     alignItems: 'flex-end',
   },
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   tabContent: {
     position: 'relative',
@@ -150,36 +145,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: COLORS.accent,
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.text,
     marginTop: 4,
     textAlign: 'center',
+    opacity: 0.7,
   },
   logoutBtn: {
     alignItems: 'center',
-    padding: 4,
+    padding: 6,
   },
   logoutText: {
     fontSize: 10,
     color: COLORS.error,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 2,
   },
   badge: {
     position: 'absolute',
-    top: -6,
-    right: -8,
-    backgroundColor: '#FF385C',
+    top: -8,
+    right: -10,
+    backgroundColor: '#DC2626',
     borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    minWidth: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: COLORS.white,
   },
   badgeText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 11,
     fontWeight: 'bold',
   },

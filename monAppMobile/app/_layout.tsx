@@ -10,7 +10,7 @@ import LoadingScreen from './loading';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isAuthenticated, loading } = useAuth();
+  const { loading } = useAuth();
 
   // Afficher l'écran de loading pendant la vérification d'auth
   if (loading) {
@@ -20,32 +20,18 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        {!isAuthenticated ? (
-          // Routes publiques (non-authentifiées)
-          <>
-            {/* Show the explicit login screen first-time */}
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-          </>
-        ) : (
-          // Routes privées (authentifiées)
-          <>
-            {/* Menu unique qui s'adapte au rôle */}
-            <Stack.Screen name="menu" options={{ headerShown: false }} />
-            
-            {/* Sous-routes pour particuliers */}
-            <Stack.Screen name="particuliers" options={{ headerShown: false }} />
-            
-            {/* Sous-routes pour prestataires */}
-            <Stack.Screen name="prestataires" options={{ headerShown: false }} />
-            
-            {/* Routes communes */}
-            <Stack.Screen name="annonces" options={{ headerShown: false }} />
-            <Stack.Screen name="profil" options={{ headerShown: false }} />
-            <Stack.Screen name="remboursements" options={{ headerShown: false }} />
-            <Stack.Screen name="payments" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </>
-        )}
+        {/* Toutes les routes déclarées - la protection auth est dans chaque écran */}
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="menu" options={{ headerShown: false }} />
+        <Stack.Screen name="particuliers" options={{ headerShown: false }} />
+        <Stack.Screen name="prestataires" options={{ headerShown: false }} />
+        <Stack.Screen name="annonces" options={{ headerShown: false }} />
+        <Stack.Screen name="profil" options={{ headerShown: false }} />
+        <Stack.Screen name="remboursements" options={{ headerShown: false }} />
+        <Stack.Screen name="payments" options={{ headerShown: false }} />
+        <Stack.Screen name="search" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -53,8 +39,7 @@ function RootLayoutNav() {
 }
 
 export const unstable_settings = {
-  // Point d'entrée initial : login pour non-authentifiés, menu pour authentifiés
-  initialRouteName: 'login',
+  initialRouteName: undefined, // Expo Router gère automatiquement
 };
 
 export default function RootLayout() {

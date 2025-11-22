@@ -1,8 +1,23 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import FooterPresta from '../../components/FooterPresta';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const COLORS = {
+  primary: '#5C6BC0',
+  accent: '#130183',
+  background: '#FFFFFF',
+  backgroundLight: '#F7F7F7',
+  text: '#222222',
+  textLight: '#717171',
+  border: '#EBEBEB',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444'
+};
 
 interface Profile {
   nom: string;
@@ -10,28 +25,58 @@ interface Profile {
   telephone: string;
   bio: string;
   ville_id: string;
-  photos?: any;
+  photos?: string;
+  instagram?: string;
+  facebook?: string;
+  linkedin?: string;
+  website?: string;
+  stripe_account_id?: string;
+}
+
+interface Stats {
+  totalAnnonces: number;
+  totalReservations: number;
+  chiffreAffaires: number;
+  noteMoyenne: number;
+  totalVues: number;
 }
 
 export default function ProfilPrestataire() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [villeNom, setVilleNom] = useState('');
+  const [stats, setStats] = useState<Stats>({
+    totalAnnonces: 0,
+    totalReservations: 0,
+    chiffreAffaires: 0,
+    noteMoyenne: 0,
+    totalVues: 0
+  });
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     nom: '',
     email: '',
     telephone: '',
-    bio: ''
+    bio: '',
+    instagram: '',
+    facebook: '',
+    linkedin: '',
+    website: ''
   });
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     fetchProfile();
+    loadStats();
   }, []);
 
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
 
     const { data, error } = await supabase
       .from('profiles')
@@ -45,21 +90,80 @@ export default function ProfilPrestataire() {
         nom: data.nom || '',
         email: data.email || '',
         telephone: data.telephone || '',
-        bio: data.bio || ''
+        bio: data.bio || '',
+        instagram: data.instagram || '',
+        facebook: data.facebook || '',
+        linkedin: data.linkedin || '',
+        website: data.website || ''
       });
+
+      // Récupérer le nom de la ville
+      if (data.ville_id) {
+        const { data: villeData } = await supabase
+          .from('villes')
+          .select('ville')
+          .eq('id', data.ville_id)
+          .single();
+        setVilleNom(villeData?.ville || '');
+      }
     }
     setLoading(false);
+  };
+
+  const loadStats = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      // Annonces
+      const { data: annonces } = await supabase
+        .from('annonces')
+        .select('id, rate, vues')
+        .eq('prestataire', user.id);
+
+      // Réservations
+      const { data: reservations } = await supabase
+        .from('reservations')
+        .select('id, montant, status')
+        .eq('prestataire_id', user.id);
+
+      const totalAnnonces = annonces?.length || 0;
+      const totalReservations = reservations?.length || 0;
+      const totalVues = annonces?.reduce((sum, a) => sum + (a.vues || 0), 0) || 0;
+
+      const reservationsPayees = reservations?.filter(r => 
+        r.status === 'paid' || r.status === 'confirmed'
+      ) || [];
+      
+      const chiffreAffaires = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+      
+      const annonceAvecRate = annonces?.filter(a => a.rate && a.rate > 0) || [];
+      const noteMoyenne = annonceAvecRate.length > 0 ? 
+        annonceAvecRate.reduce((sum, a) => sum + a.rate, 0) / annonceAvecRate.length : 0;
+
+      setStats({
+        totalAnnonces,
+        totalReservations,
+        chiffreAffaires,
+        noteMoyenne: Math.round(noteMoyenne * 10) / 10,
+        totalVues
+      });
+    } catch (error) {
+      console.error('Erreur chargement stats:', error);
+    }
   };
 
   const handleSave = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    setSaving(true);
     const { error } = await supabase
       .from('profiles')
       .update(formData)
       .eq('id', user.id);
 
+    setSaving(false);
     if (error) {
       Alert.alert('Erreur', 'Impossible de sauvegarder les modifications');
     } else {
@@ -69,11 +173,22 @@ export default function ProfilPrestataire() {
     }
   };
 
+  const getInitials = (name: string) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount || 0);
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#5C6BC0" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
         <FooterPresta />
       </View>
@@ -81,209 +196,430 @@ export default function ProfilPrestataire() {
   }
 
   return (
-    <View style={styles.container}>
-      
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Mon Profil</Text>
-          {!editMode ? (
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setEditMode(true)}
-            >
-              <Text style={styles.editButtonText}>✏️ Modifier</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setEditMode(false);
-                  setFormData({
-                    nom: profile?.nom || '',
-                    email: profile?.email || '',
-                    telephone: profile?.telephone || '',
-                    bio: profile?.bio || ''
-                  });
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSave}
-              >
-                <Text style={styles.saveButtonText}>💾 Sauvegarder</Text>
-              </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Header avec gradient */}
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.accent]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            {/* Avatar et nom */}
+            <View style={styles.avatarSection}>
+              <View style={styles.avatarContainer}>
+                {profile?.photos ? (
+                  <Image source={{ uri: profile.photos }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>{getInitials(profile?.nom || 'U')}</Text>
+                  </View>
+                )}
+                <View style={styles.starBadge}>
+                  <Ionicons name="star" size={16} color="#FFA500" />
+                </View>
+              </View>
+
+              <View style={styles.nameSection}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.userName}>{profile?.nom || 'Utilisateur'}</Text>
+                  <View style={styles.roleBadge}>
+                    <Text style={styles.roleBadgeText}>Prestataire</Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <View style={styles.infoItem}>
+                    <Ionicons name="location" size={14} color="white" />
+                    <Text style={styles.infoText}>{villeNom || 'Ville non renseignée'}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Ionicons name="star" size={14} color="white" />
+                    <Text style={styles.infoText}>{stats.noteMoyenne}/5</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Ionicons name="eye" size={14} color="white" />
+                    <Text style={styles.infoText}>{stats.totalVues} vues</Text>
+                  </View>
+                </View>
+
+                <View style={styles.buttonRow}>
+                  {!editMode ? (
+                    <TouchableOpacity style={styles.editButton} onPress={() => setEditMode(true)}>
+                      <Ionicons name="people" size={16} color={COLORS.text} />
+                      <Text style={styles.editButtonText}>Modifier mon profil</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+                      {saving ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-circle" size={16} color="white" />
+                          <Text style={styles.saveButtonText}>Sauvegarder</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             </View>
-          )}
-        </View>
+          </View>
+        </LinearGradient>
 
-        <View style={styles.card}>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Nom</Text>
-            {editMode ? (
-              <TextInput
-                style={styles.input}
-                value={formData.nom}
-                onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                placeholder="Votre nom"
-              />
-            ) : (
-              <Text style={styles.value}>{profile?.nom || 'Non renseigné'}</Text>
-            )}
+        {/* Statistiques */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="trending-up" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Mes performances</Text>
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Email</Text>
-            {editMode ? (
-              <TextInput
-                style={styles.input}
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                placeholder="email@example.com"
-                keyboardType="email-address"
-              />
-            ) : (
-              <Text style={styles.value}>{profile?.email || 'Non renseigné'}</Text>
-            )}
-          </View>
+          <View style={styles.statsGrid}>
+            <View style={[styles.statCard, { borderColor: COLORS.primary }]}>
+              <Ionicons name="briefcase" size={20} color={COLORS.primary} />
+              <Text style={styles.statValue}>{stats.totalAnnonces}</Text>
+              <Text style={styles.statLabel}>Annonces</Text>
+            </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Téléphone</Text>
-            {editMode ? (
-              <TextInput
-                style={styles.input}
-                value={formData.telephone}
-                onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                placeholder="0612345678"
-                keyboardType="phone-pad"
-              />
-            ) : (
-              <Text style={styles.value}>{profile?.telephone || 'Non renseigné'}</Text>
-            )}
-          </View>
+            <View style={[styles.statCard, { borderColor: COLORS.success }]}>
+              <Ionicons name="cash" size={20} color={COLORS.success} />
+              <Text style={[styles.statValue, { fontSize: 16 }]}>{formatCurrency(stats.chiffreAffaires)}</Text>
+              <Text style={styles.statLabel}>CA Total</Text>
+            </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Biographie</Text>
-            {editMode ? (
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.bio}
-                onChangeText={(text) => setFormData({ ...formData, bio: text })}
-                placeholder="Parlez de vous et de vos services..."
-                multiline
-                numberOfLines={4}
-              />
-            ) : (
-              <Text style={styles.value}>{profile?.bio || 'Non renseignée'}</Text>
-            )}
+            <View style={[styles.statCard, { borderColor: '#6366F1' }]}>
+              <Ionicons name="calendar" size={20} color="#6366F1" />
+              <Text style={styles.statValue}>{stats.totalReservations}</Text>
+              <Text style={styles.statLabel}>Réservations</Text>
+            </View>
+
+            <View style={[styles.statCard, { borderColor: '#F59E0B' }]}>
+              <Ionicons name="star" size={20} color="#F59E0B" />
+              <Text style={styles.statValue}>{stats.noteMoyenne}/5</Text>
+              <Text style={styles.statLabel}>Note</Text>
+            </View>
+
+            <View style={[styles.statCard, { borderColor: COLORS.textLight }]}>
+              <Ionicons name="eye" size={20} color={COLORS.textLight} />
+              <Text style={styles.statValue}>{stats.totalVues}</Text>
+              <Text style={styles.statLabel}>Vues</Text>
+            </View>
           </View>
         </View>
+
+        {/* Informations personnelles */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="person" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Informations personnelles</Text>
+          </View>
+
+          <View style={styles.card}>
+            {!editMode ? (
+              <View style={styles.infoList}>
+                <View style={styles.infoCard}>
+                  <Ionicons name="mail" size={20} color={COLORS.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Email</Text>
+                    <Text style={styles.infoValue}>{profile?.email || 'Non renseigné'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoCard}>
+                  <Ionicons name="call" size={20} color={COLORS.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Téléphone</Text>
+                    <Text style={styles.infoValue}>{profile?.telephone || 'Non renseigné'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoCard}>
+                  <Ionicons name="location" size={20} color={COLORS.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Ville</Text>
+                    <Text style={styles.infoValue}>{villeNom || 'Non renseignée'}</Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.formGroup}>
+                <View style={styles.inputGroup}>
+                  <Ionicons name="person-outline" size={20} color={COLORS.primary} />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.nom}
+                    onChangeText={(text) => setFormData({ ...formData, nom: text })}
+                    placeholder="Nom complet"
+                    placeholderTextColor={COLORS.textLight}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Ionicons name="mail-outline" size={20} color={COLORS.primary} />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.email}
+                    onChangeText={(text) => setFormData({ ...formData, email: text })}
+                    placeholder="Email"
+                    placeholderTextColor={COLORS.textLight}
+                    keyboardType="email-address"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Ionicons name="call-outline" size={20} color={COLORS.primary} />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.telephone}
+                    onChangeText={(text) => setFormData({ ...formData, telephone: text })}
+                    placeholder="Téléphone"
+                    placeholderTextColor={COLORS.textLight}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Compte bancaire */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="cash" size={20} color={COLORS.success} />
+            <Text style={styles.sectionTitle}>Informations bancaires</Text>
+          </View>
+
+          <View style={styles.card}>
+            {profile?.stripe_account_id ? (
+              <View style={styles.stripeConfigured}>
+                <View style={styles.stripeIcon}>
+                  <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
+                </View>
+                <View style={styles.stripeContent}>
+                  <Text style={styles.stripeTitle}>Compte configuré</Text>
+                  <Text style={styles.stripeSubtitle}>Vous pouvez recevoir des paiements</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.stripeNotConfigured}>
+                <View style={styles.stripeIcon}>
+                  <Ionicons name="warning" size={24} color={COLORS.warning} />
+                </View>
+                <View style={styles.stripeContent}>
+                  <Text style={styles.stripeTitle}>Configuration requise</Text>
+                  <Text style={styles.stripeSubtitle}>Configurez vos paiements pour recevoir des réservations</Text>
+                </View>
+                <TouchableOpacity style={styles.stripeButton}>
+                  <Text style={styles.stripeButtonText}>Configurer</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* À propos */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="heart" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>À propos de moi</Text>
+          </View>
+
+          <View style={styles.card}>
+            {!editMode ? (
+              <Text style={styles.bioText}>
+                {profile?.bio || "Aucune description disponible. Cliquez sur 'Modifier mon profil' pour ajouter une présentation."}
+              </Text>
+            ) : (
+              <View>
+                <TextInput
+                  style={styles.bioInput}
+                  value={formData.bio}
+                  onChangeText={(text) => setFormData({ ...formData, bio: text })}
+                  placeholder="Parlez de votre expérience, votre passion, ce qui vous différencie..."
+                  placeholderTextColor={COLORS.textLight}
+                  multiline
+                  numberOfLines={6}
+                />
+                <Text style={styles.bioHint}>
+                  Une bonne présentation aide les clients à mieux vous connaître et augmente vos chances d'être choisi.
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Réseaux sociaux */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="globe" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Mes réseaux sociaux</Text>
+          </View>
+
+          <View style={styles.card}>
+            {!editMode ? (
+              <View style={styles.socialList}>
+                {formData.instagram && (
+                  <View style={styles.socialItem}>
+                    <Ionicons name="logo-instagram" size={24} color="#E4405F" />
+                    <Text style={styles.socialText}>{formData.instagram}</Text>
+                  </View>
+                )}
+                {formData.facebook && (
+                  <View style={styles.socialItem}>
+                    <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+                    <Text style={styles.socialText}>{formData.facebook}</Text>
+                  </View>
+                )}
+                {formData.linkedin && (
+                  <View style={styles.socialItem}>
+                    <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
+                    <Text style={styles.socialText}>{formData.linkedin}</Text>
+                  </View>
+                )}
+                {formData.website && (
+                  <View style={styles.socialItem}>
+                    <Ionicons name="globe-outline" size={24} color={COLORS.primary} />
+                    <Text style={styles.socialText}>{formData.website}</Text>
+                  </View>
+                )}
+                {!formData.instagram && !formData.facebook && !formData.linkedin && !formData.website && (
+                  <Text style={styles.emptyText}>Aucun réseau social configuré</Text>
+                )}
+              </View>
+            ) : (
+              <View style={styles.formGroup}>
+                <View style={styles.inputGroup}>
+                  <Ionicons name="logo-instagram" size={20} color="#E4405F" />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.instagram}
+                    onChangeText={(text) => setFormData({ ...formData, instagram: text })}
+                    placeholder="Instagram"
+                    placeholderTextColor={COLORS.textLight}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Ionicons name="logo-facebook" size={20} color="#1877F2" />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.facebook}
+                    onChangeText={(text) => setFormData({ ...formData, facebook: text })}
+                    placeholder="Facebook"
+                    placeholderTextColor={COLORS.textLight}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Ionicons name="logo-linkedin" size={20} color="#0A66C2" />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.linkedin}
+                    onChangeText={(text) => setFormData({ ...formData, linkedin: text })}
+                    placeholder="LinkedIn"
+                    placeholderTextColor={COLORS.textLight}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Ionicons name="globe-outline" size={20} color={COLORS.primary} />
+                  <TextInput
+                    style={styles.input}
+                    value={formData.website}
+                    onChangeText={(text) => setFormData({ ...formData, website: text })}
+                    placeholder="Site web"
+                    placeholderTextColor={COLORS.textLight}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <View style={{ height: 120 }} />
       </ScrollView>
       <FooterPresta />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FB'
-  },
-  scrollView: {
-    flex: 1
-  },
-  content: {
-    padding: 24,
-    paddingBottom: 100, // Espace pour le footer
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1C1C1E'
-  },
-  editButton: {
-    backgroundColor: '#5C6BC0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12
-  },
-  cancelButton: {
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
-  },
-  cancelButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  saveButton: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2
-  },
-  formGroup: {
-    marginBottom: 24
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8
-  },
-  value: {
-    fontSize: 16,
-    color: '#1F2937'
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#1F2937'
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top'
-  }
+  container: { flex: 1, backgroundColor: COLORS.backgroundLight },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 20 },
+  
+  // Header gradient
+  headerGradient: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 30 },
+  headerContent: { gap: 20 },
+  avatarSection: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  avatarContainer: { position: 'relative' },
+  avatar: { width: 80, height: 80, borderRadius: 16, borderWidth: 3, borderColor: 'white' },
+  avatarPlaceholder: { width: 80, height: 80, borderRadius: 16, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: 'white' },
+  avatarText: { fontSize: 32, fontWeight: 'bold', color: COLORS.primary },
+  starBadge: { position: 'absolute', bottom: -4, right: -4, backgroundColor: 'white', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+  
+  nameSection: { flex: 1, gap: 8 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  userName: { fontSize: 24, fontWeight: 'bold', color: 'white', flex: 1 },
+  roleBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  roleBadgeText: { color: 'white', fontSize: 12, fontWeight: '600' },
+  
+  infoRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  infoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoText: { color: 'rgba(255,255,255,0.9)', fontSize: 13 },
+  
+  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  editButton: { backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+  editButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 14 },
+  saveButton: { backgroundColor: COLORS.success, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+  saveButtonText: { color: 'white', fontWeight: '600', fontSize: 14 },
+  
+  // Sections
+  section: { paddingHorizontal: 20, marginTop: 24 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
+  
+  // Stats
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statCard: { flex: 1, minWidth: 100, backgroundColor: COLORS.background, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1 },
+  statValue: { fontSize: 20, fontWeight: 'bold', color: COLORS.text, marginTop: 4 },
+  statLabel: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  
+  // Card
+  card: { backgroundColor: COLORS.background, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  
+  // Info list
+  infoList: { gap: 12 },
+  infoCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12 },
+  infoContent: { flex: 1 },
+  infoLabel: { fontSize: 12, color: COLORS.primary, marginBottom: 2 },
+  infoValue: { fontSize: 15, color: COLORS.text, fontWeight: '500' },
+  
+  // Form
+  formGroup: { gap: 12 },
+  inputGroup: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.backgroundLight },
+  input: { flex: 1, fontSize: 15, color: COLORS.text },
+  
+  // Stripe
+  stripeConfigured: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#D1FAE5', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#6EE7B7' },
+  stripeNotConfigured: { backgroundColor: '#FEF3C7', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#FCD34D' },
+  stripeIcon: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
+  stripeContent: { flex: 1 },
+  stripeTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginBottom: 2 },
+  stripeSubtitle: { fontSize: 13, color: COLORS.textLight },
+  stripeButton: { marginTop: 12, backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  stripeButtonText: { color: 'white', fontWeight: '600', fontSize: 14 },
+  
+  // Bio
+  bioText: { fontSize: 15, color: COLORS.text, lineHeight: 22 },
+  bioInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, fontSize: 15, color: COLORS.text, backgroundColor: COLORS.backgroundLight, minHeight: 120, textAlignVertical: 'top' },
+  bioHint: { fontSize: 12, color: COLORS.textLight, marginTop: 8 },
+  
+  // Social
+  socialList: { gap: 12 },
+  socialItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12 },
+  socialText: { fontSize: 15, color: COLORS.text, flex: 1 },
+  emptyText: { textAlign: 'center', color: COLORS.textLight, fontSize: 14, paddingVertical: 20 }
 });

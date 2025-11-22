@@ -1,9 +1,17 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native'
 import { supabase } from '../lib/supabaseClient'
-import { useRouter } from 'expo-router'
-// Footer will be shown globally in the authenticated layout —
-// remove inline header usage to avoid duplicate footers.
+import { useRouter, Link } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+
+const COLORS = {
+  primary: '#E8EAF6',
+  accent: '#130183',
+  background: '#F8F9FB',
+  text: '#1C1C1E',
+  error: '#ef4444',
+  success: '#10b981'
+}
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
@@ -15,43 +23,37 @@ export default function Login() {
     setLoading(true)
     setErrorMsg('')
 
-    // Vérifier d'abord si l'email existe
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .eq('email', form.email)
-      .single()
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      })
 
-    if (!existingUser) {
-      setErrorMsg('Cette adresse email n\'est pas enregistrée. Veuillez créer un compte ou vérifier votre email.')
-      setLoading(false)
-      return
-    }
-
-    // Tentative de connexion
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: form.email,
-      password: form.password,
-    })
-
-    if (error) {
-      // Gérer les différents types d'erreurs
-      if (error.message === 'Invalid login credentials') {
-        setErrorMsg('Mot de passe incorrect. Veuillez réessayer.')
-      } else if (error.message === 'Email not confirmed') {
-        setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
-      } else if (error.message === 'Too many requests') {
-        setErrorMsg('Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
-      } else {
-        setErrorMsg('Erreur de connexion. Veuillez réessayer plus tard.')
+      if (error) {
+        if (error.message === 'Invalid login credentials') {
+          setErrorMsg('Email ou mot de passe incorrect. Veuillez réessayer.')
+        } else if (error.message === 'Email not confirmed') {
+          setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
+        } else if (error.message.includes('Too many')) {
+          setErrorMsg('Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
+        } else {
+          setErrorMsg(`Erreur: ${error.message}`)
+        }
+        setLoading(false)
+        return
       }
-      setLoading(false)
-      return
-    }
 
-    // Redirection vers le menu unique (adapté au rôle)
-    router.replace('/menu')
-    setLoading(false)
+      if (!data.user) {
+        setErrorMsg('Erreur de connexion. Aucun utilisateur trouvé.')
+        setLoading(false)
+        return
+      }
+
+      router.replace('/menu')
+    } catch (err) {
+      setErrorMsg('Une erreur inattendue s\'est produite. Veuillez réessayer.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -61,37 +63,78 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.main}>
+          {/* Logo/Icône */}
+          <View style={styles.iconContainer}>
+            <Ionicons name="log-in-outline" size={32} color="white" />
+          </View>
+
           <Text style={styles.title}>Connexion</Text>
+          <Text style={styles.subtitle}>Accédez à votre espace Shooty</Text>
+
           {errorMsg && (
             <View style={styles.errorBox}>
+              <Ionicons name="alert-circle-outline" size={20} color={COLORS.error} />
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
           )}
-          <View style={styles.form}>
-            <TextInput
-              placeholder="Email"
-              value={form.email}
-              onChangeText={(text) => setForm({ ...form, email: text })}
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <TextInput
-              placeholder="Mot de passe"
-              value={form.password}
-              onChangeText={(text) => setForm({ ...form, password: text })}
-              style={styles.input}
-              secureTextEntry
-            />
-            <TouchableOpacity
-              disabled={loading}
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? 'Connexion...' : 'Se connecter'}
-              </Text>
-            </TouchableOpacity>
+
+          {/* Email Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                placeholder="votre.email@exemple.com"
+                value={form.email}
+                onChangeText={(text) => setForm({ ...form, email: text })}
+                style={styles.input}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          </View>
+
+          {/* Password Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Mot de passe</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                placeholder="••••••••"
+                value={form.password}
+                onChangeText={(text) => setForm({ ...form, password: text })}
+                style={styles.input}
+                secureTextEntry
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            disabled={loading}
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Ionicons name="log-in-outline" size={20} color="white" style={{ marginRight: 8 }} />
+            )}
+            <Text style={styles.buttonText}>
+              {loading ? 'Connexion en cours...' : 'Se connecter'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Lien vers inscription */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Pas encore de compte ? </Text>
+            <Link href="/signup" asChild>
+              <TouchableOpacity>
+                <Text style={styles.footerLink}>S'inscrire</Text>
+              </TouchableOpacity>
+            </Link>
           </View>
         </View>
       </ScrollView>
@@ -102,64 +145,137 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: COLORS.background
   },
   scrollContent: {
-    flexGrow: 1
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20
   },
   main: {
-    maxWidth: 400,
+    maxWidth: 440,
     width: '100%',
     alignSelf: 'center',
-    marginTop: 80,
-    padding: 24,
+    padding: 32,
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 3
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.08,
+    shadowRadius: 60,
+    elevation: 8
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    alignSelf: 'center',
+    marginBottom: 24,
+    backgroundColor: COLORS.accent,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 5
   },
   title: {
     fontWeight: '700',
-    fontSize: 28,
-    marginBottom: 24,
+    fontSize: 32,
+    marginBottom: 8,
+    textAlign: 'center',
+    color: COLORS.accent
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.text + 'AA',
+    marginBottom: 32,
     textAlign: 'center'
   },
   errorBox: {
-    marginBottom: 16
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    marginBottom: 24,
+    backgroundColor: COLORS.error + '10',
+    borderWidth: 1,
+    borderColor: COLORS.error + '30',
+    borderRadius: 12
   },
   errorText: {
-    color: '#e67c73',
-    fontWeight: '500',
-    textAlign: 'center'
+    flex: 1,
+    color: COLORS.error,
+    fontSize: 14,
+    fontWeight: '500'
   },
-  form: {
-    width: '100%'
+  inputGroup: {
+    marginBottom: 20
+  },
+  label: {
+    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text
+  },
+  inputWrapper: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 14,
+    zIndex: 1
   },
   input: {
-    width: '100%',
-    marginBottom: 14,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#eee',
-    fontSize: 16
+    flex: 1,
+    paddingVertical: 12,
+    paddingLeft: 44,
+    paddingRight: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    fontSize: 15,
+    color: COLORS.text
   },
   button: {
     width: '100%',
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#D4AF37',
-    alignItems: 'center'
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    marginTop: 4,
+    borderRadius: 12,
+    backgroundColor: COLORS.accent,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 4
   },
   buttonDisabled: {
-    opacity: 0.7
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0
   },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 16
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 24
+  },
+  footerText: {
+    fontSize: 14,
+    color: COLORS.text + 'AA'
+  },
+  footerLink: {
+    fontSize: 14,
+    color: COLORS.accent,
+    fontWeight: '600'
   }
 });
