@@ -57,6 +57,11 @@ export default function FooterPresta() {
   return (
     <View style={styles.footer}>
       <View style={styles.center}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/menu')}>
+          <Ionicons name="grid-outline" size={22} color={COLORS.accent} />
+          <Text style={styles.label}>Menu</Text>
+        </TouchableOpacity>
+        
         <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/messages')}>
           <View style={styles.tabContent}>
             <Ionicons name="chatbubble-outline" size={22} color={COLORS.accent} />

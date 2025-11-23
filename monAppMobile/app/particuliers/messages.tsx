@@ -56,12 +56,12 @@ export default function MessagesParticulier() {
 
     const { data: convData } = await supabase
       .from('conversations')
-      .select('id, artist_id, last_message, updated, lu, profiles!conversations_artist_id_fkey(nom, photos)')
+      .select('id, artist_id, last_message, updated, lu, artist:profiles!artist_id(nom, photos)')
       .eq('client_id', authUser.id)
       .order('updated', { ascending: false });
 
     if (convData) {
-      const formatted = convData.map((conv: any) => ({ ...conv, prestataire: conv.profiles || { nom: 'Prestataire' }}));
+      const formatted = convData.map((conv: any) => ({ ...conv, prestataire: conv.artist || { nom: 'Prestataire' }}));
       setConversations(formatted);
     }
     setLoading(false);

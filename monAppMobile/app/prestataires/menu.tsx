@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import FooterPresta from '../../components/FooterPresta';
+import RealTimeNotifications from '../../components/RealTimeNotifications';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -23,6 +24,7 @@ const COLORS = {
 export default function MenuPrestataire() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     reservations: 0,
     devis: 0,
@@ -30,6 +32,7 @@ export default function MenuPrestataire() {
     messages: 0,
     chiffreAffaires: 0
   });
+  const [notificationCount, setNotificationCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -42,6 +45,8 @@ export default function MenuPrestataire() {
       router.replace('/login');
       return;
     }
+
+    setUserId(authUser.id);
 
     // Récupérer le profil
     const { data: profileData } = await supabase
@@ -249,6 +254,12 @@ export default function MenuPrestataire() {
         <View style={{ height: 120 }} />
       </ScrollView>
       <FooterPresta />
+      <RealTimeNotifications 
+        userId={userId} 
+        userRole="prestataire"
+        triggerNotification={null}
+        onNotificationCountChange={setNotificationCount}
+      />
     </SafeAreaView>
   );
 }

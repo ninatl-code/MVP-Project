@@ -1,53 +1,218 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, SafeAreaView } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import FooterPresta from '../../components/FooterPresta';
+
+const COLORS = {
+  primary: '#5C6BC0',
+  accent: '#130183',
+  background: '#FFFFFF',
+  backgroundLight: '#F7F7F7',
+  text: '#222222',
+  textLight: '#717171',
+  border: '#EBEBEB',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6'
+};
 
 interface Reservation {
   id: string;
   date: string;
+  heure?: string;
+  lieu?: string;
   status: string;
   montant: number;
-  profiles?: { nom: string };
+  notes?: string;
+  particulier_id: string;
+  annonce_id: string;
+  client?: { nom: string; email: string; telephone: string; photos: string };
   annonces?: { titre: string };
+  created_at: string;
 }
 
 export default function ReservationsPrestataire() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [filter, setFilter] = useState('all');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchReservations();
   }, [filter]);
 
   const fetchReservations = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No user found, redirecting to login');
+        router.replace('/login');
+        return;
+      }
 
-    let query = supabase
-      .from('reservations')
-      .select('*, profiles!reservations_particulier_id_fkey(nom), annonces(titre)')
-      .eq('prestataire_id', user.id)
-      .order('date', { ascending: false });
+      console.log('Fetching reservations for user:', user.id);
 
-    if (filter !== 'all') {
-      query = query.eq('status', filter);
+      let query = supabase
+        .from('reservations')
+        .select(`
+          id,
+          date,
+          heure,
+          lieu,
+          status,
+          montant,
+          notes,
+          particulier_id,
+          annonce_id,
+          created_at,
+          client:profiles!particulier_id(nom, email, telephone, photos),
+          annonces(titre)
+        `)
+        .eq('prestataire_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (filter !== 'all') {
+        query = query.eq('status', filter);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching reservations:', error);
+      } else {
+        console.log('Reservations fetched:', data?.length || 0);
+        setReservations(data || []);
+      }
+    } catch (err) {
+      console.error('Exception in fetchReservations:', err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const { data, error } = await query;
-    if (!error) setReservations(data || []);
-    setLoading(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchReservations();
+    setRefreshing(false);
+  };
+
+  const handleAccept = async (reservationId: string) => {
+    Alert.alert(
+      'Accepter la réservation',
+      'Voulez-vous confirmer cette réservation ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Accepter',
+          onPress: async () => {
+            setActionLoading(reservationId);
+            const { error } = await supabase
+              .from('reservations')
+              .update({ status: 'confirmed' })
+              .eq('id', reservationId);
+
+            setActionLoading(null);
+
+            if (error) {
+              Alert.alert('Erreur', 'Impossible d\'accepter la réservation');
+            } else {
+              Alert.alert('Succès', 'Réservation confirmée');
+              fetchReservations();
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleRefuse = async (reservationId: string) => {
+    Alert.alert(
+      'Refuser la réservation',
+      'Êtes-vous sûr de vouloir refuser cette réservation ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Refuser',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(reservationId);
+            const { error } = await supabase
+              .from('reservations')
+              .update({ status: 'cancelled' })
+              .eq('id', reservationId);
+
+            setActionLoading(null);
+
+            if (error) {
+              Alert.alert('Erreur', 'Impossible de refuser la réservation');
+            } else {
+              Alert.alert('Refusée', 'La réservation a été refusée');
+              fetchReservations();
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleComplete = async (reservationId: string) => {
+    Alert.alert(
+      'Terminer la réservation',
+      'Marquer cette réservation comme terminée ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Terminer',
+          onPress: async () => {
+            setActionLoading(reservationId);
+            const { error } = await supabase
+              .from('reservations')
+              .update({ status: 'completed' })
+              .eq('id', reservationId);
+
+            setActionLoading(null);
+
+            if (error) {
+              Alert.alert('Erreur', 'Impossible de terminer la réservation');
+            } else {
+              Alert.alert('Succès', 'Réservation terminée');
+              fetchReservations();
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleContact = (reservation: Reservation) => {
+    const profile = Array.isArray(reservation.client) ? reservation.client[0] : reservation.client;
+    if (!profile) return;
+
+    Alert.alert(
+      'Contacter le client',
+      `${profile.nom}\n\nEmail: ${profile.email}\nTél: ${profile.telephone}`,
+      [
+        { text: 'Fermer', style: 'cancel' },
+        { text: 'Envoyer un message', onPress: () => router.push('/prestataires/messages') }
+      ]
+    );
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return '#FCD34D';
-      case 'confirmed': return '#10B981';
-      case 'paid': return '#3B82F6';
-      case 'completed': return '#6B7280';
-      case 'cancelled': return '#EF4444';
-      default: return '#9CA3AF';
+      case 'pending': return COLORS.warning;
+      case 'confirmed': return COLORS.success;
+      case 'paid': return COLORS.info;
+      case 'completed': return COLORS.textLight;
+      case 'cancelled': return COLORS.error;
+      default: return COLORS.border;
     }
   };
 
@@ -62,208 +227,451 @@ export default function ReservationsPrestataire() {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending': return 'time-outline';
+      case 'confirmed': return 'checkmark-circle-outline';
+      case 'paid': return 'card-outline';
+      case 'completed': return 'checkmark-done-circle-outline';
+      case 'cancelled': return 'close-circle-outline';
+      default: return 'ellipse-outline';
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.container}>
-        
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#5C6BC0" />
-        </View>
-      </View>
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Chargement...</Text>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      
-      
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Mes Réservations</Text>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Réservations</Text>
+          <View style={{ width: 40 }} />
         </View>
+      </LinearGradient>
 
-        {/* Filtres */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
-          {[
-            { key: 'all', label: 'Toutes' },
-            { key: 'pending', label: 'En attente' },
-            { key: 'confirmed', label: 'Confirmées' },
-            { key: 'paid', label: 'Payées' },
-            { key: 'completed', label: 'Terminées' }
-          ].map((f) => (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterButton, filter === f.key && styles.filterButtonActive]}
-              onPress={() => setFilter(f.key)}
-            >
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+      {/* Filtres */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filtersContainer}
+        contentContainerStyle={styles.filtersContent}
+      >
+        {[
+          { key: 'all', label: 'Toutes' },
+          { key: 'pending', label: 'En attente' },
+          { key: 'confirmed', label: 'Confirmées' },
+          { key: 'completed', label: 'Terminées' },
+          { key: 'cancelled', label: 'Annulées' }
+        ].map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+            onPress={() => setFilter(f.key)}
+          >
+            <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
-        <ScrollView style={styles.list}>
-          {reservations.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={styles.emptyText}>Aucune réservation trouvée</Text>
-            </View>
-          ) : (
-            reservations.map((reservation) => (
+      <ScrollView
+        style={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {reservations.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={64} color={COLORS.border} />
+            <Text style={styles.emptyText}>Aucune réservation</Text>
+            <Text style={styles.emptySubtext}>
+              {filter === 'all' 
+                ? 'Les réservations de vos clients apparaîtront ici' 
+                : `Aucune réservation ${getStatusLabel(filter).toLowerCase()}`}
+            </Text>
+          </View>
+        ) : (
+          reservations.map((reservation) => {
+            const profile = Array.isArray(reservation.client) ? reservation.client[0] : reservation.client;
+            const annonce = Array.isArray(reservation.annonces) ? reservation.annonces[0] : reservation.annonces;
+            
+            return (
               <View key={reservation.id} style={styles.card}>
+                {/* Header */}
                 <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={styles.cardTitle}>
-                      {reservation.annonces?.titre || 'Service'}
-                    </Text>
-                    <Text style={styles.cardSubtitle}>
-                      {reservation.profiles?.nom || 'Client'}
-                    </Text>
+                  <View style={styles.cardHeaderLeft}>
+                    <Text style={styles.cardTitle}>{annonce?.titre || 'Service'}</Text>
+                    <View style={styles.clientRow}>
+                      <Ionicons name="person-outline" size={16} color={COLORS.textLight} />
+                      <Text style={styles.clientText}>{profile?.nom || 'Client'}</Text>
+                    </View>
                   </View>
-                  <View
-                    style={[styles.statusBadge, { backgroundColor: getStatusColor(reservation.status) }]}
-                  >
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reservation.status) }]}>
+                    <Ionicons name={getStatusIcon(reservation.status)} size={14} color="#FFFFFF" />
                     <Text style={styles.statusText}>{getStatusLabel(reservation.status)}</Text>
                   </View>
                 </View>
 
-                <View style={styles.cardInfo}>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoIcon}>📅</Text>
-                    <Text style={styles.infoText}>
-                      {new Date(reservation.date).toLocaleDateString('fr-FR')}
+                {/* Détails */}
+                <View style={styles.cardBody}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                    <Text style={styles.detailText}>
+                      {new Date(reservation.date).toLocaleDateString('fr-FR', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
                     </Text>
                   </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoIcon}>💰</Text>
-                    <Text style={styles.infoText}>{reservation.montant} MAD</Text>
+
+                  {reservation.heure && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="time-outline" size={18} color={COLORS.primary} />
+                      <Text style={styles.detailText}>{reservation.heure}</Text>
+                    </View>
+                  )}
+
+                  {reservation.lieu && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="location-outline" size={18} color={COLORS.primary} />
+                      <Text style={styles.detailText} numberOfLines={2}>{reservation.lieu}</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.detailRow}>
+                    <Ionicons name="cash-outline" size={18} color={COLORS.success} />
+                    <Text style={[styles.detailText, styles.priceText]}>{reservation.montant}€</Text>
                   </View>
+
+                  {reservation.notes && (
+                    <View style={styles.notesSection}>
+                      <Text style={styles.notesLabel}>Message du client:</Text>
+                      <Text style={styles.notesText}>{reservation.notes}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Actions */}
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.actionBtnSecondary}
+                    onPress={() => handleContact(reservation)}
+                  >
+                    <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
+                    <Text style={styles.actionBtnSecondaryText}>Contacter</Text>
+                  </TouchableOpacity>
+
+                  {reservation.status === 'pending' && (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.actionBtnPrimary, actionLoading === reservation.id && styles.actionBtnDisabled]}
+                        onPress={() => handleAccept(reservation.id)}
+                        disabled={actionLoading === reservation.id}
+                      >
+                        {actionLoading === reservation.id ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                            <Text style={styles.actionBtnPrimaryText}>Accepter</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtnDanger, actionLoading === reservation.id && styles.actionBtnDisabled]}
+                        onPress={() => handleRefuse(reservation.id)}
+                        disabled={actionLoading === reservation.id}
+                      >
+                        <Ionicons name="close-circle" size={18} color={COLORS.error} />
+                        <Text style={styles.actionBtnDangerText}>Refuser</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {reservation.status === 'confirmed' && (
+                    <TouchableOpacity
+                      style={[styles.actionBtnPrimary, actionLoading === reservation.id && styles.actionBtnDisabled]}
+                      onPress={() => handleComplete(reservation.id)}
+                      disabled={actionLoading === reservation.id}
+                    >
+                      {actionLoading === reservation.id ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-done" size={18} color="#FFFFFF" />
+                          <Text style={styles.actionBtnPrimaryText}>Terminer</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
-            ))
-          )}
-        </ScrollView>
-      </View>
-    </View>
+            );
+          })
+        )}
+      </ScrollView>
+
+      <FooterPresta />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FB'
+    backgroundColor: COLORS.backgroundLight,
   },
-  content: {
-    flex: 1,
-    padding: 24,
-    paddingBottom: 100, // Espace pour le footer
-  },
-  centerContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.textLight,
   },
   header: {
-    marginBottom: 24
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1C1C1E'
-  },
-  filters: {
+  headerContent: {
     flexDirection: 'row',
-    marginBottom: 24
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  filterButton: {
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  filtersContainer: {
+    maxHeight: 60,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  filtersContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#fff',
-    marginRight: 8,
+    backgroundColor: COLORS.backgroundLight,
     borderWidth: 1,
-    borderColor: '#E5E7EB'
+    borderColor: COLORS.border,
+    marginRight: 8,
   },
-  filterButtonActive: {
-    backgroundColor: '#5C6BC0',
-    borderColor: '#5C6BC0'
+  filterChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterText: {
     fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500'
+    fontWeight: '600',
+    color: COLORS.text,
   },
   filterTextActive: {
-    color: '#fff'
+    color: '#FFFFFF',
   },
-  list: {
-    flex: 1
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginTop: 8,
+    textAlign: 'center',
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  cardHeaderLeft: {
+    flex: 1,
+    marginRight: 12,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 6,
   },
-  cardSubtitle: {
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  clientText: {
     fontSize: 14,
-    color: '#6B7280'
+    color: COLORS.textLight,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   statusText: {
     fontSize: 12,
-    color: '#fff',
-    fontWeight: '600'
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  cardInfo: {
-    flexDirection: 'row',
-    gap: 16
+  cardBody: {
+    gap: 10,
+    marginBottom: 16,
   },
-  infoRow: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: 10,
   },
-  infoIcon: {
-    fontSize: 16
+  detailText: {
+    fontSize: 15,
+    color: COLORS.text,
+    flex: 1,
   },
-  infoText: {
-    fontSize: 14,
-    color: '#374151'
-  },
-  emptyState: {
-    alignItems: 'center',
-    marginTop: 60
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16
-  },
-  emptyText: {
+  priceText: {
+    fontWeight: '700',
+    color: COLORS.success,
     fontSize: 16,
-    color: '#9CA3AF'
-  }
+  },
+  notesSection: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.info,
+  },
+  notesLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    marginBottom: 4,
+  },
+  notesText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  actionBtnSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.background,
+  },
+  actionBtnSecondaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  actionBtnPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: COLORS.success,
+  },
+  actionBtnPrimaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  actionBtnDanger: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.background,
+  },
+  actionBtnDangerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.error,
+  },
+  actionBtnDisabled: {
+    opacity: 0.5,
+  },
 });
 

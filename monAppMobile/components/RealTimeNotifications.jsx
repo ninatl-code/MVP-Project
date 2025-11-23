@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View, Alert, Text, StyleSheet, Animated } from 'react-native';
 import { supabase } from '../lib/supabaseClient';
 
-export default function RealTimeNotifications({ userId, triggerNotification }) {
+export default function RealTimeNotifications({ userId, userRole, triggerNotification, onNotificationCountChange }) {
   const [notifications, setNotifications] = useState([])
   const [showRatingModal, setShowRatingModal] = useState(false)
   const [currentRatingRequest, setCurrentRatingRequest] = useState(null)
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastAnimation] = useState(new Animated.Value(0))
+  const [unreadCount, setUnreadCount] = useState(0)
 
   // Fonction pour convertir la durée en heures selon l'unité
   const convertDurationToHours = (duree, unit_tarif) => {
@@ -126,6 +130,37 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
     }
   };
 
+  // Fonction pour afficher un toast
+  const showToast = (message) => {
+    setToastMessage(message)
+    setToastVisible(true)
+    
+    Animated.sequence([
+      Animated.timing(toastAnimation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(3000),
+      Animated.timing(toastAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setToastVisible(false)
+    })
+  }
+
+  // Fonction pour compter les notifications non lues
+  const updateUnreadCount = (notificationsList) => {
+    const count = notificationsList.filter(n => !n.lu).length
+    setUnreadCount(count)
+    if (onNotificationCountChange) {
+      onNotificationCountChange(count)
+    }
+  }
+
   // 1. Charger les notifications existantes et vérifier les réservations expirées
   useEffect(() => {
     if (!userId) return
@@ -143,9 +178,8 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
       if (!error && data) {
         console.log('🔔 Notifications récupérées:', data.length)
         setNotifications(data)
+        updateUnreadCount(data)
         
-        // Les modals d'avis ne s'affichent plus automatiquement
-        // Elles s'ouvrent uniquement via un clic utilisateur
         console.log('✅ Notifications chargées, pas d\'affichage automatique de modal')
       } else if (error) {
         console.error('❌ Erreur lors du chargement des notifications:', error)
@@ -184,13 +218,22 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
         console.log('🆕 Nouvelle notification reçue:', payload.new)
         
         const newNotification = payload.new
-        setNotifications(prev => [newNotification, ...prev])
+        setNotifications(prev => {
+          const updated = [newNotification, ...prev]
+          updateUnreadCount(updated)
+          return updated
+        })
 
-        // Les nouvelles notifications d'avis ne déclenchent plus automatiquement de modal
-        // Un highlight sera affiché pour attirer l'attention
+        // Afficher un toast pour toute nouvelle notification
+        let toastMsg = 'Nouvelle notification'
         if (newNotification.type === 'avis') {
-          console.log('⭐ Nouvelle notification d\'avis reçue (pas d\'ouverture auto):', newNotification.id)
+          toastMsg = '⭐ Laissez votre avis'
+        } else if (newNotification.contenu) {
+          toastMsg = newNotification.contenu.substring(0, 50) + '...'
         }
+        showToast(toastMsg)
+
+        console.log('⭐ Nouvelle notification:', newNotification.type)
       })
       .subscribe()
 
@@ -200,7 +243,134 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
     }
   }, [userId, showRatingModal])
 
-  // 3. Déclenchement manuel du modal d'avis (appelé depuis notification.js)
+  // 3. Écouter les changements sur la table reservations
+  useEffect(() => {
+    if (!userId || !userRole) return
+
+    console.log('📅 Activation écoute temps réel pour reservations (role:', userRole, ')')
+
+    const reservationsChannel = supabase
+      .channel('reservations-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reservations',
+        filter: userRole === 'prestataire' ? `prestataire_id=eq.${userId}` : `client_id=eq.${userId}`
+      }, async (payload) => {
+        console.log('📅 Changement dans reservations:', payload.eventType, payload.new)
+        
+        if (payload.eventType === 'INSERT') {
+          // Nouvelle réservation
+          if (userRole === 'prestataire') {
+            showToast('📅 Nouvelle demande de réservation !')
+          } else {
+            showToast('✅ Réservation créée avec succès')
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const newStatus = payload.new.status
+          const oldStatus = payload.old?.status
+          
+          if (newStatus !== oldStatus) {
+            if (userRole === 'particulier') {
+              if (newStatus === 'confirmed') {
+                showToast('✅ Réservation confirmée !')
+              } else if (newStatus === 'cancelled') {
+                showToast('❌ Réservation annulée')
+              } else if (newStatus === 'completed') {
+                showToast('🎉 Service terminé ! Laissez un avis')
+              }
+            } else if (userRole === 'prestataire') {
+              if (newStatus === 'cancelled') {
+                showToast('❌ Réservation annulée par le client')
+              }
+            }
+          }
+        }
+      })
+      .subscribe()
+
+    return () => {
+      console.log('🔌 Déconnexion écoute reservations')
+      reservationsChannel.unsubscribe()
+    }
+  }, [userId, userRole])
+
+  // 4. Écouter les changements sur la table devis
+  useEffect(() => {
+    if (!userId || !userRole) return
+
+    console.log('📄 Activation écoute temps réel pour devis (role:', userRole, ')')
+
+    const devisChannel = supabase
+      .channel('devis-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'devis',
+        filter: userRole === 'prestataire' ? `prestataire_id=eq.${userId}` : `particulier_id=eq.${userId}`
+      }, async (payload) => {
+        console.log('📄 Changement dans devis:', payload.eventType, payload.new)
+        
+        if (payload.eventType === 'INSERT') {
+          if (userRole === 'prestataire') {
+            showToast('📄 Nouvelle demande de devis !')
+          } else {
+            showToast('✅ Demande de devis envoyée')
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const newStatus = payload.new.status
+          const oldStatus = payload.old?.status
+          
+          if (newStatus !== oldStatus) {
+            if (userRole === 'particulier') {
+              if (newStatus === 'received') {
+                showToast('📩 Devis reçu !')
+              } else if (newStatus === 'rejected') {
+                showToast('❌ Devis refusé')
+              }
+            }
+          }
+        }
+      })
+      .subscribe()
+
+    return () => {
+      console.log('🔌 Déconnexion écoute devis')
+      devisChannel.unsubscribe()
+    }
+  }, [userId, userRole])
+
+  // 5. Écouter les changements sur la table conversations
+  useEffect(() => {
+    if (!userId) return
+
+    console.log('💬 Activation écoute temps réel pour conversations')
+
+    const conversationsChannel = supabase
+      .channel('conversations-realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'conversations',
+        filter: userRole === 'prestataire' ? `artist_id=eq.${userId}` : `client_id=eq.${userId}`
+      }, async (payload) => {
+        console.log('💬 Changement dans conversations:', payload.new)
+        
+        const isUnread = userRole === 'prestataire' ? !payload.new.lu : !payload.new.client_lu
+        
+        if (isUnread && payload.new.last_message) {
+          showToast('💬 Nouveau message reçu')
+        }
+      })
+      .subscribe()
+
+    return () => {
+      console.log('🔌 Déconnexion écoute conversations')
+      conversationsChannel.unsubscribe()
+    }
+  }, [userId, userRole])
+
+  // 6. Déclenchement manuel du modal d'avis (appelé depuis notification.js)
   useEffect(() => {
     if (triggerNotification) {
       console.log('🎯 Déclenchement manuel du modal d\'avis:', triggerNotification)
@@ -468,6 +638,53 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
           </View>
         </View>
       )}
+
+      {/* Toast Notification */}
+      {toastVisible && (
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              opacity: toastAnimation,
+              transform: [
+                {
+                  translateY: toastAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-100, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </Animated.View>
+      )}
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  toast: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: '#1F2937',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 9999,
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});

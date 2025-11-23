@@ -39,6 +39,7 @@ export default function ParticularHomeMenu() {
     messagesNonLus: 0
   });
   const [loading, setLoading] = useState<boolean>(true);
+  const [notificationCount, setNotificationCount] = useState<number>(0);
 
   useEffect(() => {
     fetchData();
@@ -229,7 +230,12 @@ export default function ParticularHomeMenu() {
         <View style={{ height: 120 }} />
       </ScrollView>
       <FooterParti />
-      <RealTimeNotifications userId={userId} triggerNotification={null} />
+      <RealTimeNotifications 
+        userId={userId} 
+        userRole="particulier"
+        triggerNotification={null}
+        onNotificationCountChange={setNotificationCount}
+      />
     </SafeAreaView>
   );
 }

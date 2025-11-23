@@ -56,12 +56,12 @@ export default function MessagesPrestataire() {
 
     const { data: convData } = await supabase
       .from('conversations')
-      .select('id, client_id, last_message, updated, lu, profiles!conversations_client_id_fkey(nom, photos)')
+      .select('id, client_id, last_message, updated, lu, client:profiles!client_id(nom, photos)')
       .eq('artist_id', authUser.id)
       .order('updated', { ascending: false });
 
     if (convData) {
-      const formatted = convData.map((conv: any) => ({ ...conv, client: conv.profiles || { nom: 'Client' }}));
+      const formatted = convData.map((conv: any) => ({ ...conv, client: conv.client || { nom: 'Client' }}));
       setConversations(formatted);
     }
     setLoading(false);
