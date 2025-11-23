@@ -23,11 +23,10 @@ const COLORS = {
 interface Reservation {
   id: string;
   date: string;
-  heure?: string;
-  lieu?: string;
+  endroit?: string;
   status: string;
   montant: number;
-  notes?: string;
+  commentaire?: string;
   particulier_id: string;
   annonce_id: string;
   client?: { nom: string; email: string; telephone: string; photos: string };
@@ -64,11 +63,10 @@ export default function ReservationsPrestataire() {
         .select(`
           id,
           date,
-          heure,
-          lieu,
           status,
           montant,
-          notes,
+          endroit,
+          commentaire,
           particulier_id,
           annonce_id,
           created_at,
@@ -340,17 +338,10 @@ export default function ReservationsPrestataire() {
                     </Text>
                   </View>
 
-                  {reservation.heure && (
-                    <View style={styles.detailRow}>
-                      <Ionicons name="time-outline" size={18} color={COLORS.primary} />
-                      <Text style={styles.detailText}>{reservation.heure}</Text>
-                    </View>
-                  )}
-
-                  {reservation.lieu && (
+                  {reservation.endroit && (
                     <View style={styles.detailRow}>
                       <Ionicons name="location-outline" size={18} color={COLORS.primary} />
-                      <Text style={styles.detailText} numberOfLines={2}>{reservation.lieu}</Text>
+                      <Text style={styles.detailText} numberOfLines={2}>{reservation.endroit}</Text>
                     </View>
                   )}
 
@@ -359,10 +350,10 @@ export default function ReservationsPrestataire() {
                     <Text style={[styles.detailText, styles.priceText]}>{reservation.montant}€</Text>
                   </View>
 
-                  {reservation.notes && (
+                  {reservation.commentaire && (
                     <View style={styles.notesSection}>
                       <Text style={styles.notesLabel}>Message du client:</Text>
-                      <Text style={styles.notesText}>{reservation.notes}</Text>
+                      <Text style={styles.notesText}>{reservation.commentaire}</Text>
                     </View>
                   )}
                 </View>
