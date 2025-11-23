@@ -106,35 +106,38 @@ export default function ParticularHomeMenu() {
 
         {/* Statistiques en cartes */}
         <View style={styles.statsSection}>
-          <View
+          <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#E8F5E9', borderColor: COLORS.success }]}
+            onPress={() => router.push('/particuliers/reservations')}
           >
             <View style={styles.statIconContainer}>
               <Ionicons name="calendar" size={24} color={COLORS.success} />
             </View>
             <Text style={styles.statValue}>{stats.totalReservations}</Text>
             <Text style={styles.statLabel}>Réservations</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View
+          <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }]}
+            onPress={() => router.push('/particuliers/favoris')}
           >
             <View style={styles.statIconContainer}>
               <Ionicons name="heart" size={24} color="#EF4444" />
             </View>
             <Text style={styles.statValue}>{stats.totalFavoris}</Text>
             <Text style={styles.statLabel}>Favoris</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View
+          <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#DBEAFE', borderColor: COLORS.info }]}
+            onPress={() => router.push('/particuliers/devis')}
           >
             <View style={styles.statIconContainer}>
               <Ionicons name="document-text" size={24} color={COLORS.info} />
             </View>
             <Text style={styles.statValue}>{stats.totalDevis}</Text>
             <Text style={styles.statLabel}>Devis</Text>
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#EDE9FE', borderColor: COLORS.purple }]}
@@ -167,43 +170,43 @@ export default function ParticularHomeMenu() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.menuItem, { opacity: 0.5 }]}
-            disabled
+            style={styles.menuItem}
+            onPress={() => router.push('/particuliers/reservations')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
               <Ionicons name="calendar" size={24} color={COLORS.info} />
             </View>
             <View style={styles.menuContent}>
               <Text style={styles.menuTitle}>Mes réservations</Text>
-              <Text style={styles.menuSubtitle}>Bientôt disponible</Text>
+              <Text style={styles.menuSubtitle}>Gérer mes rendez-vous</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.menuItem, { opacity: 0.5 }]}
-            disabled
+            style={styles.menuItem}
+            onPress={() => router.push('/particuliers/devis')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
               <Ionicons name="document-text" size={24} color={COLORS.warning} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Demander un devis</Text>
-              <Text style={styles.menuSubtitle}>Bientôt disponible</Text>
+              <Text style={styles.menuTitle}>Mes devis</Text>
+              <Text style={styles.menuSubtitle}>Consulter mes demandes</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.menuItem, { opacity: 0.5 }]}
-            disabled
+            style={styles.menuItem}
+            onPress={() => router.push('/particuliers/favoris')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
               <Ionicons name="heart" size={24} color="#EF4444" />
             </View>
             <View style={styles.menuContent}>
               <Text style={styles.menuTitle}>Mes favoris</Text>
-              <Text style={styles.menuSubtitle}>Bientôt disponible</Text>
+              <Text style={styles.menuSubtitle}>Voir mes annonces favorites</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
