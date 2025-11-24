@@ -71,6 +71,24 @@ export default function ProfilPrestataire() {
     loadStats();
   }, []);
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Déconnexion',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase.auth.signOut();
+            router.replace('/login');
+          }
+        }
+      ]
+    );
+  };
+
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -537,6 +555,29 @@ export default function ProfilPrestataire() {
           </View>
         </View>
 
+        {/* Section Déconnexion */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="settings-outline" size={20} color={COLORS.textLight} />
+            <Text style={styles.sectionTitle}>Paramètres</Text>
+          </View>
+
+          <View style={styles.card}>
+            <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
+              <View style={styles.logoutLeft}>
+                <View style={styles.logoutIconContainer}>
+                  <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
+                </View>
+                <View>
+                  <Text style={styles.logoutTitle}>Se déconnecter</Text>
+                  <Text style={styles.logoutSubtitle}>Vous pourrez vous reconnecter à tout moment</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={{ height: 120 }} />
       </ScrollView>
       <FooterPresta />
@@ -621,5 +662,37 @@ const styles = StyleSheet.create({
   socialList: { gap: 12 },
   socialItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12 },
   socialText: { fontSize: 15, color: COLORS.text, flex: 1 },
-  emptyText: { textAlign: 'center', color: COLORS.textLight, fontSize: 14, paddingVertical: 20 }
+  emptyText: { textAlign: 'center', color: COLORS.textLight, fontSize: 14, paddingVertical: 20 },
+  
+  // Logout
+  logoutContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16
+  },
+  logoutLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1
+  },
+  logoutIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  logoutTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4
+  },
+  logoutSubtitle: {
+    fontSize: 13,
+    color: COLORS.textLight
+  }
 });

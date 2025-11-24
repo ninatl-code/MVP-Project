@@ -252,11 +252,7 @@ export default function MessagesPrestataire() {
     });
 
     setConversations(convArr as Conversation[]);
-    if (convArr.length > 0 && !selectedConv) {
-      const firstConv = convArr[0] as any;
-      setSelectedConv(firstConv);
-      setMessages(firstConv.messages || []);
-    }
+    // Ne plus ouvrir automatiquement la première conversation
     
     setLoading(false);
   };

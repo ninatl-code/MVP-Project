@@ -96,13 +96,6 @@ export default function FooterPresta() {
           <Text style={styles.label}>Notifs</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={styles.right}>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <MaterialIcons name="logout" size={22} color={COLORS.error} />
-          <Text style={styles.logoutText}>Déconnexion</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -115,8 +108,8 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
     paddingVertical: 12,
     backgroundColor: COLORS.white,
     shadowColor: '#000',
@@ -129,14 +122,10 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   center: {
-    flex: 4,
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-  },
-  right: {
-    flex: 1.5,
-    alignItems: 'flex-end',
   },
   tab: {
     alignItems: 'center',
@@ -156,16 +145,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
     opacity: 0.7,
-  },
-  logoutBtn: {
-    alignItems: 'center',
-    padding: 6,
-  },
-  logoutText: {
-    fontSize: 10,
-    color: COLORS.error,
-    fontWeight: '600',
-    marginTop: 2,
   },
   badge: {
     position: 'absolute',

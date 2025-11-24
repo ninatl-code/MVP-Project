@@ -99,13 +99,6 @@ export default function FooterParti() {
           <Text style={styles.label}>Notifs</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={styles.right}>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out" size={22} color={COLORS.error} />
-          <Text style={styles.logoutText}>Déconnexion</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -118,8 +111,8 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
     paddingVertical: 12,
     backgroundColor: COLORS.white,
     shadowColor: '#000',
@@ -132,14 +125,10 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   center: {
-    flex: 4,
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-  },
-  right: {
-    flex: 1.5,
-    alignItems: 'flex-end',
   },
   tab: {
     alignItems: 'center',
