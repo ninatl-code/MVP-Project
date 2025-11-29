@@ -79,11 +79,6 @@ export default function FooterPresta() {
           <Text style={styles.label}>Stats</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/profil')}>
-          <Ionicons name="person-outline" size={22} color={COLORS.accent} />
-          <Text style={styles.label}>Profil</Text>
-        </TouchableOpacity>
-        
         <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/notification')}>
           <View style={styles.tabContent}>
             <Ionicons name="notifications-outline" size={22} color={COLORS.accent} />
@@ -94,6 +89,11 @@ export default function FooterPresta() {
             )}
           </View>
           <Text style={styles.label}>Notifs</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/profil')}>
+          <Ionicons name="person-outline" size={22} color={COLORS.accent} />
+          <Text style={styles.label}>Profil</Text>
         </TouchableOpacity>
       </View>
     </View>

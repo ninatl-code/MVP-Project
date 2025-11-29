@@ -49,7 +49,7 @@ export default function FooterParti() {
 
       // Notifications non lues
       const { data: unreadNotifs } = await supabase
-        .from("notification")
+        .from("notifications")
         .select("id")
         .eq("user_id", user.id)
         .eq("lu", false);
@@ -82,11 +82,6 @@ export default function FooterParti() {
           <Text style={styles.label}>Messages</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/profil')}>
-          <Ionicons name="person-outline" size={22} color={COLORS.accent} />
-          <Text style={styles.label}>Profil</Text>
-        </TouchableOpacity>
-        
         <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/notification')}>
           <View style={styles.tabContent}>
             <Ionicons name="notifications-outline" size={22} color={COLORS.accent} />
@@ -97,6 +92,11 @@ export default function FooterParti() {
             )}
           </View>
           <Text style={styles.label}>Notifs</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/profil')}>
+          <Ionicons name="person-outline" size={22} color={COLORS.accent} />
+          <Text style={styles.label}>Profil</Text>
         </TouchableOpacity>
       </View>
     </View>

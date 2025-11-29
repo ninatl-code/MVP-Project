@@ -160,7 +160,7 @@ export default function MessagesPrestataire() {
     // Récupérer toutes les conversations où je suis l'artist (prestataire)
     const { data: convData, error: convError } = await supabase
       .from('conversations')
-      .select('id, artist_id, client_id, annonce_id, last_message, created_at, updated, lu')
+      .select('id, artist_id, client_id, annonce_id, last_message, created_at, updated, unread_count_provider')
       .eq('artist_id', authUser.id)
       .order('updated', { ascending: false });
 
@@ -216,7 +216,7 @@ export default function MessagesPrestataire() {
         annonce_id: conv.annonce_id,
         last_message: conv.last_message,
         updated: conv.updated,
-        lu: conv.lu,
+        lu: conv.unread_count_provider === 0,
         client: clientProfile,
         messages: []
       };
@@ -262,7 +262,7 @@ export default function MessagesPrestataire() {
     if (data) {
       setMessages(data);
       await supabase.from('messages').update({ lu: true }).eq('conversation_id', convId).eq('receiver_id', user.id);
-      await supabase.from('conversations').update({ lu: true }).eq('id', convId);
+      await supabase.from('conversations').update({ unread_count_provider: 0 }).eq('id', convId);
     }
   };
 
@@ -303,7 +303,7 @@ export default function MessagesPrestataire() {
     if (checkedConvs.length === 0) return;
     
     for (const convId of checkedConvs) {
-      await supabase.from('conversations').update({ lu: markAsRead }).eq('id', convId);
+      await supabase.from('conversations').update({ unread_count_provider: markAsRead ? 0 : 1 }).eq('id', convId);
     }
     
     setConversations(conversations.map(conv =>

@@ -15,20 +15,18 @@ export default function Index() {
         if (isAuthenticated && user) {
           setRedirecting(true);
           
-          // Récupérer le rôle de l'utilisateur
+          // Récupérer le rôle de l'utilisateur depuis le profil
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single();
-
+          
+          // Rediriger vers le menu spécifique au rôle
           if (profile?.role === 'prestataire') {
             router.replace('/prestataires/menu');
-          } else if (profile?.role === 'particulier') {
-            router.replace('/particuliers/menu');
           } else {
-            // Fallback si pas de rôle défini
-            router.replace('/menu');
+            router.replace('/particuliers/menu');
           }
         } else if (!loading) {
           router.replace('/login');

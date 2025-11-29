@@ -44,23 +44,24 @@ export default function NotificationsPrestataire() {
       return;
     }
 
-    let query = supabase.from('notification').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    let query = supabase.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
     if (filter === 'unread') query = query.eq('lu', false);
 
     const { data } = await query;
+    console.log('📬 Notifications fetched:', data?.length || 0);
     if (data) setNotifications(data);
     setLoading(false);
   };
 
   const markAsRead = async (id: string) => {
-    await supabase.from('notification').update({ lu: true }).eq('id', id);
+    await supabase.from('notifications').update({ lu: true }).eq('id', id);
     fetchNotifications();
   };
 
   const markAllAsRead = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('notification').update({ lu: true }).eq('user_id', user.id).eq('lu', false);
+    await supabase.from('notifications').update({ lu: true }).eq('user_id', user.id).eq('lu', false);
     fetchNotifications();
   };
 

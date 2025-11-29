@@ -23,6 +23,8 @@ interface Conversation {
   updated: string;
   lu: boolean;
   prestataire: { nom: string; photos?: string[] };
+  annonce_id?: string;
+  annonce_titre?: string;
 }
 
 interface Message {
@@ -40,11 +42,20 @@ export default function MessagesParticulier() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  const handleViewProfile = () => {
+    if (selectedConv?.artist_id) {
+      // Navigation vers le profil du prestataire
+      router.push(`/profil/${selectedConv.artist_id}` as any);
+    }
+    setShowProfileMenu(false);
+  };
 
   const fetchConversations = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -54,15 +65,53 @@ export default function MessagesParticulier() {
     }
     setUser(authUser);
 
-    const { data: convData } = await supabase
+    console.log('🔍 Fetching conversations for user:', authUser.id);
+    
+    const { data: convData, error: convError } = await supabase
       .from('conversations')
-      .select('id, artist_id, last_message, updated, lu, artist:profiles!artist_id(nom, photos)')
+      .select('id, prestataire_id, last_message_text, last_message_at, unread_count_client, annonce_id')
       .eq('client_id', authUser.id)
-      .order('updated', { ascending: false });
+      .order('last_message_at', { ascending: false });
 
-    if (convData) {
-      const formatted = convData.map((conv: any) => ({ ...conv, prestataire: conv.artist || { nom: 'Prestataire' }}));
+    console.log('💬 Conversations raw data:', convData?.length || 0, 'Error:', convError);
+
+    if (convData && convData.length > 0) {
+      // Fetch prestataire profiles separately
+      const prestataireIds = [...new Set(convData.map((c: any) => c.prestataire_id))];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, nom, photos')
+        .in('id', prestataireIds);
+      
+      const profilesMap = Object.fromEntries((profilesData || []).map((p: any) => [p.id, p]));
+
+      // Fetch annonces details
+      const annonceIds = [...new Set(convData.map((c: any) => c.annonce_id).filter(Boolean))];
+      const { data: annoncesData } = await supabase
+        .from('annonces')
+        .select('id, titre')
+        .in('id', annonceIds);
+      
+      const annoncesMap = Object.fromEntries((annoncesData || []).map((a: any) => [a.id, a]));
+
+      const formatted = convData.map((conv: any) => ({
+        id: conv.id,
+        artist_id: conv.prestataire_id,
+        last_message: conv.last_message_text || '',
+        updated: conv.last_message_at || conv.created_at,
+        lu: conv.unread_count_client === 0,
+        prestataire: profilesMap[conv.prestataire_id] || { nom: 'Prestataire' },
+        annonce_id: conv.annonce_id,
+        annonce_titre: annoncesMap[conv.annonce_id]?.titre
+      }));
       setConversations(formatted);
+      console.log('💬 Conversations formatted:', formatted.length);
+    } else if (convData && convData.length === 0) {
+      console.log('⚠️ No conversations found. Check if conversations table has data for this client_id.');
+      setConversations([]);
+    } else if (convError) {
+      console.error('❌ Error fetching conversations:', convError);
+      setConversations([]);
     }
     setLoading(false);
   };
@@ -72,7 +121,7 @@ export default function MessagesParticulier() {
     if (data) {
       setMessages(data);
       await supabase.from('messages').update({ lu: true }).eq('conversation_id', convId).eq('receiver_id', user.id);
-      await supabase.from('conversations').update({ lu: true }).eq('id', convId);
+      await supabase.from('conversations').update({ unread_count_client: 0 }).eq('id', convId);
     }
   };
 
@@ -86,7 +135,7 @@ export default function MessagesParticulier() {
     setSending(true);
     const { error } = await supabase.from('messages').insert({ conversation_id: selectedConv.id, sender_id: user.id, receiver_id: selectedConv.artist_id, contenu: messageInput, objet: 'Message' });
     if (!error) {
-      await supabase.from('conversations').update({ last_message: messageInput, updated: new Date().toISOString() }).eq('id', selectedConv.id);
+      await supabase.from('conversations').update({ last_message_text: messageInput, last_message_at: new Date().toISOString() }).eq('id', selectedConv.id);
       setMessageInput('');
       await fetchMessages(selectedConv.id);
       await fetchConversations();
@@ -130,10 +179,15 @@ export default function MessagesParticulier() {
                 {!item.lu && <View style={styles.unreadDot} />}
               </View>
               <View style={styles.conversationContent}>
-                <View style={styles.conversationHeader}>
+                  <View style={styles.conversationHeader}>
                   <Text style={[styles.prestataireNom, !item.lu && styles.boldText]}>{item.prestataire.nom}</Text>
                   <Text style={styles.timeText}>{formatTime(item.updated)}</Text>
                 </View>
+                {item.annonce_titre && (
+                  <Text style={styles.annonceTitre} numberOfLines={1}>
+                    <Ionicons name="camera" size={12} /> {item.annonce_titre}
+                  </Text>
+                )}
                 <Text style={[styles.lastMessage, !item.lu && styles.boldText]} numberOfLines={1}>{item.last_message}</Text>
               </View>
             </TouchableOpacity>
@@ -151,10 +205,47 @@ export default function MessagesParticulier() {
           <TouchableOpacity onPress={() => setSelectedConv(null)} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.text} /></TouchableOpacity>
           <View style={styles.headerCenter}>
             <View style={styles.smallAvatar}>{selectedConv.prestataire.photos?.[0] ? <Image source={{ uri: selectedConv.prestataire.photos[0] }} style={styles.smallAvatarImage} /> : <Text style={styles.smallAvatarText}>{getInitials(selectedConv.prestataire.nom)}</Text>}</View>
-            <Text style={styles.headerName}>{selectedConv.prestataire.nom}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerName}>{selectedConv.prestataire.nom}</Text>
+              {selectedConv.annonce_titre && (
+                <Text style={styles.headerSubtitle} numberOfLines={1}>
+                  <Ionicons name="camera" size={10} /> {selectedConv.annonce_titre}
+                </Text>
+              )}
+            </View>
           </View>
-          <TouchableOpacity style={styles.moreButton}><Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} /></TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.moreButton} 
+            onPress={() => setShowProfileMenu(!showProfileMenu)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
+          </TouchableOpacity>
         </View>
+
+        {/* Menu contextuel */}
+        {showProfileMenu && (
+          <View style={styles.profileMenu}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleViewProfile}>
+              <Ionicons name="person-outline" size={20} color={COLORS.text} />
+              <Text style={styles.menuItemText}>Voir le profil</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setShowProfileMenu(false)}>
+              <Ionicons name="information-circle-outline" size={20} color={COLORS.text} />
+              <Text style={styles.menuItemText}>Informations</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Infos sur l'annonce */}
+        {selectedConv.annonce_titre && (
+          <View style={styles.annonceInfoBanner}>
+            <Ionicons name="camera" size={16} color={COLORS.primary} />
+            <View style={styles.annonceInfoText}>
+              <Text style={styles.annonceInfoTitle}>Conversation sur :</Text>
+              <Text style={styles.annonceInfoTitre} numberOfLines={1}>{selectedConv.annonce_titre}</Text>
+            </View>
+          </View>
+        )}
         <FlatList data={messages} keyExtractor={(item) => item.id} contentContainerStyle={styles.messagesContent} renderItem={({ item }) => (
           <View style={[styles.messageBubble, item.sender_id === user.id ? styles.myMessage : styles.theirMessage]}>
             <Text style={[styles.messageText, item.sender_id === user.id && styles.myMessageText]}>{item.contenu}</Text>
@@ -182,6 +273,13 @@ const styles = StyleSheet.create({
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerName: { fontSize: 16, fontWeight: '600', color: COLORS.text },
   moreButton: { padding: 4 },
+  profileMenu: { position: 'absolute', top: 60, right: 16, backgroundColor: 'white', borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, zIndex: 1000 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, gap: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  menuItemText: { fontSize: 15, color: COLORS.text },
+  annonceInfoBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#EFF6FF', borderBottomWidth: 1, borderBottomColor: '#BFDBFE' },
+  annonceInfoText: { flex: 1 },
+  annonceInfoTitle: { fontSize: 11, color: COLORS.textLight, fontWeight: '500' },
+  annonceInfoTitre: { fontSize: 14, color: COLORS.primary, fontWeight: '600', marginTop: 2 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
   emptyTitle: { fontSize: 20, fontWeight: '600', color: COLORS.text, marginTop: 16 },
   emptySubtitle: { fontSize: 14, color: COLORS.textLight, marginTop: 8, textAlign: 'center' },
@@ -198,6 +296,8 @@ const styles = StyleSheet.create({
   prestataireNom: { fontSize: 16, color: COLORS.text },
   boldText: { fontWeight: '600' },
   timeText: { fontSize: 13, color: COLORS.textLight },
+  annonceTitre: { fontSize: 12, color: COLORS.primary, marginBottom: 2 },
+  headerSubtitle: { fontSize: 11, color: COLORS.textLight, marginTop: 2 },
   lastMessage: { fontSize: 14, color: COLORS.textLight },
   smallAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
   smallAvatarImage: { width: 32, height: 32, borderRadius: 16 },

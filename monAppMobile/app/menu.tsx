@@ -129,7 +129,7 @@ export default function Menu() {
                 title="Annonces" 
                 value={stats.annonces} 
                 icon="📢"
-                onPress={() => router.push('/prestataires/prestations')}
+                onPress={() => router.push('/prestataires/annonces')}
               />
               <StatCard 
                 title="Messages" 

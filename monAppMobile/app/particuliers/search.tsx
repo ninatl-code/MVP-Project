@@ -22,6 +22,42 @@ const COLORS = {
 
 const DEFAULT_IMAGE = require('../../assets/images/shutterstock_2502519999.jpg');
 
+// Fonction pour normaliser les URLs de photos
+function normalizePhotoUrl(photoUrl: string | null | undefined): string | null {
+  if (!photoUrl || typeof photoUrl !== 'string') return null;
+  
+  // Si c'est déjà une URL complète, la retourner
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+    return photoUrl;
+  }
+  
+  // Si c'est déjà un data URI, le retourner
+  if (photoUrl.startsWith('data:')) {
+    return photoUrl;
+  }
+  
+  // Si c'est une chaîne base64 brute, ajouter le préfixe
+  // Vérifier si ça ressemble à du base64
+  const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
+  if (photoUrl.length > 100 && base64Regex.test(photoUrl.slice(0, 100))) {
+    // Détecter le type d'image à partir des premiers caractères
+    const firstChars = photoUrl.slice(0, 20);
+    let mimeType = 'image/jpeg'; // Par défaut
+    
+    if (firstChars.startsWith('iVBOR') || firstChars.startsWith('IVBOR')) {
+      mimeType = 'image/png';
+    } else if (firstChars.startsWith('/9j/')) {
+      mimeType = 'image/jpeg';
+    } else if (firstChars.startsWith('R0lGOD')) {
+      mimeType = 'image/gif';
+    }
+    
+    return `data:${mimeType};base64,${photoUrl}`;
+  }
+  
+  return null;
+}
+
 interface Annonce {
   id: string;
   titre: string;
@@ -78,42 +114,45 @@ export default function SearchProviders() {
         id,
         titre,
         description,
-        tarif_min,
-        tarif_max,
+        tarif_unit,
         photos,
         rate,
         prestataire,
-        prestation_id,
-        profiles (nom, ville_id)
-      `);
+        prestation,
+        actif,
+        profiles!annonces_prestataire_fkey (nom, ville_id)
+      `)
+      .eq('actif', true);
 
     if (selectedPrestation && selectedPrestation !== "all") {
-      annoncesQuery = annoncesQuery.eq("prestation_id", selectedPrestation);
+      annoncesQuery = annoncesQuery.eq("prestation", selectedPrestation);
     }
 
     if (priceRange.min) {
-      annoncesQuery = annoncesQuery.gte("tarif_min", parseInt(priceRange.min));
+      annoncesQuery = annoncesQuery.gte("tarif_unit", parseInt(priceRange.min));
     }
 
     if (priceRange.max) {
-      annoncesQuery = annoncesQuery.lte("tarif_max", parseInt(priceRange.max));
+      annoncesQuery = annoncesQuery.lte("tarif_unit", parseInt(priceRange.max));
     }
 
-    const { data: annoncesData } = await annoncesQuery;
+    console.log('🔍 Annonces query params:', { selectedPrestation, priceRange });
+
+    const { data: annoncesData } = await annoncesQuery.limit(50);
 
     if (annoncesData) {
+      // Batch fetch all villes to avoid N+1 query problem
+      const villeIds = [...new Set(annoncesData.map((a: any) => a.profiles?.ville_id).filter(Boolean))];
+      const { data: villesData } = await supabase
+        .from('villes')
+        .select('id, ville')
+        .in('id', villeIds);
+      const villeMap = Object.fromEntries((villesData || []).map((v: any) => [v.id, v.ville]));
+
       const formattedResults: Annonce[] = [];
       
       for (const annonce of annoncesData) {
-        let villeNom = '';
-        if (annonce.profiles?.ville_id) {
-          const { data: villeData } = await supabase
-            .from('villes')
-            .select('ville')
-            .eq('id', annonce.profiles.ville_id)
-            .single();
-          villeNom = villeData?.ville || '';
-        }
+        const villeNom = villeMap[annonce.profiles?.ville_id] || '';
 
         // Filter by ville if selected
         if (selectedVille !== "all" && villeNom !== selectedVille) {
@@ -130,8 +169,8 @@ export default function SearchProviders() {
           id: annonce.id,
           titre: annonce.titre,
           description: annonce.description || '',
-          tarif_min: annonce.tarif_min || 0,
-          tarif_max: annonce.tarif_max || 0,
+          tarif_min: annonce.tarif_unit || 0,
+          tarif_max: annonce.tarif_unit || 0,
           photos: annonce.photos || [],
           rate: annonce.rate || 0,
           prestataire: annonce.prestataire,
@@ -140,6 +179,19 @@ export default function SearchProviders() {
         });
       }
 
+      console.log('🔍 Search results:', formattedResults.length, 'annonces');
+      if (formattedResults.length > 0) {
+        const firstAnnonce = formattedResults[0];
+        console.log('📸 Photos info:', {
+          titre: firstAnnonce.titre,
+          hasPhotos: firstAnnonce.photos && firstAnnonce.photos.length > 0,
+          photosCount: firstAnnonce.photos?.length || 0,
+          firstPhotoType: firstAnnonce.photos?.[0] ? 
+            (firstAnnonce.photos[0].startsWith('http') ? 'URL' : 
+             firstAnnonce.photos[0].startsWith('data:') ? 'Base64' : 'Unknown') : 'None',
+          firstPhotoLength: firstAnnonce.photos?.[0]?.length || 0
+        });
+      }
       setResults(formattedResults);
     }
 
@@ -158,7 +210,7 @@ export default function SearchProviders() {
 
     const { error } = await supabase
       .from('favoris')
-      .insert({ user_id: user.id, annonce_id: annonceId });
+      .insert({ particulier_id: user.id, annonce_id: annonceId });
 
     if (!error) {
       // Show success feedback
@@ -336,11 +388,23 @@ export default function SearchProviders() {
                 {/* Image */}
                 <View style={styles.imageContainer}>
                   <Image 
-                    source={annonce.photos && annonce.photos.length > 0 
-                      ? { uri: annonce.photos[0] }
-                      : DEFAULT_IMAGE
-                    }
+                    source={(() => {
+                      const photoUrl = normalizePhotoUrl(annonce.photos?.[0]);
+                      return photoUrl ? { uri: photoUrl } : DEFAULT_IMAGE;
+                    })()}
                     style={styles.annonceImage}
+                    onError={() => {
+                      const photoUrl = annonce.photos?.[0];
+                      console.log('❌ Image load error:', {
+                        titre: annonce.titre,
+                        hasPhoto: !!photoUrl,
+                        photoType: photoUrl ? 
+                          (photoUrl.startsWith('http') ? 'URL' : 
+                           photoUrl.startsWith('data:') ? 'Base64' : 'Unknown') : 'None',
+                        photoLength: photoUrl?.length || 0
+                      });
+                    }}
+                    defaultSource={DEFAULT_IMAGE}
                   />
                   <TouchableOpacity 
                     style={styles.favoriteButton}

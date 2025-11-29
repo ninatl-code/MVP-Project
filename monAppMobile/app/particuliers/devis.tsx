@@ -63,31 +63,34 @@ export default function DevisParticulier() {
         prestataire_id,
         status,
         montant,
-        message_client,
-        reponse_prestataire,
+        comment_client,
+        comment_presta,
+        date_confirmation,
+        date_refus,
         created_at,
-        updated_at,
-        valide_jusqu_a,
+        titre,
         annonces (titre),
         profiles!devis_prestataire_id_fkey (nom)
       `)
       .eq('particulier_id', user.id)
       .order('created_at', { ascending: false });
 
+    console.log('📄 Devis fetched:', data?.length || 0, error);
+
     if (!error && data) {
       const formattedData = data.map((d: any) => ({
         id: d.id,
         annonce_id: d.annonce_id,
-        annonce_titre: Array.isArray(d.annonces) ? d.annonces[0]?.titre : d.annonces?.titre || 'Annonce',
+        annonce_titre: d.titre || (Array.isArray(d.annonces) ? d.annonces[0]?.titre : d.annonces?.titre) || 'Annonce',
         prestataire_id: d.prestataire_id,
         prestataire_nom: Array.isArray(d.profiles) ? d.profiles[0]?.nom : d.profiles?.nom || 'Prestataire',
         status: d.status,
         montant: d.montant,
-        message_client: d.message_client,
-        reponse_prestataire: d.reponse_prestataire,
+        message_client: d.comment_client || '',
+        reponse_prestataire: d.comment_presta || '',
         created_at: d.created_at,
-        updated_at: d.updated_at,
-        valide_jusqu_a: d.valide_jusqu_a
+        updated_at: d.date_confirmation || d.date_refus || d.created_at,
+        valide_jusqu_a: null
       }));
       setDevis(formattedData);
     }

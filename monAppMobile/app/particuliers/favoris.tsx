@@ -22,6 +22,41 @@ const COLORS = {
 
 const DEFAULT_IMAGE = require('../../assets/images/shutterstock_2502519999.jpg');
 
+// Fonction pour normaliser les URLs de photos
+function normalizePhotoUrl(photoUrl: string | null | undefined): string | null {
+  if (!photoUrl || typeof photoUrl !== 'string') return null;
+  
+  // Si c'est déjà une URL complète, la retourner
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+    return photoUrl;
+  }
+  
+  // Si c'est déjà un data URI, le retourner
+  if (photoUrl.startsWith('data:')) {
+    return photoUrl;
+  }
+  
+  // Si c'est une chaîne base64 brute, ajouter le préfixe
+  const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
+  if (photoUrl.length > 100 && base64Regex.test(photoUrl.slice(0, 100))) {
+    // Détecter le type d'image
+    const firstChars = photoUrl.slice(0, 20);
+    let mimeType = 'image/jpeg';
+    
+    if (firstChars.startsWith('iVBOR') || firstChars.startsWith('IVBOR')) {
+      mimeType = 'image/png';
+    } else if (firstChars.startsWith('/9j/')) {
+      mimeType = 'image/jpeg';
+    } else if (firstChars.startsWith('R0lGOD')) {
+      mimeType = 'image/gif';
+    }
+    
+    return `data:${mimeType};base64,${photoUrl}`;
+  }
+  
+  return null;
+}
+
 interface Favori {
   id: string;
   annonce_id: string;
@@ -64,41 +99,47 @@ export default function FavorisParticulier() {
           id,
           titre,
           description,
-          tarif_min,
-          tarif_max,
+          tarif_unit,
           photos,
           rate,
           prestataire,
           profiles (nom, ville_id)
         )
       `)
-      .eq('user_id', user.id)
+      .eq('particulier_id', user.id)
       .order('created_at', { ascending: false });
 
+    console.log('❤️ Favoris fetched:', data?.length || 0, error);
+
     if (!error && data) {
+      // Batch fetch all villes to avoid N+1 query problem
+      const villeIds = [...new Set(data.map((fav: any) => {
+        const annonce = Array.isArray(fav.annonces) ? fav.annonces[0] : fav.annonces;
+        const profile = Array.isArray(annonce?.profiles) ? annonce.profiles[0] : annonce?.profiles;
+        return profile?.ville_id;
+      }).filter(Boolean))];
+      
+      const { data: villesData } = await supabase
+        .from('villes')
+        .select('id, ville')
+        .in('id', villeIds);
+      const villeMap = Object.fromEntries((villesData || []).map((v: any) => [v.id, v.ville]));
+
       const formattedData: Favori[] = [];
       
       for (const fav of data) {
         const annonce = Array.isArray((fav as any).annonces) ? (fav as any).annonces[0] : (fav as any).annonces;
         if (annonce) {
           const profile = Array.isArray(annonce.profiles) ? annonce.profiles[0] : annonce.profiles;
-          let villeNom = '';
-          if (profile?.ville_id) {
-            const { data: villeData } = await supabase
-              .from('villes')
-              .select('ville')
-              .eq('id', profile.ville_id)
-              .single();
-            villeNom = villeData?.ville || '';
-          }
+          const villeNom = villeMap[profile?.ville_id] || '';
 
           formattedData.push({
             id: fav.id,
             annonce_id: annonce.id,
             annonce_titre: annonce.titre || 'Annonce',
             annonce_description: annonce.description || '',
-            annonce_tarif_min: annonce.tarif_min || 0,
-            annonce_tarif_max: annonce.tarif_max || 0,
+            annonce_tarif_min: annonce.tarif_unit || 0,
+            annonce_tarif_max: annonce.tarif_unit || 0,
             annonce_photos: annonce.photos || [],
             annonce_note: annonce.rate || 0,
             prestataire_id: annonce.prestataire,
@@ -216,11 +257,23 @@ export default function FavorisParticulier() {
                 {/* Image */}
                 <View style={styles.imageContainer}>
                   <Image 
-                    source={favori.annonce_photos && favori.annonce_photos.length > 0 
-                      ? { uri: favori.annonce_photos[0] }
-                      : DEFAULT_IMAGE
-                    }
+                    source={(() => {
+                      const photoUrl = normalizePhotoUrl(favori.annonce_photos?.[0]);
+                      return photoUrl ? { uri: photoUrl } : DEFAULT_IMAGE;
+                    })()}
                     style={styles.annonceImage}
+                    onError={() => {
+                      const photoUrl = favori.annonce_photos?.[0];
+                      console.log('❌ Image load error (favori):', {
+                        titre: favori.annonce_titre,
+                        hasPhoto: !!photoUrl,
+                        photoType: photoUrl ? 
+                          (photoUrl.startsWith('http') ? 'URL' : 
+                           photoUrl.startsWith('data:') ? 'Base64' : 'Unknown') : 'None',
+                        photoLength: photoUrl?.length || 0
+                      });
+                    }}
+                    defaultSource={DEFAULT_IMAGE}
                   />
                   <TouchableOpacity 
                     style={styles.favoriteButton}

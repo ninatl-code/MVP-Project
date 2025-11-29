@@ -60,33 +60,40 @@ export default function ReservationsParticulier() {
         annonce_id,
         prestataire_id,
         date,
-        heure,
-        lieu,
+        endroit,
         montant,
         status,
         created_at,
-        notes,
+        commentaire,
         annonces (titre),
         profiles!reservations_prestataire_id_fkey (nom)
       `)
-      .eq('client_id', user.id)
+      .eq('particulier_id', user.id)
       .order('date', { ascending: false });
 
+    console.log('📅 Reservations fetched:', data?.length || 0, error);
+
     if (!error && data) {
-      const formattedData = data.map((r: any) => ({
-        id: r.id,
-        annonce_id: r.annonce_id,
-        annonce_titre: Array.isArray(r.annonces) ? r.annonces[0]?.titre : r.annonces?.titre || 'Annonce',
-        prestataire_id: r.prestataire_id,
-        prestataire_nom: Array.isArray(r.profiles) ? r.profiles[0]?.nom : r.profiles?.nom || 'Prestataire',
-        date: r.date,
-        heure: r.heure,
-        lieu: r.lieu,
-        montant: r.montant,
-        status: r.status,
-        created_at: r.created_at,
-        notes: r.notes
-      }));
+      const formattedData = data.map((r: any) => {
+        const dateObj = new Date(r.date);
+        const dateStr = dateObj.toLocaleDateString('fr-FR');
+        const heureStr = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        
+        return {
+          id: r.id,
+          annonce_id: r.annonce_id,
+          annonce_titre: Array.isArray(r.annonces) ? r.annonces[0]?.titre : r.annonces?.titre || 'Annonce',
+          prestataire_id: r.prestataire_id,
+          prestataire_nom: Array.isArray(r.profiles) ? r.profiles[0]?.nom : r.profiles?.nom || 'Prestataire',
+          date: dateStr,
+          heure: heureStr,
+          lieu: r.endroit || '',
+          montant: r.montant,
+          status: r.status,
+          created_at: r.created_at,
+          notes: r.commentaire
+        };
+      });
       setReservations(formattedData);
     }
 
