@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import FooterPresta from '../../components/FooterPresta';
+import TrustBadges from '../../components/TrustBadges';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const COLORS = {
@@ -52,6 +53,7 @@ export default function ProfilPrestataire() {
     noteMoyenne: 0,
     totalVues: 0
   });
+  const [verificationStatus, setVerificationStatus] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     nom: '',
@@ -69,6 +71,7 @@ export default function ProfilPrestataire() {
   useEffect(() => {
     fetchProfile();
     loadStats();
+    fetchVerificationStatus();
   }, []);
 
   const handleLogout = async () => {
@@ -126,6 +129,25 @@ export default function ProfilPrestataire() {
       }
     }
     setLoading(false);
+  };
+
+  const fetchVerificationStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_verification_status')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!error && data) {
+        setVerificationStatus(data);
+      }
+    } catch (error) {
+      console.error('Error fetching verification status:', error);
+    }
   };
 
   const loadStats = async () => {
@@ -325,6 +347,30 @@ export default function ProfilPrestataire() {
             </View>
           </View>
         </View>
+
+        {/* Trust & Verification Badges */}
+        {verificationStatus && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Confiance & Vérification</Text>
+              <TouchableOpacity 
+                style={styles.verifyButton}
+                onPress={() => router.push('/prestataires/verification')}
+              >
+                <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.card}>
+              <TrustBadges 
+                verificationStatus={verificationStatus} 
+                showScore={true}
+                compact={false}
+              />
+            </View>
+          </View>
+        )}
 
         {/* Informations personnelles */}
         <View style={styles.section}>
@@ -620,7 +666,8 @@ const styles = StyleSheet.create({
   // Sections
   section: { paddingHorizontal: 20, marginTop: 24 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, flex: 1 },
+  verifyButton: { padding: 8, backgroundColor: COLORS.primary + '20', borderRadius: 8 },
   
   // Stats
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
