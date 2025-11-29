@@ -39,6 +39,7 @@ interface Event {
   num_reservation?: string;
   montant?: number;
   commentaire?: string;
+  isFullDay?: boolean;
 }
 
 interface CalendarDay {
@@ -92,16 +93,16 @@ export default function CalendrierPrestataire() {
     setLoading(true);
 
     // Récupérer les réservations
-    const { data: reservations } = await supabase
+    const { data: reservations, error: reservationsError } = await supabase
       .from('reservations')
       .select(`
         id, 
         date, 
-        heure, 
         status,
         num_reservation,
         montant,
         commentaire,
+        annonce_id,
         annonces(id, titre),
         profiles!reservations_particulier_id_fkey(nom, email, telephone)
       `)
@@ -109,48 +110,103 @@ export default function CalendrierPrestataire() {
       .gte('date', new Date().toISOString().split('T')[0])
       .order('date', { ascending: true });
 
+    console.log('Reservations fetched:', reservations);
+    console.log('Reservations error:', reservationsError);
+
     // Récupérer les blocs de temps depuis blocked_slots
-    const { data: blockedTimes } = await supabase
+    const { data: blockedTimes, error: blockedError } = await supabase
       .from('blocked_slots')
-      .select('id, prestataire_id, date, motif, annonce_id')
+      .select('*')
       .eq('prestataire_id', userId)
       .gte('date', new Date().toISOString())
       .order('date', { ascending: true });
 
-    const reservationEvents: Event[] = (reservations || []).map(r => ({
-      id: r.id,
-      date: r.date,
-      title: Array.isArray(r.annonces) ? r.annonces[0]?.titre || 'Réservation' : 'Réservation',
-      type: 'reservation' as const,
-      time: r.heure,
-      num_reservation: r.num_reservation,
-      montant: r.montant,
-      commentaire: r.commentaire,
-      client_name: Array.isArray(r.profiles) ? r.profiles[0]?.nom : '',
-      client_email: Array.isArray(r.profiles) ? r.profiles[0]?.email : '',
-      client_phone: Array.isArray(r.profiles) ? r.profiles[0]?.telephone : '',
-      annonce_title: Array.isArray(r.annonces) ? r.annonces[0]?.titre : '',
-      status: r.status
-    }));
+    console.log('Blocked slots fetched:', blockedTimes);
+    console.log('Blocked slots error:', blockedError);
+
+    const reservationEvents: Event[] = (reservations || []).map(r => {
+      const dateObj = new Date(r.date);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const dateOnly = `${year}-${month}-${day}`;
+      const timeOnly = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      
+      return {
+        id: r.id,
+        date: dateOnly,
+        title: Array.isArray(r.annonces) ? r.annonces[0]?.titre || 'Réservation' : 'Réservation',
+        type: 'reservation' as const,
+        time: timeOnly,
+        num_reservation: r.num_reservation,
+        montant: r.montant,
+        commentaire: r.commentaire,
+        client_name: Array.isArray(r.profiles) ? r.profiles[0]?.nom : '',
+        client_email: Array.isArray(r.profiles) ? r.profiles[0]?.email : '',
+        client_phone: Array.isArray(r.profiles) ? r.profiles[0]?.telephone : '',
+        annonce_title: Array.isArray(r.annonces) ? r.annonces[0]?.titre : '',
+        status: r.status
+      };
+    });
 
     const blockedEvents: Event[] = (blockedTimes || []).map(b => {
-      const dateObj = new Date(b.date);
-      const dateOnly = dateObj.toISOString().split('T')[0];
-      const timeOnly = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      // La table peut avoir soit date, soit start_datetime/end_datetime
+      let dateOnly: string;
+      let startTimeStr: string = '00:00';
+      let endTimeStr: string = '23:59';
+      let isFullDay: boolean = true;
+
+      if (b.date) {
+        // Si c'est juste un champ date
+        const dateObj = new Date(b.date);
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        dateOnly = `${year}-${month}-${day}`;
+        
+        // Si la date contient aussi l'heure
+        if (b.date.includes('T')) {
+          startTimeStr = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
+      } else if (b.start_datetime && b.end_datetime) {
+        // Si ce sont des champs start_datetime/end_datetime
+        const startDate = new Date(b.start_datetime);
+        const endDate = new Date(b.end_datetime);
+        
+        const year = startDate.getFullYear();
+        const month = String(startDate.getMonth() + 1).padStart(2, '0');
+        const day = String(startDate.getDate()).padStart(2, '0');
+        dateOnly = `${year}-${month}-${day}`;
+        
+        startTimeStr = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        endTimeStr = endDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        
+        isFullDay = (
+          startDate.getHours() === 0 && startDate.getMinutes() === 0 &&
+          endDate.getHours() === 23 && endDate.getMinutes() === 59
+        );
+      } else {
+        console.error('Format de blocked_slot invalide:', b);
+        return null;
+      }
       
       return {
         id: b.id,
         date: dateOnly,
-        title: b.motif || 'Indisponible',
+        title: isFullDay ? 'Journée bloquée' : `Bloqué ${startTimeStr} - ${endTimeStr}`,
         type: 'blocked' as const,
-        start_time: timeOnly,
-        end_time: undefined,
-        motif: b.motif
+        start_time: startTimeStr,
+        end_time: endTimeStr,
+        motif: b.motif || b.reason || 'Indisponible',
+        isFullDay
       };
-    });
+    }).filter(Boolean) as Event[];
 
     const allEvents = [...reservationEvents, ...blockedEvents];
     setEvents(allEvents);
+
+    console.log('All events:', allEvents);
+    console.log('Total events count:', allEvents.length);
 
     // Calculer les stats
     const upcomingCount = allEvents.filter(e => new Date(e.date) >= new Date()).length;
@@ -159,6 +215,8 @@ export default function CalendrierPrestataire() {
       blockedDays: blockedEvents.length,
       upcomingEvents: upcomingCount
     });
+
+    console.log('Stats:', { totalReservations: reservationEvents.length, blockedDays: blockedEvents.length, upcomingEvents: upcomingCount });
 
     setLoading(false);
   };
@@ -187,7 +245,10 @@ export default function CalendrierPrestataire() {
     // Jours du mois précédent
     for (let i = prevMonthDays - 1; i >= 0; i--) {
       const dayDate = new Date(year, month - 1, prevMonthLastDay - i);
-      const dayEvents = events.filter(e => e.date === dayDate.toISOString().split('T')[0]);
+      const prevYear = month === 0 ? year - 1 : year;
+      const prevMonth = month === 0 ? 11 : month - 1;
+      const localDateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(prevMonthLastDay - i).padStart(2, '0')}`;
+      const dayEvents = events.filter(e => e.date === localDateStr);
       days.push({
         date: dayDate,
         isCurrentMonth: false,
@@ -200,7 +261,9 @@ export default function CalendrierPrestataire() {
     // Jours du mois actuel
     for (let i = 1; i <= daysInMonth; i++) {
       const dayDate = new Date(year, month, i);
-      const dayEvents = events.filter(e => e.date === dayDate.toISOString().split('T')[0]);
+      // Format local de la date pour éviter décalage UTC
+      const localDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const dayEvents = events.filter(e => e.date === localDateStr);
       days.push({
         date: dayDate,
         isCurrentMonth: true,
@@ -214,7 +277,10 @@ export default function CalendrierPrestataire() {
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       const dayDate = new Date(year, month + 1, i);
-      const dayEvents = events.filter(e => e.date === dayDate.toISOString().split('T')[0]);
+      const nextYear = month === 11 ? year + 1 : year;
+      const nextMonth = month === 11 ? 0 : month + 1;
+      const localDateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const dayEvents = events.filter(e => e.date === localDateStr);
       days.push({
         date: dayDate,
         isCurrentMonth: false,
@@ -243,6 +309,54 @@ export default function CalendrierPrestataire() {
 
   const handleDayPress = (day: CalendarDay) => {
     setSelectedDate(day.date);
+  };
+
+  const handleDayLongPress = (day: CalendarDay) => {
+    // Bloquer directement la journée sélectionnée
+    Alert.alert(
+      'Bloquer cette journée ?',
+      `${day.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Bloquer la journée',
+          onPress: () => quickBlockDay(day.date)
+        },
+        {
+          text: 'Période personnalisée',
+          onPress: () => {
+            setBlockForm({
+              ...blockForm,
+              date: day.date.toISOString().split('T')[0]
+            });
+            setShowBlockModal(true);
+          }
+        }
+      ]
+    );
+  };
+
+  const quickBlockDay = async (date: Date) => {
+    if (!user) return;
+
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const { error } = await supabase
+      .from('blocked_slots')
+      .insert({
+        prestataire_id: user.id,
+        date: startOfDay.toISOString(),
+        motif: 'Journée bloquée'
+      });
+
+    if (error) {
+      Alert.alert('Erreur', 'Impossible de bloquer cette journée');
+      console.error('Error blocking day:', error);
+    } else {
+      Alert.alert('Succès', 'Journée bloquée avec succès');
+      fetchEvents(user.id);
+    }
   };
 
   const handleAddBlock = async () => {
@@ -355,7 +469,9 @@ export default function CalendrierPrestataire() {
           <View style={styles.daysGrid}>
             {calendarDays.map((day, index) => {
               const hasReservation = day.events.some(e => e.type === 'reservation');
-              const isBlocked = day.events.some(e => e.type === 'blocked');
+              const blockedEvents = day.events.filter(e => e.type === 'blocked');
+              const hasFullDayBlock = blockedEvents.some(e => e.isFullDay);
+              const hasPartialBlock = blockedEvents.some(e => !e.isFullDay);
               
               return (
                 <TouchableOpacity
@@ -364,25 +480,28 @@ export default function CalendrierPrestataire() {
                     styles.dayCell,
                     !day.isCurrentMonth && styles.dayCellInactive,
                     day.isToday && styles.dayCellToday,
-                    day.isSelected && styles.dayCellSelected
+                    day.isSelected && styles.dayCellSelected,
+                    hasFullDayBlock && styles.dayCellFullyBlocked
                   ]}
                   onPress={() => handleDayPress(day)}
+                  onLongPress={() => handleDayLongPress(day)}
                 >
                   <Text style={[
                     styles.dayNumber,
                     !day.isCurrentMonth && styles.dayNumberInactive,
-                    day.isToday && styles.dayNumberToday
+                    day.isToday && styles.dayNumberToday,
+                    hasFullDayBlock && styles.dayNumberBlocked
                   ]}>
                     {day.date.getDate()}
                   </Text>
                   
-                  {/* Indicateurs d'événements */}
-                  {day.events.length > 0 && (
+                  {/* Indicateurs d'événements - ne pas afficher si journée complète bloquée */}
+                  {!hasFullDayBlock && day.events.length > 0 && (
                     <View style={styles.eventIndicators}>
                       {hasReservation && (
                         <View style={[styles.eventDot, { backgroundColor: COLORS.reservation }]} />
                       )}
-                      {isBlocked && (
+                      {hasPartialBlock && (
                         <View style={[styles.eventDot, { backgroundColor: COLORS.blocked }]} />
                       )}
                     </View>
@@ -438,6 +557,12 @@ export default function CalendrierPrestataire() {
                     )}
                     {event.time && (
                       <Text style={styles.eventItemTime}>🕐 {event.time}</Text>
+                    )}
+                    {event.start_time && event.end_time && (
+                      <Text style={styles.eventItemTime}>
+                        🕐 {event.start_time} - {event.end_time}
+                        {event.isFullDay && ' (Journée complète)'}
+                      </Text>
                     )}
                     {event.client_name && (
                       <Text style={styles.eventItemClient}>👤 {event.client_name}</Text>
@@ -664,6 +789,14 @@ const styles = StyleSheet.create({
   },
   dayNumberToday: {
     color: '#F59E0B',
+    fontWeight: 'bold'
+  },
+  dayCellFullyBlocked: {
+    backgroundColor: '#FEE2E2',
+    borderColor: COLORS.blocked
+  },
+  dayNumberBlocked: {
+    color: '#fff',
     fontWeight: 'bold'
   },
   eventIndicators: {

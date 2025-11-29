@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Platform } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -33,7 +33,9 @@ export default function BlockedSlotsPage() {
   const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  const [tempStartDate, setTempStartDate] = useState(new Date());
+  const [tempEndDate, setTempEndDate] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
@@ -147,14 +149,24 @@ export default function BlockedSlotsPage() {
 
   const formatDateShort = (dateTimeStr: string) => {
     const date = new Date(dateTimeStr);
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('fr-FR', { 
+      day: 'numeric', 
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const getDurationDays = (start: string, end: string) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
     const diff = endDate.getTime() - startDate.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    const hours = diff / (1000 * 60 * 60);
+    
+    if (hours < 24) {
+      return `${Math.round(hours)}h`;
+    }
+    return `${Math.ceil(hours / 24)} jour${Math.ceil(hours / 24) > 1 ? 's' : ''}`;
   };
 
   const getReasonIcon = (reason?: string) => {
@@ -236,8 +248,7 @@ export default function BlockedSlotsPage() {
                   <View style={styles.slotInfo}>
                     <Text style={styles.slotReason}>{getReasonLabel(slot.reason)}</Text>
                     <Text style={styles.slotDuration}>
-                      {getDurationDays(slot.start_datetime, slot.end_datetime)} jour
-                      {getDurationDays(slot.start_datetime, slot.end_datetime) > 1 ? 's' : ''}
+                      {getDurationDays(slot.start_datetime, slot.end_datetime)}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => handleDeleteSlot(slot.id!)}>
@@ -320,7 +331,10 @@ export default function BlockedSlotsPage() {
               <Text style={styles.modalLabel}>Date de début</Text>
               <TouchableOpacity
                 style={styles.dateTimeButton}
-                onPress={() => setShowStartDatePicker(true)}
+                onPress={() => {
+                  setTempStartDate(startDate);
+                  setShowStartDatePicker(true);
+                }}
               >
                 <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                 <Text style={styles.dateTimeText}>
@@ -329,20 +343,38 @@ export default function BlockedSlotsPage() {
               </TouchableOpacity>
               {showStartDatePicker && (
                 <DateTimePicker
-                  value={startDate}
+                  value={tempStartDate}
                   mode="date"
-                  display="default"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   minimumDate={new Date()}
                   onChange={(event, selectedDate) => {
-                    setShowStartDatePicker(false);
-                    if (selectedDate) setStartDate(selectedDate);
+                    if (Platform.OS === 'android') {
+                      setShowStartDatePicker(false);
+                    }
+                    if (selectedDate && event.type === 'set') {
+                      // Garder l'heure actuelle, changer seulement la date
+                      const newDate = new Date(startDate);
+                      newDate.setFullYear(selectedDate.getFullYear());
+                      newDate.setMonth(selectedDate.getMonth());
+                      newDate.setDate(selectedDate.getDate());
+                      setStartDate(newDate);
+                      setTempStartDate(newDate);
+                      if (Platform.OS === 'ios') {
+                        setShowStartDatePicker(false);
+                      }
+                    } else if (event.type === 'dismissed') {
+                      setShowStartDatePicker(false);
+                    }
                   }}
                 />
               )}
 
               <TouchableOpacity
                 style={styles.dateTimeButton}
-                onPress={() => setShowStartTimePicker(true)}
+                onPress={() => {
+                  setTempStartDate(startDate);
+                  setShowStartTimePicker(true);
+                }}
               >
                 <Ionicons name="time-outline" size={20} color={COLORS.primary} />
                 <Text style={styles.dateTimeText}>
@@ -351,13 +383,27 @@ export default function BlockedSlotsPage() {
               </TouchableOpacity>
               {showStartTimePicker && (
                 <DateTimePicker
-                  value={startDate}
+                  value={tempStartDate}
                   mode="time"
                   is24Hour={true}
-                  display="default"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={(event, selectedDate) => {
-                    setShowStartTimePicker(false);
-                    if (selectedDate) setStartDate(selectedDate);
+                    if (Platform.OS === 'android') {
+                      setShowStartTimePicker(false);
+                    }
+                    if (selectedDate && event.type === 'set') {
+                      // Garder la date actuelle, changer seulement l'heure
+                      const newDate = new Date(startDate);
+                      newDate.setHours(selectedDate.getHours());
+                      newDate.setMinutes(selectedDate.getMinutes());
+                      setStartDate(newDate);
+                      setTempStartDate(newDate);
+                      if (Platform.OS === 'ios') {
+                        setShowStartTimePicker(false);
+                      }
+                    } else if (event.type === 'dismissed') {
+                      setShowStartTimePicker(false);
+                    }
                   }}
                 />
               )}
@@ -366,7 +412,10 @@ export default function BlockedSlotsPage() {
               <Text style={styles.modalLabel}>Date de fin</Text>
               <TouchableOpacity
                 style={styles.dateTimeButton}
-                onPress={() => setShowEndDatePicker(true)}
+                onPress={() => {
+                  setTempEndDate(endDate);
+                  setShowEndDatePicker(true);
+                }}
               >
                 <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                 <Text style={styles.dateTimeText}>
@@ -375,20 +424,38 @@ export default function BlockedSlotsPage() {
               </TouchableOpacity>
               {showEndDatePicker && (
                 <DateTimePicker
-                  value={endDate}
+                  value={tempEndDate}
                   mode="date"
-                  display="default"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   minimumDate={startDate}
                   onChange={(event, selectedDate) => {
-                    setShowEndDatePicker(false);
-                    if (selectedDate) setEndDate(selectedDate);
+                    if (Platform.OS === 'android') {
+                      setShowEndDatePicker(false);
+                    }
+                    if (selectedDate && event.type === 'set') {
+                      // Garder l'heure actuelle, changer seulement la date
+                      const newDate = new Date(endDate);
+                      newDate.setFullYear(selectedDate.getFullYear());
+                      newDate.setMonth(selectedDate.getMonth());
+                      newDate.setDate(selectedDate.getDate());
+                      setEndDate(newDate);
+                      setTempEndDate(newDate);
+                      if (Platform.OS === 'ios') {
+                        setShowEndDatePicker(false);
+                      }
+                    } else if (event.type === 'dismissed') {
+                      setShowEndDatePicker(false);
+                    }
                   }}
                 />
               )}
 
               <TouchableOpacity
                 style={styles.dateTimeButton}
-                onPress={() => setShowEndTimePicker(true)}
+                onPress={() => {
+                  setTempEndDate(endDate);
+                  setShowEndTimePicker(true);
+                }}
               >
                 <Ionicons name="time-outline" size={20} color={COLORS.primary} />
                 <Text style={styles.dateTimeText}>
@@ -397,13 +464,27 @@ export default function BlockedSlotsPage() {
               </TouchableOpacity>
               {showEndTimePicker && (
                 <DateTimePicker
-                  value={endDate}
+                  value={tempEndDate}
                   mode="time"
                   is24Hour={true}
-                  display="default"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={(event, selectedDate) => {
-                    setShowEndTimePicker(false);
-                    if (selectedDate) setEndDate(selectedDate);
+                    if (Platform.OS === 'android') {
+                      setShowEndTimePicker(false);
+                    }
+                    if (selectedDate && event.type === 'set') {
+                      // Garder la date actuelle, changer seulement l'heure
+                      const newDate = new Date(endDate);
+                      newDate.setHours(selectedDate.getHours());
+                      newDate.setMinutes(selectedDate.getMinutes());
+                      setEndDate(newDate);
+                      setTempEndDate(newDate);
+                      if (Platform.OS === 'ios') {
+                        setShowEndTimePicker(false);
+                      }
+                    } else if (event.type === 'dismissed') {
+                      setShowEndTimePicker(false);
+                    }
                   }}
                 />
               )}
