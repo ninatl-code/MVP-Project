@@ -90,7 +90,7 @@ export default function DevisParticulier() {
         reponse_prestataire: d.comment_presta || '',
         created_at: d.created_at,
         updated_at: d.date_confirmation || d.date_refus || d.created_at,
-        valide_jusqu_a: null
+        valide_jusqu_a: undefined
       }));
       setDevis(formattedData);
     }

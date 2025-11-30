@@ -64,9 +64,9 @@ export default function AIRecommendationsScreen() {
   const [userId, setUserId] = useState<string | null>(null);
 
   const tabs = [
-    { id: 'services', label: 'For You', icon: 'sparkles' },
-    { id: 'providers', label: 'Top Providers', icon: 'people' },
-    { id: 'trending', label: 'Trending', icon: 'trending-up' },
+    { id: 'services', label: 'Pour vous', icon: 'sparkles' },
+    { id: 'providers', label: 'Top prestataires', icon: 'people' },
+    { id: 'trending', label: 'Tendances', icon: 'trending-up' },
   ];
 
   useEffect(() => {
@@ -297,7 +297,7 @@ export default function AIRecommendationsScreen() {
               <View style={styles.providerStat}>
                 <Ionicons name="star" size={12} color={COLORS.success} />
                 <Text style={styles.providerStatText}>
-                  Quality {Math.round(item.reasoning.quality)}
+                  Qualité {Math.round(item.reasoning.quality)}
                 </Text>
               </View>
             )}
@@ -305,7 +305,7 @@ export default function AIRecommendationsScreen() {
               <View style={styles.providerStat}>
                 <Ionicons name="checkmark-circle" size={12} color={COLORS.primary} />
                 <Text style={styles.providerStatText}>
-                  Reliable {Math.round(item.reasoning.reliability)}
+                  Fiabilité {Math.round(item.reasoning.reliability)}
                 </Text>
               </View>
             )}
@@ -323,7 +323,7 @@ export default function AIRecommendationsScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Recommendations</Text>
+        <Text style={styles.headerTitle}>Recommandations IA</Text>
         <TouchableOpacity onPress={() => router.push('/particuliers/preferences' as any)}>
           <Ionicons name="settings-outline" size={24} color={COLORS.primary} />
         </TouchableOpacity>
@@ -355,20 +355,20 @@ export default function AIRecommendationsScreen() {
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Analyzing your preferences...</Text>
+          <Text style={styles.loadingText}>Analyse de vos préférences...</Text>
         </View>
       ) : recommendations.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="bulb-outline" size={64} color={COLORS.border} />
-          <Text style={styles.emptyTitle}>No Recommendations Yet</Text>
+          <Text style={styles.emptyTitle}>Aucune recommandation pour le moment</Text>
           <Text style={styles.emptyText}>
-            Start browsing and booking services to get personalized recommendations
+            Commencez à parcourir et réserver des services pour recevoir des recommandations personnalisées
           </Text>
           <TouchableOpacity
             style={styles.emptyButton}
             onPress={() => router.push('/search' as any)}
           >
-            <Text style={styles.emptyButtonText}>Explore Services</Text>
+            <Text style={styles.emptyButtonText}>Explorer les services</Text>
           </TouchableOpacity>
         </View>
       ) : (

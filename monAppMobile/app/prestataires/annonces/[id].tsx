@@ -206,26 +206,38 @@ export default function AnnoncePreviewPrestataire() {
         {/* Tarifs */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tarifs</Text>
-          {annonce.prix_fixe ? (
-            <View style={styles.priceCard}>
-              <Ionicons name="pricetag-outline" size={24} color={COLORS.success} />
-              <View style={styles.priceInfo}>
-                <Text style={styles.priceLabel}>Prix fixe</Text>
-                <Text style={styles.priceValue}>{annonce.prix_fixe} MAD</Text>
-              </View>
-            </View>
-          ) : annonce.tarif_unit ? (
+          {annonce.tarif_unit ? (
             <View style={styles.priceCard}>
               <Ionicons name="cash-outline" size={24} color={COLORS.success} />
               <View style={styles.priceInfo}>
-                <Text style={styles.priceLabel}>À partir de</Text>
+                <Text style={styles.priceLabel}>
+                  {annonce.prix_fixe ? 'Prix fixe' : 'À partir de'}
+                </Text>
                 <Text style={styles.priceValue}>
-                  {annonce.tarif_unit} MAD/{annonce.unit_tarif}
+                  {annonce.tarif_unit} MAD{!annonce.prix_fixe && annonce.unit_tarif ? `/${annonce.unit_tarif}` : ''}
                 </Text>
               </View>
             </View>
           ) : (
             <Text style={styles.noDataText}>Tarif sur devis</Text>
+          )}
+
+          {annonce.prix_fixe && (
+            <View style={[styles.infoCard, { backgroundColor: '#ECFDF5', borderColor: '#10B981', borderWidth: 1 }]}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+              <Text style={[styles.infoText, { color: '#065F46' }]}>
+                Les clients peuvent réserver directement cette prestation en ligne.
+              </Text>
+            </View>
+          )}
+
+          {!annonce.prix_fixe && annonce.tarif_unit && (
+            <View style={[styles.infoCard, { backgroundColor: '#FFFBEB', borderColor: '#F59E0B', borderWidth: 1 }]}>
+              <Ionicons name="information-circle" size={20} color={COLORS.warning} />
+              <Text style={[styles.infoText, { color: '#92400E' }]}>
+                Les clients devront vous envoyer une demande de devis avant de pouvoir réserver.
+              </Text>
+            </View>
           )}
 
           {annonce.acompte_percent && annonce.acompte_percent > 0 && (

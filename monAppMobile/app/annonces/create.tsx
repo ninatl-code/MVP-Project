@@ -53,6 +53,7 @@ export default function CreateAnnonce() {
   const [equipement, setEquipement] = useState('');
   const [conditionsAnnulation, setConditionsAnnulation] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [photoCouverture, setPhotoCouverture] = useState<string | null>(null); // Photo de couverture
   const [zones, setZones] = useState<Zone[]>([]);
   
   // Modal states
@@ -107,7 +108,12 @@ export default function CreateAnnonce() {
       });
 
       if (!result.canceled && result.assets[0].base64) {
-        setPhotos([...photos, result.assets[0].base64]);
+        const newPhoto = result.assets[0].base64;
+        setPhotos([...photos, newPhoto]);
+        // Définir automatiquement la première photo comme couverture
+        if (photos.length === 0) {
+          setPhotoCouverture(newPhoto);
+        }
       }
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger l\'image');
@@ -115,7 +121,14 @@ export default function CreateAnnonce() {
   };
 
   const removePhoto = (index: number) => {
-    setPhotos(photos.filter((_, i) => i !== index));
+    const photoToRemove = photos[index];
+    const newPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(newPhotos);
+    
+    // Si on supprime la photo de couverture, définir la première restante comme couverture
+    if (photoToRemove === photoCouverture) {
+      setPhotoCouverture(newPhotos.length > 0 ? newPhotos[0] : null);
+    }
   };
 
   const addZone = () => {
@@ -227,6 +240,7 @@ export default function CreateAnnonce() {
         prestation: prestationId || null,
         description,
         photos: photos.length > 0 ? photos : [],
+        photo_couverture: photoCouverture || null, // Photo de couverture
         tarif_unit: tarifUnit ? parseFloat(tarifUnit) : null,
         unit_tarif: type === 'produit' ? 'forfait' : (unitTarif || null),
         prix_fixe: prixFixe,
@@ -592,10 +606,21 @@ export default function CreateAnnonce() {
         <View style={styles.photosGrid}>
           {photos.map((photo, index) => (
             <View key={index} style={styles.photoCard}>
-              <Image
-                source={{ uri: `data:image/jpeg;base64,${photo}` }}
-                style={styles.photoImage}
-              />
+              <TouchableOpacity 
+                onPress={() => setPhotoCouverture(photo)}
+                style={styles.photoTouchable}
+              >
+                <Image
+                  source={{ uri: `data:image/jpeg;base64,${photo}` }}
+                  style={styles.photoImage}
+                />
+                {photo === photoCouverture && (
+                  <View style={styles.coverBadge}>
+                    <Ionicons name="star" size={16} color="#FFF" />
+                    <Text style={styles.coverBadgeText}>Couverture</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.photoDeleteButton}
                 onPress={() => removePhoto(index)}
@@ -605,6 +630,13 @@ export default function CreateAnnonce() {
             </View>
           ))}
         </View>
+      )}
+      
+      {photos.length > 0 && (
+        <Text style={styles.photoHint}>
+          <Ionicons name="information-circle" size={14} color={COLORS.textLight} />
+          {' '}Appuyez sur une photo pour la définir comme photo de couverture
+        </Text>
       )}
     </View>
   );
@@ -1003,6 +1035,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative'
   },
+  photoTouchable: {
+    width: '100%',
+    height: '100%'
+  },
   photoImage: {
     width: '100%',
     height: '100%'
@@ -1012,7 +1048,32 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 12
+    borderRadius: 12,
+    zIndex: 10
+  },
+  coverBadge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(92, 107, 192, 0.95)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    gap: 4
+  },
+  coverBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  photoHint: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    marginTop: 12,
+    fontStyle: 'italic',
+    textAlign: 'center'
   },
   footer: {
     flexDirection: 'row',

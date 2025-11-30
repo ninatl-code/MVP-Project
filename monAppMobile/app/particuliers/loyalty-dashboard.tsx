@@ -48,13 +48,16 @@ const TIER_COLORS = {
 };
 
 interface LoyaltyPoints {
+  id?: string;
   user_id: string;
-  total_points: number;
-  available_points: number;
-  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
-  lifetime_points: number;
-  points_to_expire: number;
-  next_expiry_date: string | null;
+  user_type?: string;
+  points_balance: number;
+  points_earned_total: number;
+  points_redeemed_total?: number;
+  current_tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  next_tier_threshold?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Transaction {
@@ -114,10 +117,12 @@ export default function LoyaltyDashboardScreen() {
           .from('loyalty_points')
           .insert({
             user_id: user.id,
-            total_points: 0,
-            available_points: 0,
-            tier: 'bronze',
-            lifetime_points: 0,
+            user_type: 'client',
+            points_balance: 0,
+            points_earned_total: 0,
+            points_redeemed_total: 0,
+            current_tier: 'bronze',
+            next_tier_threshold: 100,
           })
           .select()
           .single();
@@ -164,7 +169,7 @@ export default function LoyaltyDashboardScreen() {
 
   const getNextTier = () => {
     if (!loyaltyPoints) return null;
-    const currentTier = loyaltyPoints.tier;
+    const currentTier = loyaltyPoints.current_tier;
     const tiers = ['bronze', 'silver', 'gold', 'platinum'];
     const currentIndex = tiers.indexOf(currentTier);
     if (currentIndex === tiers.length - 1) return null;
@@ -176,10 +181,11 @@ export default function LoyaltyDashboardScreen() {
     const nextTier = getNextTier();
     if (!nextTier) return 100;
 
-    const currentThreshold = TIER_THRESHOLDS[loyaltyPoints.tier];
+    const currentThreshold = TIER_THRESHOLDS[loyaltyPoints.current_tier];
     const nextThreshold = TIER_THRESHOLDS[nextTier];
+    const lifetimePoints = loyaltyPoints.points_earned_total;
     const progress =
-      ((loyaltyPoints.lifetime_points - currentThreshold) /
+      ((lifetimePoints - currentThreshold) /
         (nextThreshold - currentThreshold)) *
       100;
 
@@ -231,7 +237,7 @@ export default function LoyaltyDashboardScreen() {
   if (!loyaltyPoints) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Failed to load loyalty data</Text>
+        <Text style={styles.errorText}>Erreur lors du chargement des données de fidélité</Text>
       </View>
     );
   }
@@ -246,7 +252,7 @@ export default function LoyaltyDashboardScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Loyalty Rewards</Text>
+        <Text style={styles.headerTitle}>Programme de fidélité</Text>
         <TouchableOpacity onPress={() => router.push('/particuliers/loyalty-history' as any)}>
           <Ionicons name="time-outline" size={24} color={COLORS.primary} />
         </TouchableOpacity>
@@ -255,16 +261,16 @@ export default function LoyaltyDashboardScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Tier Card */}
         <LinearGradient
-          colors={TIER_COLORS[loyaltyPoints.tier] as any}
+          colors={TIER_COLORS[loyaltyPoints.current_tier] as any}
           style={styles.tierCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.tierHeader}>
             <View>
-              <Text style={styles.tierLabel}>Your Tier</Text>
+              <Text style={styles.tierLabel}>Votre Niveau</Text>
               <Text style={styles.tierName}>
-                {loyaltyPoints.tier.toUpperCase()}
+                {loyaltyPoints.current_tier.toUpperCase()}
               </Text>
             </View>
             <View style={styles.tierIcon}>
@@ -275,16 +281,16 @@ export default function LoyaltyDashboardScreen() {
           <View style={styles.pointsRow}>
             <View style={styles.pointsItem}>
               <Text style={styles.pointsValue}>
-                {loyaltyPoints.available_points.toLocaleString()}
+                {loyaltyPoints.points_balance.toLocaleString()}
               </Text>
-              <Text style={styles.pointsLabel}>Available Points</Text>
+              <Text style={styles.pointsLabel}>Points disponibles</Text>
             </View>
             <View style={styles.pointsDivider} />
             <View style={styles.pointsItem}>
               <Text style={styles.pointsValue}>
-                {loyaltyPoints.lifetime_points.toLocaleString()}
+                {loyaltyPoints.points_earned_total.toLocaleString()}
               </Text>
-              <Text style={styles.pointsLabel}>Lifetime Points</Text>
+              <Text style={styles.pointsLabel}>Points totaux</Text>
             </View>
           </View>
 
@@ -292,7 +298,7 @@ export default function LoyaltyDashboardScreen() {
             <View style={styles.progressContainer}>
               <View style={styles.progressHeader}>
                 <Text style={styles.progressText}>
-                  {TIER_THRESHOLDS[nextTier] - loyaltyPoints.lifetime_points} points to{' '}
+                  {TIER_THRESHOLDS[nextTier] - loyaltyPoints.points_earned_total} points pour{' '}
                   {nextTier}
                 </Text>
                 <Text style={styles.progressPercentage}>{Math.round(progress)}%</Text>
@@ -311,21 +317,21 @@ export default function LoyaltyDashboardScreen() {
             onPress={() => router.push('/particuliers/rewards-catalog' as any)}
           >
             <Ionicons name="gift" size={24} color={COLORS.primary} />
-            <Text style={styles.actionButtonText}>Rewards</Text>
+            <Text style={styles.actionButtonText}>Récompenses</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/particuliers/achievements' as any)}
           >
             <Ionicons name="trophy" size={24} color={COLORS.warning} />
-            <Text style={styles.actionButtonText}>Achievements</Text>
+            <Text style={styles.actionButtonText}>Succès</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/particuliers/leaderboards' as any)}
           >
             <Ionicons name="bar-chart" size={24} color={COLORS.success} />
-            <Text style={styles.actionButtonText}>Leaderboards</Text>
+            <Text style={styles.actionButtonText}>Classements</Text>
           </TouchableOpacity>
         </View>
 
@@ -333,9 +339,9 @@ export default function LoyaltyDashboardScreen() {
         {recentAchievements.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Achievements</Text>
+              <Text style={styles.sectionTitle}>Succès récents</Text>
               <TouchableOpacity onPress={() => router.push('/particuliers/achievements' as any)}>
-                <Text style={styles.seeAllButton}>See All</Text>
+                <Text style={styles.seeAllButton}>Voir tout</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.achievementsList}>
@@ -372,13 +378,13 @@ export default function LoyaltyDashboardScreen() {
         {/* Recent Transactions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={styles.sectionTitle}>Activité récente</Text>
             <TouchableOpacity onPress={() => router.push('/particuliers/loyalty-history' as any)}>
-              <Text style={styles.seeAllButton}>See All</Text>
+              <Text style={styles.seeAllButton}>Voir tout</Text>
             </TouchableOpacity>
           </View>
           {recentTransactions.length === 0 ? (
-            <Text style={styles.emptyText}>No recent activity</Text>
+            <Text style={styles.emptyText}>Aucune activité récente</Text>
           ) : (
             <View style={styles.transactionsList}>
               {recentTransactions.map((transaction) => (
@@ -428,13 +434,13 @@ export default function LoyaltyDashboardScreen() {
 
         {/* Ways to Earn */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ways to Earn Points</Text>
+          <Text style={styles.sectionTitle}>Comment gagner des points</Text>
           <View style={styles.waysToEarnList}>
             {[
-              { icon: 'calendar', text: 'Complete a booking', points: 100 },
-              { icon: 'star', text: 'Leave a review', points: 50 },
-              { icon: 'people', text: 'Refer a friend', points: 500 },
-              { icon: 'trophy', text: 'Unlock achievements', points: 'Varies' },
+              { icon: 'calendar', text: 'Compléter une réservation', points: 100 },
+              { icon: 'star', text: 'Laisser un avis', points: 50 },
+              { icon: 'people', text: 'Parrainer un ami', points: 500 },
+              { icon: 'trophy', text: 'Débloquer des succès', points: 'Variable' },
             ].map((item, index) => (
               <View key={index} style={styles.earnItem}>
                 <View style={styles.earnLeft}>

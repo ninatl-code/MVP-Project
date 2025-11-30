@@ -20,13 +20,43 @@ const COLORS = {
   info: '#3B82F6'
 };
 
+// Fonction pour normaliser les URLs de photos
+function normalizePhotoUrl(photoUrl: string | null | undefined): string | null {
+  if (!photoUrl || typeof photoUrl !== 'string') return null;
+  
+  // Si c'est déjà une URL complète, la retourner
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+    return photoUrl;
+  }
+  
+  // Si c'est déjà une data URL, la retourner
+  if (photoUrl.startsWith('data:')) {
+    return photoUrl;
+  }
+  
+  // Si c'est du base64 sans préfixe, ajouter le préfixe
+  const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
+  if (photoUrl.length > 100 && base64Regex.test(photoUrl.slice(0, 100))) {
+    // Détecter le type MIME depuis les premiers caractères
+    let mimeType = 'image/jpeg'; // Par défaut
+    if (photoUrl.startsWith('iVBOR')) {
+      mimeType = 'image/png';
+    } else if (photoUrl.startsWith('/9j/')) {
+      mimeType = 'image/jpeg';
+    }
+    return `data:${mimeType};base64,${photoUrl}`;
+  }
+  
+  return null;
+}
+
 interface Annonce {
   id: string;
   titre: string;
   description: string;
+  photo_couverture?: string;
   tarif_unit?: number;
   unit_tarif?: string;
-  photos: string[];
   actif: boolean;
   vues?: number;
   prestation?: number;
@@ -80,54 +110,55 @@ export default function AnnoncesPrestataire() {
 
     console.log('🔍 Fetching annonces for user:', user.id);
     
+    // OPTIMISATION: Requête minimale avec photo de couverture
     const { data, error } = await supabase
       .from('annonces')
       .select(`
         id,
         titre,
         description,
+        photo_couverture,
         tarif_unit,
         unit_tarif,
-        photos,
         actif,
         vues,
         prestation,
-        equipement,
-        conditions_annulation,
-        acompte_percent,
-        prix_fixe,
-        nb_heure,
         prestations(nom)
       `)
       .eq('prestataire', user.id)
-      .order('created_at', { ascending: false })
-      .limit(100);
+      .order('created_at', { ascending: false });
 
     console.log('📢 Annonces fetched:', {
       count: data?.length || 0,
       error: error?.message || null,
       firstAnnonce: data?.[0] ? {
+        id: data[0].id,
         titre: data[0].titre,
-        hasPhotos: Array.isArray(data[0].photos) && data[0].photos.length > 0,
-        photosCount: Array.isArray(data[0].photos) ? data[0].photos.length : 0,
-        firstPhotoType: data[0].photos?.[0] ? 
-          (data[0].photos[0].startsWith('http') ? 'URL' : 
-           data[0].photos[0].startsWith('data:') ? 'Base64' : 'Unknown') : 'None'
+        actif: data[0].actif,
+        prestation: data[0].prestation
       } : null
     });
 
-    if (!error && data) {
+    if (error) {
+      console.error('❌ Error fetching annonces:', error);
+      Alert.alert('Erreur', `Impossible de charger les annonces: ${error.message}`);
+      setAnnonces([]);
+    } else if (data) {
       const formatted = data.map((a: any) => ({
         ...a,
         prestation_nom: Array.isArray(a.prestations) ? a.prestations[0]?.nom : a.prestations?.nom
       }));
       setAnnonces(formatted);
-      console.log('📢 Annonces formatted:', formatted.length);
+      console.log('✅ Annonces chargées et formatées:', {
+        total: formatted.length,
+        actives: formatted.filter((a: Annonce) => a.actif).length,
+        inactives: formatted.filter((a: Annonce) => !a.actif).length
+      });
       if (formatted.length === 0) {
-        console.log('⚠️ No annonces found for this user. Check database.');
+        console.log('⚠️ Aucune annonce trouvée pour cet utilisateur. Vérifiez la base de données.');
       }
     } else {
-      console.error('❌ Error fetching annonces:', error);
+      console.log('⚠️ Aucune donnée retournée');
       setAnnonces([]);
     }
 
@@ -197,19 +228,26 @@ export default function AnnoncesPrestataire() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
+            // Charger les détails complets uniquement lors de la duplication
+            const { data: fullAnnonce } = await supabase
+              .from('annonces')
+              .select('photos, equipement, conditions_annulation, acompte_percent, prix_fixe, nb_heure')
+              .eq('id', annonce.id)
+              .single();
+
             const { error } = await supabase.from('annonces').insert({
               titre: `${annonce.titre} (copie)`,
               description: annonce.description,
               tarif_unit: annonce.tarif_unit,
               unit_tarif: annonce.unit_tarif,
-              photos: annonce.photos,
-              actif: false, // Désactivée par défaut
+              photos: fullAnnonce?.photos || [],
+              actif: false,
               prestation: annonce.prestation,
-              equipement: annonce.equipement,
-              conditions_annulation: annonce.conditions_annulation,
-              acompte_percent: annonce.acompte_percent,
-              prix_fixe: annonce.prix_fixe,
-              nb_heure: annonce.nb_heure,
+              equipement: fullAnnonce?.equipement,
+              conditions_annulation: fullAnnonce?.conditions_annulation,
+              acompte_percent: fullAnnonce?.acompte_percent,
+              prix_fixe: fullAnnonce?.prix_fixe,
+              nb_heure: fullAnnonce?.nb_heure,
               prestataire: user.id
             });
 
@@ -273,51 +311,55 @@ export default function AnnoncesPrestataire() {
         style={styles.cardContent}
         onPress={() => router.push(`/prestataires/annonces/${item.id}` as any)}
       >
-        {item.photos.length > 0 ? (
-          <Image source={{ uri: item.photos[0] }} style={styles.thumbnail} />
+        {/* Photo de couverture */}
+        {item.photo_couverture ? (
+          <Image
+            source={{ uri: normalizePhotoUrl(item.photo_couverture) || undefined }}
+            style={styles.thumbnail}
+          />
         ) : (
           <View style={[styles.thumbnail, styles.noImage]}>
-            <Ionicons name="image-outline" size={32} color={COLORS.textLight} />
+            <Ionicons name="camera-outline" size={32} color={COLORS.textLight} />
           </View>
         )}
 
-        <View style={styles.cardInfo}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.annonceTitle} numberOfLines={2}>{item.titre}</Text>
-            <View style={[styles.statusDot, { backgroundColor: item.actif ? COLORS.success : COLORS.textLight }]} />
-          </View>
+          <View style={styles.cardInfo}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.annonceTitle} numberOfLines={2}>{item.titre}</Text>
+              <View style={[styles.statusDot, { backgroundColor: item.actif ? COLORS.success : COLORS.textLight }]} />
+            </View>
 
-          {item.prestation_nom && (
-            <Text style={styles.category}>{item.prestation_nom}</Text>
-          )}
+            {item.prestation_nom && (
+              <Text style={styles.category}>{item.prestation_nom}</Text>
+            )}
 
-          <Text style={styles.annonceDescription} numberOfLines={2}>{item.description}</Text>
+            <Text style={styles.annonceDescription} numberOfLines={2}>{item.description}</Text>
 
-          <View style={styles.cardFooter}>
-            <Text style={styles.price}>
-              {item.tarif_unit ? `${item.tarif_unit}€/${item.unit_tarif}` : 'Sur devis'}
-            </Text>
-            <View style={styles.stats}>
-              <Ionicons name="eye-outline" size={14} color={COLORS.textLight} />
-              <Text style={styles.statsText}>{item.vues || 0}</Text>
+            <View style={styles.cardFooter}>
+              <Text style={styles.price}>
+                {item.tarif_unit ? `${item.tarif_unit}€/${item.unit_tarif}` : 'Sur devis'}
+              </Text>
+              <View style={styles.stats}>
+                <Ionicons name="eye-outline" size={14} color={COLORS.textLight} />
+                <Text style={styles.statsText}>{item.vues || 0}</Text>
+              </View>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item)}>
-          <Ionicons name="create-outline" size={20} color={COLORS.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleDuplicate(item)}>
-          <Ionicons name="copy-outline" size={20} color={COLORS.info} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleToggleActive(item)}>
-          <Ionicons name={item.actif ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.warning} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}>
-          <Ionicons name="trash-outline" size={20} color={COLORS.error} />
-        </TouchableOpacity>
+        <View style={styles.cardActions}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item)}>
+            <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleDuplicate(item)}>
+            <Ionicons name="copy-outline" size={20} color={COLORS.info} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleToggleActive(item)}>
+            <Ionicons name={item.actif ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.warning} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item)}>
+            <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+          </TouchableOpacity>
       </View>
     </View>
   );

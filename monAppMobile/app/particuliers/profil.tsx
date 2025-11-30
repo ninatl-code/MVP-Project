@@ -235,34 +235,6 @@ export default function UserProfile() {
           </View>
         </LinearGradient>
 
-        {/* Statistiques */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="stats-chart" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Mon activité</Text>
-          </View>
-
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { borderColor: COLORS.primary }]}>
-              <Ionicons name="calendar" size={20} color={COLORS.primary} />
-              <Text style={styles.statValue}>{stats.totalReservations}</Text>
-              <Text style={styles.statLabel}>Réservations</Text>
-            </View>
-
-            <View style={[styles.statCard, { borderColor: '#EF4444' }]}>
-              <Ionicons name="heart" size={20} color="#EF4444" />
-              <Text style={styles.statValue}>{stats.totalFavoris}</Text>
-              <Text style={styles.statLabel}>Favoris</Text>
-            </View>
-
-            <View style={[styles.statCard, { borderColor: COLORS.success }]}>
-              <Ionicons name="cart" size={20} color={COLORS.success} />
-              <Text style={styles.statValue}>{stats.totalCommandes}</Text>
-              <Text style={styles.statLabel}>Commandes</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Informations personnelles */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -380,7 +352,7 @@ export default function UserProfile() {
             <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
               <View style={styles.logoutLeft}>
                 <View style={styles.logoutIconContainer}>
-                  <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
+                  <Ionicons name="log-out-outline" size={24} color={COLORS.warning} />
                 </View>
                 <View>
                   <Text style={styles.logoutTitle}>Se déconnecter</Text>

@@ -91,7 +91,7 @@ export default function RewardsCatalogScreen() {
       setRewards(rewardsData || []);
     } catch (error) {
       console.error('Error loading rewards:', error);
-      Alert.alert('Error', 'Failed to load rewards');
+      Alert.alert('Erreur', 'Impossible de charger les récompenses');
     } finally {
       setLoading(false);
     }
@@ -100,12 +100,12 @@ export default function RewardsCatalogScreen() {
   const openRedeemModal = (reward: Reward) => {
     if (!loyaltyPoints || loyaltyPoints.available_points < reward.points_cost) {
       Alert.alert(
-        'Insufficient Points',
-        `You need ${reward.points_cost} points to redeem this reward. You currently have ${loyaltyPoints?.available_points || 0} points.`,
+        'Points insuffisants',
+        `Vous avez besoin de ${reward.points_cost} points pour échanger cette récompense. Vous avez actuellement ${loyaltyPoints?.available_points || 0} points.`,
         [
           { text: 'OK' },
           {
-            text: 'Earn Points',
+            text: 'Gagner des points',
             onPress: () => router.push('/particuliers/loyalty-dashboard' as any),
           },
         ]
@@ -114,7 +114,7 @@ export default function RewardsCatalogScreen() {
     }
 
     if (reward.stock !== null && reward.stock <= 0) {
-      Alert.alert('Out of Stock', 'This reward is currently out of stock.');
+      Alert.alert('Rupture de stock', 'Cette récompense est actuellement en rupture de stock.');
       return;
     }
 
@@ -127,7 +127,7 @@ export default function RewardsCatalogScreen() {
     if (!selectedReward || !userId) return;
 
     if (!confirmEmail.includes('@')) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      Alert.alert('Email invalide', 'Veuillez entrer une adresse email valide.');
       return;
     }
 
@@ -193,8 +193,8 @@ export default function RewardsCatalogScreen() {
 
       setModalVisible(false);
       Alert.alert(
-        'Success!',
-        `Your reward has been redeemed!\n\nRedemption Code: ${redemptionCode}\n\nCheck your email (${confirmEmail}) for details.`,
+        'Succès !',
+        `Votre récompense a été échangée !\n\nCode d'échange : ${redemptionCode}\n\nConsultez votre email (${confirmEmail}) pour plus de détails.`,
         [
           {
             text: 'OK',
@@ -207,7 +207,7 @@ export default function RewardsCatalogScreen() {
       );
     } catch (error) {
       console.error('Error redeeming reward:', error);
-      Alert.alert('Error', 'Failed to redeem reward. Please try again.');
+      Alert.alert('Erreur', 'Échec de l\'échange de la récompense. Veuillez réessayer.');
     } finally {
       setRedeeming(false);
     }
@@ -262,7 +262,7 @@ export default function RewardsCatalogScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Rewards Catalog</Text>
+        <Text style={styles.headerTitle}>Catalogue de récompenses</Text>
         <TouchableOpacity onPress={() => router.push('/particuliers/loyalty-history' as any)}>
           <Ionicons name="receipt-outline" size={24} color={COLORS.primary} />
         </TouchableOpacity>
@@ -271,7 +271,7 @@ export default function RewardsCatalogScreen() {
       {/* Points Banner */}
       <View style={styles.pointsBanner}>
         <View style={styles.pointsContent}>
-          <Text style={styles.pointsLabel}>Your Available Points</Text>
+          <Text style={styles.pointsLabel}>Vos points disponibles</Text>
           <Text style={styles.pointsValue}>
             {loyaltyPoints?.available_points.toLocaleString() || 0}
           </Text>
@@ -281,7 +281,7 @@ export default function RewardsCatalogScreen() {
           onPress={() => router.push('/particuliers/loyalty-dashboard' as any)}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-          <Text style={styles.earnMoreText}>Earn More</Text>
+          <Text style={styles.earnMoreText}>Gagner plus</Text>
         </TouchableOpacity>
       </View>
 
@@ -294,8 +294,8 @@ export default function RewardsCatalogScreen() {
         {rewards.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="gift-outline" size={64} color={COLORS.border} />
-            <Text style={styles.emptyTitle}>No Rewards Available</Text>
-            <Text style={styles.emptyText}>Check back later for new rewards!</Text>
+            <Text style={styles.emptyTitle}>Aucune récompense disponible</Text>
+            <Text style={styles.emptyText}>Revenez plus tard pour de nouvelles récompenses !</Text>
           </View>
         ) : (
           rewards.map((reward) => {
@@ -333,7 +333,7 @@ export default function RewardsCatalogScreen() {
                     <Text style={styles.rewardTitle}>{reward.title}</Text>
                     {outOfStock && (
                       <View style={styles.outOfStockBadge}>
-                        <Text style={styles.outOfStockText}>Out of Stock</Text>
+                        <Text style={styles.outOfStockText}>Rupture de stock</Text>
                       </View>
                     )}
                   </View>
@@ -351,20 +351,20 @@ export default function RewardsCatalogScreen() {
                         </Text>
                       </View>
                       <Text style={styles.rewardValidity}>
-                        Valid {reward.valid_days} days
+                        Valide {reward.valid_days} jours
                       </Text>
                     </View>
 
                     {affordable && !outOfStock ? (
                       <View style={styles.redeemButton}>
-                        <Text style={styles.redeemButtonText}>Redeem</Text>
+                        <Text style={styles.redeemButtonText}>Échanger</Text>
                         <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                       </View>
                     ) : !outOfStock ? (
                       <View style={styles.insufficientBadge}>
                         <Ionicons name="lock-closed" size={14} color={COLORS.error} />
                         <Text style={styles.insufficientText}>
-                          Need {reward.points_cost - (loyaltyPoints?.available_points || 0)} more
+                          Besoin de {reward.points_cost - (loyaltyPoints?.available_points || 0)} points
                         </Text>
                       </View>
                     ) : null}
@@ -374,7 +374,7 @@ export default function RewardsCatalogScreen() {
                     <View style={styles.stockWarning}>
                       <Ionicons name="alert-circle" size={14} color={COLORS.warning} />
                       <Text style={styles.stockWarningText}>
-                        Only {reward.stock} left in stock
+                        Plus que {reward.stock} en stock
                       </Text>
                     </View>
                   )}
@@ -395,7 +395,7 @@ export default function RewardsCatalogScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Confirm Redemption</Text>
+              <Text style={styles.modalTitle}>Confirmer l'échange</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
@@ -410,10 +410,10 @@ export default function RewardsCatalogScreen() {
                   </Text>
                 </View>
 
-                <Text style={styles.modalLabel}>Enter your email to receive the reward:</Text>
+                <Text style={styles.modalLabel}>Entrez votre email pour recevoir la récompense :</Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="your@email.com"
+                  placeholder="votre@email.com"
                   value={confirmEmail}
                   onChangeText={setConfirmEmail}
                   keyboardType="email-address"
@@ -422,12 +422,12 @@ export default function RewardsCatalogScreen() {
                 />
 
                 <View style={styles.modalTerms}>
-                  <Text style={styles.modalTermsTitle}>Terms & Conditions:</Text>
+                  <Text style={styles.modalTermsTitle}>Conditions d'utilisation :</Text>
                   <Text style={styles.modalTermsText}>{selectedReward.terms_conditions}</Text>
                   <Text style={styles.modalTermsText}>
-                    • Valid for {selectedReward.valid_days} days from redemption
+                    • Valide pendant {selectedReward.valid_days} jours après échange
                   </Text>
-                  <Text style={styles.modalTermsText}>• Non-transferable and non-refundable</Text>
+                  <Text style={styles.modalTermsText}>• Non transférable et non remboursable</Text>
                 </View>
 
                 <TouchableOpacity
@@ -438,7 +438,7 @@ export default function RewardsCatalogScreen() {
                   {redeeming ? (
                     <ActivityIndicator color={COLORS.surface} />
                   ) : (
-                    <Text style={styles.confirmButtonText}>Confirm Redemption</Text>
+                    <Text style={styles.confirmButtonText}>Confirmer l'échange</Text>
                   )}
                 </TouchableOpacity>
               </View>

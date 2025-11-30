@@ -40,13 +40,13 @@ interface UserPreferences {
 }
 
 const CATEGORIES = [
-  { id: 'photographie', label: 'Photography', icon: 'camera' },
-  { id: 'videographie', label: 'Videography', icon: 'videocam' },
-  { id: 'montage', label: 'Editing', icon: 'film' },
+  { id: 'photographie', label: 'Photographie', icon: 'camera' },
+  { id: 'videographie', label: 'Vidéographie', icon: 'videocam' },
+  { id: 'montage', label: 'Montage', icon: 'film' },
   { id: 'drone', label: 'Drone', icon: 'airplane' },
   { id: 'studio', label: 'Studio', icon: 'business' },
-  { id: 'mariage', label: 'Wedding', icon: 'heart' },
-  { id: 'evenements', label: 'Events', icon: 'calendar' },
+  { id: 'mariage', label: 'Mariage', icon: 'heart' },
+  { id: 'evenements', label: 'Événements', icon: 'calendar' },
   { id: 'corporate', label: 'Corporate', icon: 'briefcase' },
 ];
 
@@ -198,7 +198,7 @@ export default function UserPreferencesScreen() {
           {saving ? (
             <ActivityIndicator color={COLORS.primary} />
           ) : (
-            <Text style={styles.saveButton}>Save</Text>
+            <Text style={styles.saveButton}>Enregistrer</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -210,9 +210,9 @@ export default function UserPreferencesScreen() {
             <View style={styles.sectionHeaderLeft}>
               <Ionicons name="sparkles" size={24} color={COLORS.primary} />
               <View style={styles.sectionHeaderText}>
-                <Text style={styles.sectionTitle}>AI Recommendations</Text>
+                <Text style={styles.sectionTitle}>Recommandations IA</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Get personalized service suggestions
+                  Obtenez des suggestions personnalisées
                 </Text>
               </View>
             </View>
@@ -227,9 +227,9 @@ export default function UserPreferencesScreen() {
 
         {/* Preferred Categories */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Preferred Categories</Text>
+          <Text style={styles.sectionLabel}>Catégories préférées</Text>
           <Text style={styles.sectionDescription}>
-            Select the types of services you're interested in
+            Sélectionnez les types de services qui vous intéressent
           </Text>
           <View style={styles.categoryGrid}>
             {CATEGORIES.map((category) => (
@@ -266,9 +266,9 @@ export default function UserPreferencesScreen() {
 
         {/* Price Range */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Price Range</Text>
+          <Text style={styles.sectionLabel}>Fourchette de prix</Text>
           <Text style={styles.sectionDescription}>
-            Set your preferred budget range
+            Définissez votre budget préféré
           </Text>
           <View style={styles.priceRanges}>
             {PRICE_RANGES.map((range) => (

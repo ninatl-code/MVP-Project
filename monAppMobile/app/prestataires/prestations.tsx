@@ -5,10 +5,19 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import FooterPresta from '../../components/FooterPresta';
 
+// Fonction pour normaliser les URLs de photos
+const normalizePhotoUrl = (photo: string): string => {
+  if (!photo) return '';
+  if (photo.startsWith('data:')) return photo;
+  if (photo.startsWith('http://') || photo.startsWith('https://')) return photo;
+  return `data:image/jpeg;base64,${photo}`;
+};
+
 interface Annonce {
   id: string;
   titre: string;
   description: string;
+  photo_couverture?: string;
   actif: boolean;
   tarif_unit?: number;
   unit_tarif?: string;
@@ -16,7 +25,6 @@ interface Annonce {
   acompte_percent?: number;
   equipement?: string;
   conditions_annulation?: string;
-  photos?: string[];
   rate?: number;
   vues?: number;
   created_at?: string;
@@ -24,12 +32,6 @@ interface Annonce {
     nom: string;
     type: string;
   };
-  zones_intervention?: Array<{
-    id: string;
-    ville_centre: string;
-    rayon_km: number;
-    active: boolean;
-  }>;
 }
 
 export default function PrestationsPrestataire() {
@@ -55,13 +57,13 @@ export default function PrestationsPrestataire() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // OPTIMISATION: Requête minimale avec photo de couverture uniquement
     const { data, error } = await supabase
       .from('annonces')
       .select(`
-        id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, 
-        acompte_percent, equipement, actif, conditions_annulation, rate, vues, created_at,
-        prestations(nom, type),
-        zones_intervention(id, ville_centre, rayon_km, active)
+        id, titre, description, photo_couverture, tarif_unit, unit_tarif, prix_fixe, 
+        actif, rate, vues, created_at,
+        prestations(nom, type)
       `)
       .eq('prestataire', user.id)
       .order('created_at', { ascending: false });
@@ -69,10 +71,12 @@ export default function PrestationsPrestataire() {
     if (!error && data) {
       const formattedData = data.map((annonce: any) => ({
         ...annonce,
-        prestations: Array.isArray(annonce.prestations) ? annonce.prestations[0] : annonce.prestations,
-        zones_intervention: annonce.zones_intervention || []
+        prestations: Array.isArray(annonce.prestations) ? annonce.prestations[0] : annonce.prestations
       }));
       setAnnonces(formattedData);
+    } else if (error) {
+      console.error('❌ Erreur chargement annonces:', error);
+      Alert.alert('Erreur', 'Impossible de charger les annonces');
     }
     setLoading(false);
   };
@@ -162,6 +166,25 @@ export default function PrestationsPrestataire() {
     setShowDisableConfirm(false);
   };
 
+  const handleToggleActif = async (annonceId: string, currentActif: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('annonces')
+        .update({ actif: !currentActif })
+        .eq('id', annonceId);
+
+      if (error) throw error;
+
+      Alert.alert(
+        'Succès',
+        currentActif ? 'Annonce désactivée' : 'Annonce activée'
+      );
+      fetchAnnonces();
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de modifier le statut de l\'annonce');
+    }
+  };
+
   const handleDuplicate = async (annonceId: string) => {
     try {
       const { data: annonceDetails, error: fetchError } = await supabase
@@ -207,8 +230,8 @@ export default function PrestationsPrestataire() {
         await supabase.from('zones_intervention').insert(zonesData);
       }
       
-      Alert.alert('Succès', 'Annonce dupliquée avec succès');
-      fetchAnnonces();
+      // Rediriger vers la page d'édition de l'annonce dupliquée
+      router.push(`/prestataires/annonces/edit?id=${newAnnonce.id}` as any);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de dupliquer l\'annonce');
     }
@@ -289,46 +312,17 @@ export default function PrestationsPrestataire() {
                   />
                 </TouchableOpacity>
 
-                {/* Photos de l'annonce */}
-                {annonce.photos && annonce.photos.length > 0 && (
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.photosScrollView}
-                    contentContainerStyle={styles.photosContainer}
-                  >
-                    {annonce.photos.map((photo: any, index: number) => {
-                      let photoUri = '';
-                      
-                      if (typeof photo === 'string') {
-                        if (photo.startsWith('data:')) {
-                          photoUri = photo;
-                        } else if (photo.startsWith('http://') || photo.startsWith('https://')) {
-                          photoUri = photo;
-                        } else {
-                          // Base64 sans préfixe
-                          photoUri = `data:image/jpeg;base64,${photo}`;
-                        }
-                      }
-                      
-                      return (
-                        <View key={index} style={styles.photoWrapper}>
-                          {photoUri ? (
-                            <Image source={{ uri: photoUri }} style={styles.annoncePhoto} />
-                          ) : (
-                            <View style={[styles.annoncePhoto, styles.photoPlaceholder]}>
-                              <Ionicons name="image-outline" size={32} color="#9CA3AF" />
-                            </View>
-                          )}
-                          {index === 0 && (
-                            <View style={styles.mainPhotoLabel}>
-                              <Text style={styles.mainPhotoText}>Principal</Text>
-                            </View>
-                          )}
-                        </View>
-                      );
-                    })}
-                  </ScrollView>
+                {/* Photo de couverture */}
+                {annonce.photo_couverture ? (
+                  <Image 
+                    source={{ uri: normalizePhotoUrl(annonce.photo_couverture) }} 
+                    style={styles.coverPhoto}
+                    defaultSource={require('../../assets/images/icon.png')}
+                  />
+                ) : (
+                  <View style={styles.photoIconContainer}>
+                    <Ionicons name="camera-outline" size={48} color="#9CA3AF" />
+                  </View>
                 )}
 
                 <View style={styles.cardHeader}>
@@ -363,8 +357,8 @@ export default function PrestationsPrestataire() {
                   )}
                   {annonce.prix_fixe && (
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Prix fixe:</Text>
-                      <Text style={styles.detailValue}>{annonce.prix_fixe} MAD</Text>
+                      <Text style={styles.detailLabel}>Prix fixe</Text>
+                      <Text style={styles.detailValue}>{annonce.prix_fixe}</Text>
                     </View>
                   )}
                   {annonce.acompte_percent && annonce.acompte_percent > 0 && (
@@ -403,21 +397,7 @@ export default function PrestationsPrestataire() {
                   )}
                 </View>
 
-                {/* Zones d'intervention */}
-                {annonce.zones_intervention && annonce.zones_intervention.filter(z => z.active !== false).length > 0 && (
-                  <View style={styles.zonesSection}>
-                    <Text style={styles.zonesLabel}>Zones d'intervention:</Text>
-                    <View style={styles.zonesContainer}>
-                      {annonce.zones_intervention.filter(z => z.active !== false).map((zone) => (
-                        <View key={zone.id} style={styles.zoneBadge}>
-                          <Text style={styles.zoneText}>
-                            {zone.ville_centre} ({zone.rayon_km} km)
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
+                {/* Zones d'intervention non affichées pour performance */}
 
                 {/* Stats */}
                 <View style={styles.cardInfo}>
@@ -452,10 +432,7 @@ export default function PrestationsPrestataire() {
                 <View style={styles.cardActions}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.previewButton]}
-                    onPress={() => router.push({
-                      pathname: '/prestataires/annonce-preview',
-                      params: { id: annonce.id }
-                    } as any)}
+                    onPress={() => router.push(`/prestataires/annonces/preview?id=${annonce.id}` as any)}
                   >
                     <Ionicons name="eye-outline" size={16} color="#5C6BC0" />
                     <Text style={styles.actionButtonText}>Aperçu</Text>
@@ -471,10 +448,7 @@ export default function PrestationsPrestataire() {
                   
                   <TouchableOpacity
                     style={[styles.actionButton, styles.editButton]}
-                    onPress={() => router.push({
-                      pathname: '/annonces/edit',
-                      params: { id: annonce.id }
-                    } as any)}
+                    onPress={() => router.push(`/prestataires/annonces/edit?id=${annonce.id}` as any)}
                   >
                     <Ionicons name="pencil-outline" size={16} color="#F59E0B" />
                     <Text style={[styles.actionButtonText, { color: '#F59E0B' }]}>Modifier</Text>
@@ -759,6 +733,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3C7',
     borderColor: '#F59E0B'
   },
+  activateButton: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981'
+  },
+  deactivateButton: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444'
+  },
   actionButtonText: {
     fontSize: 13,
     fontWeight: '600',
@@ -952,5 +934,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#fff'
+  },
+  photoIconContainer: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginBottom: 12
+  },
+  coverPhoto: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#F3F4F6',
+    resizeMode: 'cover'
   }
 });

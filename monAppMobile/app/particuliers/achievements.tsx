@@ -49,11 +49,11 @@ const RARITY_COLORS = {
 };
 
 const CATEGORIES = [
-  { id: 'all', label: 'All', icon: 'apps' },
-  { id: 'bookings', label: 'Bookings', icon: 'calendar' },
-  { id: 'reviews', label: 'Reviews', icon: 'star' },
+  { id: 'all', label: 'Tous', icon: 'apps' },
+  { id: 'bookings', label: 'Réservations', icon: 'calendar' },
+  { id: 'reviews', label: 'Avis', icon: 'star' },
   { id: 'social', label: 'Social', icon: 'people' },
-  { id: 'milestones', label: 'Milestones', icon: 'trophy' },
+  { id: 'milestones', label: 'Étapes', icon: 'trophy' },
 ];
 
 export default function AchievementsScreen() {
@@ -118,7 +118,7 @@ export default function AchievementsScreen() {
       });
     } catch (error) {
       console.error('Error loading achievements:', error);
-      Alert.alert('Error', 'Failed to load achievements');
+      Alert.alert('Erreur', 'Impossible de charger les succès');
     } finally {
       setLoading(false);
     }
@@ -237,7 +237,7 @@ export default function AchievementsScreen() {
             {isUnlocked ? (
               <View style={styles.unlockedBadge}>
                 <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-                <Text style={styles.unlockedText}>Unlocked</Text>
+                <Text style={styles.unlockedText}>Débloqué</Text>
               </View>
             ) : progress > 0 ? (
               <View style={styles.progressContainer}>
@@ -249,7 +249,7 @@ export default function AchievementsScreen() {
             ) : (
               <View style={styles.lockedBadge}>
                 <Ionicons name="lock-closed" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.lockedText}>Locked</Text>
+                <Text style={styles.lockedText}>Verrouillé</Text>
               </View>
             )}
           </View>
@@ -275,7 +275,7 @@ export default function AchievementsScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Achievements</Text>
+        <Text style={styles.headerTitle}>Succès</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -283,7 +283,7 @@ export default function AchievementsScreen() {
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.unlocked}</Text>
-          <Text style={styles.statLabel}>Unlocked</Text>
+          <Text style={styles.statLabel}>Débloqués</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
@@ -293,7 +293,7 @@ export default function AchievementsScreen() {
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.totalPoints}</Text>
-          <Text style={styles.statLabel}>Points Earned</Text>
+          <Text style={styles.statLabel}>Points gagnés</Text>
         </View>
       </View>
 
@@ -341,9 +341,9 @@ export default function AchievementsScreen() {
         {filteredAchievements.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="trophy-outline" size={64} color={COLORS.border} />
-            <Text style={styles.emptyTitle}>No Achievements</Text>
+            <Text style={styles.emptyTitle}>Aucun succès</Text>
             <Text style={styles.emptyText}>
-              Complete bookings and engage with the platform to unlock achievements!
+              Réalisez des réservations et interagissez avec la plateforme pour débloquer des succès !
             </Text>
           </View>
         ) : (

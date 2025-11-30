@@ -49,7 +49,8 @@ export default function Login() {
         return
       }
 
-      router.replace('/menu')
+      // Laisser index.tsx gérer la redirection selon le rôle
+      router.replace('/')
     } catch (err) {
       setErrorMsg('Une erreur inattendue s\'est produite. Veuillez réessayer.')
       setLoading(false)

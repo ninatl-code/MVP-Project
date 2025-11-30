@@ -5,6 +5,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '../../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
+import FooterParti from '../../components/FooterParti';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -164,7 +165,7 @@ export default function CartePrestatairesPage() {
         .from("annonces")
         .select(`
           *,
-          profiles:prestataire(nom, prenom, email, telephone, photo),
+          profiles:prestataire(nom, email, telephone, photos),
           prestations:prestation(nom)
         `)
         .eq("actif", true);
@@ -259,7 +260,51 @@ export default function CartePrestatairesPage() {
         filtered.sort((a, b) => (a.distance_km || 9999) - (b.distance_km || 9999));
       }
 
+      // Log pour debug
+      const withCoords = filtered.filter(a => 
+        a.zones_intervention?.length > 0 && 
+        a.zones_intervention[0]?.latitude && 
+        a.zones_intervention[0]?.longitude
+      );
+      console.log(`📍 Annonces chargées: ${filtered.length} total, ${withCoords.length} avec coordonnées`);
+      
       setAnnonces(filtered);
+
+      // Centrer la carte sur les résultats s'il y en a
+      if (withCoords.length > 0 && mapRef.current) {
+        const coords = withCoords
+          .map(a => a.zones_intervention[0])
+          .filter(z => z.latitude && z.longitude)
+          .map(z => ({
+            latitude: Number(z.latitude),
+            longitude: Number(z.longitude)
+          }));
+
+        if (coords.length > 0) {
+          // Calculer le centre et le zoom pour afficher tous les points
+          const lats = coords.map(c => c.latitude);
+          const lngs = coords.map(c => c.longitude);
+          
+          const minLat = Math.min(...lats);
+          const maxLat = Math.max(...lats);
+          const minLng = Math.min(...lngs);
+          const maxLng = Math.max(...lngs);
+          
+          const centerLat = (minLat + maxLat) / 2;
+          const centerLng = (minLng + maxLng) / 2;
+          const deltaLat = (maxLat - minLat) * 1.5; // Ajouter une marge
+          const deltaLng = (maxLng - minLng) * 1.5;
+          
+          const newRegion = {
+            latitude: centerLat,
+            longitude: centerLng,
+            latitudeDelta: Math.max(deltaLat, 0.05), // Minimum 0.05 pour éviter un zoom trop proche
+            longitudeDelta: Math.max(deltaLng, 0.05),
+          };
+          
+          mapRef.current.animateToRegion(newRegion, 1000);
+        }
+      }
     } catch (error) {
       console.error('Erreur chargement annonces:', error);
       Alert.alert('Erreur', 'Impossible de charger les annonces');
@@ -606,28 +651,34 @@ export default function CartePrestatairesPage() {
           >
             {/* Marqueurs annonces */}
             {annonces.map((annonce) => {
-              if (!annonce.zones_intervention || annonce.zones_intervention.length === 0) return null;
+              if (!annonce.zones_intervention || annonce.zones_intervention.length === 0) {
+                console.log('Annonce sans zone:', annonce.id);
+                return null;
+              }
               const firstZone = annonce.zones_intervention[0];
-              if (!firstZone.latitude || !firstZone.longitude) return null;
+              if (!firstZone.latitude || !firstZone.longitude) {
+                console.log('Zone sans coordonnées:', annonce.id, firstZone);
+                return null;
+              }
+              
+              console.log('Marqueur créé:', {
+                id: annonce.id,
+                titre: annonce.titre,
+                lat: firstZone.latitude,
+                lng: firstZone.longitude
+              });
               
               return (
                 <Marker
                   key={annonce.id}
                   coordinate={{
-                    latitude: firstZone.latitude,
-                    longitude: firstZone.longitude,
+                    latitude: Number(firstZone.latitude),
+                    longitude: Number(firstZone.longitude),
                   }}
                   onPress={() => handleMarkerPress(annonce)}
-                  pinColor={getMarkerColor(annonce.rate)}
                 >
-                  <View style={styles.customMarker}>
-                    <View style={[styles.markerContent, { borderColor: getMarkerColor(annonce.rate) }]}>
-                      {annonce.photos && annonce.photos[0] ? (
-                        <Image source={{ uri: annonce.photos[0] }} style={styles.markerPhoto} />
-                      ) : (
-                        <Ionicons name="images" size={20} color={COLORS.primary} />
-                      )}
-                    </View>
+                  <View style={styles.markerBullet}>
+                    <View style={[styles.markerDot, { backgroundColor: getMarkerColor(annonce.rate) }]} />
                   </View>
                 </Marker>
               );
@@ -656,6 +707,14 @@ export default function CartePrestatairesPage() {
           )}
         </ScrollView>
       )}
+
+      {/* Bouton retour flottant */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+      </TouchableOpacity>
 
       {/* Card annonce sélectionnée */}
       {selectedAnnonce && (
@@ -719,6 +778,14 @@ export default function CartePrestatairesPage() {
         </View>
       )}
 
+      {/* Bouton retour flottant */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+      </TouchableOpacity>
+
       {/* Loading overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -726,6 +793,8 @@ export default function CartePrestatairesPage() {
           <Text style={styles.loadingText}>Chargement...</Text>
         </View>
       )}
+
+      <FooterParti />
     </View>
   );
 }
@@ -919,6 +988,30 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17
+  },
+  markerBullet: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+  },
+  markerDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 3,
+    borderColor: '#fff',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   markerBadge: {
     position: 'absolute',
@@ -1280,5 +1373,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textLight,
     textAlign: 'center'
+  },
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 100
   }
 });

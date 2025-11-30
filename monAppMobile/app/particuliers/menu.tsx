@@ -63,17 +63,17 @@ export default function ParticularHomeMenu() {
 
     // Charger les statistiques
     const [reservationsRes, favorisRes, devisRes, messagesRes] = await Promise.all([
-      supabase.from('reservations').select('id', { count: 'exact' }).eq('client_id', user.id),
-      supabase.from('favoris').select('id', { count: 'exact' }).eq('user_id', user.id),
-      supabase.from('devis').select('id', { count: 'exact' }).eq('particulier_id', user.id),
-      supabase.from('conversations').select('id', { count: 'exact' }).eq('client_id', user.id).eq('lu', false)
+      supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('particulier_id', user.id),
+      supabase.from('favoris').select('id', { count: 'exact', head: true }).eq('particulier_id', user.id),
+      supabase.from('devis').select('id', { count: 'exact', head: true }).eq('particulier_id', user.id),
+      supabase.from('messages').select('id', { count: 'exact', head: true }).eq('destinataire_id', user.id).eq('lu', false)
     ]);
 
     setStats({
-      totalReservations: reservationsRes.data?.length || 0,
-      totalFavoris: favorisRes.data?.length || 0,
-      totalDevis: devisRes.data?.length || 0,
-      messagesNonLus: messagesRes.data?.length || 0
+      totalReservations: reservationsRes.count || 0,
+      totalFavoris: favorisRes.count || 0,
+      totalDevis: devisRes.count || 0,
+      messagesNonLus: messagesRes.count || 0
     });
 
     setLoading(false);
@@ -152,9 +152,9 @@ export default function ParticularHomeMenu() {
           </TouchableOpacity>
         </View>
 
-        {/* Menu principal */}
+        {/* Section Recherche */}
         <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Actions rapides</Text>
+          <Text style={styles.sectionTitle}>Recherche</Text>
 
           <TouchableOpacity
             style={styles.menuItem}
@@ -172,48 +172,128 @@ export default function ParticularHomeMenu() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/particuliers/reservations')}
+            onPress={() => router.push('/particuliers/carte-prestataires' as any)}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="calendar" size={24} color={COLORS.info} />
+              <Ionicons name="map" size={24} color={COLORS.info} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Mes réservations</Text>
-              <Text style={styles.menuSubtitle}>Gérer mes rendez-vous</Text>
+              <Text style={styles.menuTitle}>Carte des prestataires</Text>
+              <Text style={styles.menuSubtitle}>Voir sur la carte</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/particuliers/devis')}
+            onPress={() => router.push('/particuliers/saved-searches' as any)}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="document-text" size={24} color={COLORS.warning} />
+              <Ionicons name="bookmark" size={24} color={COLORS.warning} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Mes devis</Text>
-              <Text style={styles.menuSubtitle}>Consulter mes demandes</Text>
+              <Text style={styles.menuTitle}>Recherches sauvegardées</Text>
+              <Text style={styles.menuSubtitle}>Accès rapide</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/particuliers/favoris')}
+            onPress={() => router.push('/particuliers/search-history' as any)}
           >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="heart" size={24} color="#EF4444" />
+            <View style={[styles.menuIcon, { backgroundColor: '#E5E7EB' }]}>
+              <Ionicons name="time" size={24} color={COLORS.textLight} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Mes favoris</Text>
-              <Text style={styles.menuSubtitle}>Voir mes annonces favorites</Text>
+              <Text style={styles.menuTitle}>Historique de recherche</Text>
+              <Text style={styles.menuSubtitle}>Vos recherches récentes</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/particuliers/price-alerts' as any)}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="notifications" size={24} color="#EF4444" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Alertes prix</Text>
+              <Text style={styles.menuSubtitle}>Notifications personnalisées</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Section Fidélité & IA */}
+        <View style={styles.menuSection}>
+          <Text style={styles.sectionTitle}>Fidélité & IA</Text>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/particuliers/loyalty-dashboard' as any)}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="gift" size={24} color={COLORS.warning} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Programme de fidélité</Text>
+              <Text style={styles.menuSubtitle}>Mes points et récompenses</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/particuliers/achievements' as any)}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="trophy" size={24} color={COLORS.warning} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Succès</Text>
+              <Text style={styles.menuSubtitle}>Débloquez des badges</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/particuliers/rewards-catalog' as any)}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
+              <Ionicons name="gift-outline" size={24} color={COLORS.purple} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Récompenses</Text>
+              <Text style={styles.menuSubtitle}>Échangez vos points</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/particuliers/ai-recommendations' as any)}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
+              <Ionicons name="sparkles" size={24} color={COLORS.info} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Recommandations IA</Text>
+              <Text style={styles.menuSubtitle}>Suggestions personnalisées</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Section Compte */}
+        <View style={styles.menuSection}>
+          <Text style={styles.sectionTitle}>Mon compte</Text>
+
+          <TouchableOpacity
+            style={styles.menuItem}
             onPress={() => router.push('/particuliers/profil')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
@@ -222,6 +302,20 @@ export default function ParticularHomeMenu() {
             <View style={styles.menuContent}>
               <Text style={styles.menuTitle}>Mon profil</Text>
               <Text style={styles.menuSubtitle}>Gérer mes informations</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/particuliers/preferences' as any)}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#E5E7EB' }]}>
+              <Ionicons name="settings" size={24} color={COLORS.textLight} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Préférences</Text>
+              <Text style={styles.menuSubtitle}>Paramètres et notifications</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>

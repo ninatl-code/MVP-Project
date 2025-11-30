@@ -66,8 +66,8 @@ export default function FooterParti() {
     <View style={styles.footer}>
       <View style={styles.center}>
         <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/menu')}>
-          <Ionicons name="home-outline" size={22} color={COLORS.accent} />
-          <Text style={styles.label}>Accueil</Text>
+          <Ionicons name="grid-outline" size={22} color={COLORS.accent} />
+          <Text style={styles.label}>Menu</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/messages')}>
