@@ -46,7 +46,8 @@ export default async function handler(req, res) {
     // Calcule la commission (exemple : 10%)
     const feeAmount = Math.round(Number(montant_acompte) * 0.1 * 100); // en centimes
 
-    // Crée la session Stripe Checkout
+    // NOUVEAU : Ne pas transférer immédiatement, juste capturer le paiement
+    // Le transfert se fera en 2 temps : acompte maintenant, solde après prestation
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       customer_email: email,
@@ -54,8 +55,8 @@ export default async function handler(req, res) {
         {
           price_data: {
             currency: "eur",
-            product_data: { name: `Acompte pour la réservation de l'annonce ${annonce_id}` },
-            unit_amount: Math.round(Number(montant_acompte) * 100), // en centimes
+            product_data: { name: `Paiement complet pour la réservation de l'annonce ${annonce_id}` },
+            unit_amount: Math.round(Number(montant_acompte) * 100), // MONTANT TOTAL (pas juste acompte)
           },
           quantity: 1,
         },
@@ -64,18 +65,18 @@ export default async function handler(req, res) {
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/annonces/${annonce_id}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/annonces/${annonce_id}/cancel`,
       payment_intent_data: {
+        // NE PAS mettre transfer_data ici - on va gérer manuellement
+        capture_method: 'automatic', // Capture immédiate
         application_fee_amount: feeAmount,
-        transfer_data: { destination: prestataire.stripe_account_id },
       },
       metadata: {
         annonce_id: String(annonce_id),
-
         reservation_id: reservation_id ? String(reservation_id) : "",
         user_id: String(user_id),
         prestataire_id: String(prestataire_id),
         email: email,
-        montant_acompte: String(montant_acompte),
-        type_paiement: "acompte"
+        montant_total: String(montant_acompte), // Montant TOTAL
+        type_paiement: "complet" // Changé de "acompte" à "complet"
       }
     });
 

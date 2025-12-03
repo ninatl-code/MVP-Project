@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/auto-transfer-balance",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

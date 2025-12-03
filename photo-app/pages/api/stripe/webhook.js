@@ -108,12 +108,52 @@ export default async function handler(req, res) {
       console.log("📅 Mise à jour réservation:", reservationId);
       const { error: resaError } = await supabase
         .from("reservations")
-        .update({ status: "paid" }) // ✅ Corrigé : on retire paiement_id pour éviter l'erreur UUID
+        .update({ 
+          status: "paid",
+          payment_status: "fully_paid" // Client a payé 100%
+        })
         .eq("id", reservationId);
       if (resaError) {
         console.error("❌ Erreur update réservation:", resaError);
       } else {
         console.log("✅ Réservation mise à jour avec succès");
+        
+        // 3.1 NOUVEAU : Déclencher le transfert de l'acompte au prestataire
+        if (prestataireId && isValidUUID(prestataireId)) {
+          console.log("💸 Déclenchement transfert acompte...");
+          
+          // Récupérer stripe_account_id du prestataire
+          const { data: prestaData } = await supabase
+            .from("profiles")
+            .select("stripe_account_id")
+            .eq("id", prestataireId)
+            .single();
+          
+          if (prestaData?.stripe_account_id) {
+            try {
+              // Appeler l'API de transfert d'acompte
+              const transferResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/stripe/transfer-deposit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  reservation_id: reservationId,
+                  stripe_account_id: prestaData.stripe_account_id,
+                  payment_intent_id: paymentIntent,
+                }),
+              });
+              
+              if (transferResponse.ok) {
+                console.log("✅ Acompte transféré automatiquement");
+              } else {
+                console.error("❌ Échec transfert acompte:", await transferResponse.text());
+              }
+            } catch (transferError) {
+              console.error("❌ Erreur lors du transfert acompte:", transferError);
+            }
+          } else {
+            console.warn("⚠️ Prestataire sans compte Stripe Connect");
+          }
+        }
       }
     }
 
