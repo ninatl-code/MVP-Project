@@ -5,6 +5,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '../../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
+import FooterPresta from '../../components/FooterPresta';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -199,14 +200,22 @@ export default function MaLocalisationPage() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Ma localisation</Text>
-        <Text style={styles.subtitle}>
-          Définissez votre adresse et votre zone d'intervention
-        </Text>
-      </View>
+    <View style={{ flex: 1 }}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <ScrollView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Ma localisation</Text>
+          <Text style={styles.subtitle}>
+            Définissez votre adresse et votre zone d'intervention
+          </Text>
+        </View>
 
       {/* Formulaire adresse */}
       <View style={styles.section}>
@@ -371,10 +380,29 @@ export default function MaLocalisationPage() {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    <FooterPresta />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 100,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background

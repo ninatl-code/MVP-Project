@@ -10,11 +10,12 @@ import {
   Dimensions,
   StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { supabase } from '../../lib/supabaseClient';
+import FooterPresta from '../../components/FooterPresta';
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 48) / 3;
@@ -61,6 +62,7 @@ interface MediaAlbum {
 }
 
 export default function MediaLibraryScreen() {
+  const routerHook = useRouter();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -480,11 +482,37 @@ export default function MediaLibraryScreen() {
           )}
         </TouchableOpacity>
       )}
+      
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => routerHook.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <FooterPresta />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 100,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -11,9 +11,10 @@ import {
   Modal,
   StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabaseClient';
+import FooterPresta from '../../components/FooterPresta';
 
 const COLORS = {
   primary: '#007AFF',
@@ -50,6 +51,7 @@ interface PricingRule {
 }
 
 export default function PricingRulesScreen() {
+  const router = useRouter();
   const [rules, setRules] = useState<PricingRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -233,6 +235,13 @@ export default function PricingRulesScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -337,6 +346,7 @@ export default function PricingRulesScreen() {
           </View>
         </View>
       </ScrollView>
+      <FooterPresta />
     </View>
   );
 }
@@ -345,6 +355,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 100,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   centerContainer: {
     flex: 1,

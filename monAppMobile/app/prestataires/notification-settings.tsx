@@ -7,6 +7,8 @@ import {
   savePushToken,
   resetBadge 
 } from '../../lib/notificationService';
+import FooterPresta from '../../components/FooterPresta';
+import { useRouter } from 'expo-router';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -30,6 +32,7 @@ interface NotificationSettings {
 }
 
 export default function NotificationSettingsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<NotificationSettings>({
     all_enabled: true,
@@ -154,6 +157,13 @@ export default function NotificationSettingsPage() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+      
       <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
@@ -356,6 +366,7 @@ export default function NotificationSettingsPage() {
           </View>
         </View>
       </ScrollView>
+      <FooterPresta />
     </View>
   );
 }
@@ -364,6 +375,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 100,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   scrollView: {
     flex: 1

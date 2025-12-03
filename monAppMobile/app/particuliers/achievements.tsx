@@ -8,9 +8,10 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabaseClient';
+import FooterParti from '../../components/FooterParti';
 
 const COLORS = {
   primary: '#007AFF',
@@ -57,6 +58,7 @@ const CATEGORIES = [
 ];
 
 export default function AchievementsScreen() {
+  const routerHook = useRouter();
   const [loading, setLoading] = useState(true);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -350,11 +352,37 @@ export default function AchievementsScreen() {
           filteredAchievements.map(renderAchievementCard)
         )}
       </ScrollView>
+      
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => routerHook.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+      
+      <FooterParti />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 100,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -196,48 +196,6 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/prestataires/prestations')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="megaphone" size={24} color={COLORS.warning} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Mes annonces</Text>
-              <Text style={styles.menuSubtitle}>Gérer mes services</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/prestataires/devis')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="document-text" size={24} color={COLORS.info} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Devis</Text>
-              <Text style={styles.menuSubtitle}>Répondre aux demandes</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/prestataires/reservations')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
-              <Ionicons name="checkmark-circle" size={24} color={COLORS.purple} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Réservations</Text>
-              <Text style={styles.menuSubtitle}>Gérer mes rendez-vous</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
             onPress={() => router.push('/prestataires/media-library' as any)}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
@@ -329,20 +287,6 @@ export default function MenuPrestataire() {
         {/* Section Paramètres */}
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Paramètres</Text>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/prestataires/profil')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="person" size={24} color="#EF4444" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Mon profil</Text>
-              <Text style={styles.menuSubtitle}>Gérer mes informations</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}

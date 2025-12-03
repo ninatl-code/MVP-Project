@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import FooterPresta from '../../components/FooterPresta';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -181,6 +182,13 @@ export default function ReservationDetailPage() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+      
       {/* Header avec gradient */}
       <LinearGradient
         colors={[COLORS.primary, COLORS.accent]}
@@ -394,6 +402,7 @@ export default function ReservationDetailPage() {
           </Text>
         </View>
       </ScrollView>
+      <FooterPresta />
     </View>
   );
 }
@@ -427,10 +436,21 @@ const styles = StyleSheet.create({
     marginBottom: 24
   },
   backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 100,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   backButtonText: {
     color: '#fff',
