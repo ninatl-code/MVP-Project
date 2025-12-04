@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.shooty.app"
+      "bundleIdentifier": "com.shooty.app",
+      "config": {
+        "googleMapsApiKey": "VOTRE_CLE_GOOGLE_MAPS_IOS"
+      }
     },
     "android": {
       "package": "com.shooty.app",
@@ -19,7 +22,12 @@
         "foregroundImage": "./assets/images/shooty-logo.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "VOTRE_CLE_GOOGLE_MAPS_ANDROID"
+        }
+      }
     },
     "web": {
       "output": "static",

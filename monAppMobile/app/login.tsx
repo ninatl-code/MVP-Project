@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StatusBar } from 'react-native'
 import { supabase } from '../lib/supabaseClient'
 import { useRouter, Link } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -17,6 +17,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
   const handleLogin = async () => {
@@ -62,6 +63,7 @@ export default function Login() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FB" translucent={false} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.main}>
           {/* Logo/Icône */}
@@ -106,9 +108,12 @@ export default function Login() {
                 value={form.password}
                 onChangeText={(text) => setForm({ ...form, password: text })}
                 style={styles.input}
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 placeholderTextColor="#9CA3AF"
               />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#9CA3AF" />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -230,11 +235,17 @@ const styles = StyleSheet.create({
     left: 14,
     zIndex: 1
   },
+  eyeIcon: {
+    position: 'absolute',
+    right: 14,
+    zIndex: 1,
+    padding: 4
+  },
   input: {
     flex: 1,
     paddingVertical: 12,
     paddingLeft: 44,
-    paddingRight: 16,
+    paddingRight: 44,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e5e7eb',

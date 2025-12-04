@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, SafeAreaView, Alert, Modal, Dimensions, Share, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, SafeAreaView, Alert, Modal, Dimensions, Share, FlatList, StatusBar } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,6 +56,16 @@ interface Annonce {
   prestataire?: string;
   profiles?: { nom: string; ville_id?: number; photos?: string };
   prestation?: number;
+  ville_centre?: string | null;
+  // Nouveaux champs
+  nb_photos_livrees?: number;
+  delai_livraison?: number;
+  retouche_incluse?: boolean;
+  styles_photo?: string[];
+  lieu_shootings?: string[];
+  deplacement_inclus?: boolean;
+  rayon_deplacement_km?: number;
+  video_disponible?: boolean;
 }
 
 export default function AnnonceDetails() {
@@ -67,6 +77,9 @@ export default function AnnonceDetails() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [avis, setAvis] = useState<any[]>([]);
   const [avgRating, setAvgRating] = useState(0);
+  const [modeles, setModeles] = useState<any[]>([]);
+  const [livraisons, setLivraisons] = useState<any[]>([]);
+  const [statsPrestataire, setStatsPrestataire] = useState({ totalAnnonces: 0, avgRating: 0, experienceYears: 0 });
 
   useEffect(() => {
     fetchAnnonceDetails();
@@ -86,7 +99,23 @@ export default function AnnonceDetails() {
         .single();
 
       if (error) throw error;
-      setAnnonce(data);
+      
+      // Fetch zones d'intervention pour obtenir ville_centre
+      const { data: zonesData } = await supabase
+        .from('zones_intervention')
+        .select('ville_centre')
+        .eq('annonce_id', id)
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
+      
+      // Ajouter ville_centre à l'annonce
+      const annonceWithZone = {
+        ...data,
+        ville_centre: zonesData?.ville_centre || null
+      };
+      
+      setAnnonce(annonceWithZone);
 
       // Fetch avis pour cette annonce
       const { data: avisData } = await supabase
@@ -102,6 +131,50 @@ export default function AnnonceDetails() {
       if (avisData && avisData.length > 0) {
         const total = avisData.reduce((sum: number, avis: any) => sum + avis.note, 0);
         setAvgRating(parseFloat((total / avisData.length).toFixed(1)));
+      }
+
+      // Fetch modèles si c'est un produit
+      if (data.prestations?.type === 'produit') {
+        const { data: modelesData } = await supabase
+          .from('modeles')
+          .select('*')
+          .eq('annonce_id', id)
+          .order('created_at', { ascending: true });
+        setModeles(modelesData || []);
+      }
+
+      // Fetch livraisons
+      const { data: livraisonsData } = await supabase
+        .from('livraisons_annonces')
+        .select('*, villes(ville)')
+        .eq('annonce_id', id);
+      setLivraisons(livraisonsData || []);
+
+      // Fetch stats du prestataire
+      if (data.prestataire) {
+        const { data: prestataireAnnonces } = await supabase
+          .from('annonces')
+          .select('id, created_at')
+          .eq('prestataire', data.prestataire);
+        
+        const { data: allAvis } = await supabase
+          .from('avis')
+          .select('note')
+          .in('annonce_id', prestataireAnnonces?.map((a: any) => a.id) || []);
+        
+        const totalAnnonces = prestataireAnnonces?.length || 0;
+        const avgPrestataireRating = (allAvis && allAvis.length > 0)
+          ? parseFloat((allAvis.reduce((sum: number, a: any) => sum + a.note, 0) / allAvis.length).toFixed(1))
+          : 0;
+        
+        const firstAnnonce = prestataireAnnonces?.sort((a: any, b: any) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )[0];
+        const experienceYears = firstAnnonce
+          ? Math.max(1, Math.floor((new Date().getTime() - new Date(firstAnnonce.created_at).getTime()) / (365 * 24 * 60 * 60 * 1000)))
+          : 0;
+        
+        setStatsPrestataire({ totalAnnonces, avgRating: avgPrestataireRating, experienceYears });
       }
 
     } catch (error) {
@@ -186,6 +259,7 @@ export default function AnnonceDetails() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       <ScrollView style={styles.scrollView}>
         {/* Header avec image principale */}
         <View style={styles.imageHeader}>
@@ -221,6 +295,12 @@ export default function AnnonceDetails() {
           {/* Titre et prestataire */}
           <View style={styles.titleSection}>
             <Text style={styles.title}>{annonce.titre}</Text>
+            {annonce.ville_centre && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                <Ionicons name="location" size={18} color={COLORS.primary} />
+                <Text style={{ fontSize: 15, color: COLORS.text, fontWeight: '500' }}>{annonce.ville_centre}</Text>
+              </View>
+            )}
             {annonce.prestations && (
               <View style={styles.categoryBadge}>
                 <Text style={styles.categoryText}>{annonce.prestations.nom}</Text>
@@ -230,13 +310,32 @@ export default function AnnonceDetails() {
 
           {/* Prestataire */}
           {annonce.profiles && (
-            <View style={styles.prestataireCard}>
+            <TouchableOpacity 
+              style={styles.prestataireCard}
+              onPress={() => router.push({
+                pathname: '/particuliers/provider-profile',
+                params: { providerId: annonce.prestataire }
+              })}
+            >
               <View style={styles.prestataireAvatar}>
                 <Ionicons name="person" size={24} color={COLORS.primary} />
               </View>
               <View style={styles.prestataireInfo}>
                 <Text style={styles.prestataireName}>{annonce.profiles.nom}</Text>
-                <Text style={styles.prestataireLabel}>Prestataire vérifié</Text>
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: COLORS.primary }}>{statsPrestataire.totalAnnonces}</Text>
+                    <Text style={{ fontSize: 10, color: COLORS.textLight }}>Annonces</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: COLORS.success }}>{statsPrestataire.avgRating}/5</Text>
+                    <Text style={{ fontSize: 10, color: COLORS.textLight }}>Note</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#9333EA' }}>{statsPrestataire.experienceYears} an{statsPrestataire.experienceYears > 1 ? 's' : ''}</Text>
+                    <Text style={{ fontSize: 10, color: COLORS.textLight }}>Expérience</Text>
+                  </View>
+                </View>
               </View>
               {avgRating > 0 && (
                 <View style={styles.ratingBadge}>
@@ -244,7 +343,8 @@ export default function AnnonceDetails() {
                   <Text style={styles.ratingText}>{avgRating}</Text>
                 </View>
               )}
-            </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
           )}
 
           {/* Tarifs */}
@@ -281,6 +381,82 @@ export default function AnnonceDetails() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Description</Text>
               <Text style={styles.description}>{annonce.description}</Text>
+            </View>
+          )}
+
+          {/* Détails de la prestation */}
+          {(annonce.nb_photos_livrees || annonce.delai_livraison || annonce.styles_photo?.length || annonce.lieu_shootings?.length) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📦 Détails de la prestation</Text>
+              <View style={styles.detailsGrid}>
+                {annonce.nb_photos_livrees && (
+                  <View style={styles.detailItem}>
+                    <Ionicons name="images" size={20} color={COLORS.primary} />
+                    <Text style={styles.detailLabel}>Photos livrées</Text>
+                    <Text style={styles.detailValue}>{annonce.nb_photos_livrees} photos</Text>
+                  </View>
+                )}
+                
+                {annonce.delai_livraison && (
+                  <View style={styles.detailItem}>
+                    <Ionicons name="time" size={20} color={COLORS.primary} />
+                    <Text style={styles.detailLabel}>Délai de livraison</Text>
+                    <Text style={styles.detailValue}>{annonce.delai_livraison} jours</Text>
+                  </View>
+                )}
+                
+                {annonce.retouche_incluse && (
+                  <View style={styles.detailItem}>
+                    <Ionicons name="color-wand" size={20} color={COLORS.success} />
+                    <Text style={styles.detailLabel}>Retouche incluse</Text>
+                    <Text style={styles.detailValue}>Professionnelle</Text>
+                  </View>
+                )}
+                
+                {annonce.video_disponible && (
+                  <View style={styles.detailItem}>
+                    <Ionicons name="videocam" size={20} color={COLORS.success} />
+                    <Text style={styles.detailLabel}>Service vidéo</Text>
+                    <Text style={styles.detailValue}>Disponible</Text>
+                  </View>
+                )}
+                
+                {annonce.deplacement_inclus && (
+                  <View style={styles.detailItem}>
+                    <Ionicons name="car" size={20} color={COLORS.success} />
+                    <Text style={styles.detailLabel}>Déplacement</Text>
+                    <Text style={styles.detailValue}>
+                      {annonce.rayon_deplacement_km ? `Inclus jusqu'à ${annonce.rayon_deplacement_km}km` : 'Inclus'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {annonce.styles_photo && annonce.styles_photo.length > 0 && (
+                <View style={styles.tagsSection}>
+                  <Text style={styles.tagsTitle}>🎨 Styles proposés</Text>
+                  <View style={styles.tagsContainer}>
+                    {annonce.styles_photo.map((style: string, index: number) => (
+                      <View key={index} style={styles.tag}>
+                        <Text style={styles.tagText}>{style}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {annonce.lieu_shootings && annonce.lieu_shootings.length > 0 && (
+                <View style={styles.tagsSection}>
+                  <Text style={styles.tagsTitle}>📍 Lieux disponibles</Text>
+                  <View style={styles.tagsContainer}>
+                    {annonce.lieu_shootings.map((lieu: string, index: number) => (
+                      <View key={index} style={styles.tag}>
+                        <Text style={styles.tagText}>{lieu}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -324,6 +500,127 @@ export default function AnnonceDetails() {
                   </View>
                 )}
               </View>
+            </View>
+          )}
+
+          {/* Modèles (pour les produits) */}
+          {modeles.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🎨 Modèles disponibles ({modeles.length})</Text>
+              <FlatList
+                data={modeles}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.modeleCard}>
+                    {item.photo && (
+                      <Image
+                        source={{ uri: normalizePhotoUrl(item.photo) || undefined }}
+                        style={styles.modeleImage}
+                      />
+                    )}
+                    <Text style={styles.modeleNom}>{item.nom}</Text>
+                    {item.prix && (
+                      <Text style={styles.modelePrix}>{item.prix}€</Text>
+                    )}
+                  </View>
+                )}
+              />
+            </View>
+          )}
+
+          {/* Livraisons */}
+          {livraisons.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🚚 Livraisons disponibles</Text>
+              {livraisons.map((livraison: any) => (
+                <View key={livraison.id} style={styles.livraisonCard}>
+                  <Ionicons name="location" size={16} color={COLORS.primary} />
+                  <Text style={styles.livraisonVille}>{livraison.villes?.ville}</Text>
+                  <Text style={styles.livraisonDelai}>{livraison.delai_jours} jours</Text>
+                  {livraison.frais > 0 && (
+                    <Text style={styles.livraisonFrais}>{livraison.frais}€</Text>
+                  )}
+                  {livraison.frais === 0 && (
+                    <Text style={styles.livraisonGratuit}>Gratuit</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Modèles (pour les produits) */}
+          {modeles.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🎨 Modèles disponibles ({modeles.length})</Text>
+              <FlatList
+                data={modeles}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.modeleCard}>
+                    {item.photo && (
+                      <Image
+                        source={{ uri: normalizePhotoUrl(item.photo) || undefined }}
+                        style={styles.modeleImage}
+                      />
+                    )}
+                    <Text style={styles.modeleNom}>{item.nom}</Text>
+                    {item.prix && (
+                      <Text style={styles.modelePrix}>{item.prix}€</Text>
+                    )}
+                  </View>
+                )}
+              />
+            </View>
+          )}
+
+          {/* Livraisons */}
+          {livraisons.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🚚 Livraisons disponibles</Text>
+              {livraisons.map((livraison: any) => (
+                <View key={livraison.id} style={styles.livraisonCard}>
+                  <Ionicons name="location" size={16} color={COLORS.primary} />
+                  <Text style={styles.livraisonVille}>{livraison.villes?.ville}</Text>
+                  <Text style={styles.livraisonDelai}>{livraison.delai_jours} jours</Text>
+                  {livraison.frais > 0 && (
+                    <Text style={styles.livraisonFrais}>{livraison.frais}€</Text>
+                  )}
+                  {livraison.frais === 0 && (
+                    <Text style={styles.livraisonGratuit}>Gratuit</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Avis clients */}
+          {avis.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>⭐ Avis clients ({avis.length})</Text>
+              {avis.map((avisItem: any) => (
+                <View key={avisItem.id} style={styles.avisCard}>
+                  <View style={styles.avisHeader}>
+                    <View style={styles.avisAvatar}>
+                      <Ionicons name="person" size={20} color={COLORS.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.avisAuthor}>{avisItem.particulier?.nom || 'Client'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Ionicons name="star" size={14} color="#FFA500" />
+                        <Text style={styles.avisNote}>{avisItem.note}/5</Text>
+                        <Text style={styles.avisDate}>• {new Date(avisItem.created_at).toLocaleDateString('fr-FR')}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {avisItem.commentaire && (
+                    <Text style={styles.avisText}>{avisItem.commentaire}</Text>
+                  )}
+                </View>
+              ))}
             </View>
           )}
 
@@ -396,10 +693,6 @@ export default function AnnonceDetails() {
 
           {/* Stats */}
           <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Ionicons name="eye-outline" size={20} color={COLORS.textLight} />
-              <Text style={styles.statText}>{annonce.vues || 0} vues</Text>
-            </View>
             {avgRating > 0 && (
               <View style={styles.statItem}>
                 <Ionicons name="star" size={20} color="#FFA500" />
@@ -531,14 +824,17 @@ const styles = StyleSheet.create({
   galleryBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   galleryBadgeText: { color: 'white', fontSize: 12, fontWeight: '600' },
 
-  avisHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   avgRatingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: COLORS.backgroundLight, borderRadius: 12 },
   avgRatingText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
   avisCard: { padding: 16, backgroundColor: COLORS.backgroundLight, borderRadius: 12, marginBottom: 12 },
+  avisHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   avisCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   avisAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   avisInfo: { flex: 1 },
   avisAuthor: { fontSize: 15, fontWeight: '600', color: COLORS.text, marginBottom: 4 },
+  avisNote: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  avisDate: { fontSize: 12, color: COLORS.textLight },
+  avisText: { fontSize: 14, color: COLORS.textLight, lineHeight: 20, marginTop: 8 },
   avisRating: { flexDirection: 'row', gap: 2 },
   avisComment: { fontSize: 14, color: COLORS.textLight, lineHeight: 20 },
 
@@ -556,4 +852,29 @@ const styles = StyleSheet.create({
   ctaContainer: { position: 'absolute', bottom: 80, left: 0, right: 0, padding: 16, backgroundColor: COLORS.background, borderTopWidth: 1, borderTopColor: COLORS.border },
   ctaButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12 },
   ctaButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+
+  // Modèles
+  modeleCard: { marginRight: 12, backgroundColor: COLORS.backgroundLight, borderRadius: 12, padding: 12, width: 150 },
+  modeleImage: { width: 126, height: 126, borderRadius: 8, marginBottom: 8 },
+  modeleNom: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 4 },
+  modelePrix: { fontSize: 16, fontWeight: 'bold', color: COLORS.primary },
+
+  // Livraisons
+  livraisonCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 8, marginBottom: 8 },
+  livraisonVille: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
+  livraisonDelai: { fontSize: 12, color: COLORS.textLight },
+  livraisonFrais: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  livraisonGratuit: { fontSize: 14, fontWeight: '600', color: COLORS.success },
+
+  // Détails de la prestation
+  detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
+  detailItem: { width: '48%', backgroundColor: COLORS.backgroundLight, padding: 16, borderRadius: 12, alignItems: 'center', gap: 8 },
+  detailLabel: { fontSize: 12, color: COLORS.textLight, textAlign: 'center' },
+  detailValue: { fontSize: 14, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
+  
+  tagsSection: { marginTop: 16 },
+  tagsTitle: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 8 },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: COLORS.primary, borderRadius: 16 },
+  tagText: { fontSize: 13, color: 'white', fontWeight: '500' },
 });

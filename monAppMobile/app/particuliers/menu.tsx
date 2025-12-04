@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -92,6 +92,7 @@ export default function ParticularHomeMenu() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header avec gradient */}
         <LinearGradient
@@ -154,7 +155,7 @@ export default function ParticularHomeMenu() {
 
         {/* Section Recherche */}
         <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Recherche</Text>
+          <Text style={styles.sectionTitle}>Recherche et Fidélité</Text>
 
           <TouchableOpacity
             style={styles.menuItem}
@@ -165,71 +166,10 @@ export default function ParticularHomeMenu() {
             </View>
             <View style={styles.menuContent}>
               <Text style={styles.menuTitle}>Explorer les annonces</Text>
-              <Text style={styles.menuSubtitle}>Trouvez le photographe idéal</Text>
+              <Text style={styles.menuSubtitle}>Trouvez le photographe idéal près de vous</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/particuliers/carte-prestataires' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="map" size={24} color={COLORS.info} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Carte des prestataires</Text>
-              <Text style={styles.menuSubtitle}>Voir sur la carte</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/particuliers/saved-searches' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="bookmark" size={24} color={COLORS.warning} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Recherches sauvegardées</Text>
-              <Text style={styles.menuSubtitle}>Accès rapide</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/particuliers/search-history' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#E5E7EB' }]}>
-              <Ionicons name="time" size={24} color={COLORS.textLight} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Historique de recherche</Text>
-              <Text style={styles.menuSubtitle}>Vos recherches récentes</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/particuliers/price-alerts' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="notifications" size={24} color="#EF4444" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Alertes prix</Text>
-              <Text style={styles.menuSubtitle}>Notifications personnalisées</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Section Fidélité & IA */}
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Fidélité & IA</Text>
 
           <TouchableOpacity
             style={styles.menuItem}
@@ -245,47 +185,6 @@ export default function ParticularHomeMenu() {
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/particuliers/achievements' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="trophy" size={24} color={COLORS.warning} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Succès</Text>
-              <Text style={styles.menuSubtitle}>Débloquez des badges</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/particuliers/rewards-catalog' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
-              <Ionicons name="gift-outline" size={24} color={COLORS.purple} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Récompenses</Text>
-              <Text style={styles.menuSubtitle}>Échangez vos points</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/particuliers/ai-recommendations' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="sparkles" size={24} color={COLORS.info} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Recommandations IA</Text>
-              <Text style={styles.menuSubtitle}>Suggestions personnalisées</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
         </View>
 
         {/* Section Compte */}

@@ -40,6 +40,15 @@ export default function EditAnnonce() {
     equipement: '',
     conditions_annulation: 'Modéré',
     actif: true,
+    // Nouveaux champs
+    nb_photos_livrees: '',
+    delai_livraison: '',
+    retouche_incluse: true,
+    styles_photo: [] as string[],
+    lieu_shootings: [] as string[],
+    deplacement_inclus: false,
+    rayon_deplacement_km: '',
+    video_disponible: false,
   });
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -75,6 +84,15 @@ export default function EditAnnonce() {
         equipement: data.equipement || '',
         conditions_annulation: conditions,
         actif: Boolean(data.actif),
+        // Nouveaux champs
+        nb_photos_livrees: data.nb_photos_livrees?.toString() || '',
+        delai_livraison: data.delai_livraison?.toString() || '',
+        retouche_incluse: data.retouche_incluse !== false,
+        styles_photo: data.styles_photo || [],
+        lieu_shootings: data.lieu_shootings || [],
+        deplacement_inclus: Boolean(data.deplacement_inclus),
+        rayon_deplacement_km: data.rayon_deplacement_km?.toString() || '',
+        video_disponible: Boolean(data.video_disponible),
       });
       setPhotos(data.photos || []);
     } catch (error) {
@@ -120,6 +138,15 @@ export default function EditAnnonce() {
           conditions_annulation: form.conditions_annulation,
           actif: form.actif,
           photos: photos,
+          // Nouveaux champs
+          nb_photos_livrees: form.nb_photos_livrees ? parseInt(form.nb_photos_livrees) : null,
+          delai_livraison: form.delai_livraison ? parseInt(form.delai_livraison) : null,
+          retouche_incluse: form.retouche_incluse,
+          styles_photo: form.styles_photo.length > 0 ? form.styles_photo : null,
+          lieu_shootings: form.lieu_shootings.length > 0 ? form.lieu_shootings : null,
+          deplacement_inclus: form.deplacement_inclus,
+          rayon_deplacement_km: form.rayon_deplacement_km ? parseInt(form.rayon_deplacement_km) : null,
+          video_disponible: form.video_disponible,
         })
         .eq('id', id);
 

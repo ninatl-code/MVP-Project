@@ -15,6 +15,7 @@ const COLORS = {
   textLight: '#717171',
   border: '#EBEBEB',
   success: '#10B981',
+  warning: '#F59E0B',
   star: '#FFC107',
 };
 
@@ -54,8 +55,10 @@ export default function ProviderPublicProfilePage() {
     averageRating: 0,
     totalReviews: 0,
     responseRate: 0,
+    experienceYears: 0,
   });
   const [recentAnnonces, setRecentAnnonces] = useState<any[]>([]);
+  const [avis, setAvis] = useState<any[]>([]);
 
   useEffect(() => {
     if (providerId) {
@@ -67,12 +70,15 @@ export default function ProviderPublicProfilePage() {
     try {
       // Fetch provider profile
       const { data: providerData, error: providerError } = await supabase
-        .from('prestataires')
+        .from('profiles')
         .select('*')
         .eq('id', providerId)
         .single();
 
-      if (providerError) throw providerError;
+      if (providerError) {
+        console.error('Error fetching provider data:', providerError);
+        throw providerError;
+      }
       setProvider(providerData);
 
       // Fetch ville name
@@ -96,32 +102,45 @@ export default function ProviderPublicProfilePage() {
         setVerificationStatus(verificationData);
       }
 
-      // Fetch stats
-      const { data: annonces } = await supabase
+      // Fetch all annonces for stats
+      const { data: allAnnonces } = await supabase
         .from('annonces')
-        .select('id, titre, photos, rate')
+        .select('id, titre, photo_couverture, rate, created_at, tarif_unit, unit_tarif, description')
         .eq('prestataire', providerId)
-        .eq('status', 'active')
+        .eq('actif', true)
+        .order('created_at', { ascending: false });
+
+      setRecentAnnonces(allAnnonces?.slice(0, 6) || []);
+
+      // Fetch avis
+      const { data: avisData } = await supabase
+        .from('avis')
+        .select('*, particulier:particulier_id(nom, photos)')
+        .in('annonce_id', allAnnonces?.map(a => a.id) || [])
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
 
-      setRecentAnnonces(annonces || []);
+      setAvis(avisData || []);
 
-      const { data: reviews } = await supabase
-        .from('reviews')
-        .select('overall_rating')
-        .eq('provider_id', providerId);
+      const totalReviews = avisData?.length || 0;
+      const averageRating = totalReviews > 0 && avisData
+        ? avisData.reduce((sum: number, r: any) => sum + r.note, 0) / totalReviews 
+        : 0;
 
-      const totalReviews = reviews?.length || 0;
-      const averageRating = totalReviews > 0 && reviews
-        ? reviews.reduce((sum, r) => sum + r.overall_rating, 0) / totalReviews 
+      // Calculate experience years
+      const firstAnnonce = allAnnonces?.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )[0];
+      const experienceYears = firstAnnonce
+        ? Math.max(1, Math.floor((new Date().getTime() - new Date(firstAnnonce.created_at).getTime()) / (365 * 24 * 60 * 60 * 1000)))
         : 0;
 
       setStats({
-        totalAnnonces: annonces?.length || 0,
+        totalAnnonces: allAnnonces?.length || 0,
         averageRating: Math.round(averageRating * 10) / 10,
         totalReviews,
-        responseRate: 95, // Could be calculated from message response data
+        responseRate: 95,
+        experienceYears,
       });
     } catch (error) {
       console.error('Error fetching provider data:', error);
@@ -214,42 +233,135 @@ export default function ProviderPublicProfilePage() {
       {verificationStatus && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="shield-checkmark" size={22} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Vérifications</Text>
+            <Ionicons name="shield-checkmark" size={22} color={COLORS.success} />
+            <Text style={styles.sectionTitle}>Confiance et sécurité</Text>
           </View>
           <View style={styles.card}>
-            <TrustBadges 
-              verificationStatus={verificationStatus} 
-              showScore={true}
-              compact={false}
-            />
+            <Text style={styles.trustSubtitle}>
+              {verificationStatus.identity_verified || verificationStatus.email_verified || verificationStatus.phone_verified
+                ? 'Ce prestataire a été vérifié par notre équipe'
+                : 'Vérifications en cours'}
+            </Text>
+            
+            <View style={styles.verificationGrid}>
+              {/* Identité */}
+              <View style={styles.verificationItem}>
+                <View style={[styles.verificationIcon, { 
+                  backgroundColor: verificationStatus.identity_verified ? '#D1FAE5' : '#F3F4F6'
+                }]}>
+                  <Ionicons 
+                    name={verificationStatus.identity_verified ? "checkmark-circle" : "ellipse-outline"} 
+                    size={24} 
+                    color={verificationStatus.identity_verified ? COLORS.success : COLORS.border} 
+                  />
+                </View>
+                <Text style={[styles.verificationLabel, !verificationStatus.identity_verified && { color: COLORS.textLight }]}>
+                  Identité {verificationStatus.identity_verified ? 'vérifiée' : 'non vérifiée'}
+                </Text>
+                <Text style={styles.verificationDesc}>
+                  {verificationStatus.identity_verified ? 'Document officiel validé' : 'En attente de validation'}
+                </Text>
+              </View>
+
+              {/* Email */}
+              <View style={styles.verificationItem}>
+                <View style={[styles.verificationIcon, { 
+                  backgroundColor: verificationStatus.email_verified ? '#DBEAFE' : '#F3F4F6'
+                }]}>
+                  <Ionicons 
+                    name={verificationStatus.email_verified ? "mail" : "mail-outline"} 
+                    size={24} 
+                    color={verificationStatus.email_verified ? COLORS.primary : COLORS.border} 
+                  />
+                </View>
+                <Text style={[styles.verificationLabel, !verificationStatus.email_verified && { color: COLORS.textLight }]}>
+                  Email {verificationStatus.email_verified ? 'vérifié' : 'non vérifié'}
+                </Text>
+                <Text style={styles.verificationDesc}>
+                  {verificationStatus.email_verified ? 'Contact confirmé' : 'En attente de confirmation'}
+                </Text>
+              </View>
+
+              {/* Téléphone */}
+              <View style={styles.verificationItem}>
+                <View style={[styles.verificationIcon, { 
+                  backgroundColor: verificationStatus.phone_verified ? '#FEF3C7' : '#F3F4F6'
+                }]}>
+                  <Ionicons 
+                    name={verificationStatus.phone_verified ? "call" : "call-outline"} 
+                    size={24} 
+                    color={verificationStatus.phone_verified ? COLORS.warning : COLORS.border} 
+                  />
+                </View>
+                <Text style={[styles.verificationLabel, !verificationStatus.phone_verified && { color: COLORS.textLight }]}>
+                  Téléphone {verificationStatus.phone_verified ? 'vérifié' : 'non vérifié'}
+                </Text>
+                <Text style={styles.verificationDesc}>
+                  {verificationStatus.phone_verified ? 'Numéro authentifié' : 'En attente de validation'}
+                </Text>
+              </View>
+
+              {/* Professionnel */}
+              <View style={styles.verificationItem}>
+                <View style={[styles.verificationIcon, { 
+                  backgroundColor: verificationStatus.business_verified ? '#E0E7FF' : '#F3F4F6'
+                }]}>
+                  <Ionicons 
+                    name={verificationStatus.business_verified ? "briefcase" : "briefcase-outline"} 
+                    size={24} 
+                    color={verificationStatus.business_verified ? COLORS.accent : COLORS.border} 
+                  />
+                </View>
+                <Text style={[styles.verificationLabel, !verificationStatus.business_verified && { color: COLORS.textLight }]}>
+                  {verificationStatus.business_verified ? 'Professionnel' : 'Non certifié'}
+                </Text>
+                <Text style={styles.verificationDesc}>
+                  {verificationStatus.business_verified ? 'Entreprise enregistrée' : 'Certification en attente'}
+                </Text>
+              </View>
+            </View>
+
+            {(verificationStatus.identity_verified && verificationStatus.email_verified) && (
+              <View style={styles.trustScore}>
+                <Ionicons name="ribbon" size={20} color={COLORS.star} />
+                <Text style={styles.trustScoreText}>Prestataire de confiance</Text>
+              </View>
+            )}
           </View>
         </View>
       )}
 
       {/* Quick Stats */}
       <View style={styles.section}>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="briefcase" size={24} color={COLORS.primary} />
-            <Text style={styles.statValue}>{stats.totalAnnonces}</Text>
-            <Text style={styles.statLabel}>Annonces</Text>
-          </View>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="stats-chart" size={22} color={COLORS.primary} />
+          <Text style={styles.sectionTitle}>Statistiques</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#EEF2FF' }]}>
+                <Ionicons name="briefcase" size={24} color={COLORS.primary} />
+              </View>
+              <Text style={styles.statValue}>{stats.totalAnnonces}+</Text>
+              <Text style={styles.statLabel}>Annonces</Text>
+            </View>
 
-          <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="star" size={24} color={COLORS.star} />
+              </View>
+              <Text style={styles.statValue}>{stats.averageRating}/5</Text>
+              <Text style={styles.statLabel}>Satisfaction</Text>
+            </View>
 
-          <View style={styles.statItem}>
-            <Ionicons name="star" size={24} color={COLORS.star} />
-            <Text style={styles.statValue}>{stats.averageRating}/5</Text>
-            <Text style={styles.statLabel}>Note moyenne</Text>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statItem}>
-            <Ionicons name="chatbubbles" size={24} color={COLORS.success} />
-            <Text style={styles.statValue}>{stats.responseRate}%</Text>
-            <Text style={styles.statLabel}>Taux de réponse</Text>
+            <View style={styles.statBox}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#D1FAE5' }]}>
+                <Ionicons name="time" size={24} color={COLORS.success} />
+              </View>
+              <Text style={styles.statValue}>{stats.experienceYears} an{stats.experienceYears > 1 ? 's' : ''}</Text>
+              <Text style={styles.statLabel}>d'expérience</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -267,40 +379,93 @@ export default function ProviderPublicProfilePage() {
         </View>
       )}
 
-      {/* Recent Listings */}
+      {/* Derniers avis */}
+      {avis.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="star" size={22} color={COLORS.star} />
+            <Text style={styles.sectionTitle}>Derniers avis ({avis.length})</Text>
+          </View>
+          <View style={styles.card}>
+            {avis.map((avisItem: any, index: number) => (
+              <View key={avisItem.id} style={[styles.avisItem, index < avis.length - 1 && styles.avisItemBorder]}>
+                <View style={styles.avisHeader}>
+                  <View style={styles.avisAvatar}>
+                    <Ionicons name="person" size={20} color={COLORS.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.avisAuthor}>{avisItem.particulier?.nom || 'Client'}</Text>
+                    <View style={styles.avisRatingRow}>
+                      {renderStars(avisItem.note)}
+                      <Text style={styles.avisDate}>
+                        {new Date(avisItem.created_at).toLocaleDateString('fr-FR')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {avisItem.commentaire && (
+                  <Text style={styles.avisComment}>{avisItem.commentaire}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Annonces */}
       {recentAnnonces.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="images" size={22} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Annonces récentes</Text>
+            <Text style={styles.sectionTitle}>Annonces ({stats.totalAnnonces})</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.annoncesScroll}>
+          <View style={styles.annoncesGrid}>
             {recentAnnonces.map((annonce: any) => (
               <TouchableOpacity
                 key={annonce.id}
                 style={styles.annonceCard}
-                onPress={() => router.push(`/annonces/${annonce.id}`)}
+                onPress={() => router.push({
+                  pathname: '/particuliers/annonces/[id]',
+                  params: { id: annonce.id }
+                })}
               >
-                {annonce.photos && (
-                  <Image
-                    source={{ uri: annonce.photos.split(',')[0] }}
-                    style={styles.annonceImage}
-                  />
-                )}
+                <View style={styles.annonceImageContainer}>
+                  {annonce.photo_couverture ? (
+                    <Image
+                      source={{ uri: typeof annonce.photo_couverture === 'string' && annonce.photo_couverture.startsWith('data:') 
+                        ? annonce.photo_couverture 
+                        : `data:image/jpeg;base64,${annonce.photo_couverture}` }}
+                      style={styles.annonceImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.annonceImage, styles.annonceImagePlaceholder]}>
+                      <Ionicons name="camera" size={32} color={COLORS.textLight} />
+                    </View>
+                  )}
+                  {annonce.rate > 0 && (
+                    <View style={styles.annonceRatingBadge}>
+                      <Ionicons name="star" size={12} color={COLORS.star} />
+                      <Text style={styles.annonceRatingBadgeText}>{annonce.rate}</Text>
+                    </View>
+                  )}
+                </View>
                 <View style={styles.annonceInfo}>
                   <Text style={styles.annonceTitle} numberOfLines={2}>
                     {annonce.titre}
                   </Text>
-                  {annonce.rate > 0 && (
-                    <View style={styles.annonceRating}>
-                      <Ionicons name="star" size={14} color={COLORS.star} />
-                      <Text style={styles.annonceRatingText}>{annonce.rate}/5</Text>
-                    </View>
+                  {annonce.description && (
+                    <Text style={styles.annonceDescription} numberOfLines={2}>
+                      {annonce.description}
+                    </Text>
                   )}
+                  <Text style={styles.annoncePrice}>
+                    {annonce.tarif_unit ? `${annonce.tarif_unit}€/${annonce.unit_tarif || 'unit'}` : 'Sur devis'}
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         </View>
       )}
 
@@ -459,49 +624,136 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  statsRow: {
+  statsGrid: {
     flexDirection: 'row',
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-    padding: 20,
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  statItem: {
+  statBox: {
+    flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textLight,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: COLORS.border,
+    textAlign: 'center',
   },
   bioText: {
     fontSize: 15,
     color: COLORS.text,
     lineHeight: 22,
   },
-  annoncesScroll: {
-    marginLeft: -20,
-    paddingLeft: 20,
+  trustSubtitle: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  verificationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 20,
+  },
+  verificationItem: {
+    width: '47%',
+    alignItems: 'center',
+    gap: 8,
+  },
+  verificationIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verificationLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  verificationDesc: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    textAlign: 'center',
+  },
+  trustScore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  trustScoreText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.star,
+  },
+  avisItem: {
+    paddingVertical: 16,
+  },
+  avisItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  avisHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 8,
+  },
+  avisAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.backgroundLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avisAuthor: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  avisRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avisDate: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  avisComment: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginLeft: 52,
+  },
+  annoncesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   annonceCard: {
-    width: 200,
-    marginRight: 12,
+    width: '48%',
     backgroundColor: COLORS.background,
     borderRadius: 12,
     overflow: 'hidden',
@@ -511,10 +763,34 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  annonceImageContainer: {
+    position: 'relative',
+  },
   annonceImage: {
     width: '100%',
-    height: 120,
+    height: 140,
     backgroundColor: COLORS.backgroundLight,
+  },
+  annonceImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  annonceRatingBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'white',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  annonceRatingBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.text,
   },
   annonceInfo: {
     padding: 12,
@@ -525,14 +801,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
-  annonceRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  annonceRatingText: {
+  annonceDescription: {
     fontSize: 12,
     color: COLORS.textLight,
+    lineHeight: 16,
+  },
+  annoncePrice: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.primary,
   },
   contactButton: {
     backgroundColor: COLORS.primary,

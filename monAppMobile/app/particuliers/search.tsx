@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image, RefreshControl } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image, RefreshControl, Alert, StatusBar } from "react-native";
 import { supabase } from "../../lib/supabaseClient";
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -58,6 +58,11 @@ function normalizePhotoUrl(photoUrl: string | null | undefined): string | null {
   return null;
 }
 
+interface Zone {
+  annonce_id: string;
+  ville_centre: string;
+}
+
 interface Annonce {
   id: string;
   titre: string;
@@ -70,6 +75,11 @@ interface Annonce {
   prestation?: string;
   prestataire_nom?: string;
   zones_intervention?: string[]; // Villes d'intervention
+  created_at?: string; // Date de création
+  conditions_annulation?: string; // Conditions d'annulation
+  equipement?: string; // Équipement fourni
+  acompte_percent?: number; // Pourcentage d'acompte
+  prix_fixe?: boolean; // Prix fixe ou sur devis
 }
 
 export default function SearchProviders() {
@@ -135,6 +145,11 @@ export default function SearchProviders() {
             rate,
             prestataire,
             prestation,
+            created_at,
+            conditions_annulation,
+            equipement,
+            acompte_percent,
+            prix_fixe,
             profiles!annonces_prestataire_fkey (nom)
           `)
           .eq('actif', true)
@@ -168,6 +183,8 @@ export default function SearchProviders() {
         .in('annonce_id', annonceIds)
         .eq('active', true);
       
+      console.log('📍 Zones chargées:', zonesData?.length || 0);
+      
       // Map annonce_id -> villes
       const zonesMap: { [key: string]: string[] } = {};
       (zonesData || []).forEach((zone: any) => {
@@ -176,29 +193,44 @@ export default function SearchProviders() {
         }
         zonesMap[zone.annonce_id].push(zone.ville_centre);
       });
+      
+      console.log('🗺️ Zones mappées:', Object.keys(zonesMap).length);
 
       console.log(`✅ ${annoncesData.length} annonces chargées`);
       setPrestations(prestationsData || []);
 
-      // Extraire les villes uniques depuis zones_intervention
-      const allVilles = Object.values(zonesMap).flat();
+      // Récupérer TOUTES les villes depuis zone_intervention (pas seulement celles des annonces chargées)
+      const { data: allZonesData } = await supabase
+        .from('zones_intervention')
+        .select('ville_centre')
+        .eq('active', true);
+      
+      const allVilles = (allZonesData || []).map((z: any) => z.ville_centre);
       const uniqueVilles = [...new Set(allVilles)].sort();
       setVilles(uniqueVilles.map((ville, idx) => ({ id: idx, ville })));
 
-      // Formatter et stocker en cache (avec photo de couverture)
-      const formattedAnnonces: Annonce[] = annoncesData.map((annonce: any) => ({
-        id: annonce.id,
-        titre: annonce.titre,
-        description: annonce.description || '',
-        photo_couverture: annonce.photo_couverture,
-        tarif_min: annonce.tarif_unit || 0,
-        tarif_max: annonce.tarif_unit || 0,
-        rate: annonce.rate || 0,
-        prestataire: annonce.prestataire,
-        prestataire_nom: annonce.profiles?.nom || 'Prestataire',
-        zones_intervention: zonesMap[annonce.id] || [],
-        prestation: annonce.prestation
-      }));
+      // Formatter et stocker en cache
+      const formattedAnnonces: Annonce[] = annoncesData.map((annonce: any) => {
+        const zones = zonesMap[annonce.id] || [];
+        return {
+          id: annonce.id,
+          titre: annonce.titre,
+          description: annonce.description || '',
+          photo_couverture: annonce.photo_couverture,
+          tarif_min: annonce.tarif_unit || 0,
+          tarif_max: annonce.tarif_unit || 0,
+          rate: annonce.rate || 0,
+          prestataire: annonce.prestataire,
+          prestataire_nom: annonce.profiles?.nom || 'Prestataire',
+          zones_intervention: zones,
+          prestation: annonce.prestation,
+          created_at: annonce.created_at,
+          conditions_annulation: annonce.conditions_annulation,
+          equipement: annonce.equipement,
+          acompte_percent: annonce.acompte_percent,
+          prix_fixe: annonce.prix_fixe
+        };
+      });
 
       setAllAnnonces(formattedAnnonces);
       setResults(formattedAnnonces.slice(0, ITEMS_PER_PAGE)); // Première page
@@ -228,9 +260,16 @@ export default function SearchProviders() {
 
     // Filtre par ville (zones d'intervention)
     if (selectedVille && selectedVille !== "all") {
-      filtered = filtered.filter(a => 
-        a.zones_intervention && a.zones_intervention.includes(selectedVille)
-      );
+      console.log(`🏙️ Filtre ville active: "${selectedVille}"`);
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(a => {
+        const hasVille = a.zones_intervention && a.zones_intervention.includes(selectedVille);
+        if (!hasVille && a.zones_intervention) {
+          console.log(`❌ Annonce ${a.id} (${a.titre}): zones = [${a.zones_intervention.join(', ')}]`);
+        }
+        return hasVille;
+      });
+      console.log(`📊 Résultats: ${beforeCount} → ${filtered.length} annonces`);
     }
 
     // Filtre par prix
@@ -320,7 +359,11 @@ export default function SearchProviders() {
     }
   };
 
-  const formatCurrency = (min: number, max: number) => {
+  const formatCurrency = (min: number, max: number, prixFixe?: boolean) => {
+    // Si prix non fixe et tarif à 0, c'est sur devis
+    if (prixFixe === false && min === 0) {
+      return 'Sur devis';
+    }
     if (min === max) {
       return `${min}€`;
     }
@@ -329,6 +372,7 @@ export default function SearchProviders() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContent}
@@ -345,119 +389,88 @@ export default function SearchProviders() {
           <Text style={styles.headerSubtitle}>Trouvez le photographe idéal</Text>
         </LinearGradient>
 
-        {/* Barre de recherche */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color={COLORS.textLight} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher un service..."
-              placeholderTextColor={COLORS.textLight}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={applyFilters}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); applyFilters(); }}>
-                <Ionicons name="close-circle" size={20} color={COLORS.textLight} />
+        {/* Section de filtres ergonomiques */}
+        <View style={styles.filtersSection}>
+          {/* Type de prestation */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>
+              <Ionicons name="camera" size={16} color={COLORS.primary} /> Type de prestation
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+              <TouchableOpacity
+                style={[styles.filterChip, selectedPrestation === "all" && styles.filterChipActive]}
+                onPress={() => setSelectedPrestation("all")}
+              >
+                <Text style={[styles.filterChipText, selectedPrestation === "all" && styles.filterChipTextActive]}>
+                  Toutes
+                </Text>
               </TouchableOpacity>
-            )}
+              {prestations.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.filterChip, selectedPrestation === item.id && styles.filterChipActive]}
+                  onPress={() => setSelectedPrestation(item.id)}
+                >
+                  <Text style={[styles.filterChipText, selectedPrestation === item.id && styles.filterChipTextActive]}>
+                    {item.nom}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
-          <TouchableOpacity 
-            style={[styles.filterButton, showFilters && styles.filterButtonActive]}
-            onPress={() => setShowFilters(!showFilters)}
-          >
-            <Ionicons name="options" size={20} color={showFilters ? 'white' : COLORS.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Filtres */}
-        {showFilters && (
-          <View style={styles.filtersContainer}>
-            {/* Prestations */}
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>Type de prestation</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          {/* Villes */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>
+              <Ionicons name="location" size={16} color={COLORS.info} /> Ville ({villes.length} disponibles)
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+              {villes.map((item) => (
                 <TouchableOpacity
-                  style={[styles.filterChip, selectedPrestation === "all" && styles.filterChipActive]}
-                  onPress={() => setSelectedPrestation("all")}
+                  key={item.id}
+                  style={[styles.filterChip, selectedVille === item.ville && styles.filterChipActive]}
+                  onPress={() => setSelectedVille(item.ville === selectedVille ? "all" : item.ville)}
                 >
-                  <Text style={[styles.filterChipText, selectedPrestation === "all" && styles.filterChipTextActive]}>
-                    Toutes
+                  <Text style={[styles.filterChipText, selectedVille === item.ville && styles.filterChipTextActive]}>
+                    {item.ville}
                   </Text>
                 </TouchableOpacity>
-                {prestations.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.filterChip, selectedPrestation === item.id && styles.filterChipActive]}
-                    onPress={() => setSelectedPrestation(item.id)}
-                  >
-                    <Text style={[styles.filterChipText, selectedPrestation === item.id && styles.filterChipTextActive]}>
-                      {item.nom}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+              ))}
+            </ScrollView>
+          </View>
 
-            {/* Villes */}
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>Ville</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                <TouchableOpacity
-                  style={[styles.filterChip, selectedVille === "all" && styles.filterChipActive]}
-                  onPress={() => setSelectedVille("all")}
-                >
-                  <Text style={[styles.filterChipText, selectedVille === "all" && styles.filterChipTextActive]}>
-                    Toutes
-                  </Text>
-                </TouchableOpacity>
-                {villes.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.filterChip, selectedVille === item.ville && styles.filterChipActive]}
-                    onPress={() => setSelectedVille(item.ville)}
-                  >
-                    <Text style={[styles.filterChipText, selectedVille === item.ville && styles.filterChipTextActive]}>
-                      {item.ville}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Prix */}
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>Budget</Text>
-              <View style={styles.priceInputs}>
-                <View style={styles.priceInputWrapper}>
-                  <TextInput
-                    style={styles.priceInput}
-                    placeholder="Min"
-                    placeholderTextColor={COLORS.textLight}
-                    value={priceRange.min}
-                    onChangeText={min => setPriceRange({ ...priceRange, min })}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.currencySymbol}>€</Text>
-                </View>
-                <Text style={styles.priceSeparator}>-</Text>
-                <View style={styles.priceInputWrapper}>
-                  <TextInput
-                    style={styles.priceInput}
-                    placeholder="Max"
-                    placeholderTextColor={COLORS.textLight}
-                    value={priceRange.max}
-                    onChangeText={max => setPriceRange({ ...priceRange, max })}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.currencySymbol}>€</Text>
-                </View>
+          {/* Budget */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>
+              <Ionicons name="cash" size={16} color={COLORS.warning} /> Budget
+            </Text>
+            <View style={styles.priceInputs}>
+              <View style={styles.priceInputWrapper}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Min"
+                  placeholderTextColor={COLORS.textLight}
+                  value={priceRange.min}
+                  onChangeText={min => setPriceRange({ ...priceRange, min })}
+                  keyboardType="numeric"
+                />
+                <Text style={styles.currencySymbol}>€</Text>
+              </View>
+              <Text style={styles.priceSeparator}>-</Text>
+              <View style={styles.priceInputWrapper}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Max"
+                  placeholderTextColor={COLORS.textLight}
+                  value={priceRange.max}
+                  onChangeText={max => setPriceRange({ ...priceRange, max })}
+                  keyboardType="numeric"
+                />
+                <Text style={styles.currencySymbol}>€</Text>
               </View>
             </View>
           </View>
-        )}
+        </View>
 
         {/* Compteur résultats */}
         <View style={styles.resultsHeader}>
@@ -518,12 +531,25 @@ export default function SearchProviders() {
                     <Text style={styles.prestataireText}>{annonce.prestataire_nom}</Text>
                   </View>
 
-                  {annonce.zones_intervention && annonce.zones_intervention.length > 0 && (
-                    <View style={styles.locationRow}>
-                      <Ionicons name="location-outline" size={16} color={COLORS.textLight} />
-                      <Text style={styles.locationText}>{annonce.zones_intervention.join(', ')}</Text>
-                    </View>
-                  )}
+                    {annonce.zones_intervention && annonce.zones_intervention.length > 0 && (
+                      <View style={styles.locationRow}>
+                        <Ionicons name="location-outline" size={16} color={COLORS.textLight} />
+                        <Text style={styles.locationText}>
+                          {annonce.zones_intervention[0]}
+                          {annonce.zones_intervention.length > 1 && ` +${annonce.zones_intervention.length - 1}`}
+                        </Text>
+                      </View>
+                    )}
+
+                  {/* Date et conditions annulation */}
+                  <View style={styles.metaRow}>
+                    {annonce.conditions_annulation && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.success} />
+                        <Text style={styles.metaText}>{annonce.conditions_annulation}</Text>
+                      </View>
+                    )}
+                  </View>
 
                   {annonce.description && (
                     <Text style={styles.description} numberOfLines={2}>
@@ -531,22 +557,50 @@ export default function SearchProviders() {
                     </Text>
                   )}
 
+                  {/* Équipement et acompte */}
+                  <View style={styles.detailsRow}>
+                    {annonce.equipement && (
+                      <View style={styles.detailItem}>
+                        <Ionicons name="construct-outline" size={14} color={COLORS.primary} />
+                        <Text style={styles.detailText}>{annonce.equipement}</Text>
+                      </View>
+                    )}
+                    {annonce.acompte_percent !== null && annonce.acompte_percent !== undefined && annonce.acompte_percent > 0 && (
+                      <View style={styles.detailItem}>
+                        <Ionicons name="card-outline" size={14} color={COLORS.warning} />
+                        <Text style={styles.detailText}>Acompte {annonce.acompte_percent}%</Text>
+                      </View>
+                    )}
+                  </View>
+
                   {/* Tarif */}
                   <View style={styles.pricingContainer}>
-                    <Text style={styles.priceLabel}>À partir de</Text>
+                    <Text style={styles.priceLabel}>
+                      {annonce.prix_fixe === false && annonce.tarif_min === 0 ? 'Tarif' : 'À partir de'}
+                    </Text>
                     <Text style={styles.priceValue}>
-                      {formatCurrency(annonce.tarif_min, annonce.tarif_max)}
+                      {formatCurrency(annonce.tarif_min, annonce.tarif_max, annonce.prix_fixe)}
                     </Text>
                   </View>
 
                   {/* Actions */}
-                  <TouchableOpacity 
-                    style={styles.viewButton}
-                    onPress={() => router.push(`/particuliers/annonces/${annonce.id}` as any)}
-                  >
-                    <Text style={styles.viewButtonText}>Voir l'annonce</Text>
-                    <Ionicons name="arrow-forward" size={16} color="white" />
-                  </TouchableOpacity>
+                  <View style={styles.cardFooter}>
+                    <TouchableOpacity 
+                      style={styles.viewButton}
+                      onPress={() => router.push({
+                        pathname: '/particuliers/annonces/[id]',
+                        params: { id: annonce.id }
+                      })}
+                    >
+                      <Text style={styles.viewButtonText}>Voir l'annonce</Text>
+                      <Ionicons name="arrow-forward" size={16} color="white" />
+                    </TouchableOpacity>
+                    {annonce.created_at && (
+                      <Text style={styles.createdDate}>
+                        créé le {new Date(annonce.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               </View>
             ))}
@@ -590,32 +644,142 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 32, fontWeight: 'bold', color: 'white', marginBottom: 8 },
   headerSubtitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)' },
 
-  // Search
-  searchSection: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 16, gap: 8 },
-  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 12, paddingHorizontal: 12, gap: 8, borderWidth: 1, borderColor: COLORS.border },
-  searchInput: { flex: 1, fontSize: 15, color: COLORS.text, paddingVertical: 12 },
-  filterButton: { width: 48, height: 48, borderRadius: 12, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
-  filterButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  // Filtres section
+  filtersSection: { paddingHorizontal: 16, marginTop: 20, marginBottom: 16 },
+  
+  // Carte "Près de moi" - Version compacte
+  nearMeCard: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#E8F5E9', 
+    borderRadius: 12, 
+    padding: 12, 
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 1 }, 
+    shadowOpacity: 0.05, 
+    shadowRadius: 3, 
+    elevation: 2 
+  },
+  nearMeCardActive: { 
+    backgroundColor: COLORS.success, 
+    borderColor: COLORS.success,
+    shadowColor: COLORS.success,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3
+  },
+  filterCardIcon: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: 'rgba(255,255,255,0.3)', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    marginRight: 12
+  },
+  filterCardContent: { flex: 1 },
+  filterCardTitle: { 
+    fontSize: 15, 
+    fontWeight: '700', 
+    color: COLORS.success, 
+    marginBottom: 2 
+  },
+  filterCardTitleActive: { color: 'white' },
+  filterCardSubtitle: { 
+    fontSize: 12, 
+    color: COLORS.success,
+    opacity: 0.8
+  },
+  filterCardSubtitleActive: { color: 'white', opacity: 0.9 },
+  filterCardBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
 
-  // Filtres
-  filtersContainer: { backgroundColor: COLORS.background, marginHorizontal: 16, marginTop: 16, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  filterGroup: { marginBottom: 16 },
-  filterLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 8 },
+  // Groupes de filtres
+  filterGroup: { marginBottom: 20 },
+  filterLabel: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: COLORS.text, 
+    marginBottom: 12,
+    letterSpacing: 0.3
+  },
   filterScroll: { flexGrow: 0 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: COLORS.backgroundLight, borderWidth: 1, borderColor: COLORS.border, marginRight: 8 },
-  filterChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  filterChipText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  filterChip: { 
+    paddingHorizontal: 20, 
+    paddingVertical: 12, 
+    borderRadius: 24, 
+    backgroundColor: COLORS.background, 
+    borderWidth: 2, 
+    borderColor: COLORS.border, 
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1
+  },
+  filterChipActive: { 
+    backgroundColor: COLORS.primary, 
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  filterChipText: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: COLORS.text 
+  },
   filterChipTextActive: { color: 'white' },
   
   loadMoreButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, paddingHorizontal: 24, backgroundColor: COLORS.backgroundLight, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginTop: 16 },
   loadMoreText: { fontSize: 15, color: COLORS.primary, fontWeight: '600' },
   paginationInfo: { textAlign: 'center', fontSize: 13, color: COLORS.textLight, marginTop: 16, fontStyle: 'italic' },
 
-  priceInputs: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  priceInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.backgroundLight, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: COLORS.border },
-  priceInput: { flex: 1, fontSize: 15, color: COLORS.text, paddingVertical: 10 },
-  currencySymbol: { fontSize: 15, color: COLORS.textLight, marginLeft: 4 },
-  priceSeparator: { fontSize: 16, color: COLORS.textLight },
+  priceInputs: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  priceInputWrapper: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.background, 
+    borderRadius: 12, 
+    paddingHorizontal: 16, 
+    borderWidth: 2, 
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1
+  },
+  priceInput: { 
+    flex: 1, 
+    fontSize: 16, 
+    fontWeight: '600',
+    color: COLORS.text, 
+    paddingVertical: 14 
+  },
+  currencySymbol: { 
+    fontSize: 16, 
+    fontWeight: '600',
+    color: COLORS.primary, 
+    marginLeft: 4 
+  },
+  priceSeparator: { 
+    fontSize: 20, 
+    fontWeight: 'bold',
+    color: COLORS.textLight 
+  },
 
   // Résultats
   resultsHeader: { paddingHorizontal: 16, paddingVertical: 16 },
@@ -644,15 +808,25 @@ const styles = StyleSheet.create({
   prestataireRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   prestataireText: { fontSize: 14, color: COLORS.primary, fontWeight: '500' },
   
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   locationText: { fontSize: 14, color: COLORS.textLight },
 
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 12, color: COLORS.textLight, fontWeight: '500' },
+
   description: { fontSize: 14, color: COLORS.textLight, lineHeight: 20, marginBottom: 12 },
+
+  detailsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' },
+  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  detailText: { fontSize: 12, color: COLORS.text, fontWeight: '500' },
 
   pricingContainer: { paddingVertical: 12, borderTopWidth: 1, borderTopColor: COLORS.border, marginBottom: 12 },
   priceLabel: { fontSize: 12, color: COLORS.textLight, marginBottom: 4 },
   priceValue: { fontSize: 20, fontWeight: 'bold', color: COLORS.primary },
 
+  cardFooter: { gap: 8 },
   viewButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: 8 },
-  viewButtonText: { color: 'white', fontSize: 15, fontWeight: '600' }
+  viewButtonText: { color: 'white', fontSize: 15, fontWeight: '600' },
+  createdDate: { fontSize: 11, color: COLORS.textLight, textAlign: 'right', fontStyle: 'italic' }
 });

@@ -56,6 +56,16 @@ export default function CreateAnnonce() {
   const [photoCouverture, setPhotoCouverture] = useState<string | null>(null); // Photo de couverture
   const [zones, setZones] = useState<Zone[]>([]);
   
+  // Nouveaux champs
+  const [nbPhotosLivrees, setNbPhotosLivrees] = useState('');
+  const [delaiLivraison, setDelaiLivraison] = useState('');
+  const [retoucheIncluse, setRetoucheIncluse] = useState(true);
+  const [stylesPhoto, setStylesPhoto] = useState<string[]>([]);
+  const [lieuShootings, setLieuShootings] = useState<string[]>([]);
+  const [deplacementInclus, setDeplacementInclus] = useState(false);
+  const [rayonDeplacementKm, setRayonDeplacementKm] = useState('');
+  const [videoDisponible, setVideoDisponible] = useState(false);
+  
   // Modal states
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [newZoneVille, setNewZoneVille] = useState('');
@@ -174,6 +184,9 @@ export default function CreateAnnonce() {
         }
         return true;
       case 3:
+        // Les détails de la prestation sont optionnels
+        return true;
+      case 4:
         if (prixFixe && (!tarifUnit || (type === 'service' && !unitTarif))) {
           Alert.alert('Champs requis', 'Veuillez renseigner le tarif');
           return false;
@@ -183,7 +196,7 @@ export default function CreateAnnonce() {
           return false;
         }
         return true;
-      case 4:
+      case 5:
         if (zones.length === 0) {
           Alert.alert('Champs requis', 'Veuillez définir au moins une zone d\'intervention');
           return false;
@@ -249,7 +262,16 @@ export default function CreateAnnonce() {
         conditions_annulation: type === 'service' ? (conditionsAnnulation || null) : null,
         nb_heure: nbHeure,
         prestataire: user.id,
-        actif: true
+        actif: true,
+        // Nouveaux champs
+        nb_photos_livrees: nbPhotosLivrees ? parseInt(nbPhotosLivrees) : null,
+        delai_livraison: delaiLivraison ? parseInt(delaiLivraison) : null,
+        retouche_incluse: retoucheIncluse,
+        styles_photo: stylesPhoto.length > 0 ? stylesPhoto : null,
+        lieu_shootings: lieuShootings.length > 0 ? lieuShootings : null,
+        deplacement_inclus: deplacementInclus,
+        rayon_deplacement_km: rayonDeplacementKm ? parseInt(rayonDeplacementKm) : null,
+        video_disponible: videoDisponible
       };
 
       console.log('Données à insérer:', insertData);
@@ -317,7 +339,7 @@ export default function CreateAnnonce() {
 
   const renderStepIndicator = () => (
     <View style={styles.stepIndicator}>
-      {[1, 2, 3, 4, 5].map((step) => (
+      {[1, 2, 3, 4, 5, 6].map((step) => (
         <View key={step} style={styles.stepItem}>
           <View style={[
             styles.stepCircle,
@@ -332,7 +354,7 @@ export default function CreateAnnonce() {
               ]}>{step}</Text>
             )}
           </View>
-          {step < 5 && (
+          {step < 6 && (
             <View style={[
               styles.stepLine,
               currentStep > step && styles.stepLineActive
@@ -434,7 +456,151 @@ export default function CreateAnnonce() {
     </View>
   );
 
-  const renderStep3 = () => (
+  const renderStep3 = () => {
+    const toggleStylePhoto = (style: string) => {
+      if (stylesPhoto.includes(style)) {
+        setStylesPhoto(stylesPhoto.filter(s => s !== style));
+      } else {
+        setStylesPhoto([...stylesPhoto, style]);
+      }
+    };
+
+    const toggleLieuShooting = (lieu: string) => {
+      if (lieuShootings.includes(lieu)) {
+        setLieuShootings(lieuShootings.filter(l => l !== lieu));
+      } else {
+        setLieuShootings([...lieuShootings, lieu]);
+      }
+    };
+
+    return (
+      <View style={styles.stepContent}>
+        <Text style={styles.stepTitle}>📦 Détails de votre offre</Text>
+        <Text style={styles.stepDescription}>
+          Enrichissez votre annonce avec des informations clés
+        </Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Nombre de photos livrées</Text>
+          <TextInput
+            style={styles.input}
+            value={nbPhotosLivrees}
+            onChangeText={setNbPhotosLivrees}
+            placeholder="Ex: 50, 100, 200..."
+            keyboardType="number-pad"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Délai de livraison (jours)</Text>
+          <TextInput
+            style={styles.input}
+            value={delaiLivraison}
+            onChangeText={setDelaiLivraison}
+            placeholder="Ex: 7, 14, 30..."
+            keyboardType="number-pad"
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={styles.checkboxContainer}
+          onPress={() => setRetoucheIncluse(!retoucheIncluse)}
+        >
+          <Ionicons 
+            name={retoucheIncluse ? 'checkbox' : 'square-outline'} 
+            size={24} 
+            color={COLORS.primary} 
+          />
+          <Text style={styles.checkboxLabel}>Retouche professionnelle incluse</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.checkboxContainer}
+          onPress={() => setVideoDisponible(!videoDisponible)}
+        >
+          <Ionicons 
+            name={videoDisponible ? 'checkbox' : 'square-outline'} 
+            size={24} 
+            color={COLORS.primary} 
+          />
+          <Text style={styles.checkboxLabel}>Service vidéo disponible</Text>
+        </TouchableOpacity>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>🎨 Styles de photographie</Text>
+          <View style={styles.chipsContainer}>
+            {['Lifestyle', 'Posé', 'Reportage', 'Artistique', 'Noir et blanc'].map((style) => (
+              <TouchableOpacity
+                key={style}
+                style={[
+                  styles.chip,
+                  stylesPhoto.includes(style) && styles.chipActive
+                ]}
+                onPress={() => toggleStylePhoto(style)}
+              >
+                <Text style={[
+                  styles.chipText,
+                  stylesPhoto.includes(style) && styles.chipTextActive
+                ]}>{style}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>📍 Lieux de shooting</Text>
+          <View style={styles.chipsContainer}>
+            {['Studio', 'Extérieur', 'Domicile client', 'Événementiel'].map((lieu) => (
+              <TouchableOpacity
+                key={lieu}
+                style={[
+                  styles.chip,
+                  lieuShootings.includes(lieu) && styles.chipActive
+                ]}
+                onPress={() => toggleLieuShooting(lieu)}
+              >
+                <Text style={[
+                  styles.chipText,
+                  lieuShootings.includes(lieu) && styles.chipTextActive
+                ]}>{lieu}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.inputGroup}>
+          <TouchableOpacity 
+            style={styles.checkboxContainer}
+            onPress={() => setDeplacementInclus(!deplacementInclus)}
+          >
+            <Ionicons 
+              name={deplacementInclus ? 'checkbox' : 'square-outline'} 
+              size={24} 
+              color={COLORS.primary} 
+            />
+            <Text style={styles.checkboxLabel}>🚗 Déplacement inclus</Text>
+          </TouchableOpacity>
+        </View>
+
+        {deplacementInclus && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Rayon de déplacement (km)</Text>
+            <TextInput
+              style={styles.input}
+              value={rayonDeplacementKm}
+              onChangeText={setRayonDeplacementKm}
+              placeholder="Ex: 30, 50, 100..."
+              keyboardType="number-pad"
+            />
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderStep4 = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Tarification</Text>
       <Text style={styles.stepDescription}>
@@ -547,7 +713,7 @@ export default function CreateAnnonce() {
     </View>
   );
 
-  const renderStep4 = () => (
+  const renderStep5 = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Zones d'intervention</Text>
       <Text style={styles.stepDescription}>
@@ -590,7 +756,7 @@ export default function CreateAnnonce() {
     </View>
   );
 
-  const renderStep5 = () => (
+  const renderStep6 = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Photos</Text>
       <Text style={styles.stepDescription}>
@@ -659,6 +825,7 @@ export default function CreateAnnonce() {
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
         {currentStep === 5 && renderStep5()}
+        {currentStep === 6 && renderStep6()}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -671,7 +838,7 @@ export default function CreateAnnonce() {
           </TouchableOpacity>
         )}
         
-        {currentStep < 5 ? (
+        {currentStep < 6 ? (
           <TouchableOpacity
             style={[styles.footerButton, styles.footerButtonPrimary, currentStep === 1 && { flex: 1 }]}
             onPress={nextStep}
@@ -1157,5 +1324,36 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff'
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card
+  },
+  chipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary
+  },
+  chipText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500'
+  },
+  chipTextActive: {
+    color: '#fff'
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20
   }
 });
