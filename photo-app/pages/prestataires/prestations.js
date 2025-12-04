@@ -714,7 +714,16 @@ export default function PrestationsPrestataire() {
         conditions_annulation: form.type === 'service' ? (form.conditions_annulation || null) : null,
         nb_heure: nbHeure, // Ajout du nombre d'heures
         prestataire: userId,
-        actif: true
+        actif: true,
+        // Nouveaux champs
+        nb_photos_livrees: form.nb_photos_livrees ? parseInt(form.nb_photos_livrees) : null,
+        delai_livraison: form.delai_livraison ? parseInt(form.delai_livraison) : null,
+        retouche_incluse: form.retouche_incluse,
+        styles_photo: form.styles_photo.length > 0 ? form.styles_photo : null,
+        lieu_shootings: form.lieu_shootings.length > 0 ? form.lieu_shootings : null,
+        deplacement_inclus: form.deplacement_inclus,
+        rayon_deplacement_km: form.rayon_deplacement_km ? parseInt(form.rayon_deplacement_km) : null,
+        video_disponible: form.video_disponible
       };
       
       console.log('Données à insérer:', insertData); // Debug
@@ -809,7 +818,16 @@ export default function PrestationsPrestataire() {
       categories: [],
       conditions_annulation: '',
       fichiers: '',
-      nb_heure: '' // Nombre d'heures pour séance/forfait
+      nb_heure: '', // Nombre d'heures pour séance/forfait
+      // Nouveaux champs
+      nb_photos_livrees: '',
+      delai_livraison: '',
+      retouche_incluse: true,
+      styles_photo: [],
+      lieu_shootings: [],
+      deplacement_inclus: false,
+      rayon_deplacement_km: '',
+      video_disponible: false
     });
 
     // Local confirmation state for modeleDraft
@@ -896,7 +914,16 @@ export default function PrestationsPrestataire() {
           categories: prestation.categories || [],
           conditions_annulation: prestation.conditions_annulation || '',
           nb_heure: prestation.nb_heure || '',
-          modeleDraft: { titre: '', description: '', prix: '', photos: [] } // Réinitialiser le draft
+          modeleDraft: { titre: '', description: '', prix: '', photos: [] }, // Réinitialiser le draft
+          // Nouveaux champs
+          nb_photos_livrees: prestation.nb_photos_livrees || '',
+          delai_livraison: prestation.delai_livraison || '',
+          retouche_incluse: prestation.retouche_incluse !== false,
+          styles_photo: prestation.styles_photo || [],
+          lieu_shootings: prestation.lieu_shootings || [],
+          deplacement_inclus: Boolean(prestation.deplacement_inclus),
+          rayon_deplacement_km: prestation.rayon_deplacement_km || '',
+          video_disponible: Boolean(prestation.video_disponible)
         });
         
         // Charger les zones d'intervention
@@ -909,6 +936,14 @@ export default function PrestationsPrestataire() {
           type: '',
           categorie: '',
           villes: [],
+          nb_photos_livrees: '',
+          delai_livraison: '',
+          retouche_incluse: true,
+          styles_photo: [],
+          lieu_shootings: [],
+          deplacement_inclus: false,
+          rayon_deplacement_km: '',
+          video_disponible: false,
           description: '',
           tarif_unit: '',
           unit_tarif: '',

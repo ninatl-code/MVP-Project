@@ -14,10 +14,12 @@
 ```
 
 **Schedule expliqué :**
+
 - `0 2 * * *` = Tous les jours à 2h00 du matin (UTC)
 - Format : minute heure jour mois jour_semaine
 
 **Autres exemples :**
+
 - `0 */6 * * *` = Toutes les 6 heures
 - `0 0 * * 0` = Tous les dimanches à minuit
 - `*/30 * * * *` = Toutes les 30 minutes (dev/test)
@@ -33,6 +35,7 @@ NEXT_PUBLIC_BASE_URL=https://votre-domaine.com
 ```
 
 **Générer CRON_SECRET :**
+
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
@@ -59,19 +62,21 @@ Le cron sera automatiquement activé après le déploiement.
 ## 5. Monitorer les exécutions
 
 ### Dans Vercel Dashboard :
+
 - **Deployments** > **Functions** > Voir les logs de `auto-transfer-balance`
 - Les logs montrent chaque exécution avec le résultat
 
 ### Dans Supabase :
+
 ```sql
 -- Voir les transferts automatiques
-SELECT * FROM transactions 
-WHERE type = 'balance_transfer' 
+SELECT * FROM transactions
+WHERE type = 'balance_transfer'
 AND metadata->>'triggered_by' = 'cron'
 ORDER BY created_at DESC;
 
 -- Statistiques
-SELECT 
+SELECT
   DATE(created_at) as date,
   COUNT(*) as nb_transfers,
   SUM(amount) as total_amount
@@ -87,6 +92,7 @@ ORDER BY date DESC;
 Pour désactiver le cron sans supprimer le code :
 
 **Option 1 :** Commenter dans vercel.json
+
 ```json
 {
   "crons": [
@@ -99,37 +105,42 @@ Pour désactiver le cron sans supprimer le code :
 ```
 
 **Option 2 :** Ajouter une variable d'environnement
+
 ```
 CRON_ENABLED=false
 ```
 
 Et dans le code :
+
 ```javascript
-if (process.env.CRON_ENABLED === 'false') {
-  return res.status(200).json({ message: 'Cron désactivé' });
+if (process.env.CRON_ENABLED === "false") {
+  return res.status(200).json({ message: "Cron désactivé" });
 }
 ```
 
 ## 7. Alertes en cas d'erreur
 
 ### Slack/Discord Webhook (optionnel)
+
 ```javascript
 // À ajouter dans auto-transfer-balance.js
 if (results.errors.length > 0) {
   await fetch(process.env.SLACK_WEBHOOK_URL, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({
       text: `⚠️ ${results.errors.length} erreurs dans le cron auto-transfer-balance`,
       blocks: [
         {
-          type: 'section',
+          type: "section",
           text: {
-            type: 'mrkdwn',
-            text: `*Erreurs:*\n${results.errors.map(e => `• ${e.reservation_id}: ${e.error}`).join('\n')}`
-          }
-        }
-      ]
-    })
+            type: "mrkdwn",
+            text: `*Erreurs:*\n${results.errors
+              .map((e) => `• ${e.reservation_id}: ${e.error}`)
+              .join("\n")}`,
+          },
+        },
+      ],
+    }),
   });
 }
 ```
@@ -139,21 +150,23 @@ if (results.errors.length > 0) {
 Si le cron échoue, vous pouvez déclencher manuellement :
 
 ### Via l'interface admin (à créer)
+
 ```javascript
 // pages/admin/trigger-balance-transfers.js
 const handleTrigger = async () => {
-  const res = await fetch('/api/cron/auto-transfer-balance', {
-    headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` }
+  const res = await fetch("/api/cron/auto-transfer-balance", {
+    headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
   });
   const data = await res.json();
-  console.log('Résultat:', data);
+  console.log("Résultat:", data);
 };
 ```
 
 ### Via Supabase Edge Function
+
 ```sql
 -- Fonction SQL pour marquer manuellement
-UPDATE reservations 
+UPDATE reservations
 SET status = 'finished'
 WHERE id = 'reservation_id_ici';
 
@@ -171,6 +184,7 @@ WHERE id = 'reservation_id_ici';
 ## Support
 
 En cas de problème :
+
 1. Vérifier les logs Vercel
 2. Vérifier la table `transactions` dans Supabase
 3. Tester l'endpoint manuellement avec curl

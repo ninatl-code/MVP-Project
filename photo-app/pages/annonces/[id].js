@@ -367,7 +367,7 @@ export default function ArtistProfilePreview() {
   return (
     <>
       <Head>
-        <title>{annonce?.titre} - {annonce?.prestataire?.nom} | Artyzana </title>
+        <title>{annonce?.titre} - {annonce?.prestataire?.nom} | Shooty </title>
         <meta name="description" content={annonce?.description || "Découvrez cette prestation"} />
         <meta property="og:title" content={`${annonce?.titre} - ${annonce?.prestataire?.nom}`} />
         <meta property="og:description" content={annonce?.description} />
@@ -553,6 +553,100 @@ export default function ArtistProfilePreview() {
             </div>
           </div>
         </section>
+
+        {/* Détails de la prestation */}
+        {(annonce.nb_photos_livrees || annonce.delai_livraison || annonce.styles_photo?.length || annonce.lieu_shootings?.length) && (
+          <section className="w-full max-w-4xl mt-8">
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                📦 Détails de la prestation
+              </h2>
+              
+              {/* Grille des détails */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {annonce.nb_photos_livrees && (
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl mb-2">📸</div>
+                    <div className="text-sm text-gray-600 mb-1">Photos livrées</div>
+                    <div className="text-lg font-bold text-blue-600">{annonce.nb_photos_livrees}</div>
+                  </div>
+                )}
+                
+                {annonce.delai_livraison && (
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl mb-2">⏱️</div>
+                    <div className="text-sm text-gray-600 mb-1">Délai</div>
+                    <div className="text-lg font-bold text-green-600">{annonce.delai_livraison} jours</div>
+                  </div>
+                )}
+                
+                {annonce.retouche_incluse && (
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl mb-2">✨</div>
+                    <div className="text-sm text-gray-600 mb-1">Retouche</div>
+                    <div className="text-lg font-bold text-purple-600">Incluse</div>
+                  </div>
+                )}
+                
+                {annonce.video_disponible && (
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl mb-2">🎬</div>
+                    <div className="text-sm text-gray-600 mb-1">Vidéo</div>
+                    <div className="text-lg font-bold text-red-600">Disponible</div>
+                  </div>
+                )}
+                
+                {annonce.deplacement_inclus && (
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <div className="text-3xl mb-2">🚗</div>
+                    <div className="text-sm text-gray-600 mb-1">Déplacement</div>
+                    <div className="text-lg font-bold text-indigo-600">
+                      {annonce.rayon_deplacement_km ? `${annonce.rayon_deplacement_km}km` : 'Inclus'}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Styles de photo */}
+              {annonce.styles_photo && annonce.styles_photo.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    🎨 Styles proposés
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {annonce.styles_photo.map((style, index) => (
+                      <span 
+                        key={index} 
+                        className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                      >
+                        {style}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lieux de shooting */}
+              {annonce.lieu_shootings && annonce.lieu_shootings.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    📍 Lieux disponibles
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {annonce.lieu_shootings.map((lieu, index) => (
+                      <span 
+                        key={index} 
+                        className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium"
+                      >
+                        {lieu}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Section tarifs / modèles */}
         {prestationType === 'produit' && modeles.length > 0 ? (
