@@ -187,7 +187,7 @@ export default function DevisListScreen() {
               style={styles.reservationButton}
               onPress={(e) => {
                 e.stopPropagation();
-                router.push(`/client/reservations/mes-reservations`);
+                router.push(`/client/reservations/mes-reservations` as any);
               }}
             >
               <Text style={styles.reservationButtonText}>Voir la réservation</Text>

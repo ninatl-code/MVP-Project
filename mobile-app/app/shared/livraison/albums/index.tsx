@@ -68,7 +68,7 @@ export default function AlbumsIndexScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Albums Photo</Text>
-        <TouchableOpacity onPress={() => router.push('/shared/livraison/albums/mes-albums')}>
+        <TouchableOpacity onPress={() => router.push('/shared/livraison/albums/mes-albums' as any)}>
           <Ionicons name="albums-outline" size={24} color="#5C6BC0" />
         </TouchableOpacity>
       </View>

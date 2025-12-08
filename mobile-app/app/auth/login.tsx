@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StatusBar } from 'react-native'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 import { useRouter, Link } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 

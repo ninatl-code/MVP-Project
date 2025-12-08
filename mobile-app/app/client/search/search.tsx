@@ -151,7 +151,7 @@ export default function SearchPhotographes() {
 
   const handleContactPhotographe = (photographeId: string) => {
     // Navigation vers la conversation
-    router.push(`/client/messages/conversation?photographe=${photographeId}`);
+    router.push(`/client/messages/conversation?photographe=${photographeId}` as any);
   };
 
   const renderPhotographeCard = ({ item }: { item: Photographe }) => {
@@ -160,7 +160,7 @@ export default function SearchPhotographes() {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => router.push(`/client/particuliers/photographe-profile?id=${item.user_id}`)}
+        onPress={() => router.push(`/client/particuliers/photographe-profile?id=${item.user_id}` as any)}
       >
         <View style={styles.cardHeader}>
           <Image

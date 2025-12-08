@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import ShootyLogo from '@/components/ShootyLogo';
+import { ThemedText } from '@/components/ui/themed-text';
+import ShootyLogo from '@/components/ui/ShootyLogo';
 
 const COLORS = {
   primary: '#5C6BC0',

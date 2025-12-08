@@ -86,7 +86,7 @@ export default function DevisDetailScreen() {
                 [
                   {
                     text: 'Voir la réservation',
-                    onPress: () => router.push('/client/reservations/mes-reservations'),
+                    onPress: () => router.push('/client/reservations/mes-reservations' as any),
                   },
                 ]
               );

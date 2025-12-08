@@ -96,7 +96,7 @@ export default function ConfigureTiragesScreen() {
           onPress: () => {
             // Naviguer vers le paiement
             router.push({
-              pathname: '/shared/paiement',
+              pathname: '/shared/paiement' as any,
               params: {
                 type: 'tirages',
                 photosCount: selectedPhotos.length,

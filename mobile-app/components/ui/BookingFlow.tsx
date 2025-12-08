@@ -9,7 +9,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { StripeProvider } from '@stripe/stripe-react-native';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { COLORS, TYPOGRAPHY, SPACING } from '../lib/constants';
 import Card from './ui/Card';
 import Button from './ui/Button';

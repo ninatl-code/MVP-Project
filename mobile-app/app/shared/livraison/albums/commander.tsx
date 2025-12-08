@@ -49,7 +49,7 @@ export default function CommanderAlbumScreen() {
           text: 'Payer',
           onPress: () => {
             router.push({
-              pathname: '/shared/paiement',
+              pathname: '/shared/paiement' as any,
               params: {
                 type: 'album',
                 montant: total.toString(),

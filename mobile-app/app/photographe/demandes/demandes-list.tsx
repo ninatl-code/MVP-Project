@@ -173,7 +173,7 @@ export default function DemandesListScreen() {
             style={styles.devisButton}
             onPress={(e) => {
               e.stopPropagation();
-              router.push(`/photographe/devis/create-devis?demande=${demande.id}`);
+              router.push(`/photographe/devis/create-devis?demande=${demande.id}` as any);
             }}
           >
             <Text style={styles.devisButtonText}>Envoyer un devis</Text>
