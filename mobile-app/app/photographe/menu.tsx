@@ -27,10 +27,12 @@ export default function MenuPrestataire() {
   const [userId, setUserId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     reservations: 0,
-    devis: 0,
-    annonces: 0,
+    demandes_vues: 0,
+    devis_envoyes: 0,
+    devis_acceptes: 0,
     messages: 0,
-    chiffreAffaires: 0
+    chiffreAffaires: 0,
+    tauxAcceptation: 0
   });
   const [notificationCount, setNotificationCount] = useState(0);
   const router = useRouter();
@@ -57,23 +59,32 @@ export default function MenuPrestataire() {
     setProfile(profileData);
 
     // Charger les statistiques
-    const [reservationsRes, devisRes, annoncesRes, messagesRes] = await Promise.all([
-      supabase.from('reservations').select('id, montant, status').eq('prestataire_id', authUser.id),
-      supabase.from('devis').select('id', { count: 'exact' }).eq('prestataire_id', authUser.id),
-      supabase.from('annonces').select('id', { count: 'exact' }).eq('prestataire', authUser.id),
+    const [reservationsRes, devisRes, demandesRes, messagesRes] = await Promise.all([
+      supabase.from('reservations').select('id, montant_total, statut_reservation').eq('photographe_id', authUser.id),
+      supabase.from('devis').select('id, statut').eq('photographe_id', authUser.id),
+      supabase.from('demandes_client').select('id, photographes_notifies').contains('photographes_notifies', [authUser.id]),
       supabase.from('conversations').select('id', { count: 'exact' }).eq('artist_id', authUser.id).eq('lu', false)
     ]);
 
     // Calculer le CA
-    const reservationsPayees = reservationsRes.data?.filter(r => r.status === 'paid' || r.status === 'confirmed') || [];
-    const ca = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+    const reservationsPayees = reservationsRes.data?.filter(r => 
+      r.statut_reservation === 'confirmee' || r.statut_reservation === 'en_cours' || r.statut_reservation === 'terminee'
+    ) || [];
+    const ca = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
+
+    // Statistiques devis
+    const devisData = devisRes.data || [];
+    const devisAcceptes = devisData.filter(d => d.statut === 'accepte').length;
+    const tauxAcceptation = devisData.length > 0 ? (devisAcceptes / devisData.length) * 100 : 0;
 
     setStats({
       reservations: reservationsRes.data?.length || 0,
-      devis: devisRes.data?.length || 0,
-      annonces: annoncesRes.data?.length || 0,
+      demandes_vues: demandesRes.data?.length || 0,
+      devis_envoyes: devisData.length,
+      devis_acceptes: devisAcceptes,
       messages: messagesRes.data?.length || 0,
-      chiffreAffaires: ca
+      chiffreAffaires: ca,
+      tauxAcceptation: Math.round(tauxAcceptation)
     });
 
     setLoading(false);
@@ -127,24 +138,24 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#DBEAFE', borderColor: COLORS.info }]}
-            onPress={() => router.push('/prestataires/devis')}
+            onPress={() => router.push('/photographe/demandes')}
           >
             <View style={styles.statIconContainer}>
-              <Ionicons name="document-text" size={24} color={COLORS.info} />
+              <Ionicons name="mail" size={24} color={COLORS.info} />
             </View>
-            <Text style={styles.statValue}>{stats.devis}</Text>
-            <Text style={styles.statLabel}>Devis</Text>
+            <Text style={styles.statValue}>{stats.demandes_vues}</Text>
+            <Text style={styles.statLabel}>Demandes vues</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#FEF3C7', borderColor: COLORS.warning }]}
-            onPress={() => router.push('/prestataires/prestations')}
+            onPress={() => router.push('/photographe/devis')}
           >
             <View style={styles.statIconContainer}>
-              <Ionicons name="megaphone" size={24} color={COLORS.warning} />
+              <Ionicons name="document-text" size={24} color={COLORS.warning} />
             </View>
-            <Text style={styles.statValue}>{stats.annonces}</Text>
-            <Text style={styles.statLabel}>Annonces</Text>
+            <Text style={styles.statValue}>{stats.devis_envoyes}</Text>
+            <Text style={styles.statLabel}>Devis envoyés</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

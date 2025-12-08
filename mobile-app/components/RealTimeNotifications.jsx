@@ -226,11 +226,45 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
 
         // Afficher un toast pour toute nouvelle notification
         let toastMsg = 'Nouvelle notification'
-        if (newNotification.type === 'avis') {
-          toastMsg = '⭐ Laissez votre avis'
-        } else if (newNotification.contenu) {
-          toastMsg = newNotification.contenu.substring(0, 50) + '...'
+        
+        // Messages personnalisés selon le type de notification
+        switch (newNotification.type) {
+          case 'avis':
+            toastMsg = '⭐ Laissez votre avis'
+            break
+          case 'new_demande':
+            toastMsg = '📸 Nouvelle demande correspondant à votre profil'
+            break
+          case 'new_devis':
+            toastMsg = '💰 Nouveau devis reçu'
+            break
+          case 'devis_lu':
+            toastMsg = '👀 Votre devis a été consulté'
+            break
+          case 'devis_accepte':
+            toastMsg = '🎉 Votre devis a été accepté !'
+            break
+          case 'devis_refuse':
+            toastMsg = 'Devis refusé'
+            break
+          case 'demande_pourvue':
+            toastMsg = 'Demande pourvue par un autre photographe'
+            break
+          case 'galerie_ready':
+            toastMsg = '📷 Vos photos sont prêtes !'
+            break
+          case 'tirages_expedies':
+            toastMsg = '📦 Tirages expédiés'
+            break
+          case 'album_expedie':
+            toastMsg = '📚 Album expédié'
+            break
+          default:
+            if (newNotification.contenu) {
+              toastMsg = newNotification.contenu.substring(0, 50) + '...'
+            }
         }
+        
         showToast(toastMsg)
 
         console.log('⭐ Nouvelle notification:', newNotification.type)

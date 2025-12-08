@@ -26,7 +26,6 @@ function RootLayoutNav() {
         <Stack.Screen name="menu" options={{ headerShown: false }} />
         <Stack.Screen name="particuliers" options={{ headerShown: false }} />
         <Stack.Screen name="prestataires" options={{ headerShown: false }} />
-        <Stack.Screen name="annonces" options={{ headerShown: false }} />
         <Stack.Screen name="profil" options={{ headerShown: false }} />
         <Stack.Screen name="remboursements" options={{ headerShown: false }} />
         <Stack.Screen name="payments" options={{ headerShown: false }} />
