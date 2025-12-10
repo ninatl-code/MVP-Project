@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 

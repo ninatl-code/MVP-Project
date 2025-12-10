@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, Alert, Image, Dimensions } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
-const DEFAULT_IMAGE = require('../../assets/images/shutterstock_2502519999.jpg');
+const DEFAULT_IMAGE = require('../../../assets/images/shutterstock_2502519999.jpg');
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -55,7 +55,7 @@ export default function AnnonceDetail() {
   const fetchAnnonce = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.replace('/login');
+      router.replace('/auth/login');
       return;
     }
 

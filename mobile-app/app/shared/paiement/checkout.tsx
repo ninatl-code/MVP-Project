@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
-import { paymentService } from '../../lib/paymentService';
+import { supabase } from '@/lib/supabaseClient';
+import { paymentService } from '@/lib/paymentService';
 
 const COLORS = {
   primary: '#5C6BC0',

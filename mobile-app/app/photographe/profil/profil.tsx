@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import FooterPresta from '../../components/FooterPresta';
-import TrustBadges from '../../components/TrustBadges';
+import FooterPresta from '@/components/photographe/FooterPresta';
+import TrustBadges from '@/components/ui/TrustBadges';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const COLORS = {
@@ -85,7 +85,7 @@ export default function ProfilPrestataire() {
           style: 'destructive',
           onPress: async () => {
             await supabase.auth.signOut();
-            router.replace('/login');
+            router.replace('/auth/login');
           }
         }
       ]

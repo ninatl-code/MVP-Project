@@ -24,12 +24,13 @@ export default function Index() {
           
           // Rediriger vers le menu spécifique au rôle
           if (profile?.role === 'prestataire') {
-            router.replace('/prestataires/menu');
+            router.replace('/photographe/menu');
           } else {
-            router.replace('/particuliers/menu');
+            // Pour les clients, rediriger vers la page de recherche
+            router.replace('/client/search/search');
           }
         } else if (!loading) {
-          router.replace('/login');
+          router.replace('/auth/login');
         }
       }
     };

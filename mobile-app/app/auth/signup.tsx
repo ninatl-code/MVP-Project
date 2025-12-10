@@ -57,7 +57,7 @@ export default function Signup() {
         setErrorMsg(error.message)
       } else {
         alert('Inscription réussie ! Vérifiez votre mail pour confirmer votre compte.')
-        router.push('/login')
+        router.push('/auth/login')
       }
     } catch (err) {
       setErrorMsg('Une erreur inattendue s\'est produite')
@@ -166,8 +166,8 @@ export default function Signup() {
                 style={styles.picker}
               >
                 <Picker.Item label="Sélectionner..." value="" />
-                <Picker.Item label="Prestataire" value="prestataire" />
-                <Picker.Item label="Particulier" value="particulier" />
+                <Picker.Item label="Photographe" value="prestataire" />
+                <Picker.Item label="Client" value="particulier" />
               </Picker>
             </View>
           </View>
@@ -191,7 +191,7 @@ export default function Signup() {
           {/* Lien vers login */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Déjà un compte ? </Text>
-            <Link href="/login" asChild>
+            <Link href="/auth/login" asChild>
               <TouchableOpacity>
                 <Text style={styles.footerLink}>Se connecter</Text>
               </TouchableOpacity>

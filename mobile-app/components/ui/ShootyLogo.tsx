@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image } from 'react-native';
 
-const logo = require('../assets/images/shooty-logo.png');
+const logo = require('../../assets/images/shooty-logo.png');
 
 // Version simple avec balise img standard (recommandée pour fiabilité)
 export function ShootyLogoSimple({ width = 140, height = 45 }) {

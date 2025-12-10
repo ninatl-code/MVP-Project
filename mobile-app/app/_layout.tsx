@@ -20,16 +20,12 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        {/* Toutes les routes déclarées - la protection auth est dans chaque écran */}
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="signup" options={{ headerShown: false }} />
-        <Stack.Screen name="menu" options={{ headerShown: false }} />
-        <Stack.Screen name="particuliers" options={{ headerShown: false }} />
-        <Stack.Screen name="prestataires" options={{ headerShown: false }} />
-        <Stack.Screen name="profil" options={{ headerShown: false }} />
-        <Stack.Screen name="remboursements" options={{ headerShown: false }} />
-        <Stack.Screen name="payments" options={{ headerShown: false }} />
-        <Stack.Screen name="search" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="loading" options={{ headerShown: false }} />
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="client" options={{ headerShown: false }} />
+        <Stack.Screen name="photographe" options={{ headerShown: false }} />
+        <Stack.Screen name="shared" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

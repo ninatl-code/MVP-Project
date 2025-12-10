@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -122,7 +122,7 @@ export default function ConversationPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.replace('/login');
+        router.replace('/auth/login');
         return;
       }
       setCurrentUserId(user.id);

@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, FlatList } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 

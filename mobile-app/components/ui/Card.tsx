@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
-import { COLORS, BORDER_RADIUS, SHADOWS, SPACING } from '../../lib/constants';
+import { COLORS, BORDER_RADIUS, SHADOWS, SPACING } from '@/lib/constants';
 
 export interface CardProps {
   children: React.ReactNode;

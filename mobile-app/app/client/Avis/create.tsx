@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
 
 const COLORS = {

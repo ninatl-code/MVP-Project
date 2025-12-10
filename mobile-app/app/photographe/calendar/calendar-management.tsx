@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const COLORS = {

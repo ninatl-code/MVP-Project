@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
-import StarRating from '../../components/avis/StarRating';
+import { supabase } from '@/lib/supabaseClient';
+import StarRating from '@/components/avis/StarRating';
 import * as ImagePicker from 'expo-image-picker';
 
 const COLORS = {
@@ -63,7 +63,7 @@ export default function CreateAvis() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.replace('/login');
+        router.replace('/auth/login');
         return;
       }
 

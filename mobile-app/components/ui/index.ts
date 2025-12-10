@@ -37,4 +37,4 @@ export {
   ANIMATIONS,
   LAYOUT,
   ICON_SIZES,
-} from '../../lib/constants';
+} from '@/lib/constants';

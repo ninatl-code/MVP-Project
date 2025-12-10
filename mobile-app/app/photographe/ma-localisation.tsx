@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const COLORS = {
   primary: '#5C6BC0',

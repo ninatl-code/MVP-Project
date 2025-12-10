@@ -1,13 +1,13 @@
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { 
   registerForPushNotificationsAsync, 
   savePushToken,
   resetBadge 
-} from '../../lib/notificationService';
-import FooterPresta from '../../components/FooterPresta';
+} from '@/lib/notificationService';
+import FooterPresta from '@/components/photographe/FooterPresta';
 import { useRouter } from 'expo-router';
 
 const COLORS = {

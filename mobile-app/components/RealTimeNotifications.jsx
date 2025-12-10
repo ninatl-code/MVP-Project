@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Alert, Text, StyleSheet, Animated } from 'react-native';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function RealTimeNotifications({ userId, userRole, triggerNotification, onNotificationCountChange }) {
   const [notifications, setNotifications] = useState([])

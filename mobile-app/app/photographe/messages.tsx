@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, FlatList, Image, KeyboardAvoidingView, Platform, ScrollView, Alert, Modal } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 
@@ -152,7 +152,7 @@ export default function MessagesPrestataire() {
   const fetchConversations = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
-      router.replace('/login' as any);
+      router.replace('/auth/login' as any);
       return;
     }
     setUser(authUser);

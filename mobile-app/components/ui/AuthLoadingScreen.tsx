@@ -1,5 +1,5 @@
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { useAuth } from '../lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function AuthLoadingScreen() {
   const { loading } = useAuth();

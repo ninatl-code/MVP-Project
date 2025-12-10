@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from "../lib/supabaseClient";
-import ShootyLogoSimple from "./ShootyLogo";
+import { supabase } from '@/lib/supabaseClient';
+import { ShootyLogoSimple } from '@/components/ui/ShootyLogo';
 import { Ionicons } from '@expo/vector-icons';
 
 const COLORS = {

@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import FooterPresta from '../../components/FooterPresta';
-import RealTimeNotifications from '../../components/RealTimeNotifications';
+import FooterPresta from '@/components/photographe/FooterPresta';
+import RealTimeNotifications from '@/components/RealTimeNotifications';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -44,7 +44,7 @@ export default function MenuPrestataire() {
   const fetchData = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
-      router.replace('/login');
+      router.replace('/auth/login');
       return;
     }
 

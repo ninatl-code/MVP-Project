@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, SafeAreaView, TextInput, Modal } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -55,7 +55,7 @@ export default function DevisPrestataire() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.log('No user found, redirecting to login');
-        router.replace('/login');
+        router.replace('/auth/login');
         return;
       }
 

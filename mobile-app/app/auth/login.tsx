@@ -136,7 +136,7 @@ export default function Login() {
           {/* Lien vers inscription */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Pas encore de compte ? </Text>
-            <Link href="/signup" asChild>
+            <Link href="/auth/signup" asChild>
               <TouchableOpacity>
                 <Text style={styles.footerLink}>S'inscrire</Text>
               </TouchableOpacity>

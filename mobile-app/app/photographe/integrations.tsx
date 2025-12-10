@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
-import FooterPresta from '../../components/FooterPresta';
+import { supabase } from '@/lib/supabaseClient';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const COLORS = {
   primary: '#007AFF',

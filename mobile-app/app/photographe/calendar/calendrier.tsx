@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
-import FooterPresta from '../../components/FooterPresta';
+import { supabase } from '@/lib/supabaseClient';
+import FooterPresta from '@/components/photographe/FooterPresta';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -92,7 +92,7 @@ export default function CalendrierPrestataire() {
   const initCalendar = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
-      router.replace('/login' as any);
+      router.replace('/auth/login' as any);
       return;
     }
     setUser(authUser);

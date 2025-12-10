@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Fonction à appeler manuellement depuis l'app mobile pour confirmer les commandes payées depuis plus de 24h.

@@ -12,8 +12,8 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
-import { COLORS, TYPOGRAPHY, BORDER_RADIUS, SPACING, SHADOWS, ICON_SIZES } from '../../lib/constants';
+import { supabase } from '@/lib/supabaseClient';
+import { COLORS, TYPOGRAPHY, BORDER_RADIUS, SPACING, SHADOWS, ICON_SIZES } from '@/lib/constants';
 import { Button, LoadingSpinner } from './index';
 
 export interface ImagePickerComponentProps {

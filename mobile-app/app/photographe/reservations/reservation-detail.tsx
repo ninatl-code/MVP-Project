@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const COLORS = {
   primary: '#5C6BC0',

@@ -1,5 +1,5 @@
 // Updated theme using the new design system
-import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../lib/constants';
+import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '@/lib/constants';
 import { Platform } from 'react-native';
 
 export const Colors = {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, Platform } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -57,7 +57,7 @@ export default function BlockedSlotsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.replace('/login');
+        router.replace('/auth/login');
         return;
       }
 

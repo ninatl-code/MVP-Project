@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, Alert, RefreshControl } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import FooterParti from '../../components/FooterParti';
+import FooterParti from '@/components/client/FooterParti';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -49,7 +49,7 @@ export default function ReservationsParticulier() {
   const fetchReservations = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.replace('/login');
+      router.replace('/auth/login');
       return;
     }
 

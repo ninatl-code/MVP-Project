@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native';
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const screenWidth = Dimensions.get('window').width;
 

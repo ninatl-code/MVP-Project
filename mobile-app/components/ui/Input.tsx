@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY, BORDER_RADIUS, SPACING, LAYOUT, ICON_SIZES } from '../../lib/constants';
+import { COLORS, TYPOGRAPHY, BORDER_RADIUS, SPACING, LAYOUT, ICON_SIZES } from '@/lib/constants';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;

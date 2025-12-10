@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   View,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY, BORDER_RADIUS, SPACING, SHADOWS, LAYOUT } from '../../lib/constants';
+import { COLORS, TYPOGRAPHY, BORDER_RADIUS, SPACING, SHADOWS, LAYOUT } from '@/lib/constants';
 
 export interface ButtonProps {
   title: string;

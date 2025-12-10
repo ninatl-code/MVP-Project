@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import FooterPresta from '../../components/FooterPresta';
+import { supabase } from '@/lib/supabaseClient';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 interface Remboursement {
   id: string;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'expo-router';
 
 interface Remboursement {
@@ -28,7 +28,7 @@ export default function MesRemboursements() {
     const checkAuthAndFetch = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/login');
+        router.push('/auth/login');
         return;
       }
       

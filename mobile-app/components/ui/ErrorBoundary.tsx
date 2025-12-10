@@ -1,7 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, ICON_SIZES } from '../../lib/constants';
+import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, ICON_SIZES } from '@/lib/constants';
 
 interface Props {
   children: ReactNode;

@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { router, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabaseClient';
-import FooterParti from '../../components/FooterParti';
+import { supabase } from '@/lib/supabaseClient';
+import FooterParti from '@/components/client/FooterParti';
 
 const COLORS = {
   primary: '#007AFF',

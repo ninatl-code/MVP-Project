@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { supabase } from "../lib/supabaseClient";
-import ShootyLogoSimple from "./ShootyLogo";
-import BottomNavBar from './BottomNavBar';
+import { supabase } from '@/lib/supabaseClient';
+import { ShootyLogoSimple } from '@/components/ui/ShootyLogo';
+import BottomNavBar from '@/components/ui/BottomNavBar';
 
 const COLORS = {
   primary: '#fff',

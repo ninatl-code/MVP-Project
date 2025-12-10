@@ -12,10 +12,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { paymentService, Reservation } from '../lib/paymentService';
-import { COLORS, TYPOGRAPHY, SPACING } from '../lib/constants';
-import Card from '../components/ui/Card';
-import { InlineLoadingSpinner } from '../components/ui/LoadingSpinner';
+import { paymentService, Reservation } from '@/lib/paymentService';
+import { COLORS, TYPOGRAPHY, SPACING } from '@/lib/constants';
+import Card from '@/components/ui/Card';
+import { InlineLoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export default function PaymentHistoryScreen() {
   const router = useRouter();

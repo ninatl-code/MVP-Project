@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, FlatList } from 'react-native';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import FooterPresta from '../../components/FooterPresta';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -40,7 +40,7 @@ export default function NotificationsPrestataire() {
   const fetchNotifications = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.replace('/login');
+      router.replace('/auth/login');
       return;
     }
 

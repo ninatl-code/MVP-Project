@@ -9,7 +9,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
-import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../../lib/constants';
+import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '@/lib/constants';
 import Button from './Button';
 import Card from './Card';
 

@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 export async function generateReservationNumber(): Promise<{ num_reservation: number; date_prefix: string; increment: number }> {
   // Obtenir la date du jour au format YYMMDD
