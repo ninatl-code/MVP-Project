@@ -22,37 +22,35 @@ const COLORS = {
   info: '#3B82F6'
 };
 
-interface Annonce {
+interface Package {
   id: string;
   titre: string;
   description: string;
-  tarif_min: number;
-  tarif_max: number;
-  photos: string[];
-  rate: number;
-  prestataire: string;
-  prestataire_nom: string;
-  prestataire_ville: string;
-  prestataire_photo?: string;
-  prestataire_email?: string;
-  prestataire_tel?: string;
+  prix_fixe: number;
+  photos_exemple: string[];
+  photographe_id: string;
+  photographe_nom: string;
+  photographe_ville: string;
+  photographe_photo?: string;
+  photographe_email?: string;
+  photographe_tel?: string;
   created_at: string;
 }
 
-export default function AnnonceDetail() {
+export default function PackageDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
-  const [annonce, setAnnonce] = useState<Annonce | null>(null);
+  const [packageData, setPackageData] = useState<Package | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
-    fetchAnnonce();
+    fetchPackage();
     checkIfFavorite();
   }, [id]);
 
-  const fetchAnnonce = async () => {
+  const fetchPackage = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.replace('/auth/login');
@@ -60,49 +58,37 @@ export default function AnnonceDetail() {
     }
 
     const { data, error } = await supabase
-      .from('annonces')
+      .from('packages_types')
       .select(`
         id,
         titre,
         description,
-        tarif_min,
-        tarif_max,
-        photos,
-        rate,
-        prestataire,
+        prix_fixe,
+        photos_exemple,
+        photographe_id,
         created_at,
-        profiles!annonces_prestataire_fkey (nom, ville_id, photos, email, telephone)
+        profiles!packages_types_photographe_id_fkey (nom, ville, avatar_url, email, telephone)
       `)
       .eq('id', id)
+      .eq('actif', true)
+      .eq('visible', true)
       .single();
 
     if (!error && data) {
       const profile = Array.isArray((data as any).profiles) ? (data as any).profiles[0] : (data as any).profiles;
-      
-      let villeNom = '';
-      if (profile?.ville_id) {
-        const { data: villeData } = await supabase
-          .from('villes')
-          .select('ville')
-          .eq('id', profile.ville_id)
-          .single();
-        villeNom = villeData?.ville || '';
-      }
 
-      setAnnonce({
+      setPackageData({
         id: data.id,
         titre: data.titre,
         description: data.description,
-        tarif_min: data.tarif_min,
-        tarif_max: data.tarif_max,
-        photos: data.photos || [],
-        rate: data.rate || 0,
-        prestataire: data.prestataire,
-        prestataire_nom: profile?.nom || 'Prestataire',
-        prestataire_ville: villeNom,
-        prestataire_photo: profile?.photos?.[0] || '',
-        prestataire_email: profile?.email || '',
-        prestataire_tel: profile?.telephone || '',
+        prix_fixe: data.prix_fixe,
+        photos_exemple: data.photos_exemple || [],
+        photographe_id: data.photographe_id,
+        photographe_nom: profile?.nom || 'Photographe',
+        photographe_ville: profile?.ville || '',
+        photographe_photo: profile?.avatar_url || '',
+        photographe_email: profile?.email || '',
+        photographe_tel: profile?.telephone || '',
         created_at: data.created_at
       });
     }
@@ -118,7 +104,7 @@ export default function AnnonceDetail() {
       .from('favoris')
       .select('id')
       .eq('user_id', user.id)
-      .eq('annonce_id', id)
+      .eq('package_id', id)
       .single();
 
     setIsFavorite(!!data);
@@ -133,30 +119,30 @@ export default function AnnonceDetail() {
         .from('favoris')
         .delete()
         .eq('user_id', user.id)
-        .eq('annonce_id', id);
+        .eq('package_id', id);
       setIsFavorite(false);
       Alert.alert('Succès', 'Retiré des favoris');
     } else {
       await supabase
         .from('favoris')
-        .insert({ user_id: user.id, annonce_id: id });
+        .insert({ user_id: user.id, package_id: id });
       setIsFavorite(true);
       Alert.alert('Succès', 'Ajouté aux favoris');
     }
   };
 
   const handleReserver = () => {
-    router.push(`/annonces/${id}/reserver`);
+    router.push(`/packages/${id}/reserver` as any);
   };
 
   const handleContacter = () => {
-    if (!annonce) return;
+    if (!packageData) return;
     Alert.alert(
-      'Contacter le prestataire',
-      `Email: ${annonce.prestataire_email}\nTél: ${annonce.prestataire_tel}`,
+      'Contacter le photographe',
+      `Email: ${packageData.photographe_email}\nTél: ${packageData.photographe_tel}`,
       [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Envoyer un message', onPress: () => router.push('/particuliers/messages') }
+        { text: 'Envoyer un message', onPress: () => router.push('/shared/messages/messages-list' as any) }
       ]
     );
   };
@@ -175,10 +161,10 @@ export default function AnnonceDetail() {
     );
   }
 
-  if (!annonce) {
+  if (!packageData) {
     return (
       <SafeAreaView style={styles.errorContainer}>
-        <Text style={styles.errorText}>Annonce non trouvée</Text>
+        <Text style={styles.errorText}>Package non trouvé</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>Retour</Text>
         </TouchableOpacity>
@@ -186,7 +172,7 @@ export default function AnnonceDetail() {
     );
   }
 
-  const images = annonce.photos && annonce.photos.length > 0 ? annonce.photos : [DEFAULT_IMAGE];
+  const images = packageData.photos_exemple && packageData.photos_exemple.length > 0 ? packageData.photos_exemple : [DEFAULT_IMAGE];
   const screenWidth = Dimensions.get('window').width;
 
   return (
@@ -248,32 +234,28 @@ export default function AnnonceDetail() {
         <View style={styles.content}>
           {/* Header section */}
           <View style={styles.headerSection}>
-            <Text style={styles.titre}>{annonce.titre}</Text>
-            <View style={styles.ratingContainer}>
-              <Ionicons name="star" size={18} color="#FFA500" />
-              <Text style={styles.ratingText}>{annonce.rate.toFixed(1)}</Text>
-            </View>
+            <Text style={styles.titre}>{packageData.titre}</Text>
           </View>
 
           {/* Price section */}
           <View style={styles.priceSection}>
             <Text style={styles.priceLabel}>Tarif</Text>
-            <Text style={styles.priceValue}>{formatCurrency(annonce.tarif_min, annonce.tarif_max)}</Text>
+            <Text style={styles.priceValue}>{packageData.prix_fixe}€</Text>
           </View>
 
           {/* Prestataire section */}
           <View style={styles.prestataireSection}>
             <View style={styles.prestataireHeader}>
               <Image
-                source={annonce.prestataire_photo ? { uri: annonce.prestataire_photo } : DEFAULT_IMAGE}
+                source={packageData.photographe_photo ? { uri: packageData.photographe_photo } : DEFAULT_IMAGE}
                 style={styles.prestataireAvatar}
               />
               <View style={styles.prestataireInfo}>
-                <Text style={styles.prestataireName}>{annonce.prestataire_nom}</Text>
-                {annonce.prestataire_ville && (
+                <Text style={styles.prestataireName}>{packageData.photographe_nom}</Text>
+                {packageData.photographe_ville && (
                   <View style={styles.locationRow}>
                     <Ionicons name="location-outline" size={16} color={COLORS.textLight} />
-                    <Text style={styles.locationText}>{annonce.prestataire_ville}</Text>
+                    <Text style={styles.locationText}>{packageData.photographe_ville}</Text>
                   </View>
                 )}
               </View>
@@ -287,7 +269,7 @@ export default function AnnonceDetail() {
           {/* Description */}
           <View style={styles.descriptionSection}>
             <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.descriptionText}>{annonce.description}</Text>
+            <Text style={styles.descriptionText}>{packageData.description}</Text>
           </View>
 
           {/* Info rows */}
@@ -295,7 +277,7 @@ export default function AnnonceDetail() {
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={20} color={COLORS.textLight} />
               <Text style={styles.infoText}>
-                Publié le {new Date(annonce.created_at).toLocaleDateString('fr-FR')}
+                Publié le {new Date(packageData.created_at).toLocaleDateString('fr-FR')}
               </Text>
             </View>
           </View>

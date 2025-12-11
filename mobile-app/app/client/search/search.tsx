@@ -10,11 +10,14 @@ import {
   ScrollView,
   Image,
   RefreshControl,
-  Alert,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
+const { width } = Dimensions.get('window');
 
 const CATEGORIES = [
   { label: 'Toutes', value: '' },
@@ -133,7 +136,6 @@ export default function SearchPhotographes() {
       setPhotographes(sortedData);
     } catch (error: any) {
       console.error('❌ Erreur chargement photographes:', error);
-      Alert.alert('Erreur', 'Impossible de charger les photographes');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -148,6 +150,22 @@ export default function SearchPhotographes() {
     setRefreshing(true);
     loadPhotographes();
   }, [selectedCategorie, sortBy, budgetMax, searchQuery]);
+
+  const getCategoryIcon = (category: string): any => {
+    const icons: { [key: string]: any } = {
+      'Mariage': 'heart',
+      'Portrait': 'person',
+      'Événementiel': 'calendar',
+      'Corporate': 'business',
+      'Produit': 'cube',
+      'Architecture': 'business',
+      'Nature': 'leaf',
+      'Sport': 'football',
+      'Mode': 'shirt',
+      'Culinaire': 'restaurant',
+    };
+    return icons[category] || 'camera';
+  };
 
   const handleContactPhotographe = (photographeId: string) => {
     // Navigation vers la conversation
@@ -247,96 +265,116 @@ export default function SearchPhotographes() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Trouver un photographe</Text>
+      {/* Header avec gradient */}
+      <LinearGradient
+        colors={['#130183', '#5C6BC0']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerContentWrapper}>
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.welcomeText}>Bienvenue</Text>
+              <Text style={styles.title}>Trouvez votre photographe</Text>
+            </View>
+          </View>
+
+          {/* Barre de recherche dans le header */}
+          <View style={styles.searchBarHeader}>
+            <Ionicons name="search-outline" size={20} color="#666" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Rechercher par nom ou spécialité..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#999"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#999" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Catégories rapides */}
+      <View style={styles.quickCategoriesSection}>
+        <Text style={styles.sectionTitle}>Catégories populaires</Text>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickCategoriesScroll}
+        >
+          {CATEGORIES.filter(c => c.value !== '').slice(0, 6).map((cat) => (
+            <TouchableOpacity
+              key={cat.value}
+              style={[
+                styles.quickCategoryCard,
+                selectedCategorie === cat.value && styles.quickCategoryCardSelected,
+              ]}
+              onPress={() => setSelectedCategorie(cat.value)}
+            >
+              <View style={styles.categoryIcon}>
+                <Ionicons 
+                  name={getCategoryIcon(cat.value)} 
+                  size={28} 
+                  color={selectedCategorie === cat.value ? '#fff' : '#5C6BC0'} 
+                />
+              </View>
+              <Text style={[
+                styles.quickCategoryText,
+                selectedCategorie === cat.value && styles.quickCategoryTextSelected,
+              ]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={20} color="#999" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher un photographe..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#999"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#999" />
-            </TouchableOpacity>
-          )}
-        </View>
-
+      {/* Filtres avancés */}
+      <View style={styles.filtersBar}>
         <TouchableOpacity
-          style={styles.filterButton}
+          style={styles.filterButtonNew}
           onPress={() => setShowFilters(!showFilters)}
         >
           <Ionicons
-            name={showFilters ? 'filter' : 'filter-outline'}
+            name={showFilters ? 'options' : 'options-outline'}
             size={20}
-            color={showFilters ? '#5C6BC0' : '#666'}
+            color="#fff"
           />
+          <Text style={styles.filterButtonText}>Filtres</Text>
         </TouchableOpacity>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortOptionsScroll}>
+          {SORT_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[styles.sortChip, sortBy === option.value && styles.sortChipSelected]}
+              onPress={() => setSortBy(option.value)}
+            >
+              <Text style={[styles.sortChipText, sortBy === option.value && styles.sortChipTextSelected]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {showFilters && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
-          <View style={styles.filtersContainer}>
-            <Text style={styles.filterLabel}>Catégorie :</Text>
-            <View style={styles.filterChips}>
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat.value}
-                  style={[
-                    styles.filterChip,
-                    selectedCategorie === cat.value && styles.filterChipSelected,
-                  ]}
-                  onPress={() => setSelectedCategorie(cat.value)}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      selectedCategorie === cat.value && styles.filterChipTextSelected,
-                    ]}
-                  >
-                    {cat.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.filterLabel}>Trier par :</Text>
-            <View style={styles.filterChips}>
-              {SORT_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[styles.filterChip, sortBy === option.value && styles.filterChipSelected]}
-                  onPress={() => setSortBy(option.value)}
-                >
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      sortBy === option.value && styles.filterChipTextSelected,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.filterLabel}>Budget max (€) :</Text>
-            <TextInput
-              style={styles.budgetInput}
-              placeholder="Ex: 800"
-              value={budgetMax}
-              onChangeText={setBudgetMax}
-              keyboardType="numeric"
-              placeholderTextColor="#999"
-            />
-          </View>
-        </ScrollView>
+        <View style={styles.advancedFilters}>
+          <Text style={styles.filterLabel}>Budget max (€)</Text>
+          <TextInput
+            style={styles.budgetInput}
+            placeholder="Ex: 800"
+            value={budgetMax}
+            onChangeText={setBudgetMax}
+            keyboardType="numeric"
+            placeholderTextColor="#999"
+          />
+        </View>
       )}
 
       <Text style={styles.resultCount}>
@@ -344,13 +382,61 @@ export default function SearchPhotographes() {
       </Text>
 
       {photographes.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="camera-outline" size={64} color="#ccc" />
+        <ScrollView contentContainerStyle={styles.emptyContainer}>
+          <View style={styles.emptyIllustration}>
+            <Ionicons name="camera-outline" size={80} color="#E8EAF6" />
+          </View>
           <Text style={styles.emptyTitle}>Aucun photographe trouvé</Text>
           <Text style={styles.emptyText}>
-            Essayez de modifier vos critères de recherche
+            {selectedCategorie 
+              ? `Aucun photographe disponible pour la catégorie "${selectedCategorie}"`
+              : "Essayez de modifier vos critères de recherche"
+            }
           </Text>
-        </View>
+          
+          {/* Guide rapide */}
+          <View style={styles.guideSection}>
+            <Text style={styles.guideTitle}>Comment ça marche ?</Text>
+            <View style={styles.guideSteps}>
+              <View style={styles.guideStep}>
+                <View style={styles.guideStepNumber}>
+                  <Text style={styles.guideStepNumberText}>1</Text>
+                </View>
+                <View style={styles.guideStepContent}>
+                  <Text style={styles.guideStepTitle}>Recherchez</Text>
+                  <Text style={styles.guideStepText}>Parcourez les profils de photographes</Text>
+                </View>
+              </View>
+              <View style={styles.guideStep}>
+                <View style={styles.guideStepNumber}>
+                  <Text style={styles.guideStepNumberText}>2</Text>
+                </View>
+                <View style={styles.guideStepContent}>
+                  <Text style={styles.guideStepTitle}>Contactez</Text>
+                  <Text style={styles.guideStepText}>Discutez de votre projet</Text>
+                </View>
+              </View>
+              <View style={styles.guideStep}>
+                <View style={styles.guideStepNumber}>
+                  <Text style={styles.guideStepNumberText}>3</Text>
+                </View>
+                <View style={styles.guideStepContent}>
+                  <Text style={styles.guideStepTitle}>Réservez</Text>
+                  <Text style={styles.guideStepText}>Confirmez votre prestation</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          {selectedCategorie && (
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={() => setSelectedCategorie('')}
+            >
+              <Text style={styles.resetButtonText}>Afficher tous les photographes</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       ) : (
         <FlatList
           data={photographes}
@@ -369,126 +455,196 @@ export default function SearchPhotographes() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
+    paddingBottom: 70,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  
+  // Header avec gradient
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  headerContentWrapper: {
+    gap: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
   },
-  searchContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  searchBar: {
-    flex: 1,
+  searchBarHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    marginRight: 12,
+    paddingHorizontal: 16,
+    height: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: '#333',
-    paddingVertical: 10,
     marginLeft: 8,
   },
-  filterButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
+  
+  // Catégories rapides
+  quickCategoriesSection: {
+    backgroundColor: '#fff',
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  filtersScroll: {
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  quickCategoriesScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  quickCategoryCard: {
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    padding: 16,
+    marginRight: 12,
+    minWidth: 100,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  quickCategoryCardSelected: {
+    backgroundColor: '#130183',
+    borderColor: '#130183',
+  },
+  categoryIcon: {
+    marginBottom: 8,
+  },
+  quickCategoryText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+  },
+  quickCategoryTextSelected: {
+    color: '#fff',
+  },
+  
+  // Filtres
+  filtersBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#f0f0f0',
+    gap: 12,
   },
-  filtersContainer: {
-    padding: 16,
+  filterButtonNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#130183',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  filterButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sortOptionsScroll: {
+    flex: 1,
+  },
+  sortChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+  },
+  sortChipSelected: {
+    backgroundColor: '#E8EAF6',
+  },
+  sortChipText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  sortChipTextSelected: {
+    color: '#130183',
+    fontWeight: '700',
+  },
+  advancedFilters: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   filterLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
     marginBottom: 8,
-    marginTop: 8,
-  },
-  filterChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  filterChipSelected: {
-    backgroundColor: '#5C6BC0',
-    borderColor: '#5C6BC0',
-  },
-  filterChipText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  filterChipTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
   },
   budgetInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    padding: 14,
     fontSize: 16,
     color: '#333',
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    width: 150,
   },
   resultCount: {
     fontSize: 14,
     color: '#666',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: '#fff',
+    fontWeight: '500',
   },
+  
+  // Liste
   listContent: {
     padding: 16,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
-    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -499,6 +655,8 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#f0f0f0',
   },
   headerContent: {
     flex: 1,
@@ -527,7 +685,7 @@ const styles = StyleSheet.create({
   },
   portfolioImage: {
     width: '100%',
-    height: 200,
+    height: 220,
     resizeMode: 'cover',
   },
   bio: {
@@ -545,9 +703,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   specialisationChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     backgroundColor: '#E3F2FD',
     marginRight: 6,
     marginBottom: 6,
@@ -576,11 +734,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#5C6BC0',
-    padding: 12,
+    backgroundColor: '#130183',
+    padding: 14,
     margin: 16,
     marginTop: 8,
     borderRadius: 12,
+    shadowColor: '#130183',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   contactButtonText: {
     color: '#fff',
@@ -588,22 +751,109 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
+  
+  // Empty state amélioré
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
   },
+  emptyIllustration: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
   emptyTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  
+  // Guide
+  guideSection: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    marginTop: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  guideTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#999',
+    marginBottom: 20,
     textAlign: 'center',
-    marginTop: 8,
+  },
+  guideSteps: {
+    gap: 16,
+  },
+  guideStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  guideStepNumber: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#130183',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guideStepNumberText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  guideStepContent: {
+    flex: 1,
+  },
+  guideStepTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  guideStepText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  resetButton: {
+    backgroundColor: '#130183',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 24,
+    shadowColor: '#130183',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  resetButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

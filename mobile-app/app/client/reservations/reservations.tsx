@@ -22,15 +22,15 @@ const COLORS = {
 
 interface Reservation {
   id: string;
-  annonce_id: string;
-  annonce_titre: string;
-  prestataire_id: string;
-  prestataire_nom: string;
+  package_id: string;
+  package_titre: string;
+  photographe_id: string;
+  photographe_nom: string;
   date: string;
   heure: string;
   lieu: string;
   montant: number;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  statut: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   created_at: string;
   notes?: string;
 }
@@ -57,18 +57,19 @@ export default function ReservationsParticulier() {
       .from('reservations')
       .select(`
         id,
-        annonce_id,
-        prestataire_id,
+        package_id,
+        photographe_id,
         date,
-        endroit,
-        montant,
-        status,
+        heure_debut,
+        lieu,
+        montant_total,
+        statut,
         created_at,
-        commentaire,
-        annonces (titre),
-        profiles!reservations_prestataire_id_fkey (nom)
+        notes_client,
+        packages_types!reservations_package_id_fkey (titre),
+        profiles!reservations_photographe_id_fkey (nom)
       `)
-      .eq('particulier_id', user.id)
+      .eq('client_id', user.id)
       .order('date', { ascending: false });
 
     console.log('📅 Reservations fetched:', data?.length || 0, error);
@@ -77,21 +78,21 @@ export default function ReservationsParticulier() {
       const formattedData = data.map((r: any) => {
         const dateObj = new Date(r.date);
         const dateStr = dateObj.toLocaleDateString('fr-FR');
-        const heureStr = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const heureStr = r.heure_debut || '00:00';
         
         return {
           id: r.id,
-          annonce_id: r.annonce_id,
-          annonce_titre: Array.isArray(r.annonces) ? r.annonces[0]?.titre : r.annonces?.titre || 'Annonce',
-          prestataire_id: r.prestataire_id,
-          prestataire_nom: Array.isArray(r.profiles) ? r.profiles[0]?.nom : r.profiles?.nom || 'Prestataire',
+          package_id: r.package_id,
+          package_titre: Array.isArray(r.packages_types) ? r.packages_types[0]?.titre : r.packages_types?.titre || 'Package',
+          photographe_id: r.photographe_id,
+          photographe_nom: Array.isArray(r.profiles) ? r.profiles[0]?.nom : r.profiles?.nom || 'Photographe',
           date: dateStr,
           heure: heureStr,
-          lieu: r.endroit || '',
-          montant: r.montant,
-          status: r.status,
+          lieu: r.lieu || '',
+          montant: r.montant_total,
+          statut: r.statut,
           created_at: r.created_at,
-          notes: r.commentaire
+          notes: r.notes_client
         };
       });
       setReservations(formattedData);
@@ -109,7 +110,7 @@ export default function ReservationsParticulier() {
   const handleCancelReservation = (reservation: Reservation) => {
     Alert.alert(
       'Annuler la réservation',
-      `Êtes-vous sûr de vouloir annuler votre réservation pour "${reservation.annonce_titre}" ?`,
+      `Êtes-vous sûr de vouloir annuler votre réservation pour "${reservation.package_titre}" ?`,
       [
         { text: 'Non', style: 'cancel' },
         {
@@ -118,7 +119,7 @@ export default function ReservationsParticulier() {
           onPress: async () => {
             const { error } = await supabase
               .from('reservations')
-              .update({ status: 'cancelled' })
+              .update({ statut: 'cancelled' })
               .eq('id', reservation.id);
 
             if (error) {
@@ -134,7 +135,7 @@ export default function ReservationsParticulier() {
   };
 
   const handleContactPrestataire = (reservation: Reservation) => {
-    router.push('/particuliers/messages');
+    router.push('/shared/messages/messages-list' as any);
   };
 
   const getStatusInfo = (status: string) => {
@@ -166,7 +167,7 @@ export default function ReservationsParticulier() {
 
   const filteredReservations = filter === 'all' 
     ? reservations 
-    : reservations.filter(r => r.status === filter);
+    : reservations.filter(r => r.statut === filter);
 
   if (loading) {
     return (
@@ -217,7 +218,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('pending')}
             >
               <Text style={[styles.filterChipText, filter === 'pending' && styles.filterChipTextActive]}>
-                En attente ({reservations.filter(r => r.status === 'pending').length})
+                En attente ({reservations.filter(r => r.statut === 'pending').length})
               </Text>
             </TouchableOpacity>
 
@@ -226,7 +227,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('confirmed')}
             >
               <Text style={[styles.filterChipText, filter === 'confirmed' && styles.filterChipTextActive]}>
-                Confirmées ({reservations.filter(r => r.status === 'confirmed').length})
+                Confirmées ({reservations.filter(r => r.statut === 'confirmed').length})
               </Text>
             </TouchableOpacity>
 
@@ -235,7 +236,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('completed')}
             >
               <Text style={[styles.filterChipText, filter === 'completed' && styles.filterChipTextActive]}>
-                Terminées ({reservations.filter(r => r.status === 'completed').length})
+                Terminées ({reservations.filter(r => r.statut === 'completed').length})
               </Text>
             </TouchableOpacity>
 
@@ -244,7 +245,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('cancelled')}
             >
               <Text style={[styles.filterChipText, filter === 'cancelled' && styles.filterChipTextActive]}>
-                Annulées ({reservations.filter(r => r.status === 'cancelled').length})
+                Annulées ({reservations.filter(r => r.statut === 'cancelled').length})
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -270,7 +271,7 @@ export default function ReservationsParticulier() {
         ) : (
           <View style={styles.reservationsList}>
             {filteredReservations.map((reservation) => {
-              const statusInfo = getStatusInfo(reservation.status);
+              const statusInfo = getStatusInfo(reservation.statut);
               return (
                 <View key={reservation.id} style={styles.reservationCard}>
                   {/* Status badge */}
@@ -280,12 +281,12 @@ export default function ReservationsParticulier() {
                   </View>
 
                   {/* Titre */}
-                  <Text style={styles.reservationTitle}>{reservation.annonce_titre}</Text>
+                  <Text style={styles.reservationTitle}>{reservation.package_titre}</Text>
 
                   {/* Infos principales */}
                   <View style={styles.infoRow}>
                     <Ionicons name="person-outline" size={18} color={COLORS.primary} />
-                    <Text style={styles.infoText}>{reservation.prestataire_nom}</Text>
+                    <Text style={styles.infoText}>{reservation.photographe_nom}</Text>
                   </View>
 
                   <View style={styles.infoRow}>
@@ -323,7 +324,7 @@ export default function ReservationsParticulier() {
                       <Text style={styles.actionButtonSecondaryText}>Contacter</Text>
                     </TouchableOpacity>
 
-                    {(reservation.status === 'pending' || reservation.status === 'confirmed') && (
+                    {(reservation.statut === 'pending' || reservation.statut === 'confirmed') && (
                       <TouchableOpacity 
                         style={styles.actionButtonDanger}
                         onPress={() => handleCancelReservation(reservation)}

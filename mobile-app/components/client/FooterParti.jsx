@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabaseClient';
-import { ShootyLogoSimple } from '@/components/ui/ShootyLogo';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -15,86 +15,95 @@ const COLORS = {
 };
 
 export default function FooterParti() {
-  const [profile, setProfile] = useState(null);
-  const [nbUnread, setNbUnread] = useState(0);
-  const [nbNotifications, setNbNotifications] = useState(0);
   const router = useRouter();
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
+  const { profileId, user } = useAuth();
+  const [stats, setStats] = useState({
+    messages: 0,
+    notifications: 0
+  });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("nom, photos")
-        .eq("id", user.id)
-        .single();
-      setProfile(profileData);
-      
-      // Messages non lus
-      const { data: unreadConvs } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("client_id", user.id)
-        .eq("lu", false);
-      setNbUnread(unreadConvs ? unreadConvs.length : 0);
+    if (!profileId) return;
 
-      // Notifications non lues
-      const { data: unreadNotifs } = await supabase
-        .from("notifications")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("lu", false);
-      setNbNotifications(unreadNotifs ? unreadNotifs.length : 0);
+    const fetchStats = async () => {
+      // Compter les messages non lus
+      const { count: unreadMessages } = await supabase
+        .from('conversations')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', profileId)
+        .eq('lu_client', false);
+
+      // Compter les notifications non lues
+      const { count: unreadNotifs } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user?.id)
+        .eq('lu', false);
+
+      setStats({
+        messages: unreadMessages || 0,
+        notifications: unreadNotifs || 0
+      });
     };
-    checkAuth();
-  }, []);
 
-  const getInitials = (name) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
-  };
+    fetchStats();
+
+    // Real-time subscriptions
+    const conversationsChannel = supabase
+      .channel('conversations-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'conversations', filter: `client_id=eq.${profileId}` },
+        () => fetchStats()
+      )
+      .subscribe();
+
+    const notificationsChannel = supabase
+      .channel('notifications-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user?.id}` },
+        () => fetchStats()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(conversationsChannel);
+      supabase.removeChannel(notificationsChannel);
+    };
+  }, [profileId, user?.id]);
 
   return (
     <View style={styles.footer}>
       <View style={styles.center}>
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/menu')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/client/menu')}>
           <Ionicons name="grid-outline" size={22} color={COLORS.accent} />
           <Text style={styles.label}>Menu</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/messages')}>
+        
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/shared/messages/messages-list')}>
           <View style={styles.tabContent}>
             <Ionicons name="chatbubble-outline" size={22} color={COLORS.accent} />
-            {nbUnread > 0 && (
+            {stats.messages > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{nbUnread}</Text>
+                <Text style={styles.badgeText}>{stats.messages}</Text>
               </View>
             )}
           </View>
           <Text style={styles.label}>Messages</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/notification')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/shared/avis/notifications')}>
           <View style={styles.tabContent}>
             <Ionicons name="notifications-outline" size={22} color={COLORS.accent} />
-            {nbNotifications > 0 && (
+            {stats.notifications > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{nbNotifications}</Text>
+                <Text style={styles.badgeText}>{stats.notifications}</Text>
               </View>
             )}
           </View>
           <Text style={styles.label}>Notifs</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/particuliers/profil')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/client/profil/profil')}>
           <Ionicons name="person-outline" size={22} color={COLORS.accent} />
           <Text style={styles.label}>Profil</Text>
         </TouchableOpacity>
@@ -148,16 +157,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
     opacity: 0.7,
-  },
-  logoutBtn: {
-    alignItems: 'center',
-    padding: 6,
-  },
-  logoutText: {
-    fontSize: 10,
-    color: COLORS.error,
-    fontWeight: '600',
-    marginTop: 2,
   },
   badge: {
     position: 'absolute',

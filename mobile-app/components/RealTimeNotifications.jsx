@@ -14,26 +14,6 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
   const [toastAnimation] = useState(new Animated.Value(0))
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Fonction pour convertir la durée en heures selon l'unité
-  const convertDurationToHours = (duree, unit_tarif) => {
-    if (!duree || !unit_tarif) return 0;
-    
-    switch (unit_tarif) {
-      case 'heure':
-        return duree;
-      case 'demi_journee':
-        return duree * 4;
-      case 'journee':
-        return duree * 8;
-      case 'seance':
-        return duree * 24;
-      case 'forfait':
-        return duree * 24;
-      default:
-        return duree; // Par défaut, on considère que c'est en heures
-    }
-  };
-
   // Fonction pour vérifier et mettre à jour les réservations expirées
   const checkAndUpdateExpiredReservations = async () => {
     try {
@@ -42,10 +22,10 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
       // Récupérer toutes les réservations confirmées qui ne sont pas encore terminées
       const { data: reservations, error } = await supabase
         .from('reservations')
-        .select('id, date, duree, unit_tarif, status, particulier_id')
-        .in('status', ['confirmed', 'paid'])
+        .select('id, date, duree_heures, statut, client_id')
+        .eq('statut', 'confirmed')
         .not('date', 'is', null)
-        .not('duree', 'is', null);
+        .not('duree_heures', 'is', null);
 
       if (error) {
         console.error('❌ Erreur lors de la récupération des réservations:', error);
@@ -62,7 +42,7 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
 
       reservations.forEach(reservation => {
         const startDate = new Date(reservation.date);
-        const durationInHours = convertDurationToHours(reservation.duree, reservation.unit_tarif);
+        const durationInHours = reservation.duree_heures || 0;
         const endDate = new Date(startDate.getTime() + (durationInHours * 60 * 60 * 1000));
 
         console.log(`🔍 Réservation ${reservation.id}:`, {
@@ -84,9 +64,9 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
         // Mettre à jour le statut des réservations expirées
         const { data: updatedReservations, error: updateError } = await supabase
           .from('reservations')
-          .update({ status: 'finished' })
+          .update({ statut: 'completed' })
           .in('id', expiredReservations.map(r => r.id))
-          .select('id, particulier_id');
+          .select('id, client_id');
 
         if (updateError) {
           console.error('❌ Erreur lors de la mise à jour des réservations:', updateError);
@@ -98,16 +78,15 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
             // Récupérer les informations complètes des réservations pour la notification
             const { data: fullReservations } = await supabase
               .from('reservations')
-              .select('id, particulier_id, annonce_id')
+              .select('id, client_id')
               .in('id', updatedReservations.map(r => r.id));
 
             const notifications = fullReservations.map(reservation => ({
-              user_id: reservation.particulier_id,
+              user_id: reservation.client_id,
               type: 'avis',
               contenu: 'Félicitations ! Votre réservation vient de se terminer. Partagez votre expérience avec la communauté en donnant votre avis sur cette prestation.',
               lu: false,
               reservation_id: reservation.id,
-              annonce_id: reservation.annonce_id,
               created_at: new Date().toISOString()
             }));
 

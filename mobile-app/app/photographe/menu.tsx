@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, SafeAreaView, Modal } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'expo-router';
@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import FooterPresta from '@/components/photographe/FooterPresta';
 import RealTimeNotifications from '@/components/RealTimeNotifications';
+import { useAuth } from '@/contexts/AuthContext';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -35,7 +36,9 @@ export default function MenuPrestataire() {
     tauxAcceptation: 0
   });
   const [notificationCount, setNotificationCount] = useState(0);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
   const router = useRouter();
+  const { availableProfiles, switchProfile, profileId } = useAuth();
 
   useEffect(() => {
     fetchData();
@@ -108,6 +111,20 @@ export default function MenuPrestataire() {
     );
   }
 
+  const handleSwitchProfile = async (newProfileId: string) => {
+    await switchProfile(newProfileId);
+    setShowSwitchModal(false);
+    
+    // Rediriger vers la page appropriée
+    const newProfile = availableProfiles.find(p => p.id === newProfileId);
+    if (newProfile?.role === 'particulier') {
+      router.replace('/client/search/search');
+    }
+  };
+
+  // Vérifier si l'utilisateur a plusieurs profils
+  const hasMultipleProfiles = availableProfiles.length > 1;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -118,9 +135,22 @@ export default function MenuPrestataire() {
           end={{ x: 1, y: 0 }}
           style={styles.header}
         >
-          <Text style={styles.greeting}>Tableau de bord</Text>
-          <Text style={styles.userName}>{profile?.nom || 'Prestataire'}</Text>
-          <Text style={styles.subtitle}>Gérez votre activité en un clin d'œil</Text>
+          <View style={styles.headerTop}>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.greeting}>Tableau de bord</Text>
+              <Text style={styles.userName}>{profile?.nom || 'Prestataire'}</Text>
+              <Text style={styles.subtitle}>Gérez votre activité en un clin d'œil</Text>
+            </View>
+            {hasMultipleProfiles && (
+              <TouchableOpacity 
+                style={styles.switchButton}
+                onPress={() => setShowSwitchModal(true)}
+              >
+                <Ionicons name="swap-horizontal" size={20} color="white" />
+                <Text style={styles.switchButtonText}>Passer en mode Client</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </LinearGradient>
 
         {/* Statistiques en cartes */}
@@ -365,6 +395,47 @@ export default function MenuPrestataire() {
         triggerNotification={null}
         onNotificationCountChange={setNotificationCount}
       />
+
+      {/* Modal de confirmation de changement de profil */}
+      <Modal
+        visible={showSwitchModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSwitchModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="swap-horizontal" size={32} color={COLORS.accent} />
+              <Text style={styles.modalTitle}>Changer de profil</Text>
+            </View>
+            <Text style={styles.modalText}>
+              Voulez-vous passer en mode Client ?
+            </Text>
+            <Text style={styles.modalSubtext}>
+              Vous pourrez revenir en mode Photographe à tout moment.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => setShowSwitchModal(false)}
+              >
+                <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={() => {
+                  const clientProfile = availableProfiles.find(p => p.role === 'particulier');
+                  if (clientProfile) handleSwitchProfile(clientProfile.id);
+                }}
+              >
+                <Ionicons name="checkmark" size={20} color="white" style={{ marginRight: 6 }} />
+                <Text style={styles.modalButtonTextConfirm}>Confirmer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -377,9 +448,114 @@ const styles = StyleSheet.create({
 
   // Header
   header: { padding: 24, paddingTop: 40, paddingBottom: 32 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  headerTextContainer: { flex: 1 },
   greeting: { fontSize: 16, color: 'rgba(255,255,255,0.9)', marginBottom: 4 },
   userName: { fontSize: 32, fontWeight: 'bold', color: 'white', marginBottom: 8 },
   subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)' },
+  
+  // Switch Button
+  switchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    gap: 8
+  },
+  switchButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    flex: 1
+  },
+  modalText: {
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: 8,
+    lineHeight: 22
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginBottom: 24,
+    lineHeight: 20
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  modalButtonCancel: {
+    backgroundColor: COLORS.backgroundLight,
+    borderWidth: 2,
+    borderColor: COLORS.border
+  },
+  modalButtonConfirm: {
+    backgroundColor: COLORS.accent
+  },
+  modalButtonTextCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text
+  },
+  modalButtonTextConfirm: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white'
+  },
 
   // Stats
   statsSection: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 12 },

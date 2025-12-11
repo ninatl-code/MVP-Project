@@ -1,33 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
 import LoadingScreen from './loading';
 
 export default function Index() {
   const router = useRouter();
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading, activeRole, profileId } = useAuth();
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     const handleRedirect = async () => {
       if (!loading && !redirecting) {
-        if (isAuthenticated && user) {
+        if (isAuthenticated && activeRole && profileId) {
           setRedirecting(true);
           
-          // Récupérer le rôle de l'utilisateur depuis le profil
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          
-          // Rediriger vers le menu spécifique au rôle
-          if (profile?.role === 'prestataire') {
+          // Rediriger vers le menu spécifique au rôle actif
+          if (activeRole === 'photographe') {
             router.replace('/photographe/menu');
           } else {
-            // Pour les clients, rediriger vers la page de recherche
-            router.replace('/client/search/search');
+            // Pour les clients, rediriger vers le tableau de bord
+            router.replace('/client/menu');
           }
         } else if (!loading) {
           router.replace('/auth/login');
@@ -36,7 +28,7 @@ export default function Index() {
     };
 
     handleRedirect();
-  }, [isAuthenticated, loading, user]);
+  }, [isAuthenticated, loading, activeRole, profileId]);
 
   return <LoadingScreen />;
 }

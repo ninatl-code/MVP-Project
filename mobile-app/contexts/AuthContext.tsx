@@ -3,13 +3,23 @@ import { supabase } from '@/lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Session } from '@supabase/supabase-js';
 
+interface Profile {
+  id: string;
+  role: string;
+  nom: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  profileId: string | null;
+  activeRole: string | null;
+  availableProfiles: Profile[];
   signUp: (email: string, password: string, userData: any) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
+  switchProfile: (profileId: string) => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -31,6 +41,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [activeRole, setActiveRole] = useState<string | null>(null);
+  const [availableProfiles, setAvailableProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
     // Récupérer la session existante
@@ -62,11 +75,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Récupérer tous les profils de l'utilisateur via auth_user_id
+          // Un utilisateur peut avoir 1 ou 2 profils liés au même auth_user_id
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, role, nom')
+            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
+          
+          if (profiles && profiles.length > 0) {
+            setAvailableProfiles(profiles);
+            
+            // Vérifier s'il y a un profil actif sauvegardé
+            const savedProfileId = await AsyncStorage.getItem('activeProfileId');
+            
+            if (savedProfileId && profiles.find(p => p.id === savedProfileId)) {
+              // Utiliser le profil sauvegardé
+              const profile = profiles.find(p => p.id === savedProfileId);
+              setProfileId(savedProfileId);
+              setActiveRole(profile?.role || null);
+            } else {
+              // Par défaut : photographe si disponible, sinon le premier profil
+              const defaultProfile = profiles.find(p => p.role === 'photographe') || profiles[0];
+              setProfileId(defaultProfile.id);
+              setActiveRole(defaultProfile.role);
+              await AsyncStorage.setItem('activeProfileId', defaultProfile.id);
+            }
+          }
+          
           // Sauvegarder les infos utilisateur pour l'auto-login
           await AsyncStorage.setItem('userSession', JSON.stringify(session));
         } else {
           // Nettoyer le cache à la déconnexion
           await AsyncStorage.removeItem('userSession');
+          await AsyncStorage.removeItem('activeProfileId');
+          setProfileId(null);
+          setActiveRole(null);
+          setAvailableProfiles([]);
         }
         
         setLoading(false);
@@ -123,13 +167,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const switchProfile = async (newProfileId: string) => {
+    try {
+      const profile = availableProfiles.find(p => p.id === newProfileId);
+      if (profile) {
+        setProfileId(newProfileId);
+        setActiveRole(profile.role);
+        await AsyncStorage.setItem('activeProfileId', newProfileId);
+      }
+    } catch (error) {
+      console.error('Switch profile error:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
     loading,
+    profileId,
+    activeRole,
+    availableProfiles,
     signUp,
     signIn,
     signOut,
+    switchProfile,
     isAuthenticated: !!user && !!session,
   };
 

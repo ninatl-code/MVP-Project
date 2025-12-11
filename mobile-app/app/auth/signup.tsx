@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StatusBar } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StatusBar, Modal } from 'react-native'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter, Link } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { Picker } from '@react-native-picker/picker'
 
 const COLORS = {
   primary: '#E8EAF6',
@@ -19,11 +18,22 @@ export default function Signup() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nom, setNom] = useState('')
-  const [role, setRole] = useState('')
+  const [roles, setRoles] = useState<string[]>([])
   const [telephone, setTelephone] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  const toggleRole = (roleValue: string) => {
+    setRoles(prevRoles => {
+      if (prevRoles.includes(roleValue)) {
+        return prevRoles.filter(r => r !== roleValue)
+      } else {
+        return [...prevRoles, roleValue]
+      }
+    })
+  }
 
   const handleSignup = async () => {
     setErrorMsg('')
@@ -33,34 +43,90 @@ export default function Signup() {
       return
     }
 
-    if (!role) {
-      setErrorMsg('Veuillez sélectionner votre rôle')
+    if (roles.length === 0) {
+      setErrorMsg('Veuillez sélectionner au moins un profil')
       return
     }
 
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // 1. Créer le compte utilisateur avec le rôle principal
+      const primaryRole = roles.includes('particulier') ? 'particulier' : roles[0]
+      
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             nom,
-            role,
             telephone
           }
         }
       })
 
-      if (error) {
-        setErrorMsg(error.message)
-      } else {
-        alert('Inscription réussie ! Vérifiez votre mail pour confirmer votre compte.')
-        router.push('/auth/login')
+      if (authError) {
+        setErrorMsg(authError.message)
+        return
       }
+
+      // 2. Si l'utilisateur a choisi les 2 rôles, créer 2 profils
+      if (authData.user && roles.length === 2) {
+        const userId = authData.user.id
+
+        // Créer le profil photographe (UUID auto-généré par Supabase)
+        const { error: prestaError } = await supabase
+          .from('profiles')
+          .insert({
+            auth_user_id: userId,
+            nom,
+            email,
+            telephone,
+            role: 'photographe'
+          })
+
+        if (prestaError) {
+          console.error('Erreur création profil photographe:', prestaError)
+        }
+
+        // Créer le profil client (UUID auto-généré par Supabase)
+        const { error: clientError } = await supabase
+          .from('profiles')
+          .insert({
+            auth_user_id: userId,
+            nom,
+            email,
+            telephone,
+            role: 'particulier'
+          })
+
+        if (clientError) {
+          console.error('Erreur création profil client:', clientError)
+        }
+      } else if (authData.user) {
+        // 3. Si un seul rôle, créer un seul profil (avec id = auth_user_id pour compatibilité)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            auth_user_id: authData.user.id,
+            nom,
+            email,
+            telephone,
+            role: primaryRole
+          })
+
+        if (profileError) {
+          console.error('Erreur création profil:', profileError)
+        }
+      }
+
+      // Afficher le modal de succès
+      setShowSuccessModal(true)
+
     } catch (err) {
       setErrorMsg('Une erreur inattendue s\'est produite')
+      console.error('Erreur signup:', err)
     } finally {
       setLoading(false)
     }
@@ -156,20 +222,54 @@ export default function Signup() {
             </View>
           </View>
 
-          {/* Role Picker */}
+          {/* Role Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Je suis :</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={role}
-                onValueChange={setRole}
-                style={styles.picker}
+            <Text style={styles.label}>Je suis : (vous pouvez sélectionner les deux)</Text>
+            <View style={styles.roleSelector}>
+              <TouchableOpacity
+                style={[styles.roleButton, roles.includes('photographe') && styles.roleButtonActive]}
+                onPress={() => toggleRole('photographe')}
               >
-                <Picker.Item label="Sélectionner..." value="" />
-                <Picker.Item label="Photographe" value="prestataire" />
-                <Picker.Item label="Client" value="particulier" />
-              </Picker>
+                <View style={[styles.roleIconContainer, roles.includes('photographe') && styles.roleIconContainerActive]}>
+                  <Ionicons 
+                    name="camera-outline" 
+                    size={24} 
+                    color={roles.includes('photographe') ? '#fff' : COLORS.accent} 
+                  />
+                </View>
+                <Text style={[styles.roleButtonText, roles.includes('photographe') && styles.roleButtonTextActive]}>
+                  Photographe
+                </Text>
+                {roles.includes('photographe') && (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.accent} style={styles.roleCheckIcon} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.roleButton, roles.includes('particulier') && styles.roleButtonActive]}
+                onPress={() => toggleRole('particulier')}
+              >
+                <View style={[styles.roleIconContainer, roles.includes('particulier') && styles.roleIconContainerActive]}>
+                  <Ionicons 
+                    name="person-outline" 
+                    size={24} 
+                    color={roles.includes('particulier') ? '#fff' : COLORS.accent} 
+                  />
+                </View>
+                <Text style={[styles.roleButtonText, roles.includes('particulier') && styles.roleButtonTextActive]}>
+                  Client
+                </Text>
+                {roles.includes('particulier') && (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.accent} style={styles.roleCheckIcon} />
+                )}
+              </TouchableOpacity>
             </View>
+            {roles.length === 2 && (
+              <View style={styles.bothRolesInfo}>
+                <Ionicons name="information-circle-outline" size={16} color={COLORS.success} />
+                <Text style={styles.bothRolesText}>Vous pourrez basculer entre vos deux profils dans l'app</Text>
+              </View>
+            )}
           </View>
 
           {/* Submit Button */}
@@ -199,6 +299,36 @@ export default function Signup() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowSuccessModal(false)
+          router.push('/auth/login')
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.successModal}>
+            <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
+            <Text style={styles.successTitle}>Inscription réussie !</Text>
+            <Text style={styles.successMessage}>
+              Vérifiez votre mail pour confirmer votre compte.
+            </Text>
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => {
+                setShowSuccessModal(false)
+                router.push('/auth/login')
+              }}
+            >
+              <Text style={styles.successButtonText}>Continuer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   )
 }
@@ -307,14 +437,67 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.text
   },
-  pickerWrapper: {
+  roleSelector: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  roleButton: {
+    flex: 1,
+    padding: 16,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    overflow: 'hidden'
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    position: 'relative'
   },
-  picker: {
-    height: 50
+  roleButtonActive: {
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.primary
+  },
+  roleIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8
+  },
+  roleIconContainerActive: {
+    backgroundColor: COLORS.accent
+  },
+  roleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginTop: 4
+  },
+  roleButtonTextActive: {
+    color: COLORS.accent
+  },
+  roleCheckIcon: {
+    position: 'absolute',
+    top: 8,
+    right: 8
+  },
+  bothRolesInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: COLORS.success + '15',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.success + '30'
+  },
+  bothRolesText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.success,
+    fontWeight: '500'
   },
   button: {
     width: '100%',
@@ -352,6 +535,58 @@ const styles = StyleSheet.create({
   footerLink: {
     fontSize: 14,
     color: COLORS.accent,
+    fontWeight: '600'
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  successModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  successMessage: {
+    fontSize: 15,
+    color: COLORS.text + 'CC',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24
+  },
+  successButton: {
+    width: '100%',
+    backgroundColor: COLORS.accent,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600'
   }
 });

@@ -23,14 +23,14 @@ const COLORS = {
 interface Reservation {
   id: string;
   date: string;
-  endroit?: string;
-  status: string;
-  montant: number;
-  commentaire?: string;
-  particulier_id: string;
-  annonce_id: string;
-  client?: { nom: string; email: string; telephone: string; photos: string };
-  annonces?: { titre: string };
+  lieu?: string;
+  statut: string;
+  montant_total: number;
+  notes_photographe?: string;
+  client_id: string;
+  package_id: string;
+  client?: { nom: string; email: string; telephone: string; avatar_url: string } | { nom: string; email: string; telephone: string; avatar_url: string }[];
+  packages_types?: { titre: string } | { titre: string }[];
   created_at: string;
 }
 
@@ -63,21 +63,21 @@ export default function ReservationsPrestataire() {
         .select(`
           id,
           date,
-          status,
-          montant,
-          endroit,
-          commentaire,
-          particulier_id,
-          annonce_id,
+          statut,
+          montant_total,
+          lieu,
+          notes_photographe,
+          client_id,
+          package_id,
           created_at,
-          client:profiles!particulier_id(nom, email, telephone, photos),
-          annonces(titre)
+          client:profiles!reservations_client_id_fkey(nom, email, telephone, avatar_url),
+          packages_types!reservations_package_id_fkey(titre)
         `)
-        .eq('prestataire_id', user.id)
+        .eq('photographe_id', user.id)
         .order('created_at', { ascending: false });
 
       if (filter !== 'all') {
-        query = query.eq('status', filter);
+        query = query.eq('statut', filter);
       }
 
       const { data, error } = await query;
@@ -113,7 +113,7 @@ export default function ReservationsPrestataire() {
             setActionLoading(reservationId);
             const { error } = await supabase
               .from('reservations')
-              .update({ status: 'confirmed' })
+              .update({ statut: 'confirmed' })
               .eq('id', reservationId);
 
             setActionLoading(null);
@@ -143,7 +143,7 @@ export default function ReservationsPrestataire() {
             setActionLoading(reservationId);
             const { error } = await supabase
               .from('reservations')
-              .update({ status: 'cancelled' })
+              .update({ statut: 'cancelled' })
               .eq('id', reservationId);
 
             setActionLoading(null);
@@ -172,7 +172,7 @@ export default function ReservationsPrestataire() {
             setActionLoading(reservationId);
             const { error } = await supabase
               .from('reservations')
-              .update({ status: 'completed' })
+              .update({ statut: 'completed' })
               .eq('id', reservationId);
 
             setActionLoading(null);
@@ -198,7 +198,7 @@ export default function ReservationsPrestataire() {
       `${profile.nom}\n\nEmail: ${profile.email}\nTél: ${profile.telephone}`,
       [
         { text: 'Fermer', style: 'cancel' },
-        { text: 'Envoyer un message', onPress: () => router.push('/prestataires/messages') }
+        { text: 'Envoyer un message', onPress: () => router.push('/shared/messages/messages-list' as any) }
       ]
     );
   };
@@ -305,22 +305,22 @@ export default function ReservationsPrestataire() {
         ) : (
           reservations.map((reservation) => {
             const profile = Array.isArray(reservation.client) ? reservation.client[0] : reservation.client;
-            const annonce = Array.isArray(reservation.annonces) ? reservation.annonces[0] : reservation.annonces;
+            const packageData = Array.isArray(reservation.packages_types) ? reservation.packages_types[0] : reservation.packages_types;
             
             return (
               <View key={reservation.id} style={styles.card}>
                 {/* Header */}
                 <View style={styles.cardHeader}>
                   <View style={styles.cardHeaderLeft}>
-                    <Text style={styles.cardTitle}>{annonce?.titre || 'Service'}</Text>
+                    <Text style={styles.cardTitle}>{packageData?.titre || 'Service'}</Text>
                     <View style={styles.clientRow}>
                       <Ionicons name="person-outline" size={16} color={COLORS.textLight} />
                       <Text style={styles.clientText}>{profile?.nom || 'Client'}</Text>
                     </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reservation.status) }]}>
-                    <Ionicons name={getStatusIcon(reservation.status)} size={14} color="#FFFFFF" />
-                    <Text style={styles.statusText}>{getStatusLabel(reservation.status)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(reservation.statut) }]}>
+                    <Ionicons name={getStatusIcon(reservation.statut)} size={14} color="#FFFFFF" />
+                    <Text style={styles.statusText}>{getStatusLabel(reservation.statut)}</Text>
                   </View>
                 </View>
 
@@ -338,22 +338,22 @@ export default function ReservationsPrestataire() {
                     </Text>
                   </View>
 
-                  {reservation.endroit && (
+                  {reservation.lieu && (
                     <View style={styles.detailRow}>
                       <Ionicons name="location-outline" size={18} color={COLORS.primary} />
-                      <Text style={styles.detailText} numberOfLines={2}>{reservation.endroit}</Text>
+                      <Text style={styles.detailText} numberOfLines={2}>{reservation.lieu}</Text>
                     </View>
                   )}
 
                   <View style={styles.detailRow}>
                     <Ionicons name="cash-outline" size={18} color={COLORS.success} />
-                    <Text style={[styles.detailText, styles.priceText]}>{reservation.montant}€</Text>
+                    <Text style={[styles.detailText, styles.priceText]}>{reservation.montant_total}€</Text>
                   </View>
 
-                  {reservation.commentaire && (
+                  {reservation.notes_photographe && (
                     <View style={styles.notesSection}>
                       <Text style={styles.notesLabel}>Message du client:</Text>
-                      <Text style={styles.notesText}>{reservation.commentaire}</Text>
+                      <Text style={styles.notesText}>{reservation.notes_photographe}</Text>
                     </View>
                   )}
                 </View>
@@ -368,7 +368,7 @@ export default function ReservationsPrestataire() {
                     <Text style={styles.actionBtnSecondaryText}>Contacter</Text>
                   </TouchableOpacity>
 
-                  {reservation.status === 'pending' && (
+                  {reservation.statut === 'pending' && (
                     <>
                       <TouchableOpacity
                         style={[styles.actionBtnPrimary, actionLoading === reservation.id && styles.actionBtnDisabled]}
@@ -395,7 +395,7 @@ export default function ReservationsPrestataire() {
                     </>
                   )}
 
-                  {reservation.status === 'confirmed' && (
+                  {reservation.statut === 'confirmed' && (
                     <TouchableOpacity
                       style={[styles.actionBtnPrimary, actionLoading === reservation.id && styles.actionBtnDisabled]}
                       onPress={() => handleComplete(reservation.id)}
