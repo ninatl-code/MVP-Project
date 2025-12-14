@@ -37,12 +37,56 @@ export default function MenuPrestataire() {
   });
   const [notificationCount, setNotificationCount] = useState(0);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(true);
+  const [missingSteps, setMissingSteps] = useState<string[]>([]);
   const router = useRouter();
   const { availableProfiles, switchProfile, profileId } = useAuth();
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  const checkProfileCompleteness = async (userId: string) => {
+    try {
+      const { data: profilPhoto, error } = await supabase
+        .from('profils_photographe')
+        .select('bio, specialisations, portfolio_photos, rayon_deplacement_km, tarifs_indicatifs')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erreur vérification profil:', error);
+        return;
+      }
+
+      const missing: string[] = [];
+
+      if (!profilPhoto) {
+        missing.push('Créer votre profil photographe');
+      } else {
+        if (!profilPhoto.bio || profilPhoto.bio.length < 50) {
+          missing.push('Compléter votre biographie (min. 50 caractères)');
+        }
+        if (!profilPhoto.specialisations || profilPhoto.specialisations.length === 0) {
+          missing.push('Sélectionner vos spécialisations');
+        }
+        if (!profilPhoto.portfolio_photos || profilPhoto.portfolio_photos.length < 3) {
+          missing.push('Ajouter au moins 3 photos à votre portfolio');
+        }
+        if (!profilPhoto.rayon_deplacement_km || profilPhoto.rayon_deplacement_km <= 0) {
+          missing.push('Définir votre rayon de déplacement');
+        }
+        if (!profilPhoto.tarifs_indicatifs || Object.keys(profilPhoto.tarifs_indicatifs).length === 0) {
+          missing.push('Renseigner vos tarifs indicatifs');
+        }
+      }
+
+      setProfileComplete(missing.length === 0);
+      setMissingSteps(missing);
+    } catch (error) {
+      console.error('Erreur checkProfileCompleteness:', error);
+    }
+  };
 
   const fetchData = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -53,13 +97,16 @@ export default function MenuPrestataire() {
 
     setUserId(authUser.id);
 
-    // Récupérer le profil
+    // Récupérer le profil + profil photographe
     const { data: profileData } = await supabase
       .from('profiles')
       .select('nom, photos')
       .eq('id', authUser.id)
       .single();
     setProfile(profileData);
+
+    // Vérifier profil photographe complet
+    await checkProfileCompleteness(authUser.id);
 
     // Charger les statistiques
     const [reservationsRes, devisRes, demandesRes, messagesRes] = await Promise.all([
@@ -153,6 +200,39 @@ export default function MenuPrestataire() {
           </View>
         </LinearGradient>
 
+        {/* Section profil incomplet */}
+        {!profileComplete && missingSteps.length > 0 && (
+          <LinearGradient
+            colors={['#FFF3CD', '#FFE8A3']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.warningCard}
+          >
+            <View style={styles.warningHeader}>
+              <Ionicons name="warning" size={24} color={COLORS.warning} />
+              <Text style={styles.warningTitle}>Profil incomplet</Text>
+            </View>
+            <Text style={styles.warningSubtitle}>
+              Complétez votre profil pour recevoir plus de demandes
+            </Text>
+            <View style={styles.missingSteps}>
+              {missingSteps.map((step, index) => (
+                <View key={index} style={styles.stepRow}>
+                  <Ionicons name="alert-circle-outline" size={16} color={COLORS.warning} />
+                  <Text style={styles.stepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={styles.completeButton}
+              onPress={() => router.push('/photographe/profil/profil')}
+            >
+              <Text style={styles.completeButtonText}>Compléter maintenant</Text>
+              <Ionicons name="arrow-forward" size={16} color={COLORS.warning} />
+            </TouchableOpacity>
+          </LinearGradient>
+        )}
+
         {/* Statistiques en cartes */}
         <View style={styles.statsSection}>
           <TouchableOpacity
@@ -179,7 +259,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#FEF3C7', borderColor: COLORS.warning }]}
-            onPress={() => router.push('/photographe/devis')}
+            onPress={() => router.push('/photographe/devis/devis-list' as any)}
           >
             <View style={styles.statIconContainer}>
               <Ionicons name="document-text" size={24} color={COLORS.warning} />
@@ -190,13 +270,13 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#EDE9FE', borderColor: COLORS.purple }]}
-            onPress={() => router.push('/prestataires/messages')}
+            onPress={() => router.push('/photographe/calendar/calendrier')}
           >
             <View style={styles.statIconContainer}>
-              <Ionicons name="chatbubbles" size={24} color={COLORS.purple} />
+              <Ionicons name="calendar-outline" size={24} color={COLORS.purple} />
             </View>
-            <Text style={styles.statValue}>{stats.messages}</Text>
-            <Text style={styles.statLabel}>Messages</Text>
+            <Text style={styles.statValue}>{stats.devis_acceptes}</Text>
+            <Text style={styles.statLabel}>Planning</Text>
           </TouchableOpacity>
         </View>
 
@@ -555,6 +635,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white'
+  },
+
+  // Warning Card (Profil incomplet)
+  warningCard: {
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: COLORS.warning,
+  },
+  warningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 10,
+  },
+  warningTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  warningSubtitle: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginBottom: 16,
+  },
+  missingSteps: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepText: {
+    fontSize: 14,
+    color: COLORS.text,
+    flex: 1,
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    gap: 8,
+    borderWidth: 2,
+    borderColor: COLORS.warning,
+  },
+  completeButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.warning,
   },
 
   // Stats

@@ -244,7 +244,17 @@ export default function PhotographeDemandeDetailScreen() {
 
       {demande.statut === 'ouverte' && (
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.devisButton} onPress={handleSendDevis}>
+          <TouchableOpacity 
+            style={styles.secondaryButton} 
+            onPress={() => router.push(`/shared/messages/messages-list?recipientId=${demande.client_id}` as any)}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color="#5C6BC0" />
+            <Text style={styles.secondaryButtonText}>Contacter le client</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.devisButton} 
+            onPress={() => router.push(`/photographe/devis/devis-create?demandeId=${demandeId}` as any)}
+          >
             <Ionicons name="document-text-outline" size={20} color="#fff" />
             <Text style={styles.devisButtonText}>Envoyer un devis</Text>
           </TouchableOpacity>
@@ -439,8 +449,28 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#5C6BC0',
+  },
+  secondaryButtonText: {
+    color: '#5C6BC0',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   devisButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -450,7 +480,7 @@ const styles = StyleSheet.create({
   },
   devisButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
   },

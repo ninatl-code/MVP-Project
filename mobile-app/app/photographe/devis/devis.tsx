@@ -28,6 +28,9 @@ interface Devis {
   montant?: number;
   comment_client: string;
   comment_presta?: string;
+  message_client?: string;
+  reponse_prestataire?: string;
+  valide_jusqu_a?: string;
   particulier_id: string;
   annonce_id: string;
   client?: { nom: string; email: string; telephone: string };
@@ -89,7 +92,13 @@ export default function DevisPrestataire() {
         console.error('Error fetching devis:', error);
       } else {
         console.log('Devis fetched:', data?.length || 0);
-        setDevisList(data || []);
+        // Transform client from array to object
+        const transformedData = (data || []).map(devis => ({
+          ...devis,
+          client: Array.isArray(devis.client) ? devis.client[0] : devis.client,
+          annonces: Array.isArray(devis.annonces) ? devis.annonces[0] : devis.annonces
+        }));
+        setDevisList(transformedData);
       }
     } catch (err) {
       console.error('Exception in fetchDevis:', err);
@@ -186,7 +195,7 @@ export default function DevisPrestataire() {
       `${profile.nom}\n\nEmail: ${profile.email}\nTél: ${profile.telephone}`,
       [
         { text: 'Fermer', style: 'cancel' },
-        { text: 'Envoyer un message', onPress: () => router.push('/prestataires/messages') }
+        { text: 'Envoyer un message', onPress: () => router.push('/shared/messages/messages-list' as any) }
       ]
     );
   };
