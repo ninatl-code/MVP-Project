@@ -1,10 +1,9 @@
 import { supabase } from './supabaseClient';
-import { DemandeClient } from './demandeService';
 import { sendPushNotification } from './notificationService';
 
 /**
  * Service de matching entre demandes clients et photographes
- * Trouve les photographes pertinents pour une demande et les notifie
+ * Algorithme de scoring 0-100% avec critères knockout
  */
 
 interface ProfilPhotographe {

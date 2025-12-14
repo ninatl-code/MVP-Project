@@ -165,7 +165,7 @@ export default function ClientMenu() {
           {/* Option 1 - Poster une demande (Recommandé) */}
           <TouchableOpacity
             style={styles.primaryOptionCard}
-            onPress={() => router.push('/client/demandes/create-demande' as any)}
+            onPress={() => router.push('/client/demandes/nouvelle-demande' as any)}
             activeOpacity={0.9}
           >
             <View style={styles.recommendedBadge}>

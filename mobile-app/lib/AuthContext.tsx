@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
   session: Session | null;
@@ -35,58 +36,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const redirectByRole = (role: string | null) => {
+    if (role === 'prestataire') {
+      router.replace('/photographe/menu');
+    } else if (role === 'particulier') {
+      router.replace('/client/search/search');
+    } else {
+      router.replace('/login');
+    }
+  };
+
   useEffect(() => {
-    // Récupérer la session actuelle
-    const getSession = async () => {
+    // Initialiser et restaurer la session depuis AsyncStorage
+    const initializeAuth = async () => {
       try {
+        setLoading(true);
+
+        // Essayer de récupérer la session depuis AsyncStorage
+        const sessionData = await AsyncStorage.getItem('supabase.auth.token');
+        
+        // Récupérer la session Supabase
         const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
           console.log('Erreur récupération session:', error.message);
+          setLoading(false);
+          return;
         }
-        
-        setSession(session);
-        setUser(session?.user ?? null);
 
-        if (session?.user) {
+        if (session) {
+          // Session existe - restaurer l'utilisateur
+          setSession(session);
+          setUser(session.user);
+          
           const role = await fetchUserRole(session.user.id);
           setUserRole(role);
           
-          // Rediriger vers la bonne page selon le rôle
-          if (role === 'prestataire') {
-            router.replace('/prestataires/menu');
-          } else if (role === 'particulier') {
-            router.replace('/particuliers/menu');
-          }
+          console.log('Session restaurée pour:', session.user.email);
+          redirectByRole(role);
+        } else {
+          // Pas de session
+          setSession(null);
+          setUser(null);
+          setUserRole(null);
+          router.replace('/login');
         }
       } catch (error) {
-        console.log('Erreur session:', error);
+        console.log('Erreur initialisation auth:', error);
+        router.replace('/login');
       } finally {
         setLoading(false);
       }
     };
 
-    getSession();
+    initializeAuth();
 
     // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
         
-        if (session?.user && event === 'SIGNED_IN') {
+        if (event === 'SIGNED_IN' && session) {
+          // Utilisateur vient de se connecter
+          setSession(session);
+          setUser(session.user);
+          
           const role = await fetchUserRole(session.user.id);
           setUserRole(role);
           
-          // Rediriger selon le rôle après connexion
-          if (role === 'prestataire') {
-            router.replace('/prestataires/menu');
-          } else if (role === 'particulier') {
-            router.replace('/particuliers/menu');
-          }
+          // Sauvegarder dans AsyncStorage (déjà fait par Supabase)
+          await AsyncStorage.setItem('supabase.session.active', 'true');
+          
+          console.log('Utilisateur connecté:', session.user.email);
+          redirectByRole(role);
         } else if (event === 'SIGNED_OUT') {
+          // Utilisateur s'est déconnecté explicitement
+          setSession(null);
+          setUser(null);
           setUserRole(null);
+          
+          // Nettoyer AsyncStorage
+          await AsyncStorage.removeItem('supabase.session.active');
+          
+          console.log('Utilisateur déconnecté');
           router.replace('/login');
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          // Token a été rafraîchi - mettre à jour la session
+          setSession(session);
+          setUser(session.user);
         }
         
         setLoading(false);

@@ -49,13 +49,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Récupérer la session existante
     const getInitialSession = async () => {
       try {
+        // D'abord, essayer de restaurer depuis AsyncStorage
+        const savedSession = await AsyncStorage.getItem('userSession');
+        
+        // Puis, récupérer la session Supabase (qui devrait être persistée)
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
-        } else {
+        }
+        
+        if (session) {
+          // Session existe (soit fraîche, soit restaurée par Supabase)
           setSession(session);
-          setUser(session?.user ?? null);
+          setUser(session.user);
+          
+          console.log('Session restaurée pour:', session.user?.email);
+          
+          // Récupérer les profils disponibles
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, role, nom')
+            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
+          
+          if (profiles && profiles.length > 0) {
+            setAvailableProfiles(profiles);
+            
+            // Restaurer le profil actif depuis AsyncStorage
+            const savedProfileId = await AsyncStorage.getItem('activeProfileId');
+            
+            if (savedProfileId && profiles.find(p => p.id === savedProfileId)) {
+              const profile = profiles.find(p => p.id === savedProfileId);
+              setProfileId(savedProfileId);
+              setActiveRole(profile?.role || null);
+            } else {
+              // Par défaut : photographe si disponible, sinon le premier profil
+              const defaultProfile = profiles.find(p => p.role === 'photographe') || profiles[0];
+              setProfileId(defaultProfile.id);
+              setActiveRole(defaultProfile.role);
+              await AsyncStorage.setItem('activeProfileId', defaultProfile.id);
+            }
+          }
+        } else {
+          // Pas de session - rester sur login
+          setSession(null);
+          setUser(null);
+          setProfileId(null);
+          setActiveRole(null);
+          setAvailableProfiles([]);
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
@@ -75,8 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Récupérer tous les profils de l'utilisateur via auth_user_id
-          // Un utilisateur peut avoir 1 ou 2 profils liés au même auth_user_id
+          // Récupérer tous les profils de l'utilisateur
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, role, nom')
@@ -102,10 +142,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           }
           
-          // Sauvegarder les infos utilisateur pour l'auto-login
+          // Sauvegarder les infos utilisateur pour la persistance
           await AsyncStorage.setItem('userSession', JSON.stringify(session));
-        } else {
-          // Nettoyer le cache à la déconnexion
+        } else if (event === 'SIGNED_OUT') {
+          // Nettoyer le cache à la déconnexion explicite
           await AsyncStorage.removeItem('userSession');
           await AsyncStorage.removeItem('activeProfileId');
           setProfileId(null);

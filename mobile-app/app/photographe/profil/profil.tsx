@@ -1,167 +1,85 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image } from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import FooterPresta from '@/components/photographe/FooterPresta';
-import TrustBadges from '@/components/ui/TrustBadges';
 import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS } from '@/constants/Colors';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
-const COLORS = {
-  primary: '#5C6BC0',
-  accent: '#130183',
-  background: '#FFFFFF',
-  backgroundLight: '#F7F7F7',
-  text: '#222222',
-  textLight: '#717171',
-  border: '#EBEBEB',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444'
-};
-
-interface Profile {
-  nom: string;
-  email: string;
-  telephone: string;
-  bio: string;
-  ville_id: string;
-  photos?: string;
-  instagram?: string;
-  facebook?: string;
-  linkedin?: string;
-  website?: string;
-  stripe_account_id?: string;
-}
-
-interface Stats {
-  totalAnnonces: number;
-  totalReservations: number;
-  chiffreAffaires: number;
-  noteMoyenne: number;
-  totalVues: number;
-}
-
-export default function ProfilPrestataire() {
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [villeNom, setVilleNom] = useState('');
-  const [stats, setStats] = useState<Stats>({
-    totalAnnonces: 0,
-    totalReservations: 0,
-    chiffreAffaires: 0,
-    noteMoyenne: 0,
-    totalVues: 0
-  });
-  const [verificationStatus, setVerificationStatus] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState({
-    nom: '',
-    email: '',
-    telephone: '',
-    bio: '',
-    instagram: '',
-    facebook: '',
-    linkedin: '',
-    website: ''
-  });
-  const [saving, setSaving] = useState(false);
+export default function ProfilPhotographe() {
   const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [stats, setStats] = useState({ 
+    totalAnnonces: 0, 
+    totalReservations: 0, 
+    chiffreAffaires: 0, 
+    noteMoyenne: 0, 
+    totalVues: 0 
+  });
+  const [villeNom, setVilleNom] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProfile();
     loadStats();
-    fetchVerificationStatus();
   }, []);
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Déconnexion',
-          style: 'destructive',
-          onPress: async () => {
-            await supabase.auth.signOut();
-            router.replace('/auth/login');
-          }
-        }
-      ]
-    );
-  };
-
   const fetchProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (!error && data) {
-      setProfile(data);
-      setFormData({
-        nom: data.nom || '',
-        email: data.email || '',
-        telephone: data.telephone || '',
-        bio: data.bio || '',
-        instagram: data.instagram || '',
-        facebook: data.facebook || '',
-        linkedin: data.linkedin || '',
-        website: data.website || ''
-      });
-
-      // Récupérer le nom de la ville
-      if (data.ville_id) {
-        const { data: villeData } = await supabase
-          .from('villes')
-          .select('ville')
-          .eq('id', data.ville_id)
-          .single();
-        setVilleNom(villeData?.ville || '');
-      }
-    }
-    setLoading(false);
-  };
-
-  const fetchVerificationStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('Aucun utilisateur authentifié');
+        router.replace('/auth/login');
+        return;
+      }
+
+      setUserId(user.id);
+      console.log('Récupération du profil pour user:', user.id);
 
       const { data, error } = await supabase
-        .from('user_verification_status')
+        .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (!error && data) {
-        setVerificationStatus(data);
+      if (error) {
+        console.error('Erreur Supabase:', error.message);
+      }
+
+      if (data) {
+        console.log('Profil trouvé:', data);
+        setProfile(data);
+        
+        if (data.ville_id) {
+          const { data: villeData } = await supabase
+            .from('villes')
+            .select('ville')
+            .eq('id', data.ville_id)
+            .maybeSingle();
+          setVilleNom(villeData?.ville || '');
+        }
+      } else {
+        console.warn('Aucun profil trouvé pour cet utilisateur');
       }
     } catch (error) {
-      console.error('Error fetching verification status:', error);
+      console.error('Erreur lors du chargement du profil:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadStats = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     try {
-      // Annonces
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data: annonces } = await supabase
         .from('annonces')
         .select('id, rate, vues')
         .eq('prestataire', user.id);
 
-      // Réservations
       const { data: reservations } = await supabase
         .from('reservations')
         .select('id, montant, status')
@@ -189,27 +107,7 @@ export default function ProfilPrestataire() {
         totalVues
       });
     } catch (error) {
-      console.error('Erreur chargement stats:', error);
-    }
-  };
-
-  const handleSave = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    setSaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update(formData)
-      .eq('id', user.id);
-
-    setSaving(false);
-    if (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder les modifications');
-    } else {
-      Alert.alert('Succès', 'Profil mis à jour avec succès');
-      setEditMode(false);
-      fetchProfile();
+      console.error('Erreur lors du chargement des stats:', error);
     }
   };
 
@@ -226,18 +124,34 @@ export default function ProfilPrestataire() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
-        <FooterPresta />
-      </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Profil non trouvé</Text>
+          <Text style={styles.debugText}>ID: {userId?.substring(0, 8)}...</Text>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={() => router.push('/photographe/profil/profil-complet')}
+          >
+            <Text style={styles.editButtonText}>Créer mon profil</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header avec gradient */}
         <LinearGradient
           colors={[COLORS.primary, COLORS.accent]}
@@ -284,25 +198,13 @@ export default function ProfilPrestataire() {
                   </View>
                 </View>
 
-                <View style={styles.buttonRow}>
-                  {!editMode ? (
-                    <TouchableOpacity style={styles.editButton} onPress={() => setEditMode(true)}>
-                      <Ionicons name="people" size={16} color={COLORS.text} />
-                      <Text style={styles.editButtonText}>Modifier mon profil</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
-                      {saving ? (
-                        <ActivityIndicator color="white" size="small" />
-                      ) : (
-                        <>
-                          <Ionicons name="checkmark-circle" size={16} color="white" />
-                          <Text style={styles.saveButtonText}>Sauvegarder</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
+                <TouchableOpacity 
+                  style={styles.editButton} 
+                  onPress={() => router.push('/photographe/profil/profil-complet')}
+                >
+                  <Ionicons name="create" size={16} color="white" />
+                  <Text style={styles.editButtonText}>Modifier mon profil</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -348,30 +250,6 @@ export default function ProfilPrestataire() {
           </View>
         </View>
 
-        {/* Trust & Verification Badges */}
-        {verificationStatus && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
-              <Text style={styles.sectionTitle}>Confiance & Vérification</Text>
-              <TouchableOpacity 
-                style={styles.verifyButton}
-                onPress={() => router.push('/prestataires/verification')}
-              >
-                <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.card}>
-              <TrustBadges 
-                verificationStatus={verificationStatus} 
-                showScore={true}
-                compact={false}
-              />
-            </View>
-          </View>
-        )}
-
         {/* Informations personnelles */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -380,105 +258,31 @@ export default function ProfilPrestataire() {
           </View>
 
           <View style={styles.card}>
-            {!editMode ? (
-              <View style={styles.infoList}>
-                <View style={styles.infoCard}>
-                  <Ionicons name="mail" size={20} color={COLORS.primary} />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Email</Text>
-                    <Text style={styles.infoValue}>{profile?.email || 'Non renseigné'}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.infoCard}>
-                  <Ionicons name="call" size={20} color={COLORS.primary} />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Téléphone</Text>
-                    <Text style={styles.infoValue}>{profile?.telephone || 'Non renseigné'}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.infoCard}>
-                  <Ionicons name="location" size={20} color={COLORS.primary} />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Ville</Text>
-                    <Text style={styles.infoValue}>{villeNom || 'Non renseignée'}</Text>
-                  </View>
+            <View style={styles.infoList}>
+              <View style={styles.infoCard}>
+                <Ionicons name="mail" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Email</Text>
+                  <Text style={styles.infoValue}>{profile?.email || 'Non renseigné'}</Text>
                 </View>
               </View>
-            ) : (
-              <View style={styles.formGroup}>
-                <View style={styles.inputGroup}>
-                  <Ionicons name="person-outline" size={20} color={COLORS.primary} />
-                  <TextInput
-                    style={styles.input}
-                    value={formData.nom}
-                    onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                    placeholder="Nom complet"
-                    placeholderTextColor={COLORS.textLight}
-                  />
-                </View>
 
-                <View style={styles.inputGroup}>
-                  <Ionicons name="mail-outline" size={20} color={COLORS.primary} />
-                  <TextInput
-                    style={styles.input}
-                    value={formData.email}
-                    onChangeText={(text) => setFormData({ ...formData, email: text })}
-                    placeholder="Email"
-                    placeholderTextColor={COLORS.textLight}
-                    keyboardType="email-address"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Ionicons name="call-outline" size={20} color={COLORS.primary} />
-                  <TextInput
-                    style={styles.input}
-                    value={formData.telephone}
-                    onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                    placeholder="Téléphone"
-                    placeholderTextColor={COLORS.textLight}
-                    keyboardType="phone-pad"
-                  />
+              <View style={styles.infoCard}>
+                <Ionicons name="call" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Téléphone</Text>
+                  <Text style={styles.infoValue}>{profile?.telephone || 'Non renseigné'}</Text>
                 </View>
               </View>
-            )}
-          </View>
-        </View>
 
-        {/* Compte bancaire */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="cash" size={20} color={COLORS.success} />
-            <Text style={styles.sectionTitle}>Informations bancaires</Text>
-          </View>
-
-          <View style={styles.card}>
-            {profile?.stripe_account_id ? (
-              <View style={styles.stripeConfigured}>
-                <View style={styles.stripeIcon}>
-                  <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
-                </View>
-                <View style={styles.stripeContent}>
-                  <Text style={styles.stripeTitle}>Compte configuré</Text>
-                  <Text style={styles.stripeSubtitle}>Vous pouvez recevoir des paiements</Text>
+              <View style={styles.infoCard}>
+                <Ionicons name="location" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Ville</Text>
+                  <Text style={styles.infoValue}>{villeNom || 'Non renseignée'}</Text>
                 </View>
               </View>
-            ) : (
-              <View style={styles.stripeNotConfigured}>
-                <View style={styles.stripeIcon}>
-                  <Ionicons name="warning" size={24} color={COLORS.warning} />
-                </View>
-                <View style={styles.stripeContent}>
-                  <Text style={styles.stripeTitle}>Configuration requise</Text>
-                  <Text style={styles.stripeSubtitle}>Configurez vos paiements pour recevoir des réservations</Text>
-                </View>
-                <TouchableOpacity style={styles.stripeButton}>
-                  <Text style={styles.stripeButtonText}>Configurer</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            </View>
           </View>
         </View>
 
@@ -490,26 +294,9 @@ export default function ProfilPrestataire() {
           </View>
 
           <View style={styles.card}>
-            {!editMode ? (
-              <Text style={styles.bioText}>
-                {profile?.bio || "Aucune description disponible. Cliquez sur 'Modifier mon profil' pour ajouter une présentation."}
-              </Text>
-            ) : (
-              <View>
-                <TextInput
-                  style={styles.bioInput}
-                  value={formData.bio}
-                  onChangeText={(text) => setFormData({ ...formData, bio: text })}
-                  placeholder="Parlez de votre expérience, votre passion, ce qui vous différencie..."
-                  placeholderTextColor={COLORS.textLight}
-                  multiline
-                  numberOfLines={6}
-                />
-                <Text style={styles.bioHint}>
-                  Une bonne présentation aide les clients à mieux vous connaître et augmente vos chances d'être choisi.
-                </Text>
-              </View>
-            )}
+            <Text style={styles.bioText}>
+              {profile?.bio || "Aucune description disponible. Cliquez sur 'Modifier mon profil' pour ajouter une présentation."}
+            </Text>
           </View>
         </View>
 
@@ -521,110 +308,39 @@ export default function ProfilPrestataire() {
           </View>
 
           <View style={styles.card}>
-            {!editMode ? (
-              <View style={styles.socialList}>
-                {formData.instagram && (
-                  <View style={styles.socialItem}>
-                    <Ionicons name="logo-instagram" size={24} color="#E4405F" />
-                    <Text style={styles.socialText}>{formData.instagram}</Text>
-                  </View>
-                )}
-                {formData.facebook && (
-                  <View style={styles.socialItem}>
-                    <Ionicons name="logo-facebook" size={24} color="#1877F2" />
-                    <Text style={styles.socialText}>{formData.facebook}</Text>
-                  </View>
-                )}
-                {formData.linkedin && (
-                  <View style={styles.socialItem}>
-                    <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
-                    <Text style={styles.socialText}>{formData.linkedin}</Text>
-                  </View>
-                )}
-                {formData.website && (
-                  <View style={styles.socialItem}>
-                    <Ionicons name="globe-outline" size={24} color={COLORS.primary} />
-                    <Text style={styles.socialText}>{formData.website}</Text>
-                  </View>
-                )}
-                {!formData.instagram && !formData.facebook && !formData.linkedin && !formData.website && (
-                  <Text style={styles.emptyText}>Aucun réseau social configuré</Text>
-                )}
-              </View>
-            ) : (
-              <View style={styles.formGroup}>
-                <View style={styles.inputGroup}>
-                  <Ionicons name="logo-instagram" size={20} color="#E4405F" />
-                  <TextInput
-                    style={styles.input}
-                    value={formData.instagram}
-                    onChangeText={(text) => setFormData({ ...formData, instagram: text })}
-                    placeholder="Instagram"
-                    placeholderTextColor={COLORS.textLight}
-                  />
+            <View style={styles.socialList}>
+              {profile?.instagram && (
+                <View style={styles.socialItem}>
+                  <Ionicons name="logo-instagram" size={24} color="#E4405F" />
+                  <Text style={styles.socialText}>{profile.instagram}</Text>
                 </View>
-
-                <View style={styles.inputGroup}>
-                  <Ionicons name="logo-facebook" size={20} color="#1877F2" />
-                  <TextInput
-                    style={styles.input}
-                    value={formData.facebook}
-                    onChangeText={(text) => setFormData({ ...formData, facebook: text })}
-                    placeholder="Facebook"
-                    placeholderTextColor={COLORS.textLight}
-                  />
+              )}
+              {profile?.facebook && (
+                <View style={styles.socialItem}>
+                  <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+                  <Text style={styles.socialText}>{profile.facebook}</Text>
                 </View>
-
-                <View style={styles.inputGroup}>
-                  <Ionicons name="logo-linkedin" size={20} color="#0A66C2" />
-                  <TextInput
-                    style={styles.input}
-                    value={formData.linkedin}
-                    onChangeText={(text) => setFormData({ ...formData, linkedin: text })}
-                    placeholder="LinkedIn"
-                    placeholderTextColor={COLORS.textLight}
-                  />
+              )}
+              {profile?.linkedin && (
+                <View style={styles.socialItem}>
+                  <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
+                  <Text style={styles.socialText}>{profile.linkedin}</Text>
                 </View>
-
-                <View style={styles.inputGroup}>
-                  <Ionicons name="globe-outline" size={20} color={COLORS.primary} />
-                  <TextInput
-                    style={styles.input}
-                    value={formData.website}
-                    onChangeText={(text) => setFormData({ ...formData, website: text })}
-                    placeholder="Site web"
-                    placeholderTextColor={COLORS.textLight}
-                  />
+              )}
+              {profile?.site_web && (
+                <View style={styles.socialItem}>
+                  <Ionicons name="globe-outline" size={24} color={COLORS.primary} />
+                  <Text style={styles.socialText}>{profile.site_web}</Text>
                 </View>
-              </View>
-            )}
+              )}
+              {!profile?.instagram && !profile?.facebook && !profile?.linkedin && !profile?.site_web && (
+                <Text style={styles.emptyText}>Aucun réseau social configuré</Text>
+              )}
+            </View>
           </View>
         </View>
 
-        {/* Section Déconnexion */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="settings-outline" size={20} color={COLORS.textLight} />
-            <Text style={styles.sectionTitle}>Paramètres</Text>
-          </View>
-
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
-              <View style={styles.logoutLeft}>
-                <View style={styles.logoutIconContainer}>
-                  <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
-                </View>
-                <View>
-                  <Text style={styles.logoutTitle}>Se déconnecter</Text>
-                  <Text style={styles.logoutSubtitle}>Vous pourrez vous reconnecter à tout moment</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={{ height: 120 }} />
+        <View style={{ height: 80 }} />
       </ScrollView>
       <FooterPresta />
     </SafeAreaView>
@@ -633,113 +349,44 @@ export default function ProfilPrestataire() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.backgroundLight },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-  scrollView: { flex: 1 },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollContent: { paddingBottom: 20 },
-  
-  // Header gradient
   headerGradient: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 30 },
   headerContent: { gap: 20 },
   avatarSection: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   avatarContainer: { position: 'relative' },
   avatar: { width: 80, height: 80, borderRadius: 16, borderWidth: 3, borderColor: 'white' },
-  avatarPlaceholder: { width: 80, height: 80, borderRadius: 16, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: 'white' },
-  avatarText: { fontSize: 32, fontWeight: 'bold', color: COLORS.primary },
+  avatarPlaceholder: { width: 80, height: 80, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center' },
+  avatarText: { fontSize: 32, fontWeight: 'bold', color: 'white' },
   starBadge: { position: 'absolute', bottom: -4, right: -4, backgroundColor: 'white', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
-  
   nameSection: { flex: 1, gap: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   userName: { fontSize: 24, fontWeight: 'bold', color: 'white', flex: 1 },
   roleBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   roleBadgeText: { color: 'white', fontSize: 12, fontWeight: '600' },
-  
   infoRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   infoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   infoText: { color: 'rgba(255,255,255,0.9)', fontSize: 13 },
-  
-  buttonRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  editButton: { backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
-  editButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 14 },
-  saveButton: { backgroundColor: COLORS.success, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
-  saveButtonText: { color: 'white', fontWeight: '600', fontSize: 14 },
-  
-  // Sections
+  editButton: { backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, marginTop: 8 },
+  editButtonText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
   section: { paddingHorizontal: 20, marginTop: 24 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, flex: 1 },
-  verifyButton: { padding: 8, backgroundColor: COLORS.primary + '20', borderRadius: 8 },
-  
-  // Stats
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statCard: { flex: 1, minWidth: 100, backgroundColor: COLORS.background, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1 },
   statValue: { fontSize: 20, fontWeight: 'bold', color: COLORS.text, marginTop: 4 },
   statLabel: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
-  
-  // Card
   card: { backgroundColor: COLORS.background, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  
-  // Info list
   infoList: { gap: 12 },
   infoCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12 },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: 12, color: COLORS.primary, marginBottom: 2 },
   infoValue: { fontSize: 15, color: COLORS.text, fontWeight: '500' },
-  
-  // Form
-  formGroup: { gap: 12 },
-  inputGroup: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.backgroundLight },
-  input: { flex: 1, fontSize: 15, color: COLORS.text },
-  
-  // Stripe
-  stripeConfigured: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#D1FAE5', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#6EE7B7' },
-  stripeNotConfigured: { backgroundColor: '#FEF3C7', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#FCD34D' },
-  stripeIcon: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
-  stripeContent: { flex: 1 },
-  stripeTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginBottom: 2 },
-  stripeSubtitle: { fontSize: 13, color: COLORS.textLight },
-  stripeButton: { marginTop: 12, backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  stripeButtonText: { color: 'white', fontWeight: '600', fontSize: 14 },
-  
-  // Bio
   bioText: { fontSize: 15, color: COLORS.text, lineHeight: 22 },
-  bioInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, fontSize: 15, color: COLORS.text, backgroundColor: COLORS.backgroundLight, minHeight: 120, textAlignVertical: 'top' },
-  bioHint: { fontSize: 12, color: COLORS.textLight, marginTop: 8 },
-  
-  // Social
   socialList: { gap: 12 },
   socialItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12 },
   socialText: { fontSize: 15, color: COLORS.text, flex: 1 },
   emptyText: { textAlign: 'center', color: COLORS.textLight, fontSize: 14, paddingVertical: 20 },
-  
-  // Logout
-  logoutContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16
-  },
-  logoutLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flex: 1
-  },
-  logoutIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FEE2E2',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  logoutTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 4
-  },
-  logoutSubtitle: {
-    fontSize: 13,
-    color: COLORS.textLight
-  }
+  errorText: { color: COLORS.error, fontSize: 16, fontWeight: '600' },
+  debugText: { color: COLORS.textLight, fontSize: 12, marginTop: 8 },
 });

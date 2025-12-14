@@ -3,7 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaVi
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import FooterPresta from '@/components/photographe/FooterPresta';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -32,6 +34,9 @@ export default function NotificationsPrestataire() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const router = useRouter();
+
+  // Gérer le StatusBar - blanc sur le fond dégradé
+  useStatusBarStyle('light-content', '#5C6BC0');
 
   useEffect(() => {
     fetchNotifications();
@@ -102,16 +107,25 @@ export default function NotificationsPrestataire() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.text} /></TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
-            <Text style={styles.markAllText}>Tout lire</Text>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-        )}
-        {unreadCount === 0 && <View style={{ width: 60 }} />}
-      </View>
+          <Text style={styles.headerTitle}>Notifications</Text>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
+              <Text style={styles.markAllText}>Tout lire</Text>
+            </TouchableOpacity>
+          )}
+          {unreadCount === 0 && <View style={{ width: 60 }} />}
+        </View>
+      </LinearGradient>
 
       <View style={styles.filterContainer}>
         <TouchableOpacity
@@ -170,11 +184,12 @@ export default function NotificationsPrestataire() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.background },
+  headerGradient: { paddingHorizontal: 16, paddingVertical: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   backButton: { padding: 4 },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#fff', flex: 1, textAlign: 'center' },
   markAllButton: { paddingHorizontal: 12, paddingVertical: 6 },
-  markAllText: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  markAllText: { fontSize: 14, fontWeight: '600', color: '#fff' },
   filterContainer: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   filterButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: COLORS.backgroundLight },
   filterButtonActive: { backgroundColor: COLORS.text },

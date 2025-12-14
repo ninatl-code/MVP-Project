@@ -7,13 +7,18 @@ import {
   ActivityIndicator,
   Dimensions,
   StyleSheet,
+  SafeAreaView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabaseClient';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const COLORS = {
-  primary: '#007AFF',
+  primary: '#5C6BC0',
+  accent: '#130183',
   background: '#F2F2F7',
   surface: '#FFFFFF',
   text: '#1C1C1E',
@@ -56,6 +61,9 @@ export default function AnalyticsDashboardScreen() {
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [loading, setLoading] = useState(true);
   const [providerId, setProviderId] = useState<string | null>(null);
+
+  // Gérer le StatusBar - blanc sur le fond dégradé
+  useStatusBarStyle('light-content', '#5C6BC0');
 
   useEffect(() => {
     loadAnalytics();
@@ -143,74 +151,129 @@ export default function AnalyticsDashboardScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Loading analytics...</Text>
+        <Text style={styles.loadingText}>Chargement de vos statistiques...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Analytics Dashboard</Text>
-        <TouchableOpacity onPress={() => alert('Earnings report coming soon')}>
-          <Ionicons name="document-text-outline" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>📊 Tableau de bord</Text>
+            <Text style={styles.headerSubtitle}>Vue d'ensemble de vos statistiques</Text>
+          </View>
+          <TouchableOpacity onPress={() => alert('Rapport de revenus bientôt disponible')}>
+            <Ionicons name="document-text-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Period Selector */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.periodSelector}>
-          {PERIOD_OPTIONS.map(period => (
-            <TouchableOpacity
-              key={period}
+          <TouchableOpacity
+            style={[
+              styles.periodButton,
+              selectedPeriod === 'daily' && styles.periodButtonActive,
+            ]}
+            onPress={() => setSelectedPeriod('daily')}
+          >
+            <Text
               style={[
-                styles.periodButton,
-                selectedPeriod === period && styles.periodButtonActive,
+                styles.periodButtonText,
+                selectedPeriod === 'daily' && styles.periodButtonTextActive,
               ]}
-              onPress={() => setSelectedPeriod(period)}
             >
-              <Text
-                style={[
-                  styles.periodButtonText,
-                  selectedPeriod === period && styles.periodButtonTextActive,
-                ]}
-              >
-                {period.charAt(0).toUpperCase() + period.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+              Jour
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.periodButton,
+              selectedPeriod === 'weekly' && styles.periodButtonActive,
+            ]}
+            onPress={() => setSelectedPeriod('weekly')}
+          >
+            <Text
+              style={[
+                styles.periodButtonText,
+                selectedPeriod === 'weekly' && styles.periodButtonTextActive,
+              ]}
+            >
+              Semaine
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.periodButton,
+              selectedPeriod === 'monthly' && styles.periodButtonActive,
+            ]}
+            onPress={() => setSelectedPeriod('monthly')}
+          >
+            <Text
+              style={[
+                styles.periodButtonText,
+                selectedPeriod === 'monthly' && styles.periodButtonTextActive,
+              ]}
+            >
+              Mois
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.periodButton,
+              selectedPeriod === 'yearly' && styles.periodButtonActive,
+            ]}
+            onPress={() => setSelectedPeriod('yearly')}
+          >
+            <Text
+              style={[
+                styles.periodButtonText,
+                selectedPeriod === 'yearly' && styles.periodButtonTextActive,
+              ]}
+            >
+              Année
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
 
         {!analytics ? (
           <View style={styles.noDataCard}>
             <Ionicons name="bar-chart-outline" size={64} color={COLORS.border} />
-            <Text style={styles.noDataTitle}>No Analytics Yet</Text>
+            <Text style={styles.noDataTitle}>Pas de statistiques encore</Text>
             <Text style={styles.noDataText}>
-              Analytics will appear here once you start receiving bookings. Data is updated daily.
+              Les statistiques apparaîtront ici dès que vous commencerez à recevoir des réservations. Les données sont mises à jour quotidiennement.
             </Text>
           </View>
         ) : (
           <>
             {/* Revenue Overview */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Revenue</Text>
+              <Text style={styles.sectionTitle}>💰 Revenus</Text>
               <View style={styles.revenueCard}>
                 <Text style={styles.revenueAmount}>{formatCurrency(analytics.total_revenue)}</Text>
-                <Text style={styles.revenueLabel}>Total Earnings</Text>
+                <Text style={styles.revenueLabel}>Revenus totaux</Text>
                 <View style={styles.revenueDetails}>
                   <View style={styles.revenueDetailItem}>
-                    <Text style={styles.revenueDetailLabel}>Avg Booking</Text>
+                    <Text style={styles.revenueDetailLabel}>Réservation moyenne</Text>
                     <Text style={styles.revenueDetailValue}>
                       {formatCurrency(analytics.avg_booking_value)}
                     </Text>
                   </View>
                   <View style={styles.revenueDetailDivider} />
                   <View style={styles.revenueDetailItem}>
-                    <Text style={styles.revenueDetailLabel}>Lost to Cancellations</Text>
+                    <Text style={styles.revenueDetailLabel}>Perte annulations</Text>
                     <Text style={[styles.revenueDetailValue, { color: COLORS.error }]}>
                       {formatCurrency(analytics.cancellation_revenue_loss)}
                     </Text>
@@ -221,29 +284,29 @@ export default function AnalyticsDashboardScreen() {
 
             {/* Booking Stats */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Bookings</Text>
+              <Text style={styles.sectionTitle}>📅 Réservations</Text>
               <View style={styles.statsGrid}>
                 <StatCard
                   icon="calendar-outline"
-                  label="Total Bookings"
+                  label="Total"
                   value={analytics.total_bookings}
                   color={COLORS.primary}
                 />
                 <StatCard
                   icon="checkmark-circle-outline"
-                  label="Confirmed"
+                  label="Confirmées"
                   value={analytics.confirmed_bookings}
                   color={COLORS.success}
                 />
                 <StatCard
                   icon="close-circle-outline"
-                  label="Cancelled"
+                  label="Annulées"
                   value={analytics.cancelled_bookings}
                   color={COLORS.error}
                 />
                 <StatCard
                   icon="star-outline"
-                  label="Completed"
+                  label="Complétées"
                   value={analytics.completed_bookings}
                   color={COLORS.warning}
                 />
@@ -252,12 +315,12 @@ export default function AnalyticsDashboardScreen() {
 
             {/* Performance Metrics */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Performance</Text>
+              <Text style={styles.sectionTitle}>📈 Performance</Text>
               <View style={styles.metricsCard}>
                 <View style={styles.metricRow}>
                   <View style={styles.metricInfo}>
                     <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
-                    <Text style={styles.metricLabel}>Response Rate</Text>
+                    <Text style={styles.metricLabel}>Taux de réponse</Text>
                   </View>
                   <View style={styles.metricValueContainer}>
                     <Text style={styles.metricValue}>
@@ -277,7 +340,7 @@ export default function AnalyticsDashboardScreen() {
                 <View style={styles.metricRow}>
                   <View style={styles.metricInfo}>
                     <Ionicons name="checkmark-done-outline" size={20} color={COLORS.success} />
-                    <Text style={styles.metricLabel}>Acceptance Rate</Text>
+                    <Text style={styles.metricLabel}>Taux d'acceptation</Text>
                   </View>
                   <View style={styles.metricValueContainer}>
                     <Text style={styles.metricValue}>
@@ -297,7 +360,7 @@ export default function AnalyticsDashboardScreen() {
                 <View style={styles.metricRow}>
                   <View style={styles.metricInfo}>
                     <Ionicons name="close-outline" size={20} color={COLORS.error} />
-                    <Text style={styles.metricLabel}>Cancellation Rate</Text>
+                    <Text style={styles.metricLabel}>Taux d'annulation</Text>
                   </View>
                   <View style={styles.metricValueContainer}>
                     <Text style={styles.metricValue}>
@@ -318,17 +381,17 @@ export default function AnalyticsDashboardScreen() {
 
             {/* Client Metrics */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Clients</Text>
+              <Text style={styles.sectionTitle}>👥 Clients</Text>
               <View style={styles.statsRow}>
                 <StatCard
                   icon="person-add-outline"
-                  label="New Clients"
+                  label="Nouveaux"
                   value={analytics.new_clients}
                   color={COLORS.success}
                 />
                 <StatCard
                   icon="repeat-outline"
-                  label="Repeat Clients"
+                  label="Récurrents"
                   value={analytics.repeat_clients}
                   color={COLORS.primary}
                 />
@@ -337,13 +400,13 @@ export default function AnalyticsDashboardScreen() {
 
             {/* Reviews & Ratings */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Reviews</Text>
+              <Text style={styles.sectionTitle}>⭐ Avis clients</Text>
               <View style={styles.reviewCard}>
                 <View style={styles.reviewRating}>
                   <Ionicons name="star" size={48} color={COLORS.warning} />
                   <Text style={styles.reviewRatingValue}>{(analytics.avg_rating || 0).toFixed(1)}</Text>
                 </View>
-                <Text style={styles.reviewCount}>{analytics.total_reviews} reviews</Text>
+                <Text style={styles.reviewCount}>{analytics.total_reviews} avis</Text>
               </View>
             </View>
 
@@ -351,17 +414,17 @@ export default function AnalyticsDashboardScreen() {
             {earnings.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Top Services</Text>
-                  <TouchableOpacity onPress={() => alert('Full earnings report coming soon')}>
-                    <Text style={styles.sectionLink}>View All</Text>
+                  <Text style={styles.sectionTitle}>🏆 Top services</Text>
+                  <TouchableOpacity onPress={() => alert('Rapport complet de revenus bientôt disponible')}>
+                    <Text style={styles.sectionLink}>Voir tout</Text>
                   </TouchableOpacity>
                 </View>
                 {earnings.map((item, index) => (
                   <View key={index} style={styles.serviceCard}>
                     <View style={styles.serviceInfo}>
-                      <Text style={styles.serviceName}>{item.annonces?.titre || 'Unknown Service'}</Text>
+                      <Text style={styles.serviceName}>{item.annonces?.titre || 'Service inconnu'}</Text>
                       <Text style={styles.serviceStats}>
-                        {item.bookings_count} bookings • Avg {formatCurrency(item.avg_price)}
+                        {item.bookings_count} réservations • Moyenne {formatCurrency(item.avg_price)}
                       </Text>
                     </View>
                     <Text style={styles.serviceEarnings}>{formatCurrency(item.total_earnings)}</Text>
@@ -372,28 +435,29 @@ export default function AnalyticsDashboardScreen() {
 
             {/* Quick Actions */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <Text style={styles.sectionTitle}>⚡ Actions rapides</Text>
               <View style={styles.actionsGrid}>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => alert('Performance metrics coming soon')}
+                  onPress={() => alert('Détails des performances bientôt disponibles')}
                 >
                   <Ionicons name="trending-up-outline" size={28} color={COLORS.primary} />
-                  <Text style={styles.actionButtonText}>Performance Details</Text>
+                  <Text style={styles.actionButtonText}>Détails performance</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => alert('Earnings report coming soon')}
+                  onPress={() => alert('Rapport de revenus bientôt disponible')}
                 >
                   <Ionicons name="cash-outline" size={28} color={COLORS.success} />
-                  <Text style={styles.actionButtonText}>Earnings Report</Text>
+                  <Text style={styles.actionButtonText}>Rapport revenus</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </>
         )}
       </ScrollView>
-    </View>
+      <FooterPresta />
+    </SafeAreaView>
   );
 }
 
@@ -413,21 +477,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textSecondary,
   },
+  headerGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    gap: 12,
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   content: {
     flex: 1,

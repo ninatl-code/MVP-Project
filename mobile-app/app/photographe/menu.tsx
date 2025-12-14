@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FooterPresta from '@/components/photographe/FooterPresta';
 import RealTimeNotifications from '@/components/RealTimeNotifications';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -41,6 +42,9 @@ export default function MenuPrestataire() {
   const [missingSteps, setMissingSteps] = useState<string[]>([]);
   const router = useRouter();
   const { availableProfiles, switchProfile, profileId } = useAuth();
+
+  // Gérer le StatusBar - blanc sur le fond dégradé
+  useStatusBarStyle('light-content', '#5C6BC0');
 
   useEffect(() => {
     fetchData();
@@ -185,8 +189,7 @@ export default function MenuPrestataire() {
           <View style={styles.headerTop}>
             <View style={styles.headerTextContainer}>
               <Text style={styles.greeting}>Tableau de bord</Text>
-              <Text style={styles.userName}>{profile?.nom || 'Prestataire'}</Text>
-              <Text style={styles.subtitle}>Gérez votre activité en un clin d'œil</Text>
+              <Text style={styles.userName} numberOfLines={2}>{profile?.nom || 'Prestataire'}</Text>
             </View>
             {hasMultipleProfiles && (
               <TouchableOpacity 
@@ -225,9 +228,9 @@ export default function MenuPrestataire() {
             </View>
             <TouchableOpacity
               style={styles.completeButton}
-              onPress={() => router.push('/photographe/profil/profil')}
+              onPress={() => router.push('/photographe/profil/profil-complet')}
             >
-              <Text style={styles.completeButtonText}>Compléter maintenant</Text>
+              <Text style={styles.completeButtonText}>Compléter mon profil</Text>
               <Ionicons name="arrow-forward" size={16} color={COLORS.warning} />
             </TouchableOpacity>
           </LinearGradient>
@@ -303,20 +306,6 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/prestataires/calendrier')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="calendar" size={24} color={COLORS.success} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Planning</Text>
-              <Text style={styles.menuSubtitle}>Gérer mon calendrier</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
             onPress={() => router.push('/prestataires/media-library' as any)}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
@@ -347,20 +336,6 @@ export default function MenuPrestataire() {
         {/* Section Finances */}
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Finances</Text>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/prestataires/kpis' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="stats-chart" size={24} color={COLORS.success} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Tableau de bord</Text>
-              <Text style={styles.menuSubtitle}>Statistiques et KPIs</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
@@ -437,33 +412,6 @@ export default function MenuPrestataire() {
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/prestataires/notification-settings' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="notifications" size={24} color={COLORS.warning} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Notifications</Text>
-              <Text style={styles.menuSubtitle}>Préférences</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/prestataires/integrations' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
-              <Ionicons name="link" size={24} color={COLORS.purple} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Intégrations</Text>
-              <Text style={styles.menuSubtitle}>Calendrier, paiements...</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
         </View>
 
         <View style={{ height: 120 }} />
@@ -531,8 +479,8 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   headerTextContainer: { flex: 1 },
   greeting: { fontSize: 16, color: 'rgba(255,255,255,0.9)', marginBottom: 4 },
-  userName: { fontSize: 32, fontWeight: 'bold', color: 'white', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)' },
+  userName: { fontSize: 26, fontWeight: 'bold', color: 'white', marginBottom: 8 },
+  subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.85)', flex: 1, flexWrap: 'wrap' },
   
   // Switch Button
   switchButton: {
@@ -640,7 +588,7 @@ const styles = StyleSheet.create({
   // Warning Card (Profil incomplet)
   warningCard: {
     margin: 16,
-    marginTop: 0,
+    marginTop: 16,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',

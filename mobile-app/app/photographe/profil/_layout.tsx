@@ -9,6 +9,7 @@ export default function ProfilLayout() {
       <Stack.Screen name="tarifs" />
       <Stack.Screen name="verification" />
       <Stack.Screen name="notification-settings" />
+      <Stack.Screen name="profil-complet" />
     </Stack>
   );
 }

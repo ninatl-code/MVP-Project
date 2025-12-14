@@ -57,12 +57,12 @@ export default function FooterPresta() {
   return (
     <View style={styles.footer}>
       <View style={styles.center}>
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/menu')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/photographe/menu')}>
           <Ionicons name="grid-outline" size={22} color={COLORS.accent} />
           <Text style={styles.label}>Menu</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/messages')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/shared/messages/messages-list')}>
           <View style={styles.tabContent}>
             <Ionicons name="chatbubble-outline" size={22} color={COLORS.accent} />
             {stats.messages > 0 && (
@@ -74,12 +74,12 @@ export default function FooterPresta() {
           <Text style={styles.label}>Messages</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/kpis')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/photographe/kpis/analytics-dashboard')}>
           <Ionicons name="stats-chart-outline" size={22} color={COLORS.accent} />
           <Text style={styles.label}>Stats</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/notification')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/photographe/notification')}>
           <View style={styles.tabContent}>
             <Ionicons name="notifications-outline" size={22} color={COLORS.accent} />
             {stats.notifications > 0 && (
@@ -91,7 +91,7 @@ export default function FooterPresta() {
           <Text style={styles.label}>Notifs</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/prestataires/profil')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/photographe/profil/profil')}>
           <Ionicons name="person-outline" size={22} color={COLORS.accent} />
           <Text style={styles.label}>Profil</Text>
         </TouchableOpacity>

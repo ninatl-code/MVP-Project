@@ -8,13 +8,18 @@ import {
   Image,
   ActivityIndicator,
   StyleSheet,
+  SafeAreaView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabaseClient';
+import FooterPresta from '@/components/photographe/FooterPresta';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
 const COLORS = {
-  primary: '#007AFF',
+  primary: '#5C6BC0',
+  accent: '#130183',
   background: '#F2F2F7',
   surface: '#FFFFFF',
   text: '#1C1C1E',
@@ -43,6 +48,9 @@ interface Conversation {
 }
 
 export default function MessagesListScreen() {
+  // Gérer le StatusBar - blanc sur le fond dégradé
+  useStatusBarStyle('light-content', '#5C6BC0');
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -201,17 +209,24 @@ export default function MessagesListScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity onPress={() => router.push('/messages/message-templates' as any)}>
-          <Ionicons name="document-text-outline" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Messages</Text>
+          <TouchableOpacity onPress={() => router.push('/messages/message-templates' as any)}>
+            <Ionicons name="document-text-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -259,7 +274,8 @@ export default function MessagesListScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </View>
+      <FooterPresta />
+    </SafeAreaView>
   );
 }
 
@@ -278,21 +294,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textSecondary,
   },
+  headerGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
   },
   searchContainer: {
     padding: 16,

@@ -8,11 +8,27 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getRecommendedDemandesForPhotographe } from '@/lib/matchingService';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
+
+const COLORS = {
+  primary: '#5C6BC0',
+  accent: '#130183',
+  background: '#FFFFFF',
+  backgroundLight: '#F7F7F7',
+  text: '#222222',
+  textLight: '#717171',
+  border: '#EBEBEB',
+  success: '#10B981',
+  warning: '#F59E0B',
+  info: '#3B82F6',
+};
 
 const CATEGORIES = [
   { label: 'Toutes', value: '' },
@@ -31,6 +47,9 @@ const SORT_OPTIONS = [
 ];
 
 export default function DemandesListScreen() {
+  // Gérer le StatusBar - blanc sur le fond dégradé
+  useStatusBarStyle('light-content', '#5C6BC0');
+
   const { user } = useAuth();
   const router = useRouter();
   const [demandes, setDemandes] = useState<any[]>([]);
@@ -187,16 +206,25 @@ export default function DemandesListScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#5C6BC0" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Demandes disponibles</Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Demandes disponibles</Text>
+        <View style={styles.spacer} />
+      </LinearGradient>
 
       <View style={styles.filtersContainer}>
         <Text style={styles.filterLabel}>Catégorie :</Text>
@@ -273,14 +301,14 @@ export default function DemandesListScreen() {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
   centerContainer: {
     flex: 1,
@@ -288,26 +316,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+  backButton: {
+    padding: 5,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    marginLeft: 15,
+  },
+  spacer: {
+    width: 34,
   },
   filtersContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: COLORS.border,
   },
   filterLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.textLight,
     marginBottom: 8,
     marginTop: 8,
   },
@@ -319,19 +360,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: COLORS.backgroundLight,
     marginRight: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: COLORS.border,
   },
   filterChipSelected: {
-    backgroundColor: '#5C6BC0',
-    borderColor: '#5C6BC0',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterChipText: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.textLight,
   },
   filterChipTextSelected: {
     color: '#fff',
@@ -341,7 +382,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
@@ -364,7 +405,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
     marginBottom: 8,
   },
   badgeRow: {
@@ -380,7 +421,7 @@ const styles = StyleSheet.create({
   categorieBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1976D2',
+    color: COLORS.info,
   },
   scoreBadge: {
     width: 64,
@@ -410,7 +451,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textLight,
     marginLeft: 8,
     flex: 1,
   },
@@ -429,7 +470,7 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: 12,
-    color: '#4CAF50',
+    color: COLORS.success,
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -439,7 +480,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: COLORS.border,
   },
   statsRow: {
     flexDirection: 'row',
@@ -450,13 +491,13 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.textLight,
     marginLeft: 4,
   },
   devisButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#5C6BC0',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -476,12 +517,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: '#999',
+    color: COLORS.textLight,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -492,12 +533,5 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 24,
     alignItems: 'flex-start',
-  },
-  infoCardText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1976D2',
-    marginLeft: 12,
-    lineHeight: 20,
   },
 });

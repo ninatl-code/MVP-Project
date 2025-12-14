@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Image,
+  SafeAreaView,
+} from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,19 +17,7 @@ import FooterPresta from '@/components/photographe/FooterPresta';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-
-const COLORS = {
-  primary: '#5C6BC0',
-  accent: '#130183',
-  background: '#FFFFFF',
-  backgroundLight: '#F7F7F7',
-  text: '#222222',
-  textLight: '#717171',
-  border: '#EBEBEB',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-};
+import { COLORS } from '@/lib/constants';
 
 interface VerificationDocument {
   id: string;
@@ -268,7 +266,7 @@ export default function VerificationPage() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <LinearGradient
@@ -427,7 +425,7 @@ export default function VerificationPage() {
       </ScrollView>
 
       <FooterPresta />
-    </View>
+    </SafeAreaView>
   );
 }
 

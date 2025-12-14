@@ -9,10 +9,14 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  SafeAreaView,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS } from '@/lib/constants';
 
 interface TarifPackage {
   id: string;
@@ -26,6 +30,7 @@ interface TarifPackage {
 
 export default function TarifsScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [budgetMin, setBudgetMin] = useState('');
   const [packages, setPackages] = useState<TarifPackage[]>([]);
@@ -327,8 +332,21 @@ export default function TarifsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Mes Tarifs</Text>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Mes Tarifs</Text>
+        <View style={styles.spacer} />
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={styles.content}>
 
       {/* Budget minimum */}
       <View style={styles.card}>
@@ -435,6 +453,7 @@ export default function TarifsScreen() {
         </Text>
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -442,6 +461,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  headerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  backButton: {
+    padding: 5,
+    marginRight: 10,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  spacer: {
+    width: 34,
   },
   loadingContainer: {
     flex: 1,

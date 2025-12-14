@@ -10,11 +10,19 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
+  SafeAreaView,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const COLORS = {
+  primary: '#5C6BC0',
+  accent: '#130183',
+};
 
 interface PhotoPortfolio {
   id: string;
@@ -27,6 +35,7 @@ interface PhotoPortfolio {
 
 export default function PortfolioScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const [photos, setPhotos] = useState<PhotoPortfolio[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -236,31 +245,33 @@ export default function PortfolioScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#5C6BC0" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Mon Portfolio</Text>
-          <Text style={styles.subtitle}>
-            {photos.length} photo{photos.length > 1 ? 's' : ''}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={pickImage}
-          disabled={uploading}
-        >
-          <Ionicons name="add-circle-outline" size={24} color="#fff" />
-          <Text style={styles.addButtonText}>
-            {uploading ? 'Upload en cours...' : 'Ajouter des photos'}
-          </Text>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.accent]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Mon Portfolio</Text>
+        <TouchableOpacity onPress={pickImage} style={styles.addHeaderButton} disabled={uploading}>
+          <Ionicons name="add-circle" size={24} color="#FFF" />
+        </TouchableOpacity>
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.statsHeader}>
+          <Text style={styles.statsCount}>{photos.length}</Text>
+          <Text style={styles.statsLabel}>photo{photos.length > 1 ? 's' : ''}</Text>
+        </View>
 
         {photos.length === 0 ? (
           <View style={styles.emptyState}>
@@ -271,9 +282,30 @@ export default function PortfolioScreen() {
             <Text style={styles.emptySubtext}>
               Ajoutez vos meilleures photos pour attirer les clients
             </Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={pickImage}
+              disabled={uploading}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#fff" />
+              <Text style={styles.addButtonText}>
+                {uploading ? 'Upload en cours...' : 'Ajouter des photos'}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.grid}>
+          <>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={pickImage}
+              disabled={uploading}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#fff" />
+              <Text style={styles.addButtonText}>
+                {uploading ? 'Upload en cours...' : 'Ajouter des photos'}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.grid}>
             {photos.map((photo, index) => (
               <TouchableOpacity
                 key={photo.id}
@@ -302,7 +334,8 @@ export default function PortfolioScreen() {
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
-          </View>
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -373,7 +406,7 @@ export default function PortfolioScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -381,6 +414,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  headerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  backButton: {
+    padding: 5,
+    marginRight: 10,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  addHeaderButton: {
+    padding: 5,
+  },
+  statsHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  statsCount: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#5C6BC0',
+  },
+  statsLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
   },
   loadingContainer: {
     flex: 1,
