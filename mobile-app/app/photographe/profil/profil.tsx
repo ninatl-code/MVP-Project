@@ -41,7 +41,8 @@ export default function ProfilPhotographe() {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
+        .eq('role', 'photographe')
         .maybeSingle();
 
       if (error) {
