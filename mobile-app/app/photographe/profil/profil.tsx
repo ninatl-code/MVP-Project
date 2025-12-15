@@ -53,14 +53,15 @@ export default function ProfilPhotographe() {
         console.log('Profil trouvé:', data);
         setProfile(data);
         
-        // Load photographer details from profils_photographe
+        // Load ALL photographer details from profils_photographe using profiles.id
         const { data: photoData } = await supabase
           .from('profils_photographe')
-          .select('bio, specialisations, annees_experience, tarifs_indicatifs, rayon_deplacement_km')
-          .eq('id', user.id)
+          .select('*')
+          .eq('id', data.id)
           .maybeSingle();
 
         if (photoData) {
+          console.log('Détails photographe chargés:', photoData);
           setProfile(prev => ({
             ...prev,
             ...photoData
@@ -243,8 +244,8 @@ export default function ProfilPhotographe() {
             {/* Avatar et nom */}
             <View style={styles.avatarSection}>
               <View style={styles.avatarContainer}>
-                {profile?.photos ? (
-                  <Image source={{ uri: profile.photos }} style={styles.avatar} />
+                {profile?.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{getInitials(profile?.nom || 'U')}</Text>
@@ -265,16 +266,17 @@ export default function ProfilPhotographe() {
                 <View style={styles.nameRow}>
                   <Text style={styles.userName}>{profile?.nom || 'Utilisateur'}</Text>
                   <View style={[styles.roleBadge, { 
-                    backgroundColor: profile?.statut_validation === 'pro' ? '#10B981' : 
-                                    profile?.statut_validation === 'amateur' ? '#3B82F6' : 
-                                    profile?.statut_validation === 'verifie' ? '#F59E0B' : '#888'
+                    backgroundColor: profile?.statut_pro ? '#10B981' : '#3B82F6'
                   }]}>
                     <Text style={styles.roleBadgeText}>
-                      {profile?.statut_validation === 'pro' ? 'Pro' : 
-                       profile?.statut_validation === 'amateur' ? 'Amateur' :
-                       profile?.statut_validation === 'verifie' ? 'Vérifié' : 'En attente'}
+                      {profile?.statut_pro ? 'Pro' : 'Amateur'}
                     </Text>
                   </View>
+                  {profile?.identite_verifiee && (
+                    <View style={[styles.roleBadge, { backgroundColor: '#F59E0B', marginLeft: 4 }]}>
+                      <Text style={styles.roleBadgeText}>Vérifié</Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.infoRow}>
@@ -312,22 +314,16 @@ export default function ProfilPhotographe() {
           </View>
 
           <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { borderColor: COLORS.primary }]}>
-              <Ionicons name="briefcase" size={20} color={COLORS.primary} />
+            <View style={[styles.statCard, { borderColor: '#6366F1' }]}>
+              <Ionicons name="calendar" size={20} color="#6366F1" />
               <Text style={styles.statValue}>{stats.totalReservations}</Text>
-              <Text style={styles.statLabel}>Prestations</Text>
+              <Text style={styles.statLabel}>Réservations</Text>
             </View>
 
             <View style={[styles.statCard, { borderColor: COLORS.success }]}>
               <Ionicons name="cash" size={20} color={COLORS.success} />
               <Text style={[styles.statValue, { fontSize: 16 }]}>{formatCurrency(stats.chiffreAffaires)}</Text>
               <Text style={styles.statLabel}>CA Total</Text>
-            </View>
-
-            <View style={[styles.statCard, { borderColor: '#6366F1' }]}>
-              <Ionicons name="calendar" size={20} color="#6366F1" />
-              <Text style={styles.statValue}>{stats.totalReservations}</Text>
-              <Text style={styles.statLabel}>Réservations</Text>
             </View>
 
             <View style={[styles.statCard, { borderColor: '#F59E0B' }]}>
@@ -353,6 +349,16 @@ export default function ProfilPhotographe() {
 
           <View style={styles.card}>
             <View style={styles.infoList}>
+              {profile?.nom_entreprise && (
+                <View style={styles.infoCard}>
+                  <Ionicons name="business" size={20} color={COLORS.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Entreprise</Text>
+                    <Text style={styles.infoValue}>{profile.nom_entreprise}</Text>
+                  </View>
+                </View>
+              )}
+
               <View style={styles.infoCard}>
                 <Ionicons name="mail" size={20} color={COLORS.primary} />
                 <View style={styles.infoContent}>
@@ -376,6 +382,16 @@ export default function ProfilPhotographe() {
                   <Text style={styles.infoValue}>{villeNom || 'Non renseignée'}</Text>
                 </View>
               </View>
+
+              {profile?.siret && (
+                <View style={styles.infoCard}>
+                  <Ionicons name="document-text" size={20} color={COLORS.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>SIRET</Text>
+                    <Text style={styles.infoValue}>{profile.siret}</Text>
+                  </View>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -393,47 +409,220 @@ export default function ProfilPhotographe() {
             </Text>
           </View>
         </View>
-        {/* Détails professionnels */}
+        {/* Spécialisations & Catégories */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="briefcase" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Détails professionnels</Text>
+            <Ionicons name="camera" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Spécialisations</Text>
           </View>
 
           <View style={styles.card}>
-            {profile?.annees_experience && (
+            {profile?.specialisations && Array.isArray(profile.specialisations) && profile.specialisations.length > 0 ? (
               <View style={styles.infoCard}>
-                <Ionicons name="time" size={20} color={COLORS.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Expérience</Text>
-                  <Text style={styles.infoValue}>{profile.annees_experience} ans</Text>
-                </View>
-              </View>
-            )}
-
-            {profile?.specialisations && Array.isArray(profile.specialisations) && profile.specialisations.length > 0 && (
-              <View style={styles.infoCard}>
-                <Ionicons name="camera" size={20} color={COLORS.primary} />
+                <Ionicons name="star" size={20} color={COLORS.primary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Spécialisations</Text>
                   <Text style={styles.infoValue}>{profile.specialisations.join(', ')}</Text>
                 </View>
               </View>
+            ) : (
+              <Text style={styles.emptyText}>Aucune spécialisation renseignée</Text>
             )}
 
-            {profile?.tarifs_indicatifs && (
+            {profile?.categories && Array.isArray(profile.categories) && profile.categories.length > 0 && (
               <View style={styles.infoCard}>
-                <Ionicons name="cash" size={20} color={COLORS.primary} />
+                <Ionicons name="grid" size={20} color={COLORS.primary} />
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Tarifs indicatifs</Text>
+                  <Text style={styles.infoLabel}>Catégories</Text>
+                  <Text style={styles.infoValue}>{profile.categories.join(', ')}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Équipement & Équipe */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="construct" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Équipement & Équipe</Text>
+          </View>
+
+          <View style={styles.card}>
+            {profile?.materiel && Object.keys(profile.materiel).length > 0 ? (
+              <View style={styles.infoCard}>
+                <Ionicons name="settings" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Matériel</Text>
                   <Text style={styles.infoValue}>
-                    {profile.tarifs_indicatifs.min}€ - {profile.tarifs_indicatifs.max}€
+                    {Object.entries(profile.materiel)
+                      .filter(([_, value]) => value)
+                      .map(([key]) => key)
+                      .join(', ') || 'Non spécifié'}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {profile?.equipe && (
+              <View style={styles.infoCard}>
+                <Ionicons name="people" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Équipe</Text>
+                  <Text style={styles.infoValue}>
+                    {[
+                      profile.equipe.solo_only 
+                        ? 'Travail en solo'
+                        : `Équipe de ${profile.equipe.num_assistants || 0} assistant(s)`,
+                      profile.equipe.has_makeup ? 'Maquilleur' : null,
+                      profile.equipe.has_stylist ? 'Styliste' : null,
+                      profile.equipe.has_videographer ? 'Vidéographe' : null,
+                    ].filter(Boolean).join(', ')}
                   </Text>
                 </View>
               </View>
             )}
           </View>
         </View>
+
+        {/* Tarifs */}
+        {profile?.tarifs_indicatifs && Object.keys(profile.tarifs_indicatifs).length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="cash" size={20} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Tarifs</Text>
+            </View>
+
+            <View style={styles.card}>
+              {Object.entries(profile.tarifs_indicatifs).map(([key, value]: [string, any]) => (
+                <View key={key} style={styles.infoCard}>
+                  <Ionicons name="pricetag" size={20} color={COLORS.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+                    <Text style={styles.infoValue}>
+                      {value?.min || 0}€ - {value?.max || 0}€
+                    </Text>
+                  </View>
+                </View>
+              ))}
+
+              {profile?.frais_deplacement_par_km && (
+                <View style={styles.infoCard}>
+                  <Ionicons name="car" size={20} color={COLORS.primary} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Frais de déplacement</Text>
+                    <Text style={styles.infoValue}>{profile.frais_deplacement_par_km}€/km</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Localisation & Mobilité */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="navigate" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Localisation & Mobilité</Text>
+          </View>
+
+          <View style={styles.card}>
+            {profile?.mobile !== undefined && (
+              <View style={styles.infoCard}>
+                <Ionicons name="car" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Déplacement</Text>
+                  <Text style={styles.infoValue}>
+                    {profile.mobile ? `Oui (${profile.rayon_deplacement_km || 50} km)` : 'Non'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {profile?.studio && (
+              <View style={styles.infoCard}>
+                <Ionicons name="home" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Studio</Text>
+                  <Text style={styles.infoValue}>
+                    {profile.studio_adresse || 'Adresse disponible sur demande'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {profile?.preferences && (
+              <View style={styles.infoCard}>
+                <Ionicons name="calendar" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Disponibilités</Text>
+                  <Text style={styles.infoValue}>
+                    {[
+                      profile.preferences.accepte_weekend ? 'Weekends' : null,
+                      profile.preferences.accepte_soiree ? 'Soirées' : null,
+                    ].filter(Boolean).join(', ') || 'Semaine uniquement'}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Documents & Vérification */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Vérification</Text>
+          </View>
+
+          <View style={styles.card}>
+            {profile?.documents_assurance && (
+              <View style={styles.infoCard}>
+                <Ionicons name="document" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Assurance professionnelle</Text>
+                  <Text style={styles.infoValue}>Document fourni ✓</Text>
+                </View>
+              </View>
+            )}
+
+            {profile?.identite_verifiee !== undefined && (
+              <View style={styles.infoCard}>
+                <Ionicons name="id-card" size={20} color={profile.identite_verifiee ? '#10B981' : '#F59E0B'} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Identité</Text>
+                  <Text style={[styles.infoValue, { color: profile.identite_verifiee ? '#10B981' : '#F59E0B' }]}>
+                    {profile.identite_verifiee ? 'Vérifiée ✓' : 'En attente de vérification'}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+        {/* Portfolio */}
+        {profile?.portfolio_photos && Array.isArray(profile.portfolio_photos) && profile.portfolio_photos.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="images" size={20} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Portfolio</Text>
+            </View>
+
+            <View style={styles.card}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  {profile.portfolio_photos.map((photo, index) => (
+                    <Image 
+                      key={index}
+                      source={{ uri: photo }} 
+                      style={{ width: 150, height: 150, borderRadius: 8 }}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        )}
+
         {/* Réseaux sociaux */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -467,9 +656,9 @@ export default function ProfilPhotographe() {
                   <Text style={styles.socialText}>{profile.site_web}</Text>
                 </View>
               )}
-              {!profile?.instagram && !profile?.facebook && !profile?.linkedin && !profile?.site_web && (
+              {(!profile?.instagram && !profile?.facebook && !profile?.linkedin && !profile?.site_web) ? (
                 <Text style={styles.emptyText}>Aucun réseau social configuré</Text>
-              )}
+              ) : null}
             </View>
           </View>
         </View>
@@ -542,7 +731,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, flex: 1 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  statCard: { flex: 1, minWidth: 100, backgroundColor: COLORS.background, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1 },
+  statCard: { width: '48%', backgroundColor: COLORS.background, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1 },
   statValue: { fontSize: 20, fontWeight: 'bold', color: COLORS.text, marginTop: 4 },
   statLabel: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
   card: { backgroundColor: COLORS.background, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },

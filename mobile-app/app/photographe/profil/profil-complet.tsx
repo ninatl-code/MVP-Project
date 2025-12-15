@@ -60,9 +60,8 @@ interface PhotographerProfile {
   bio: string;
   nom_entreprise: string;
   site_web: string;
-  annees_experience: number;
   specialisations: string[];
-  styles_photo: string[];
+  categories: string[];
   equipe: {
     solo_only: boolean;
     num_assistants: number;
@@ -72,26 +71,25 @@ interface PhotographerProfile {
   };
   materiel: Record<string, boolean>;
   tarifs: Record<string, { min: number; max: number }>;
-  tarif_deplacements: number;
-  tarif_studio: number;
+  frais_deplacement_par_km: number;
   rayon_deplacement: number;
   mobile: boolean;
   studio: boolean;
-  adresse_studio: string;
-  disponibilite: {
-    weekdays: boolean;
-    weekends: boolean;
-    evenings: boolean;
+  studio_adresse: string;
+  preferences: {
+    accepte_weekend: boolean;
+    accepte_soiree: boolean;
   };
-  delai_min_booking: number;
   instagram: string;
   facebook: string;
   linkedin: string;
-  assurance_pro: boolean;
+  documents_assurance: string;
   portfolio_photos: string[];
-  verification_status?: 'amateur' | 'pro';
+  statut_validation?: string;
+  statut_pro?: boolean;
   siret?: string;
-  business_name?: string;
+  document_identite_url?: string;
+  identite_verifiee?: boolean;
 }
 
 const DEFAULT_TARIFS = {
@@ -105,6 +103,17 @@ const DEFAULT_TARIFS = {
   reportage: { min: 400, max: 2000 },
 };
 
+const CATEGORIES = [
+  { id: 'portrait', label: 'Portrait / Book' },
+  { id: 'event', label: 'Événement' },
+  { id: 'product', label: 'Produit' },
+  { id: 'real_estate', label: 'Immobilier' },
+  { id: 'fashion', label: 'Mode' },
+  { id: 'family', label: 'Famille' },
+  { id: 'corporate', label: 'Corporate' },
+  { id: 'reportage', label: 'Reportage' },
+];
+
 export default function ProfilComplet() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -115,9 +124,8 @@ export default function ProfilComplet() {
     bio: '',
     nom_entreprise: '',
     site_web: '',
-    annees_experience: 0,
     specialisations: [],
-    styles_photo: [],
+    categories: [],
     equipe: {
       solo_only: true,
       num_assistants: 0,
@@ -127,22 +135,19 @@ export default function ProfilComplet() {
     },
     materiel: {},
     tarifs: DEFAULT_TARIFS,
-    tarif_deplacements: 0,
-    tarif_studio: 0,
+    frais_deplacement_par_km: 0,
     rayon_deplacement: 50,
     mobile: true,
     studio: false,
-    adresse_studio: '',
-    disponibilite: {
-      weekdays: true,
-      weekends: true,
-      evenings: false,
+    studio_adresse: '',
+    preferences: {
+      accepte_weekend: true,
+      accepte_soiree: false,
     },
-    delai_min_booking: 14,
     instagram: '',
     facebook: '',
     linkedin: '',
-    assurance_pro: false,
+    documents_assurance: '',
     portfolio_photos: [],
   });
 
@@ -150,6 +155,7 @@ export default function ProfilComplet() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('infos');
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -157,43 +163,62 @@ export default function ProfilComplet() {
 
   const loadProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      console.log('🔄 loadProfile starting...');
+      
+      // Get session (plus fiable que getUser)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        console.log('❌ No session found');
+        setLoading(false);
+        return;
+      }
+      
+      const user = session.user;
+      console.log('✅ User found:', user.id);
+      console.log('✅ User email:', user.email);
 
-      // Load basic profile info from profiles table
-      const { data: basicProfileData } = await supabase
+      // Load from profiles using auth_user_id AND role
+      console.log('📥 Loading from profiles table...');
+      const { data: basicProfileData, error: basicError } = await supabase
         .from('profiles')
-        .select('nom, email, telephone, avatar_url')
-        .eq('id', user.id)
+        .select('id, nom, email, telephone, avatar_url')
+        .eq('auth_user_id', user.id)
+        .eq('role', 'photographe')
         .maybeSingle();
 
-      // Load detailed photographer profile from profils_photographe
-      const { data: photoData, error } = await supabase
-        .from('profils_photographe')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      console.log('✅ profiles data:', basicProfileData);
+      console.log('⚠️ profiles error:', basicError);
 
-      // DEBUG: Log what we got
-      console.log('basicProfileData:', basicProfileData);
-      console.log('photoData nom:', photoData?.nom);
-      console.log('photoData telephone:', photoData?.telephone);
-
-      if (error) {
-        console.error('Erreur chargement profil:', error);
+      // Stocker le profiles.id pour l'utiliser dans saveProfile
+      if (basicProfileData?.id) {
+        setProfileId(basicProfileData.id);
+        console.log('✅ profiles.id stored:', basicProfileData.id);
       }
 
-      // Build complete profile with data from both tables
+      // Load detailed photographer profile from profils_photographe
+      console.log('📥 Loading from profils_photographe...');
+      const { data: photoData, error: photoError } = basicProfileData?.id
+        ? await supabase
+            .from('profils_photographe')
+            .select('*')
+            .eq('id', basicProfileData.id)
+            .maybeSingle()
+        : { data: null, error: null };
+
+      console.log('✅ profils_photographe loaded:', photoData ? 'YES' : 'NO');
+      console.log('⚠️ profils_photographe error:', photoError);
+
+      // Build complete profile - use profiles data (priority) and profils_photographe as fallback
       const newProfile = {
-        nom: basicProfileData?.email || profile.nom, // TEST: use email to debug
-        email: basicProfileData?.email || profile.email || '',
-        telephone: basicProfileData?.email || profile.telephone, // TEST: use email to debug
+        nom: basicProfileData?.nom || photoData?.nom || '',
+        email: basicProfileData?.email || photoData?.email || user.email || '',
+        telephone: basicProfileData?.telephone || photoData?.telephone || '',
         bio: photoData?.bio || '',
         nom_entreprise: photoData?.nom_entreprise || '',
         site_web: photoData?.site_web || '',
-        annees_experience: photoData?.annees_experience || 0,
         specialisations: photoData?.specialisations || [],
-        styles_photo: photoData?.styles_photo || [],
+        categories: photoData?.categories || [],
         equipe: photoData?.equipe || {
           solo_only: true,
           num_assistants: 0,
@@ -203,37 +228,40 @@ export default function ProfilComplet() {
         },
         materiel: photoData?.materiel || {},
         tarifs: photoData?.tarifs_indicatifs || DEFAULT_TARIFS,
-        tarif_deplacements: photoData?.tarif_deplacements || 0,
-        tarif_studio: photoData?.tarif_studio || 0,
+        frais_deplacement_par_km: photoData?.frais_deplacement_par_km || 0,
         rayon_deplacement: photoData?.rayon_deplacement_km || 50,
         mobile: photoData?.mobile !== false,
         studio: photoData?.studio || false,
-        adresse_studio: photoData?.adresse_studio || '',
-        disponibilite: photoData?.disponibilite || {
-          weekdays: true,
-          weekends: true,
-          evenings: false,
+        studio_adresse: photoData?.studio_adresse || '',
+        preferences: photoData?.preferences || {
+          accepte_weekend: true,
+          accepte_soiree: false,
         },
-        delai_min_booking: photoData?.delai_min_booking || 14,
         instagram: photoData?.instagram || '',
         facebook: photoData?.facebook || '',
         linkedin: photoData?.linkedin || '',
-        assurance_pro: photoData?.assurance_pro || false,
+        documents_assurance: photoData?.documents_assurance || '',
         portfolio_photos: photoData?.portfolio_photos || [],
-        verification_status: photoData?.verification_status || 'amateur',
+        statut_validation: photoData?.statut_validation || 'pending',
+        statut_pro: photoData?.statut_pro || false,
         siret: photoData?.siret || undefined,
-        business_name: photoData?.business_name || undefined,
+        document_identite_url: photoData?.document_identite_url || '',
+        identite_verifiee: photoData?.identite_verifiee || false,
       };
 
+      console.log('💾 Setting profile with nom:', newProfile.nom, 'tel:', newProfile.telephone);
       setProfile(newProfile as PhotographerProfile);
 
-      // Load profile photo (avatar_url)
+      // Load profile photo
       if (basicProfileData?.avatar_url) {
+        console.log('🖼️ Loading avatar...');
         setProfilePhotoUri(basicProfileData.avatar_url);
       }
+
+      console.log('✅ loadProfile completed successfully');
+      setLoading(false);
     } catch (error) {
-      console.error('Erreur chargement profil:', error);
-    } finally {
+      console.error('❌ Erreur chargement profil:', error);
       setLoading(false);
     }
   };
@@ -241,56 +269,69 @@ export default function ProfilComplet() {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non authentifié');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error('Non authentifié');
+      const user = session.user;
 
-      // Sauvegarder les infos de base dans profiles
+      if (!profileId) {
+        throw new Error('Profile ID manquant. Veuillez recharger la page.');
+      }
+
+      // Fonction helper pour convertir les chaînes vides en null
+      const emptyToNull = (value: string | undefined) => {
+        return value && value.trim() !== '' ? value : null;
+      };
+
+      // Sauvegarder les infos de base dans profiles (use auth_user_id AND role)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          nom: profile.nom,
+          nom: emptyToNull(profile.nom) || 'Utilisateur',
           email: profile.email,
-          telephone: profile.telephone,
+          telephone: emptyToNull(profile.telephone),
         })
-        .eq('id', user.id);
+        .eq('auth_user_id', user.id)
+        .eq('role', 'photographe');
 
-      // Sauvegarder les détails photographe
+      // Sauvegarder les détails photographe (upsert pour créer si n'existe pas)
+      // IMPORTANT: utiliser profileId qui est profiles.id, PAS auth_user_id
       const { error: photoError } = await supabase
         .from('profils_photographe')
-        .update({
-          bio: profile.bio,
-          nom_entreprise: profile.nom_entreprise,
-          site_web: profile.site_web,
-          annees_experience: profile.annees_experience,
-          specialisations: profile.specialisations,
-          styles_photo: profile.styles_photo,
+        .upsert({
+          id: profileId,  // UTILISER profiles.id stocké dans profileId
+          bio: emptyToNull(profile.bio),
+          nom_entreprise: emptyToNull(profile.nom_entreprise),
+          site_web: emptyToNull(profile.site_web),
+          specialisations: profile.specialisations || [],
+          categories: profile.categories || [],
           equipe: profile.equipe,
-          materiel: profile.materiel,
+          materiel: profile.materiel || {},
           tarifs_indicatifs: profile.tarifs,
-          tarif_deplacements: profile.tarif_deplacements,
-          tarif_studio: profile.tarif_studio,
-          rayon_deplacement_km: profile.rayon_deplacement,
+          frais_deplacement_par_km: profile.frais_deplacement_par_km || 0,
+          rayon_deplacement_km: profile.rayon_deplacement || 50,
           mobile: profile.mobile,
           studio: profile.studio,
-          adresse_studio: profile.adresse_studio,
-          disponibilite: profile.disponibilite,
-          delai_min_booking: profile.delai_min_booking,
-          instagram: profile.instagram,
-          facebook: profile.facebook,
-          linkedin: profile.linkedin,
-          assurance_pro: profile.assurance_pro,
-          portfolio_photos: profile.portfolio_photos,
-          verification_status: profile.verification_status || 'amateur',
-          siret: profile.siret || null,
-          business_name: profile.business_name || null,
-        })
-        .eq('id', user.id);
+          studio_adresse: emptyToNull(profile.studio_adresse),
+          preferences: profile.preferences,
+          instagram: emptyToNull(profile.instagram),
+          facebook: emptyToNull(profile.facebook),
+          linkedin: emptyToNull(profile.linkedin),
+          documents_assurance: emptyToNull(profile.documents_assurance),
+          portfolio_photos: profile.portfolio_photos || [],
+          statut_validation: profile.statut_validation || 'pending',
+          statut_pro: profile.statut_pro || false,
+          siret: emptyToNull(profile.siret),
+          document_identite_url: emptyToNull(profile.document_identite_url),
+        });
 
       if (profileError || photoError) {
         throw profileError || photoError;
       }
 
       Alert.alert('Succès', 'Profil mis à jour');
+      
+      // Rediriger vers profil.tsx après sauvegarde
+      router.push('/photographe/profil/profil');
     } catch (error: any) {
       Alert.alert('Erreur', error.message);
     } finally {
@@ -373,11 +414,12 @@ export default function ProfilComplet() {
             }
           }
 
-          // Update profiles table with photo (either cloud URL or local URI)
+          // Update profiles table with photo (use auth_user_id AND role)
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ avatar_url: photoUrl })
-            .eq('id', user.id);
+            .eq('auth_user_id', user.id)
+            .eq('role', 'photographe');
 
           if (updateError) {
             throw updateError;
@@ -389,12 +431,13 @@ export default function ProfilComplet() {
         } catch (error: any) {
           // Fallback: save local URI if cloud storage fails
           try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
               await supabase
                 .from('profiles')
                 .update({ avatar_url: imageUri })
-                .eq('id', user.id);
+                .eq('auth_user_id', session.user.id)
+                .eq('role', 'photographe');
               setProfilePhotoUri(imageUri);
               setSaving(false);
               Alert.alert('Succès', 'Photo de profil mise à jour (stockage local)');
@@ -558,20 +601,6 @@ export default function ProfilComplet() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Années d'expérience</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.annees_experience.toString()}
-                onChangeText={text => setProfile({
-                  ...profile,
-                  annees_experience: parseInt(text) || 0,
-                })}
-                placeholder="Ex: 8"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
               <Text style={styles.label}>Site web</Text>
               <TextInput
                 style={styles.input}
@@ -611,11 +640,13 @@ export default function ProfilComplet() {
               />
             </View>
 
-            <View style={styles.switchGroup}>
-              <Text style={styles.label}>Assurance Responsabilité Civile Pro</Text>
-              <Switch
-                value={profile.assurance_pro}
-                onValueChange={value => setProfile({ ...profile, assurance_pro: value })}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Document d'assurance (URL)</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.documents_assurance}
+                onChangeText={text => setProfile({ ...profile, documents_assurance: text })}
+                placeholder="URL du document d'assurance"
               />
             </View>
           </View>
@@ -654,29 +685,29 @@ export default function ProfilComplet() {
               ))}
             </View>
 
-            <Text style={[styles.subLabel, { marginTop: 24 }]}>Styles photographiques</Text>
+            <Text style={[styles.subLabel, { marginTop: 24 }]}>Catégories</Text>
             <View style={styles.gridContainer}>
-              {STYLES.map(style => (
+              {CATEGORIES.map(cat => (
                 <TouchableOpacity
-                  key={style.id}
+                  key={cat.id}
                   style={[
                     styles.chip,
-                    profile.styles_photo.includes(style.id) && styles.chipSelected,
+                    profile.categories.includes(cat.id) && styles.chipSelected,
                   ]}
                   onPress={() => {
                     setProfile(prev => ({
                       ...prev,
-                      styles_photo: prev.styles_photo.includes(style.id)
-                        ? prev.styles_photo.filter(s => s !== style.id)
-                        : [...prev.styles_photo, style.id],
+                      categories: prev.categories.includes(cat.id)
+                        ? prev.categories.filter(s => s !== cat.id)
+                        : [...prev.categories, cat.id],
                     }));
                   }}
                 >
                   <Text style={[
                     styles.chipText,
-                    profile.styles_photo.includes(style.id) && styles.chipTextSelected,
+                    profile.categories.includes(cat.id) && styles.chipTextSelected,
                   ]}>
-                    {style.label}
+                    {cat.label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -825,43 +856,16 @@ export default function ProfilComplet() {
             ))}
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Tarif déplacements (€/km après 30km)</Text>
+              <Text style={styles.label}>Frais déplacement par km (€/km)</Text>
               <TextInput
                 style={styles.input}
-                value={profile.tarif_deplacements.toString()}
+                value={profile.frais_deplacement_par_km.toString()}
                 onChangeText={text => setProfile({
                   ...profile,
-                  tarif_deplacements: parseInt(text) || 0,
+                  frais_deplacement_par_km: parseFloat(text) || 0,
                 })}
                 keyboardType="numeric"
                 placeholder="0"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Tarif location studio (€/heure, si applicable)</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.tarif_studio.toString()}
-                onChangeText={text => setProfile({
-                  ...profile,
-                  tarif_studio: parseInt(text) || 0,
-                })}
-                keyboardType="numeric"
-                placeholder="0"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Délai minimum de booking (jours)</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.delai_min_booking.toString()}
-                onChangeText={text => setProfile({
-                  ...profile,
-                  delai_min_booking: parseInt(text) || 0,
-                })}
-                keyboardType="numeric"
               />
             </View>
           </View>
@@ -908,8 +912,8 @@ export default function ProfilComplet() {
                 <Text style={styles.label}>Adresse du studio</Text>
                 <TextInput
                   style={[styles.input, styles.bioInput]}
-                  value={profile.adresse_studio}
-                  onChangeText={text => setProfile({ ...profile, adresse_studio: text })}
+                  value={profile.studio_adresse}
+                  onChangeText={text => setProfile({ ...profile, studio_adresse: text })}
                   placeholder="123 Rue de Paris, 75001 Paris"
                   multiline
                 />
@@ -919,34 +923,23 @@ export default function ProfilComplet() {
             <Text style={[styles.subLabel, { marginTop: 24 }]}>Disponibilités</Text>
 
             <View style={styles.switchGroup}>
-              <Text style={styles.label}>En semaine</Text>
+              <Text style={styles.label}>Disponible les weekends</Text>
               <Switch
-                value={profile.disponibilite.weekdays}
+                value={profile.preferences.accepte_weekend}
                 onValueChange={value => setProfile({
                   ...profile,
-                  disponibilite: { ...profile.disponibilite, weekdays: value },
+                  preferences: { ...profile.preferences, accepte_weekend: value },
                 })}
               />
             </View>
 
             <View style={styles.switchGroup}>
-              <Text style={styles.label}>Weekends</Text>
+              <Text style={styles.label}>Disponible en soirée</Text>
               <Switch
-                value={profile.disponibilite.weekends}
+                value={profile.preferences.accepte_soiree}
                 onValueChange={value => setProfile({
                   ...profile,
-                  disponibilite: { ...profile.disponibilite, weekends: value },
-                })}
-              />
-            </View>
-
-            <View style={styles.switchGroup}>
-              <Text style={styles.label}>Soirées</Text>
-              <Switch
-                value={profile.disponibilite.evenings}
-                onValueChange={value => setProfile({
-                  ...profile,
-                  disponibilite: { ...profile.disponibilite, evenings: value },
+                  preferences: { ...profile.preferences, accepte_soiree: value },
                 })}
               />
             </View>
@@ -958,69 +951,66 @@ export default function ProfilComplet() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Statut de Vérification</Text>
             
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Vous êtes...</Text>
-              <View style={styles.gridContainer}>
-                {[
-                  { id: 'amateur', label: 'Amateur' },
-                  { id: 'pro', label: 'Professionnel' },
-                ].map(option => (
-                  <TouchableOpacity
-                    key={option.id}
-                    style={[
-                      styles.chip,
-                      profile.verification_status === option.id && styles.chipSelected,
-                    ]}
-                    onPress={() => setProfile({ ...profile, verification_status: option.id as 'amateur' | 'pro' })}
-                  >
-                    <Text style={[
-                      styles.chipText,
-                      profile.verification_status === option.id && styles.chipTextSelected,
-                    ]}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <View style={styles.switchGroup}>
+              <Text style={styles.label}>Je suis photographe professionnel</Text>
+              <Switch
+                value={profile.statut_pro || false}
+                onValueChange={value => setProfile({ ...profile, statut_pro: value })}
+              />
             </View>
 
-            {profile.verification_status === 'pro' && (
-              <>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Numéro SIRET</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={profile.siret || ''}
-                    onChangeText={text => setProfile({ ...profile, siret: text })}
-                    placeholder="Entrez votre numéro SIRET"
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Raison sociale</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={profile.business_name || ''}
-                    onChangeText={text => setProfile({ ...profile, business_name: text })}
-                    placeholder="Nom de votre entreprise"
-                  />
-                </View>
-              </>
+            {profile.statut_pro && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Numéro SIRET (obligatoire pour les professionnels)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={profile.siret || ''}
+                  onChangeText={text => setProfile({ ...profile, siret: text })}
+                  placeholder="Entrez votre numéro SIRET"
+                  keyboardType="numeric"
+                />
+              </View>
             )}
+
+            <Text style={[styles.sectionTitle, { marginTop: 24, fontSize: 16 }]}>Vérification d'identité</Text>
+
+            <View style={[styles.card, { backgroundColor: profile.document_identite_url ? '#F0FDF4' : '#FEF3C7', borderColor: profile.document_identite_url ? '#10B981' : '#F59E0B', borderWidth: 1 }]}>
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Ionicons name={profile.document_identite_url ? "checkmark-circle" : "alert-circle"} size={20} color={profile.document_identite_url ? '#10B981' : '#F59E0B'} style={{ marginRight: 8 }} />
+                <Text style={[styles.sectionTitle, { color: profile.document_identite_url ? '#10B981' : '#F59E0B', fontSize: 14 }]}>
+                  {profile.document_identite_url ? 'Identité vérifiée' : 'Vérification en attente'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
+                {profile.document_identite_url 
+                  ? 'Votre carte d\'identité a été téléchargée et est en cours de vérification.'
+                  : 'Pour être vérifié, téléchargez votre carte d\'identité ou passeport.'}
+              </Text>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Carte d'identité / Passeport (URL)</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.document_identite_url || ''}
+                onChangeText={text => setProfile({ ...profile, document_identite_url: text })}
+                placeholder="URL du document d'identité"
+              />
+              <Text style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                Téléchargez votre document sur un service comme Imgur ou utilisez le stockage Supabase
+              </Text>
+            </View>
 
             <View style={[styles.card, { backgroundColor: '#F0F9FF', borderColor: '#0EA5E9', borderWidth: 1 }]}>
               <View style={{ flexDirection: 'row', marginBottom: 8 }}>
                 <Ionicons name="information" size={20} color="#0EA5E9" style={{ marginRight: 8 }} />
-                <Text style={[styles.sectionTitle, { color: '#0EA5E9', fontSize: 14 }]}>Vérification</Text>
+                <Text style={[styles.sectionTitle, { color: '#0EA5E9', fontSize: 14 }]}>Pourquoi vérifier mon identité?</Text>
               </View>
               <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
-                Votre statut actuel: <Text style={{ fontWeight: 'bold' }}>
-                  {profile.verification_status === 'pro' ? 'Professionnel' : 'Amateur'}
-                </Text>
-              </Text>
-              <Text style={{ fontSize: 13, color: '#666', marginTop: 8, lineHeight: 18 }}>
-                Les professionnels doivent fournir un SIRET valide et une preuve d'assurance. Cela vous donne accès à plus de fonctionnalités.
+                • Les photographes amateurs peuvent utiliser la plateforme sans restriction{"\n"}
+                • Les professionnels doivent fournir un SIRET valide{"\n"}
+                • La vérification d'identité augmente la confiance des clients{"\n"}
+                • Accès à des fonctionnalités premium pour les comptes vérifiés
               </Text>
             </View>
           </View>
