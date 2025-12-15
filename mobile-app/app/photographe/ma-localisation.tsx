@@ -56,7 +56,7 @@ export default function MaLocalisationPage() {
       // Charger les données du profil
       const { data, error } = await supabase
         .from('profiles')
-        .select('latitude, longitude, adresse, ville, code_postal, rayon_intervention, zones_intervention')
+        .select('latitude, longitude, adresse, ville, code_postal, rayon_deplacement_km')
         .eq('id', user.id)
         .single();
 
@@ -68,8 +68,7 @@ export default function MaLocalisationPage() {
         setAdresse(data.adresse || '');
         setVille(data.ville || '');
         setCodePostal(data.code_postal || '');
-        setRayonIntervention(data.rayon_intervention || 20);
-        setZonesIntervention(data.zones_intervention || []);
+        setRayonIntervention(data.rayon_deplacement_km || 20);
 
         if (data.latitude && data.longitude) {
           setRegion({
@@ -173,8 +172,7 @@ export default function MaLocalisationPage() {
           adresse,
           ville,
           code_postal: codePostal,
-          rayon_intervention: rayonIntervention,
-          zones_intervention: zonesIntervention
+          rayon_deplacement_km: rayonIntervention,
         })
         .eq('id', userId);
 

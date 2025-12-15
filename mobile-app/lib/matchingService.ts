@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { sendPushNotification } from './notificationService';
+import { DemandeClient } from './demandeService';
 
 /**
  * Service de matching entre demandes clients et photographes

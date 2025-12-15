@@ -96,32 +96,48 @@ export default function MediaLibraryScreen() {
       if (!user) return;
       setUserId(user.id);
 
-      // Load media items
-      const { data: mediaData, error: mediaError } = await supabase
-        .from('media_library')
+      // Load delivery galleries (galeries_livraison)
+      const { data: galleriesData, error: galleriesError } = await supabase
+        .from('galeries_livraison')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('photographe_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (mediaError) throw mediaError;
-      setMedia(mediaData || []);
+      if (galleriesError) throw galleriesError;
+      
+      // Transform galeries_livraison data to MediaItem format
+      const mediaItems = (galleriesData || []).map((gallery: any) => ({
+        id: gallery.id,
+        user_id: gallery.photographe_id,
+        media_type: 'image' as const,
+        files: gallery.photos || [],
+        description: gallery.message_accompagnement,
+        created_at: gallery.created_at,
+      }));
+      
+      setMedia(mediaItems);
 
-      // Load albums with counts
-      const { data: albumsData, error: albumsError } = await supabase
-        .from('media_albums')
-        .select(`
-          *,
-          album_media (count)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Load reservations as "albums"
+      const { data: reservations, error: resError } = await supabase
+        .from('reservations')
+        .select('id, client_nom, service_start_datetime')
+        .eq('photographe_id', user.id)
+        .order('service_start_datetime', { ascending: false })
+        .limit(10);
 
-      if (albumsError) throw albumsError;
+      if (resError) throw resError;
+      
+      const albums = (reservations || []).map((res: any) => ({
+        id: res.id,
+        title: res.client_nom || 'Réservation',
+        item_count: 0,
+      }));
+      
       setAlbums(
         albumsData?.map((a: any) => ({
           ...a,
           item_count: a.album_media?.[0]?.count || 0,
-        })) || []
+        })) || albums
       );
     } catch (error) {
       console.error('Error loading media library:', error);
@@ -194,12 +210,12 @@ export default function MediaLibraryScreen() {
       const fileExt = fileName.split('.').pop();
       const filePath = `${userId}/${mediaType}s/${Date.now()}_${fileName}`;
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage (galeries bucket)
       const response = await fetch(uri);
       const blob = await response.blob();
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('media_library')
+        .from('galeries')
         .upload(filePath, blob, {
           contentType: asset.mimeType || 'application/octet-stream',
           upsert: false,
@@ -209,30 +225,29 @@ export default function MediaLibraryScreen() {
 
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('media_library')
+        .from('galeries')
         .getPublicUrl(filePath);
 
-      // Create media record
-      const { error: insertError } = await supabase.from('media_library').insert({
-        user_id: userId,
-        media_type: mediaType,
-        file_url: urlData.publicUrl,
-        file_name: fileName,
-        file_size: asset.fileSize || 0,
-        mime_type: asset.mimeType || 'application/octet-stream',
-        width: asset.width,
-        height: asset.height,
-        duration: asset.duration,
-        is_public: false,
-        is_featured: false,
-        tags: [],
-        metadata: {
-          exif: asset.exif,
-          uploaded_from: 'mobile',
-        },
-      });
+      // Create media record in galeries_livraison (associate with recent reservation)
+      // Get the latest reservation for this photographer
+      const { data: latestRes } = await supabase
+        .from('reservations')
+        .select('id, client_id')
+        .eq('photographe_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-      if (insertError) throw insertError;
+      if (latestRes) {
+        const { error: insertError } = await supabase.from('galeries_livraison').insert({
+          reservation_id: latestRes.id,
+          photographe_id: userId,
+          client_id: latestRes.client_id,
+          photos: [urlData.publicUrl],
+        });
+
+        if (insertError) throw insertError;
+      }
 
       // Create processing job for videos
       if (mediaType === 'video') {
@@ -276,22 +291,13 @@ export default function MediaLibraryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Delete from storage
-              const itemsToDelete = media.filter((m) => selectedItems.includes(m.id));
-              const filePaths = itemsToDelete.map((m) => {
-                const url = new URL(m.file_url);
-                return url.pathname.split('/').slice(-3).join('/');
-              });
-
-              await supabase.storage.from('media_library').remove(filePaths);
-
-              // Delete from database
-              await supabase.from('media_library').delete().in('id', selectedItems);
+              // Delete galleries
+              await supabase.from('galeries_livraison').delete().in('id', selectedItems);
 
               setSelectedItems([]);
               setSelectionMode(false);
               await loadMediaLibrary();
-              Alert.alert('Success', 'Media deleted successfully');
+              Alert.alert('Success', 'Galleries deleted successfully');
             } catch (error) {
               console.error('Error deleting media:', error);
               Alert.alert('Error', 'Failed to delete media');

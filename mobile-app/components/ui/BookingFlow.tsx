@@ -79,6 +79,21 @@ export default function BookingFlow({
 
   const handleBookingConfirmation = async () => {
     try {
+      // Vérifier que l'utilisateur ne réserve pas chez lui-même
+      const { data: annonce } = await supabase
+        .from('annonces')
+        .select('prestataire')
+        .eq('id', annonceId)
+        .single();
+      
+      if (annonce && userId === annonce.prestataire) {
+        Alert.alert(
+          'Réservation impossible',
+          'Vous ne pouvez pas réserver vos propres services. Veuillez vous connecter avec un autre compte client.'
+        );
+        return;
+      }
+
       // 1. Créer la réservation dans Supabase
       const { data: reservation, error: reservationError } = await supabase
         .from('reservations')

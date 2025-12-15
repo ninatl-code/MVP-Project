@@ -256,6 +256,11 @@ export async function acceptDevis(devisId: string, clientId: string): Promise<{ 
       throw new Error('Ce devis a déjà été accepté');
     }
 
+    // Vérifier que le client n'est pas le même que le photographe
+    if (clientId === devis.photographe_id) {
+      throw new Error('Vous ne pouvez pas réserver vos propres services');
+    }
+
     // Récupérer la demande pour obtenir les détails
     const { data: demande, error: demandeError } = await supabase
       .from('demandes_client')

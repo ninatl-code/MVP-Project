@@ -131,7 +131,16 @@ export default function PackageDetail() {
     }
   };
 
-  const handleReserver = () => {
+  const handleReserver = async () => {
+    // Vérifier que l'utilisateur ne réserve pas chez lui-même
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && packageData && user.id === packageData.photographe_id) {
+      Alert.alert(
+        'Réservation impossible',
+        'Vous ne pouvez pas réserver vos propres services. Veuillez vous connecter avec un autre compte client.'
+      );
+      return;
+    }
     router.push(`/packages/${id}/reserver` as any);
   };
 

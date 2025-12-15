@@ -69,41 +69,70 @@ export default function RésultatsRecherche() {
           id,
           photographer_id,
           match_score,
-          match_reasons,
-          photographer:profils_photographe(
-            id,
-            bio,
-            specialisations,
-            tarifs_indicatifs,
-            rating_moyen,
-            nombre_avis,
-            profiles:profiles(
-              nom,
-              avatar_url
-            )
-          )
+          match_reasons
         `)
         .eq('demande_id', demandes[0].id)
         .eq('status', 'pending')
         .order('match_score', { ascending: false });
 
+      // Récupérer les infos photographe pour chaque matching
+      const photographerIds = matchings?.map(m => m.photographer_id) || [];
+      
+      let photographersData: any[] = [];
+      if (photographerIds.length > 0) {
+        const { data: photographers } = await supabase
+          .from('profils_photographe')
+          .select(`
+            id,
+            bio,
+            specialisations,
+            tarifs_indicatifs,
+            rating_moyen,
+            nombre_avis
+          `)
+          .in('id', photographerIds);
+        
+        photographersData = photographers || [];
+      }
+
+      // Récupérer les profils pour les données de nom et avatar
+      let profilesData: any = {};
+      if (photographerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select(`
+            id,
+            nom,
+            avatar_url
+          `)
+          .in('id', photographerIds);
+        
+        if (profiles) {
+          profiles.forEach((p: any) => {
+            profilesData[p.id] = p;
+          });
+        }
+      }
+
       if (!matchings) return;
 
-      const formatted: PhotographerCard[] = matchings.map(match => {
-        const photo = match.photographer as any;
+      const formatted: PhotographerCard[] = matchings?.map(match => {
+        const photo = photographersData.find((p: any) => p.id === match.photographer_id);
+        const profile = profilesData[match.photographer_id];
+        
         return {
           id: match.photographer_id,
-          nom: photo.profiles?.nom || 'Photographe',
-          avatar: photo.profiles?.avatar_url || '',
-          rating: photo.rating_moyen || 0,
-          reviews: photo.nombre_avis || 0,
-          specialities: photo.specialisations || [],
-          price_range: photo.tarifs_indicatifs || {},
-          match_score: match.match_score,
+          nom: profile?.nom || 'Photographe',
+          avatar: profile?.avatar_url || '',
+          rating: photo?.rating_moyen || 0,
+          reviews: photo?.nombre_avis || 0,
+          specialities: photo?.specialisations || [],
+          price_range: photo?.tarifs_indicatifs || { min: 0, max: 0 },
+          match_score: match.match_score || 0,
           match_reasons: match.match_reasons || [],
-          bio: photo.bio || '',
+          bio: photo?.bio || '',
         };
-      });
+      }) || [];
 
       setPhotographers(formatted);
     } catch (error) {
@@ -192,7 +221,7 @@ export default function RésultatsRecherche() {
       <View style={styles.actionButtons}>
         <TouchableOpacity
           style={[styles.button, styles.buttonSecondary]}
-          onPress={() => router.push(`/photographe/${photographer.id}`)}
+          onPress={() => router.push(`/photographe/${photographer.id}` as any)}
         >
           <Text style={styles.buttonSecondaryText}>Voir profil</Text>
         </TouchableOpacity>

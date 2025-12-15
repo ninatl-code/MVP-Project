@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import FooterPresta from '@/components/photographe/FooterPresta';
 
 interface Remboursement {
@@ -13,6 +15,7 @@ interface Remboursement {
 }
 
 export default function RemboursementsPrestataire() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [remboursements, setRemboursements] = useState<Remboursement[]>([]);
 
@@ -64,9 +67,17 @@ export default function RemboursementsPrestataire() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1C1C1E" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Remboursements</Text>
+        <View style={{ width: 24 }} />
+      </View>
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>💰 Remboursements</Text>
 
         {remboursements.length === 0 ? (
           <View style={styles.emptyState}>
@@ -110,14 +121,32 @@ export default function RemboursementsPrestataire() {
         )}
       </ScrollView>
       <FooterPresta />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FB'
+    backgroundColor: '#FFFFFF'
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  backButton: {
+    padding: 8
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1C1C1E'
   },
   scrollView: {
     flex: 1

@@ -28,7 +28,7 @@ const COLORS = {
 
 interface MessageTemplate {
   id: string;
-  provider_id: string;
+  photographe_id: string;
   title: string;
   content: string;
   category: string;
@@ -82,7 +82,7 @@ export default function MessageTemplatesScreen() {
       const { data, error } = await supabase
         .from('message_templates')
         .select('*')
-        .eq('provider_id', user.id)
+        .eq('photographe_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -155,7 +155,7 @@ export default function MessageTemplatesScreen() {
       } else {
         // Create new template
         const { error } = await supabase.from('message_templates').insert({
-          provider_id: providerId,
+          photographe_id: providerId,
           title: formTitle.trim(),
           content: formContent.trim(),
           category: formCategory,

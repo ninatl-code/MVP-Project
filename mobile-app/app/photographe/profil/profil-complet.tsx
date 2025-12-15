@@ -15,8 +15,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../../../lib/supabaseClient';
 import { COLORS } from '../../../constants/Colors';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import FooterPresta from '../../../components/photographe/FooterPresta';
 
 // Types et constantes
 const SPECIALISATIONS = [
@@ -85,6 +89,9 @@ interface PhotographerProfile {
   linkedin: string;
   assurance_pro: boolean;
   portfolio_photos: string[];
+  verification_status?: 'amateur' | 'pro';
+  siret?: string;
+  business_name?: string;
 }
 
 const DEFAULT_TARIFS = {
@@ -100,6 +107,7 @@ const DEFAULT_TARIFS = {
 
 export default function ProfilComplet() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [profile, setProfile] = useState<PhotographerProfile>({
     nom: '',
     email: '',
@@ -141,6 +149,7 @@ export default function ProfilComplet() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('infos');
+  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -151,22 +160,76 @@ export default function ProfilComplet() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Load basic profile info from profiles table
+      const { data: basicProfileData } = await supabase
+        .from('profiles')
+        .select('nom, email, telephone, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      // Load detailed photographer profile from profils_photographe
+      const { data: photoData, error } = await supabase
         .from('profils_photographe')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      // DEBUG: Log what we got
+      console.log('basicProfileData:', basicProfileData);
+      console.log('photoData nom:', photoData?.nom);
+      console.log('photoData telephone:', photoData?.telephone);
 
-      if (data) {
-        setProfile(prev => ({
-          ...prev,
-          ...data,
-          equipe: data.equipe || prev.equipe,
-          materiel: data.materiel || {},
-          tarifs: data.tarifs_indicatifs || DEFAULT_TARIFS,
-        }));
+      if (error) {
+        console.error('Erreur chargement profil:', error);
+      }
+
+      // Build complete profile with data from both tables
+      const newProfile = {
+        nom: basicProfileData?.email || profile.nom, // TEST: use email to debug
+        email: basicProfileData?.email || profile.email || '',
+        telephone: basicProfileData?.email || profile.telephone, // TEST: use email to debug
+        bio: photoData?.bio || '',
+        nom_entreprise: photoData?.nom_entreprise || '',
+        site_web: photoData?.site_web || '',
+        annees_experience: photoData?.annees_experience || 0,
+        specialisations: photoData?.specialisations || [],
+        styles_photo: photoData?.styles_photo || [],
+        equipe: photoData?.equipe || {
+          solo_only: true,
+          num_assistants: 0,
+          has_makeup: false,
+          has_stylist: false,
+          has_videographer: false,
+        },
+        materiel: photoData?.materiel || {},
+        tarifs: photoData?.tarifs_indicatifs || DEFAULT_TARIFS,
+        tarif_deplacements: photoData?.tarif_deplacements || 0,
+        tarif_studio: photoData?.tarif_studio || 0,
+        rayon_deplacement: photoData?.rayon_deplacement_km || 50,
+        mobile: photoData?.mobile !== false,
+        studio: photoData?.studio || false,
+        adresse_studio: photoData?.adresse_studio || '',
+        disponibilite: photoData?.disponibilite || {
+          weekdays: true,
+          weekends: true,
+          evenings: false,
+        },
+        delai_min_booking: photoData?.delai_min_booking || 14,
+        instagram: photoData?.instagram || '',
+        facebook: photoData?.facebook || '',
+        linkedin: photoData?.linkedin || '',
+        assurance_pro: photoData?.assurance_pro || false,
+        portfolio_photos: photoData?.portfolio_photos || [],
+        verification_status: photoData?.verification_status || 'amateur',
+        siret: photoData?.siret || undefined,
+        business_name: photoData?.business_name || undefined,
+      };
+
+      setProfile(newProfile as PhotographerProfile);
+
+      // Load profile photo (avatar_url)
+      if (basicProfileData?.avatar_url) {
+        setProfilePhotoUri(basicProfileData.avatar_url);
       }
     } catch (error) {
       console.error('Erreur chargement profil:', error);
@@ -217,6 +280,9 @@ export default function ProfilComplet() {
           linkedin: profile.linkedin,
           assurance_pro: profile.assurance_pro,
           portfolio_photos: profile.portfolio_photos,
+          verification_status: profile.verification_status || 'amateur',
+          siret: profile.siret || null,
+          business_name: profile.business_name || null,
         })
         .eq('id', user.id);
 
@@ -235,7 +301,7 @@ export default function ProfilComplet() {
   const pickPortfolioPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
@@ -253,6 +319,100 @@ export default function ProfilComplet() {
     }
   };
 
+  const pickProfilePhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        const imageUri = result.assets[0].uri;
+        setSaving(true);
+
+        try {
+          // Get user
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Non authentifié');
+
+          // Read file as base64
+          const base64 = await FileSystem.readAsStringAsync(imageUri, {
+            encoding: 'base64',
+          });
+
+          // Convert base64 to blob
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+
+          const fileName = `profile_${user.id}_${Date.now()}.jpg`;
+          const filePath = `photos/${fileName}`;
+
+          // Try to upload to storage
+          const { data, error } = await supabase.storage
+            .from('photos')
+            .upload(filePath, byteArray, {
+              contentType: 'image/jpeg',
+              upsert: true,
+            });
+
+          let photoUrl = imageUri; // Fallback to local URI
+
+          if (!error && data) {
+            // Get public URL if upload successful
+            const { data: publicUrlData } = supabase.storage
+              .from('photos')
+              .getPublicUrl(filePath);
+            if (publicUrlData?.publicUrl) {
+              photoUrl = publicUrlData.publicUrl;
+            }
+          }
+
+          // Update profiles table with photo (either cloud URL or local URI)
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ avatar_url: photoUrl })
+            .eq('id', user.id);
+
+          if (updateError) {
+            throw updateError;
+          }
+
+          setProfilePhotoUri(photoUrl);
+          setSaving(false);
+          Alert.alert('Succès', 'Photo de profil mise à jour');
+        } catch (error: any) {
+          // Fallback: save local URI if cloud storage fails
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await supabase
+                .from('profiles')
+                .update({ avatar_url: imageUri })
+                .eq('id', user.id);
+              setProfilePhotoUri(imageUri);
+              setSaving(false);
+              Alert.alert('Succès', 'Photo de profil mise à jour (stockage local)');
+            }
+          } catch (fallbackError) {
+            setSaving(false);
+            console.error('Erreur fallback:', fallbackError);
+            Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
+          }
+        }
+      }
+    } catch (error: any) {
+      setSaving(false);
+      console.error('Erreur sélection photo:', error);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la sélection');
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -262,7 +422,29 @@ export default function ProfilComplet() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
+      {/* Header avec flèche retour et bouton sauvegarder */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profil Complet</Text>
+        <TouchableOpacity 
+          style={[styles.saveHeaderButton, saving && styles.saveButtonDisabled]}
+          onPress={saveProfile}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Ionicons name="checkmark" size={24} color="white" />
+          )}
+        </TouchableOpacity>
+      </View>
+
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         {[
@@ -270,6 +452,7 @@ export default function ProfilComplet() {
           { id: 'specialites', label: 'Spécialités' },
           { id: 'tarifs', label: 'Tarifs' },
           { id: 'localisation', label: 'Localisation' },
+          { id: 'verification', label: 'Vérification' },
           { id: 'portfolio', label: 'Portfolio' },
         ].map(tab => (
           <TouchableOpacity
@@ -295,6 +478,31 @@ export default function ProfilComplet() {
         {activeTab === 'infos' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Informations Professionnelles</Text>
+
+            {/* Photo de profil */}
+            <View style={styles.profilePhotoSection}>
+              <View style={styles.profilePhotoContainer}>
+                {profilePhotoUri ? (
+                  <Image 
+                    source={{ uri: profilePhotoUri }} 
+                    style={styles.profilePhoto} 
+                  />
+                ) : (
+                  <View style={[styles.profilePhoto, styles.profilePhotoPlaceholder]}>
+                    <Ionicons name="person" size={48} color={COLORS.primary} />
+                  </View>
+                )}
+                <TouchableOpacity 
+                  style={styles.editPhotoButton}
+                  onPress={pickProfilePhoto}
+                  disabled={saving}
+                >
+                  <Ionicons name="camera" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.profilePhotoLabel}>Photo de profil</Text>
+              <Text style={styles.profilePhotoHint}>Cliquez sur l'appareil photo pour changer</Text>
+            </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nom</Text>
@@ -745,6 +953,79 @@ export default function ProfilComplet() {
           </View>
         )}
 
+        {/* TAB: VÉRIFICATION */}
+        {activeTab === 'verification' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Statut de Vérification</Text>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Vous êtes...</Text>
+              <View style={styles.gridContainer}>
+                {[
+                  { id: 'amateur', label: 'Amateur' },
+                  { id: 'pro', label: 'Professionnel' },
+                ].map(option => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.chip,
+                      profile.verification_status === option.id && styles.chipSelected,
+                    ]}
+                    onPress={() => setProfile({ ...profile, verification_status: option.id as 'amateur' | 'pro' })}
+                  >
+                    <Text style={[
+                      styles.chipText,
+                      profile.verification_status === option.id && styles.chipTextSelected,
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {profile.verification_status === 'pro' && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Numéro SIRET</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={profile.siret || ''}
+                    onChangeText={text => setProfile({ ...profile, siret: text })}
+                    placeholder="Entrez votre numéro SIRET"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Raison sociale</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={profile.business_name || ''}
+                    onChangeText={text => setProfile({ ...profile, business_name: text })}
+                    placeholder="Nom de votre entreprise"
+                  />
+                </View>
+              </>
+            )}
+
+            <View style={[styles.card, { backgroundColor: '#F0F9FF', borderColor: '#0EA5E9', borderWidth: 1 }]}>
+              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                <Ionicons name="information" size={20} color="#0EA5E9" style={{ marginRight: 8 }} />
+                <Text style={[styles.sectionTitle, { color: '#0EA5E9', fontSize: 14 }]}>Vérification</Text>
+              </View>
+              <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
+                Votre statut actuel: <Text style={{ fontWeight: 'bold' }}>
+                  {profile.verification_status === 'pro' ? 'Professionnel' : 'Amateur'}
+                </Text>
+              </Text>
+              <Text style={{ fontSize: 13, color: '#666', marginTop: 8, lineHeight: 18 }}>
+                Les professionnels doivent fournir un SIRET valide et une preuve d'assurance. Cela vous donne accès à plus de fonctionnalités.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* TAB: PORTFOLIO */}
         {activeTab === 'portfolio' && (
           <View style={styles.section}>
@@ -773,22 +1054,10 @@ export default function ProfilComplet() {
             </View>
           </View>
         )}
+        <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* Save Button */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={saveProfile}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Sauvegarder le profil</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <FooterPresta />
     </View>
   );
 }
@@ -797,8 +1066,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFF',
+  },  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  tabsContainer: {
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  saveHeaderButton: {
+    backgroundColor: COLORS.primary,
+    padding: 8,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },  tabsContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
@@ -829,6 +1125,53 @@ const styles = StyleSheet.create({
   section: {
     padding: 16,
     paddingBottom: 100,
+  },
+  profilePhotoSection: {
+    alignItems: 'center',
+    marginBottom: 28,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  profilePhotoContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  profilePhoto: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.primary,
+  },
+  profilePhotoPlaceholder: {
+    backgroundColor: '#F5F5F5',
+  },
+  editPhotoButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFF',
+  },
+  profilePhotoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 4,
+  },
+  profilePhotoHint: {
+    fontSize: 12,
+    color: '#888',
   },
   sectionTitle: {
     fontSize: 18,
@@ -964,6 +1307,12 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  card: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 8,
+    padding: 16,
+    marginVertical: 8,
   },
   bottomBar: {
     padding: 16,

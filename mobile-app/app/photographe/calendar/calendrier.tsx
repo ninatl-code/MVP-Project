@@ -101,12 +101,8 @@ export default function CalendrierPrestataire() {
   };
 
   const fetchAnnonces = async (userId: string) => {
-    const { data } = await supabase
-      .from('annonces')
-      .select('id, titre')
-      .eq('prestataire_id', userId)
-      .eq('actif', true);
-    setAnnonces(data || []);
+    // Annonces table no longer exists in the schema - set empty array
+    setAnnonces([]);
   };
 
   const fetchEvents = async (userId: string) => {
@@ -122,10 +118,9 @@ export default function CalendrierPrestataire() {
         montant,
         commentaire,
         client_nom,
-        annonce_id,
-        annonces(titre)
+        demande_id
       `)
-      .eq('prestataire_id', userId)
+      .eq('photographe_id', userId)
       .order('date', { ascending: true });
 
     console.log('📅 Reservations:', reservations?.length || 0);
@@ -135,8 +130,8 @@ export default function CalendrierPrestataire() {
     const { data: blockedSlots, error: blockedError } = await supabase
       .from('blocked_slots')
       .select('*')
-      .eq('prestataire_id', userId)
-      .order('date', { ascending: true });
+      .eq('photographe_id', userId)
+      .order('start_datetime', { ascending: true });
 
     console.log('🔒 Blocked slots:', blockedSlots?.length || 0);
     if (blockedError) console.error('❌ Error blocked:', blockedError);
@@ -150,7 +145,7 @@ export default function CalendrierPrestataire() {
       return {
         id: r.id,
         date: dateStr,
-        title: Array.isArray(r.annonces) && r.annonces[0]?.titre ? r.annonces[0].titre : 'Réservation',
+        title: 'Réservation',
         type: 'reservation' as const,
         time: timeStr,
         montant: r.montant,
@@ -280,7 +275,7 @@ export default function CalendrierPrestataire() {
   };
 
   const handleSaveReservation = async () => {
-    if (!user || !clientNom || !selectedAnnonce || !participants) {
+    if (!user || !clientNom || !participants) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
       return;
     }
@@ -292,15 +287,15 @@ export default function CalendrierPrestataire() {
     const { error } = await supabase
       .from('reservations')
       .insert({
-        prestataire_id: user.id,
-        annonce_id: parseInt(selectedAnnonce),
-        date: dateTime.toISOString(),
-        client_nom: clientNom,
-        client_email: clientEmail || null,
-        montant: montant ? parseFloat(montant) : null,
-        participants: parseInt(participants),
-        endroit: endroit || null,
-        commentaire: commentaire || null,
+        photographe_id: user.id,
+        client_id: user.id, // Photographer is creating for their own calendar
+        titre: clientNom,
+        categorie: 'personnelle',
+        date: dateTime.toISOString().split('T')[0],
+        heure_debut: dateTime.toISOString().split('T')[1],
+        lieu: endroit || 'À confirmer',
+        montant_total: montant ? parseFloat(montant) : 0,
+        description: commentaire || null,
         status: 'confirmed'
       });
 
@@ -334,11 +329,9 @@ export default function CalendrierPrestataire() {
     const { error } = await supabase
       .from('blocked_slots')
       .insert({
-        prestataire_id: user.id,
-        date: startDateTime.toISOString(),
+        photographe_id: user.id,
         start_datetime: startDateTime.toISOString(),
         end_datetime: endDateTime.toISOString(),
-        motif: motifBlock || 'Période bloquée',
         reason: motifBlock || 'Période bloquée'
       });
 

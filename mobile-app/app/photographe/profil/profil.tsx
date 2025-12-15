@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -53,6 +53,20 @@ export default function ProfilPhotographe() {
         console.log('Profil trouvé:', data);
         setProfile(data);
         
+        // Load photographer details from profils_photographe
+        const { data: photoData } = await supabase
+          .from('profils_photographe')
+          .select('bio, specialisations, annees_experience, tarifs_indicatifs, rayon_deplacement_km')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (photoData) {
+          setProfile(prev => ({
+            ...prev,
+            ...photoData
+          }));
+        }
+        
         if (data.ville_id) {
           const { data: villeData } = await supabase
             .from('villes')
@@ -76,36 +90,33 @@ export default function ProfilPhotographe() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: annonces } = await supabase
-        .from('annonces')
-        .select('id, rate, vues')
-        .eq('prestataire', user.id);
-
+      // Get reservations and avis for stats
       const { data: reservations } = await supabase
         .from('reservations')
-        .select('id, montant, status')
-        .eq('prestataire_id', user.id);
+        .select('id, montant_total, status')
+        .eq('photographe_id', user.id);
 
-      const totalAnnonces = annonces?.length || 0;
+      const { data: avis } = await supabase
+        .from('avis')
+        .select('note_globale')
+        .eq('reviewee_id', user.id);
+
       const totalReservations = reservations?.length || 0;
-      const totalVues = annonces?.reduce((sum, a) => sum + (a.vues || 0), 0) || 0;
-
       const reservationsPayees = reservations?.filter(r => 
-        r.status === 'paid' || r.status === 'confirmed'
+        r.status === 'paid' || r.status === 'confirmed' || r.status === 'completed'
       ) || [];
       
-      const chiffreAffaires = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+      const chiffreAffaires = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
       
-      const annonceAvecRate = annonces?.filter(a => a.rate && a.rate > 0) || [];
-      const noteMoyenne = annonceAvecRate.length > 0 ? 
-        annonceAvecRate.reduce((sum, a) => sum + a.rate, 0) / annonceAvecRate.length : 0;
+      const noteMoyenneNum = avis && avis.length > 0 ? 
+        avis.reduce((sum, a) => sum + (a.note_globale || 0), 0) / avis.length : 0;
 
       setStats({
-        totalAnnonces,
-        totalReservations,
-        chiffreAffaires,
-        noteMoyenne: Math.round(noteMoyenne * 10) / 10,
-        totalVues
+        totalAnnonces: totalReservations,
+        totalReservations: totalReservations,
+        chiffreAffaires: chiffreAffaires,
+        noteMoyenne: Math.round(noteMoyenneNum * 10) / 10,
+        totalVues: avis?.length || 0 // Use review count instead
       });
     } catch (error) {
       console.error('Erreur lors du chargement des stats:', error);
@@ -121,6 +132,74 @@ export default function ProfilPhotographe() {
       style: 'currency',
       currency: 'EUR'
     }).format(amount || 0);
+  };
+
+  const checkAndConfigureSupabase = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        Alert.alert('Erreur', 'Aucun utilisateur connecté');
+        return;
+      }
+
+      // Vérifier la configuration du compte
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, telephone, assurance_pro, role')
+        .eq('auth_user_id', user.id)
+        .eq('role', 'photographe')
+        .maybeSingle();
+
+      if (profileError) {
+        Alert.alert('Erreur', `Erreur de vérification: ${profileError.message}`);
+        return;
+      }
+
+      if (!profileData) {
+        Alert.alert('Attention', 'Profil photographe non trouvé. Veuillez créer votre profil complet.');
+        router.push('/photographe/profil/profil-complet');
+        return;
+      }
+
+      // Vérifications de configuration
+      const checklist = {
+        email: !!user.email,
+        telephone: !!profileData.telephone,
+        assurance: !!profileData.assurance_pro,
+        profileComplet: !!profileData.id
+      };
+
+      const isComplete = Object.values(checklist).every(v => v);
+
+      if (isComplete) {
+        Alert.alert('✓ Configuration complète', 'Votre compte est entièrement configuré');
+      } else {
+        const missing = Object.entries(checklist)
+          .filter(([_, v]) => !v)
+          .map(([k]) => {
+            switch(k) {
+              case 'email': return 'Email';
+              case 'telephone': return 'Téléphone';
+              case 'assurance': return 'Assurance professionnelle';
+              case 'profileComplet': return 'Profil complet';
+              default: return k;
+            }
+          })
+          .join(', ');
+
+        Alert.alert(
+          'Configuration incomplète',
+          `Informations manquantes:\n${missing}`,
+          [
+            { text: 'Annuler', onPress: () => {} },
+            { text: 'Compléter', onPress: () => router.push('/photographe/profil/profil-complet') }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Erreur vérification Supabase:', error);
+      Alert.alert('Erreur', 'Impossible de vérifier la configuration');
+    }
   };
 
   if (loading) {
@@ -174,28 +253,42 @@ export default function ProfilPhotographe() {
                 <View style={styles.starBadge}>
                   <Ionicons name="star" size={16} color="#FFA500" />
                 </View>
+                <TouchableOpacity 
+                  style={styles.editAvatarButton}
+                  onPress={() => router.push('/photographe/profil/profil-complet')}
+                >
+                  <Ionicons name="camera" size={12} color="white" />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.nameSection}>
                 <View style={styles.nameRow}>
                   <Text style={styles.userName}>{profile?.nom || 'Utilisateur'}</Text>
-                  <View style={styles.roleBadge}>
-                    <Text style={styles.roleBadgeText}>Prestataire</Text>
+                  <View style={[styles.roleBadge, { 
+                    backgroundColor: profile?.statut_validation === 'pro' ? '#10B981' : 
+                                    profile?.statut_validation === 'amateur' ? '#3B82F6' : 
+                                    profile?.statut_validation === 'verifie' ? '#F59E0B' : '#888'
+                  }]}>
+                    <Text style={styles.roleBadgeText}>
+                      {profile?.statut_validation === 'pro' ? 'Pro' : 
+                       profile?.statut_validation === 'amateur' ? 'Amateur' :
+                       profile?.statut_validation === 'verifie' ? 'Vérifié' : 'En attente'}
+                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.infoRow}>
                   <View style={styles.infoItem}>
                     <Ionicons name="location" size={14} color="white" />
-                    <Text style={styles.infoText}>{villeNom || 'Ville non renseignée'}</Text>
+                    <Text style={styles.infoText}>{profile?.ville || villeNom || 'Localisation'}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Ionicons name="compass" size={14} color="white" />
+                    <Text style={styles.infoText}>{profile?.rayon_deplacement_km || 20} km</Text>
                   </View>
                   <View style={styles.infoItem}>
                     <Ionicons name="star" size={14} color="white" />
                     <Text style={styles.infoText}>{stats.noteMoyenne}/5</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Ionicons name="eye" size={14} color="white" />
-                    <Text style={styles.infoText}>{stats.totalVues} vues</Text>
                   </View>
                 </View>
 
@@ -221,8 +314,8 @@ export default function ProfilPhotographe() {
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { borderColor: COLORS.primary }]}>
               <Ionicons name="briefcase" size={20} color={COLORS.primary} />
-              <Text style={styles.statValue}>{stats.totalAnnonces}</Text>
-              <Text style={styles.statLabel}>Annonces</Text>
+              <Text style={styles.statValue}>{stats.totalReservations}</Text>
+              <Text style={styles.statLabel}>Prestations</Text>
             </View>
 
             <View style={[styles.statCard, { borderColor: COLORS.success }]}>
@@ -244,9 +337,9 @@ export default function ProfilPhotographe() {
             </View>
 
             <View style={[styles.statCard, { borderColor: COLORS.textLight }]}>
-              <Ionicons name="eye" size={20} color={COLORS.textLight} />
+              <Ionicons name="chatbox-ellipses" size={20} color={COLORS.textLight} />
               <Text style={styles.statValue}>{stats.totalVues}</Text>
-              <Text style={styles.statLabel}>Vues</Text>
+              <Text style={styles.statLabel}>Avis</Text>
             </View>
           </View>
         </View>
@@ -300,7 +393,47 @@ export default function ProfilPhotographe() {
             </Text>
           </View>
         </View>
+        {/* Détails professionnels */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="briefcase" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Détails professionnels</Text>
+          </View>
 
+          <View style={styles.card}>
+            {profile?.annees_experience && (
+              <View style={styles.infoCard}>
+                <Ionicons name="time" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Expérience</Text>
+                  <Text style={styles.infoValue}>{profile.annees_experience} ans</Text>
+                </View>
+              </View>
+            )}
+
+            {profile?.specialisations && Array.isArray(profile.specialisations) && profile.specialisations.length > 0 && (
+              <View style={styles.infoCard}>
+                <Ionicons name="camera" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Spécialisations</Text>
+                  <Text style={styles.infoValue}>{profile.specialisations.join(', ')}</Text>
+                </View>
+              </View>
+            )}
+
+            {profile?.tarifs_indicatifs && (
+              <View style={styles.infoCard}>
+                <Ionicons name="cash" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Tarifs indicatifs</Text>
+                  <Text style={styles.infoValue}>
+                    {profile.tarifs_indicatifs.min}€ - {profile.tarifs_indicatifs.max}€
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
         {/* Réseaux sociaux */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -341,6 +474,40 @@ export default function ProfilPhotographe() {
           </View>
         </View>
 
+        {/* Configuration Stripe */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="card" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Compte Stripe</Text>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.stripeInfo}>
+              <Ionicons name="information-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.stripeInfoText}>
+                Configurez votre compte Stripe pour recevoir vos paiements
+              </Text>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.stripeButton}
+              onPress={() => router.push('/photographe/integrations' as any)}
+            >
+              <Ionicons name="settings" size={20} color="white" />
+              <Text style={styles.stripeButtonText}>Configurer Stripe</Text>
+              <Ionicons name="chevron-forward" size={20} color="white" />
+            </TouchableOpacity>
+
+            <View style={styles.stripeStatus}>
+              <Text style={styles.stripeStatusLabel}>Statut:</Text>
+              <View style={styles.stripeStatusBadge}>
+                <View style={[styles.statusDot, { backgroundColor: '#F59E0B' }]} />
+                <Text style={styles.stripeStatusText}>Non configuré</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
         <View style={{ height: 80 }} />
       </ScrollView>
       <FooterPresta />
@@ -360,6 +527,7 @@ const styles = StyleSheet.create({
   avatarPlaceholder: { width: 80, height: 80, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 32, fontWeight: 'bold', color: 'white' },
   starBadge: { position: 'absolute', bottom: -4, right: -4, backgroundColor: 'white', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
+  editAvatarButton: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.primary, borderRadius: 12, width: 28, height: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'white' },
   nameSection: { flex: 1, gap: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   userName: { fontSize: 24, fontWeight: 'bold', color: 'white', flex: 1 },
@@ -388,6 +556,17 @@ const styles = StyleSheet.create({
   socialItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12 },
   socialText: { fontSize: 15, color: COLORS.text, flex: 1 },
   emptyText: { textAlign: 'center', color: COLORS.textLight, fontSize: 14, paddingVertical: 20 },
-  errorText: { color: COLORS.error, fontSize: 16, fontWeight: '600' },
+  errorText: { color: COLORS.red, fontSize: 16, fontWeight: '600' },
   debugText: { color: COLORS.textLight, fontSize: 12, marginTop: 8 },
+  verificationButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  verificationButtonText: { fontSize: 16, fontWeight: '600', color: 'white', flex: 1 },
+  stripeInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12, marginBottom: 16 },
+  stripeInfoText: { fontSize: 14, color: COLORS.text, flex: 1, lineHeight: 20 },
+  stripeButton: { backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 16, borderRadius: 12, marginBottom: 16 },
+  stripeButtonText: { fontSize: 16, fontWeight: '600', color: 'white', flex: 1 },
+  stripeStatus: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stripeStatusLabel: { fontSize: 14, color: COLORS.textLight, fontWeight: '600' },
+  stripeStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.backgroundLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  stripeStatusText: { fontSize: 14, color: COLORS.text, fontWeight: '500' },
 });

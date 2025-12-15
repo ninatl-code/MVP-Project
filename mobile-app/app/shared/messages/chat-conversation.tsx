@@ -43,7 +43,7 @@ interface Message {
 interface Conversation {
   id: string;
   client_id: string;
-  provider_id: string;
+  photographe_id: string;
   booking_id: string;
   clients?: { nom: string; prenom: string };
   prestataires?: { nom: string; prenom: string };
@@ -97,7 +97,7 @@ export default function ChatConversationScreen() {
           .from('messages')
           .update({ is_read: true })
           .eq('conversation_id', conversationId)
-          .eq('sender_id', data.provider_id);
+          .eq('sender_id', data.photographe_id);
 
         await supabase
           .from('conversations')

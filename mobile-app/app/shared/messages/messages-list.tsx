@@ -33,7 +33,7 @@ const COLORS = {
 interface Conversation {
   id: string;
   client_id: string;
-  provider_id: string;
+  photographe_id: string;
   last_message_text: string;
   last_message_at: string;
   last_message_sender_id: string;
@@ -83,25 +83,39 @@ export default function MessagesListScreen() {
       setUserRole(role);
 
       // Get conversations where user is either client or provider
-      const { data, error } = await supabase
+      const { data: conversationsData, error } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          client:client_id (id, nom, prenom),
-          provider:provider_id (id, nom, prenom)
-        `)
-        .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+        .select('*')
+        .or(`client_id.eq.${user.id},photographe_id.eq.${user.id}`)
         .order('last_message_at', { ascending: false });
 
       if (error) throw error;
 
+      // Fetch profiles for client and photographer names
+      const userIds = new Set<string>();
+      (conversationsData || []).forEach(conv => {
+        if (conv.client_id) userIds.add(conv.client_id);
+        if (conv.photographe_id) userIds.add(conv.photographe_id);
+      });
+
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, nom, prenom')
+        .in('id', Array.from(userIds));
+
+      // Create profile map
+      const profileMap: any = {};
+      (profilesData || []).forEach((p: any) => {
+        profileMap[p.id] = p;
+      });
+
       // Format conversations with other user's name
-      const formatted = (data || []).map(conv => ({
+      const formatted = (conversationsData || []).map(conv => ({
         ...conv,
         other_user_name:
           conv.client_id === user.id
-            ? `${conv.provider?.prenom} ${conv.provider?.nom}`
-            : `${conv.client?.prenom} ${conv.client?.nom}`,
+            ? `${profileMap[conv.photographe_id]?.prenom || ''} ${profileMap[conv.photographe_id]?.nom || ''}`
+            : `${profileMap[conv.client_id]?.prenom || ''} ${profileMap[conv.client_id]?.nom || ''}`,
       }));
 
       setConversations(formatted);

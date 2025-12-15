@@ -64,7 +64,7 @@ export default function AvailabilityCalendarPage() {
       const { data, error } = await supabase
         .from('provider_availability')
         .select('*')
-        .eq('provider_id', user.id)
+        .eq('photographe_id', user.id)
         .order('day_of_week', { ascending: true })
         .order('start_time', { ascending: true });
 
@@ -94,7 +94,7 @@ export default function AvailabilityCalendarPage() {
       const { error } = await supabase
         .from('provider_availability')
         .insert({
-          provider_id: user.id,
+          photographe_id: user.id,
           day_of_week: selectedDay,
           start_time: startTimeStr,
           end_time: endTimeStr,

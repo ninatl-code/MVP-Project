@@ -62,12 +62,13 @@ export default function ProviderReviewsDashboard() {
       }
 
       const { data, error } = await supabase
-        .from('reviews')
+        .from('avis')
         .select(`
           *,
-          reviewer:reviewer_id(prenom, nom),
-          reservation:reservation_id(
-            annonces(titre)
+          reviewer_profiles:reviewer_id(nom),
+          reservation_info:reservation_id(
+            annonce_id,
+            annonce_data:annonce_id(titre)
           )
         `)
         .eq('reviewee_id', user.id)
@@ -75,8 +76,23 @@ export default function ProviderReviewsDashboard() {
 
       if (error) throw error;
 
-      setReviews(data || []);
-      calculateStats(data || []);
+      // Map avis to Review format
+      const formattedData = (data || []).map((avis: any) => ({
+        id: avis.id,
+        overall_rating: avis.note_globale || 5,
+        comment: avis.commentaire,
+        created_at: avis.created_at,
+        provider_response: avis.provider_response,
+        reviewer: {
+          nom: avis.reviewer_profiles?.nom || 'Client',
+        },
+        reservation: {
+          titre: avis.reservation_info?.annonce_data?.titre || 'Service',
+        },
+      }));
+
+      setReviews(formattedData);
+      calculateStats(formattedData);
     } catch (error) {
       console.error('Error fetching reviews:', error);
     } finally {

@@ -240,7 +240,7 @@ export default function MenuPrestataire() {
         <View style={styles.statsSection}>
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#E8F5E9', borderColor: COLORS.success }]}
-            onPress={() => router.push('/prestataires/reservations')}
+            onPress={() => router.push('/photographe/reservations/reservations')}
           >
             <View style={styles.statIconContainer}>
               <Ionicons name="calendar" size={24} color={COLORS.success} />
@@ -251,7 +251,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#DBEAFE', borderColor: COLORS.info }]}
-            onPress={() => router.push('/photographe/demandes')}
+            onPress={() => router.push('/photographe/demandes' as any)}
           >
             <View style={styles.statIconContainer}>
               <Ionicons name="mail" size={24} color={COLORS.info} />
@@ -273,7 +273,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#EDE9FE', borderColor: COLORS.purple }]}
-            onPress={() => router.push('/photographe/calendar/calendrier')}
+            onPress={() => router.push('/photographe/calendar/calendrier' as any)}
           >
             <View style={styles.statIconContainer}>
               <Ionicons name="calendar-outline" size={24} color={COLORS.purple} />
@@ -306,7 +306,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/prestataires/media-library' as any)}
+            onPress={() => router.push('/photographe/media-library')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
               <Ionicons name="images" size={24} color="#EF4444" />
@@ -320,7 +320,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/prestataires/reviews-dashboard' as any)}
+            onPress={() => router.push('/photographe/review/reviews-dashboard')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
               <Ionicons name="star" size={24} color={COLORS.warning} />
@@ -339,7 +339,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/prestataires/invoice' as any)}
+            onPress={() => router.push('/photographe/leads/invoices-list')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
               <Ionicons name="receipt" size={24} color={COLORS.info} />
@@ -353,21 +353,21 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/prestataires/pricing-rules' as any)}
+            onPress={() => router.push('/photographe/packages/packages-list')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
               <Ionicons name="pricetag" size={24} color={COLORS.warning} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Règles de tarification</Text>
-              <Text style={styles.menuSubtitle}>Prix personnalisés</Text>
+              <Text style={styles.menuTitle}>Mes Packages</Text>
+              <Text style={styles.menuSubtitle}>Offres standardisées</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/prestataires/remboursements' as any)}
+            onPress={() => router.push('/photographe/remboursements')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
               <Ionicons name="card" size={24} color={COLORS.purple} />
@@ -386,7 +386,7 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/prestataires/ma-localisation' as any)}
+            onPress={() => router.push('/photographe/ma-localisation')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
               <Ionicons name="location" size={24} color={COLORS.info} />
@@ -400,14 +400,14 @@ export default function MenuPrestataire() {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/prestataires/instant-booking-settings' as any)}
+            onPress={() => router.push('/photographe/integrations-list' as any)}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="flash" size={24} color={COLORS.success} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Réservation instantanée</Text>
-              <Text style={styles.menuSubtitle}>Paramètres</Text>
+              <Text style={styles.menuTitle}>Intégrations & Paiements</Text>
+              <Text style={styles.menuSubtitle}>Stripe, Google Calendar</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
