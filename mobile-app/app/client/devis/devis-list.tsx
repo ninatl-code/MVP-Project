@@ -252,7 +252,7 @@ export default function DevisListScreen() {
           {devis.length === 0 && (
             <TouchableOpacity
               style={styles.ctaButton}
-              onPress={() => router.push('/client/demandes/create-demande')}
+              onPress={() => router.push('/client/demandes/nouvelle-demande')}
             >
               <Ionicons name="add-circle-outline" size={20} color="#fff" />
               <Text style={styles.ctaButtonText}>Créer une demande</Text>

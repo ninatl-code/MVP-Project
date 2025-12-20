@@ -214,7 +214,7 @@ export default function MesDemandesScreen() {
         <Text style={styles.title}>Mes demandes</Text>
         <TouchableOpacity
           style={styles.createButton}
-          onPress={() => router.push('/client/demandes/create-demande' as any)}
+          onPress={() => router.push('/client/demandes/nouvelle-demande' as any)}
         >
           <Ionicons name="add-circle" size={28} color="#5C6BC0" />
         </TouchableOpacity>
@@ -282,7 +282,7 @@ export default function MesDemandesScreen() {
           {demandes.length === 0 && (
             <TouchableOpacity
               style={styles.createFirstButton}
-              onPress={() => router.push('/client/demandes/create-demande' as any)}
+              onPress={() => router.push('/client/demandes/nouvelle-demande' as any)}
             >
               <Ionicons name="add-circle-outline" size={20} color="#fff" />
               <Text style={styles.ctaButtonText}>Créer une demande</Text>

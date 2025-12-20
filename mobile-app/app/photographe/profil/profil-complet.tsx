@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../../../lib/supabaseClient';
 import { COLORS } from '../../../constants/Colors';
@@ -156,6 +157,8 @@ export default function ProfilComplet() {
   const [activeTab, setActiveTab] = useState('infos');
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [idDocRecto, setIdDocRecto] = useState<string | null>(null);
+  const [idDocVerso, setIdDocVerso] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -258,6 +261,14 @@ export default function ProfilComplet() {
         setProfilePhotoUri(basicProfileData.avatar_url);
       }
 
+      // Load ID documents
+      if (photoData?.document_identite_recto_url) {
+        setIdDocRecto(photoData.document_identite_recto_url);
+      }
+      if (photoData?.document_identite_verso_url) {
+        setIdDocVerso(photoData.document_identite_verso_url);
+      }
+
       console.log('✅ loadProfile completed successfully');
       setLoading(false);
     } catch (error) {
@@ -322,6 +333,8 @@ export default function ProfilComplet() {
           statut_pro: profile.statut_pro || false,
           siret: emptyToNull(profile.siret),
           document_identite_url: emptyToNull(profile.document_identite_url),
+          document_identite_recto_url: idDocRecto,
+          document_identite_verso_url: idDocVerso,
         });
 
       if (profileError || photoError) {
@@ -336,6 +349,186 @@ export default function ProfilComplet() {
       Alert.alert('Erreur', error.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const pickIdDocument = async (side: 'recto' | 'verso', useCamera: boolean = false) => {
+    try {
+      let result;
+      
+      if (useCamera) {
+        // Demander la permission de la caméra
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission refusée', 'Nous avons besoin de la permission d\'accéder à la caméra');
+          return;
+        }
+        
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 0.9,
+        });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 0.9,
+        });
+      }
+
+      if (!result.canceled) {
+        const imageUri = result.assets[0].uri;
+        setSaving(true);
+
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user) throw new Error('Non authentifié');
+
+          // Read file as base64
+          const base64 = await FileSystem.readAsStringAsync(imageUri, {
+            encoding: 'base64',
+          });
+
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+
+          const fileName = `id_${side}_${session.user.id}_${Date.now()}.jpg`;
+          const filePath = `documents/${fileName}`;
+
+          // Upload to storage
+          const { data, error } = await supabase.storage
+            .from('photos')
+            .upload(filePath, byteArray, {
+              contentType: 'image/jpeg',
+              upsert: true,
+            });
+
+          let docUrl = imageUri;
+
+          if (!error && data) {
+            const { data: publicUrlData } = supabase.storage
+              .from('photos')
+              .getPublicUrl(filePath);
+            if (publicUrlData?.publicUrl) {
+              docUrl = publicUrlData.publicUrl;
+            }
+          }
+
+          // Update state
+          if (side === 'recto') {
+            setIdDocRecto(docUrl);
+          } else {
+            setIdDocVerso(docUrl);
+          }
+
+          // Update database immediately
+          if (profileId) {
+            const updateData = side === 'recto' 
+              ? { document_identite_recto_url: docUrl }
+              : { document_identite_verso_url: docUrl };
+            
+            await supabase
+              .from('profils_photographe')
+              .update(updateData)
+              .eq('id', profileId);
+          }
+
+          setSaving(false);
+          Alert.alert('Succès', `Document (${side}) téléchargé`);
+        } catch (error: any) {
+          setSaving(false);
+          Alert.alert('Erreur', error.message || 'Impossible de télécharger le document');
+        }
+      }
+    } catch (error: any) {
+      setSaving(false);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la sélection');
+    }
+  };
+
+  const pickIdDocumentPDF = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      setSaving(true);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) throw new Error('Non authentifié');
+
+        const file = result.assets[0];
+        const fileUri = file.uri;
+        
+        // Read file as base64
+        const base64 = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: 'base64',
+        });
+
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        const extension = file.name.split('.').pop() || 'pdf';
+        const fileName = `id_document_${session.user.id}_${Date.now()}.${extension}`;
+        const filePath = `documents/${fileName}`;
+
+        // Upload to storage
+        const { data, error } = await supabase.storage
+          .from('photos')
+          .upload(filePath, byteArray, {
+            contentType: file.mimeType || 'application/pdf',
+            upsert: true,
+          });
+
+        let docUrl = fileUri;
+
+        if (!error && data) {
+          const { data: publicUrlData } = supabase.storage
+            .from('photos')
+            .getPublicUrl(filePath);
+          if (publicUrlData?.publicUrl) {
+            docUrl = publicUrlData.publicUrl;
+          }
+        }
+
+        // Set both recto (will be the PDF URL)
+        setIdDocRecto(docUrl);
+        
+        // Update database
+        if (profileId) {
+          await supabase
+            .from('profils_photographe')
+            .update({ 
+              document_identite_recto_url: docUrl,
+              document_identite_verso_url: null // Clear verso if uploading PDF
+            })
+            .eq('id', profileId);
+        }
+
+        setSaving(false);
+        Alert.alert('Succès', 'Document PDF téléchargé');
+      } catch (error: any) {
+        setSaving(false);
+        Alert.alert('Erreur', error.message || 'Impossible de télécharger le PDF');
+      }
+    } catch (error: any) {
+      setSaving(false);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la sélection');
     }
   };
 
@@ -974,31 +1167,107 @@ export default function ProfilComplet() {
 
             <Text style={[styles.sectionTitle, { marginTop: 24, fontSize: 16 }]}>Vérification d'identité</Text>
 
-            <View style={[styles.card, { backgroundColor: profile.document_identite_url ? '#F0FDF4' : '#FEF3C7', borderColor: profile.document_identite_url ? '#10B981' : '#F59E0B', borderWidth: 1 }]}>
+            <View style={[styles.card, { backgroundColor: (idDocRecto || idDocVerso) ? '#F0FDF4' : '#FEF3C7', borderColor: (idDocRecto || idDocVerso) ? '#10B981' : '#F59E0B', borderWidth: 1 }]}>
               <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-                <Ionicons name={profile.document_identite_url ? "checkmark-circle" : "alert-circle"} size={20} color={profile.document_identite_url ? '#10B981' : '#F59E0B'} style={{ marginRight: 8 }} />
-                <Text style={[styles.sectionTitle, { color: profile.document_identite_url ? '#10B981' : '#F59E0B', fontSize: 14 }]}>
-                  {profile.document_identite_url ? 'Identité vérifiée' : 'Vérification en attente'}
+                <Ionicons name={(idDocRecto || idDocVerso) ? "checkmark-circle" : "alert-circle"} size={20} color={(idDocRecto || idDocVerso) ? '#10B981' : '#F59E0B'} style={{ marginRight: 8 }} />
+                <Text style={[styles.sectionTitle, { color: (idDocRecto || idDocVerso) ? '#10B981' : '#F59E0B', fontSize: 14 }]}>
+                  {(idDocRecto || idDocVerso) ? 'Document téléchargé' : 'Document requis'}
                 </Text>
               </View>
               <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
-                {profile.document_identite_url 
-                  ? 'Votre carte d\'identité a été téléchargée et est en cours de vérification.'
-                  : 'Pour être vérifié, téléchargez votre carte d\'identité ou passeport.'}
+                {(idDocRecto || idDocVerso)
+                  ? 'Votre pièce d\'identité a été téléchargée et est en cours de vérification.'
+                  : 'Téléchargez votre carte d\'identité ou passeport (recto/verso ou PDF).'}
               </Text>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Carte d'identité / Passeport (URL)</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.document_identite_url || ''}
-                onChangeText={text => setProfile({ ...profile, document_identite_url: text })}
-                placeholder="URL du document d'identité"
-              />
-              <Text style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                Téléchargez votre document sur un service comme Imgur ou utilisez le stockage Supabase
-              </Text>
+              <Text style={styles.label}>Pièce d'identité (Images)</Text>
+              
+              {/* Recto */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Recto</Text>
+                {idDocRecto ? (
+                  <View style={styles.uploadedDocContainer}>
+                    <Image source={{ uri: idDocRecto }} style={styles.uploadedDocImage} />
+                    <TouchableOpacity 
+                      style={styles.removeDocButton}
+                      onPress={() => setIdDocRecto(null)}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity 
+                      style={[styles.uploadButton, { flex: 1 }]}
+                      onPress={() => pickIdDocument('recto', true)}
+                      disabled={saving}
+                    >
+                      <Ionicons name="camera" size={20} color={COLORS.primary} />
+                      <Text style={styles.uploadButtonText}>Prendre photo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.uploadButton, { flex: 1 }]}
+                      onPress={() => pickIdDocument('recto', false)}
+                      disabled={saving}
+                    >
+                      <Ionicons name="images" size={20} color={COLORS.primary} />
+                      <Text style={styles.uploadButtonText}>Galerie</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              {/* Verso */}
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Verso</Text>
+                {idDocVerso ? (
+                  <View style={styles.uploadedDocContainer}>
+                    <Image source={{ uri: idDocVerso }} style={styles.uploadedDocImage} />
+                    <TouchableOpacity 
+                      style={styles.removeDocButton}
+                      onPress={() => setIdDocVerso(null)}
+                    >
+                      <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity 
+                      style={[styles.uploadButton, { flex: 1 }]}
+                      onPress={() => pickIdDocument('verso', true)}
+                      disabled={saving}
+                    >
+                      <Ionicons name="camera" size={20} color={COLORS.primary} />
+                      <Text style={styles.uploadButtonText}>Prendre photo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.uploadButton, { flex: 1 }]}
+                      onPress={() => pickIdDocument('verso', false)}
+                      disabled={saving}
+                    >
+                      <Ionicons name="images" size={20} color={COLORS.primary} />
+                      <Text style={styles.uploadButtonText}>Galerie</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.divider} />
+
+              {/* PDF Option */}
+              <View style={{ marginTop: 12 }}>
+                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Ou télécharger un PDF</Text>
+                <TouchableOpacity 
+                  style={styles.uploadButton}
+                  onPress={pickIdDocumentPDF}
+                  disabled={saving}
+                >
+                  <Ionicons name="document-text" size={20} color={COLORS.primary} />
+                  <Text style={styles.uploadButtonText}>Choisir un PDF</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={[styles.card, { backgroundColor: '#F0F9FF', borderColor: '#0EA5E9', borderWidth: 1 }]}>
@@ -1323,5 +1592,45 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  uploadButtonText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  uploadedDocContainer: {
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
+  },
+  uploadedDocImage: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'contain',
+  },
+  removeDocButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'white',
+    borderRadius: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 16,
   },
 });

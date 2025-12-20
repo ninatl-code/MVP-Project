@@ -11,6 +11,8 @@ import {
   SafeAreaView,
   Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -35,7 +37,7 @@ interface Profile {
   telephone: string;
   bio: string;
   ville_id: string;
-  photos?: string;
+  avatar_url?: string;
 }
 
 export default function ClientProfil() {
@@ -52,9 +54,17 @@ export default function ClientProfil() {
     bio: ''
   });
   const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState({
+    totalReservations: 0,
+    totalDemandes: 0,
+    totalDepenses: 0,
+    totalAvis: 0
+  });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     fetchProfile();
+    loadStats();
   }, [profileId]);
 
   const handleLogout = async () => {
@@ -73,6 +83,57 @@ export default function ClientProfil() {
         },
       ]
     );
+  };
+
+  const loadStats = async () => {
+    try {
+      if (!profileId) return;
+
+      // Get reservations for stats
+      const { data: reservations } = await supabase
+        .from('reservations')
+        .select('id, montant_total, status')
+        .eq('client_id', profileId);
+
+      // Get avis for stats
+      const { data: avis } = await supabase
+        .from('avis')
+        .select('id')
+        .eq('reviewer_id', profileId);
+
+      // Get demandes (service requests)
+      const { data: demandes } = await supabase
+        .from('demandes_service')
+        .select('id')
+        .eq('client_id', profileId);
+
+      const totalReservations = reservations?.length || 0;
+      const totalDemandes = demandes?.length || 0;
+      
+      const totalDepenses = reservations?.filter(r => 
+        r.status === 'paid' || r.status === 'completed'
+      ).reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0) || 0;
+
+      setStats({
+        totalReservations,
+        totalDemandes,
+        totalDepenses,
+        totalAvis: avis?.length || 0
+      });
+    } catch (error) {
+      console.error('Erreur lors du chargement des stats:', error);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount || 0);
   };
 
   const fetchProfile = async () => {
@@ -140,8 +201,80 @@ export default function ClientProfil() {
     }
   };
 
-  const getInitials = (name: string) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+  const pickProfilePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'Nous avons besoin de votre permission pour accéder à vos photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadingPhoto(true);
+        const imageUri = result.assets[0].uri;
+        
+        // Convert to base64
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: 'base64',
+        });
+
+        // Convert base64 to Uint8Array
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        // Upload to Supabase Storage
+        const fileName = `profile_${profileId}_${Date.now()}.jpg`;
+        const filePath = `photos/${fileName}`;
+
+        const { data, error: uploadError } = await supabase.storage
+          .from('photos')
+          .upload(filePath, byteArray, {
+            contentType: 'image/jpeg',
+            upsert: true
+          });
+
+        let photoUrl = imageUri; // Fallback to local URI
+
+        if (!uploadError && data) {
+          // Get public URL if upload successful
+          const { data: publicUrlData } = supabase.storage
+            .from('photos')
+            .getPublicUrl(filePath);
+          if (publicUrlData?.publicUrl) {
+            photoUrl = publicUrlData.publicUrl;
+          }
+        }
+
+        // Update profile with new photo URL
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: photoUrl })
+          .eq('id', profileId);
+
+        if (updateError) throw updateError;
+
+        if (updateError) throw updateError;
+
+        Alert.alert('Succès', 'Photo de profil mise à jour');
+        fetchProfile();
+      }
+    } catch (error) {
+      console.error('Erreur upload photo:', error);
+      Alert.alert('Erreur', 'Impossible de télécharger la photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   if (loading) {
@@ -164,23 +297,27 @@ export default function ClientProfil() {
           end={{ x: 1, y: 0 }}
           style={styles.headerGradient}
         >
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-
           <View style={styles.headerContent}>
             <View style={styles.avatarSection}>
               <View style={styles.avatarContainer}>
-                {profile?.photos ? (
-                  <Image source={{ uri: profile.photos }} style={styles.avatar} />
+                {profile?.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>{getInitials(profile?.nom || 'U')}</Text>
                   </View>
                 )}
+                <TouchableOpacity 
+                  style={styles.cameraButton}
+                  onPress={pickProfilePhoto}
+                  disabled={uploadingPhoto}
+                >
+                  {uploadingPhoto ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Ionicons name="camera" size={16} color="white" />
+                  )}
+                </TouchableOpacity>
               </View>
 
               <View style={styles.nameSection}>
@@ -194,33 +331,69 @@ export default function ClientProfil() {
                 <View style={styles.infoRow}>
                   <View style={styles.infoItem}>
                     <Ionicons name="location" size={14} color="white" />
-                    <Text style={styles.infoText}>{villeNom || 'Ville non renseignée'}</Text>
+                    <Text style={styles.infoText}>{villeNom || 'Localisation'}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Ionicons name="calendar" size={14} color="white" />
+                    <Text style={styles.infoText}>{stats.totalReservations} réservations</Text>
                   </View>
                 </View>
 
-                <View style={styles.buttonRow}>
-                  {!editMode ? (
-                    <TouchableOpacity style={styles.editButton} onPress={() => setEditMode(true)}>
-                      <Ionicons name="create-outline" size={16} color={COLORS.text} />
-                      <Text style={styles.editButtonText}>Modifier mon profil</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
-                      {saving ? (
-                        <ActivityIndicator color="white" size="small" />
-                      ) : (
-                        <>
-                          <Ionicons name="checkmark-circle" size={16} color="white" />
-                          <Text style={styles.saveButtonText}>Sauvegarder</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
+                {!editMode ? (
+                  <TouchableOpacity style={styles.editButton} onPress={() => setEditMode(true)}>
+                    <Ionicons name="create" size={16} color="white" />
+                    <Text style={styles.editButtonText}>Modifier mon profil</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+                    {saving ? (
+                      <ActivityIndicator color="white" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-circle" size={16} color="white" />
+                        <Text style={styles.saveButtonText}>Sauvegarder</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
         </LinearGradient>
+
+        {/* Statistiques */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="stats-chart" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Mes statistiques</Text>
+          </View>
+
+          <View style={styles.statsGrid}>
+            <View style={[styles.statCard, { borderColor: '#6366F1' }]}>
+              <Ionicons name="calendar" size={20} color="#6366F1" />
+              <Text style={styles.statValue}>{stats.totalReservations}</Text>
+              <Text style={styles.statLabel}>Réservations</Text>
+            </View>
+
+            <View style={[styles.statCard, { borderColor: COLORS.success }]}>
+              <Ionicons name="document-text" size={20} color={COLORS.success} />
+              <Text style={styles.statValue}>{stats.totalDemandes}</Text>
+              <Text style={styles.statLabel}>Demandes déposées</Text>
+            </View>
+
+            <View style={[styles.statCard, { borderColor: '#F59E0B' }]}>
+              <Ionicons name="cash" size={20} color="#F59E0B" />
+              <Text style={[styles.statValue, { fontSize: 14 }]}>{formatCurrency(stats.totalDepenses)}</Text>
+              <Text style={styles.statLabel}>Dépensé</Text>
+            </View>
+
+            <View style={[styles.statCard, { borderColor: COLORS.textLight }]}>
+              <Ionicons name="star" size={20} color={COLORS.textLight} />
+              <Text style={styles.statValue}>{stats.totalAvis}</Text>
+              <Text style={styles.statLabel}>Avis donnés</Text>
+            </View>
+          </View>
+        </View>
 
         {/* Informations personnelles */}
         <View style={styles.section}>
@@ -428,35 +601,24 @@ const styles = StyleSheet.create({
   // Header avec gradient
   headerGradient: {
     paddingTop: 60,
-    paddingBottom: 40,
+    paddingBottom: 30,
     paddingHorizontal: 20,
   },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  headerContent: {
-    marginTop: 20,
-  },
+  headerContent: {},
   avatarSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatarContainer: {
     marginRight: 15,
+    position: 'relative',
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   avatarPlaceholder: {
     width: 80,
@@ -465,11 +627,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   avatarText: {
     fontSize: 28,
     fontWeight: '700',
     color: '#fff',
+  },
+  cameraButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
   },
   nameSection: {
     flex: 1,
@@ -512,21 +689,20 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     marginLeft: 4,
   },
-  buttonRow: {
-    flexDirection: 'row',
-  },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   editButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#fff',
     marginLeft: 6,
   },
   saveButton: {
@@ -542,6 +718,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginLeft: 6,
+  },
+
+  // Statistiques
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 4,
+    textAlign: 'center',
   },
 
   // Sections

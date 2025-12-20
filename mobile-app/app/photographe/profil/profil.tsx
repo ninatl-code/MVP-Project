@@ -86,6 +86,24 @@ export default function ProfilPhotographe() {
     }
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Déconnexion',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase.auth.signOut();
+            router.replace('/auth/login');
+          },
+        },
+      ]
+    );
+  };
+
   const loadStats = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -551,20 +569,20 @@ export default function ProfilPhotographe() {
               </View>
             )}
 
-            {profile?.preferences && (
+            {profile?.preferences && typeof profile.preferences === 'object' ? (
               <View style={styles.infoCard}>
                 <Ionicons name="calendar" size={20} color={COLORS.primary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Disponibilités</Text>
                   <Text style={styles.infoValue}>
                     {[
-                      profile.preferences.accepte_weekend ? 'Weekends' : null,
-                      profile.preferences.accepte_soiree ? 'Soirées' : null,
+                      profile.preferences?.accepte_weekend ? 'Weekends' : null,
+                      profile.preferences?.accepte_soiree ? 'Soirées' : null,
                     ].filter(Boolean).join(', ') || 'Semaine uniquement'}
                   </Text>
                 </View>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 
@@ -697,6 +715,24 @@ export default function ProfilPhotographe() {
           </View>
         </View>
 
+        {/* Bouton de déconnexion */}
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.logoutCard} onPress={handleLogout}>
+            <View style={styles.logoutContainer}>
+              <View style={styles.logoutLeft}>
+                <View style={styles.logoutIconContainer}>
+                  <Ionicons name="log-out-outline" size={24} color="#F59E0B" />
+                </View>
+                <View>
+                  <Text style={styles.logoutTitle}>Déconnexion</Text>
+                  <Text style={styles.logoutSubtitle}>Se déconnecter de l'application</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         <View style={{ height: 80 }} />
       </ScrollView>
       <FooterPresta />
@@ -757,5 +793,43 @@ const styles = StyleSheet.create({
   stripeStatusLabel: { fontSize: 14, color: COLORS.textLight, fontWeight: '600' },
   stripeStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.backgroundLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  stripeStatusText: { fontSize: 14, color: COLORS.text, fontWeight: '500' },
-});
+  stripeStatusText: { fontSize: 14, color: COLORS.text, fontWeight: '500' },  logoutCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logoutContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  logoutLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  logoutIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF3E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  logoutTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  logoutSubtitle: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },});

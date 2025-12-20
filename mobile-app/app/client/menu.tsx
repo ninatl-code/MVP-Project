@@ -125,7 +125,7 @@ export default function ClientMenu() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.welcomeText}>Bonjour 👋</Text>
-              <Text style={styles.headerTitle}>Mon espace</Text>
+              <Text style={styles.headerTitle}>Mon espace Client</Text>
             </View>
             
             {hasMultipleProfiles && (
@@ -282,26 +282,6 @@ export default function ClientMenu() {
 
             <TouchableOpacity
               style={styles.compactMenuItem}
-              onPress={() => router.push('/shared/messages/conversations' as any)}
-            >
-              <View style={styles.compactIconContainer}>
-                <Ionicons name="chatbubbles-outline" size={22} color="#130183" />
-              </View>
-              <Text style={styles.compactMenuText}>Messages</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.compactMenuItem}
-              onPress={() => router.push('/client/packages/packages-list' as any)}
-            >
-              <View style={styles.compactIconContainer}>
-                <Ionicons name="cube-outline" size={22} color="#130183" />
-              </View>
-              <Text style={styles.compactMenuText}>Packages</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.compactMenuItem}
               onPress={() => router.push('/client/Avis/avis-list' as any)}
             >
               <View style={styles.compactIconContainer}>
@@ -317,16 +297,6 @@ export default function ClientMenu() {
           </View>
         </View>
 
-        {/* Déconnexion */}
-        <View style={styles.logoutContainer}>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={() => setShowLogoutModal(true)}
-          >
-            <Ionicons name="log-out-outline" size={20} color="#EF5350" />
-            <Text style={styles.logoutButtonText}>Se déconnecter</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* Modal de changement de profil */}
@@ -613,7 +583,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   compactMenuItem: {
-    width: '31%',
+    width: '48%',
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 14,

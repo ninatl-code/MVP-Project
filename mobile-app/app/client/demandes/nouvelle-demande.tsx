@@ -10,12 +10,15 @@ import {
   TextInput,
   FlatList,
   Image,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../../lib/supabaseClient';
 import { COLORS } from '../../../constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const CATEGORIES = [
   { id: 'portrait', label: 'Portrait / Book' },
@@ -107,6 +110,7 @@ interface BookingRequest {
 
 export default function NouvelleDemandeClient() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [request, setRequest] = useState<BookingRequest>({
@@ -143,7 +147,7 @@ export default function NouvelleDemandeClient() {
   const pickMoodboardPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: false,
         quality: 0.8,
       });
@@ -160,6 +164,12 @@ export default function NouvelleDemandeClient() {
   };
 
   const submitRequest = async () => {
+    // Validation: seuls category et event_date sont obligatoires
+    if (!request.category) {
+      Alert.alert('Erreur', 'Veuillez sélectionner une catégorie');
+      return;
+    }
+
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -171,68 +181,48 @@ export default function NouvelleDemandeClient() {
         .insert({
           client_id: user.id,
           category: request.category,
-          styles_recherches: request.styles,
-          location_address: request.location_address,
-          location_city: request.location_city,
-          location_type: request.location_type,
+          styles_recherches: request.styles.length > 0 ? request.styles : null,
+          location_address: request.location_address || null,
+          location_city: request.location_city || null,
+          location_type: request.location_type || null,
           studio_needed: request.studio_needed,
-          studio_provider: request.studio_provider,
-          total_people: request.total_people,
-          people_in_photos: request.people_in_photos,
+          studio_provider: request.studio_provider || null,
+          total_people: request.total_people || 1,
+          people_in_photos: request.people_in_photos || 1,
           has_children: request.has_children,
-          children_age: request.children_age,
+          children_age: request.children_age || null,
           has_babies: request.has_babies,
           needs_makeup: request.needs_makeup,
           needs_hair: request.needs_hair,
           needs_stylist: request.needs_stylist,
-          usage_types: request.usage_types,
-          num_photos: request.num_photos,
+          usage_types: request.usage_types.length > 0 ? request.usage_types : null,
+          num_photos: request.num_photos || 50,
           retouching_level: request.retouching_level,
-          budget_min: request.budget_min,
-          budget_max: request.budget_max,
+          budget_min: request.budget_min || null,
+          budget_max: request.budget_max || null,
           atmosphere: request.atmosphere,
           comfort_level: request.comfort_level,
-          special_requirements: request.special_requirements,
+          special_requirements: request.special_requirements || null,
           event_date: request.event_date,
-          session_duration: request.session_duration,
-          constraints: request.constraints,
-          reference_photos: request.reference_photos,
-          moodboard_notes: request.moodboard_notes,
+          session_duration: request.session_duration || 2,
+          constraints: request.constraints || null,
+          reference_photos: request.reference_photos.length > 0 ? request.reference_photos : null,
+          moodboard_notes: request.moodboard_notes || null,
           status: 'pending',
         });
 
       if (error) throw error;
 
-      Alert.alert('Succès', 'Demande envoyée. Les photographes matcher vont vous contacter sous peu.');
-      setStep(1);
-      setRequest({
-        category: '',
-        styles: [],
-        location_address: '',
-        location_city: '',
-        location_type: '',
-        studio_needed: false,
-        total_people: 1,
-        people_in_photos: 1,
-        has_children: false,
-        has_babies: false,
-        needs_makeup: false,
-        needs_hair: false,
-        needs_stylist: false,
-        usage_types: [],
-        num_photos: 50,
-        retouching_level: 'standard',
-        budget_min: 300,
-        budget_max: 1000,
-        atmosphere: 'natural',
-        comfort_level: 'neutral',
-        special_requirements: '',
-        event_date: new Date(),
-        session_duration: 2,
-        constraints: '',
-        reference_photos: [],
-        moodboard_notes: '',
-      });
+      Alert.alert(
+        'Demande créée !',
+        'Votre demande a été publiée. Les photographes correspondants vont recevoir une notification.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push('/client/demandes/mes-demandes'),
+          },
+        ]
+      );
     } catch (error: any) {
       Alert.alert('Erreur', error.message);
     } finally {
@@ -255,16 +245,33 @@ export default function NouvelleDemandeClient() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {renderStepIndicator()}
+    <View style={styles.container}>
+      {/* Header fixe avec gradient */}
+      <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Nouvelle demande</Text>
+            <Text style={styles.headerSubtitle}>Étape {step}/5 - Tous les champs sont optionnels sauf la catégorie</Text>
+          </View>
+        </View>
+        {renderStepIndicator()}
+      </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={{ paddingBottom: 200 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* STEP 1: CATÉGORIE & STYLE */}
         {step === 1 && (
-          <View style={styles.section}>
-            <Text style={styles.stepTitle}>Étape 1 : Catégorie & Style</Text>
+          <View style={styles.card}>
+            <Text style={styles.stepTitle}>📸 Catégorie & Style</Text>
+            <Text style={styles.stepDescription}>Décrivez votre besoin photo en quelques mots</Text>
 
-            <Text style={styles.label}>Quelle est votre besoin ?</Text>
+            <Text style={styles.label}>Quelle est votre besoin ? *</Text>
             {CATEGORIES.map(cat => (
               <TouchableOpacity
                 key={cat.id}
@@ -289,7 +296,7 @@ export default function NouvelleDemandeClient() {
               </TouchableOpacity>
             ))}
 
-            <Text style={[styles.label, { marginTop: 24 }]}>Styles photographiques (multi-sélection)</Text>
+            <Text style={[styles.label, { marginTop: 24 }]}>Styles photographiques (optionnel, multi-sélection)</Text>
             <View style={styles.gridContainer}>
               {STYLES.map(style => (
                 <TouchableOpacity
@@ -321,11 +328,12 @@ export default function NouvelleDemandeClient() {
 
         {/* STEP 2: LOCALISATION & PARTICIPANTS */}
         {step === 2 && (
-          <View style={styles.section}>
-            <Text style={styles.stepTitle}>Étape 2 : Localisation & Participants</Text>
+          <View style={styles.card}>
+            <Text style={styles.stepTitle}>📍 Localisation & Participants</Text>
+            <Text style={styles.stepDescription}>Où et avec combien de personnes ?</Text>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Adresse</Text>
+              <Text style={styles.label}>Adresse (optionnel)</Text>
               <TextInput
                 style={styles.input}
                 value={request.location_address}
@@ -335,7 +343,7 @@ export default function NouvelleDemandeClient() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Ville</Text>
+              <Text style={styles.label}>Ville (optionnel)</Text>
               <TextInput
                 style={styles.input}
                 value={request.location_city}
@@ -344,7 +352,7 @@ export default function NouvelleDemandeClient() {
               />
             </View>
 
-            <Text style={styles.label}>Type de lieu</Text>
+            <Text style={styles.label}>Type de lieu (optionnel)</Text>
             {LOCATION_TYPES.map(loc => (
               <TouchableOpacity
                 key={loc.id}
@@ -406,8 +414,9 @@ export default function NouvelleDemandeClient() {
 
         {/* STEP 3: SERVICES & LIVRABLES */}
         {step === 3 && (
-          <View style={styles.section}>
-            <Text style={styles.stepTitle}>Étape 3 : Services & Livrables</Text>
+          <View style={styles.card}>
+            <Text style={styles.stepTitle}>✨ Services & Livrables</Text>
+            <Text style={styles.stepDescription}>Services additionnels et nombre de photos</Text>
 
             <View style={styles.checkboxGroup}>
               <Text style={styles.checkbox}>
@@ -489,8 +498,9 @@ export default function NouvelleDemandeClient() {
 
         {/* STEP 4: BUDGET & PRÉFÉRENCES */}
         {step === 4 && (
-          <View style={styles.section}>
-            <Text style={styles.stepTitle}>Étape 4 : Budget & Préférences</Text>
+          <View style={styles.card}>
+            <Text style={styles.stepTitle}>💰 Budget & Préférences</Text>
+            <Text style={styles.stepDescription}>Votre budget et l'ambiance souhaitée</Text>
 
             <View style={styles.budgetRow}>
               <View style={styles.budgetInput}>
@@ -568,8 +578,9 @@ export default function NouvelleDemandeClient() {
 
         {/* STEP 5: LOGISTIQUE & MOODBOARD */}
         {step === 5 && (
-          <View style={styles.section}>
-            <Text style={styles.stepTitle}>Étape 5 : Logistique & Moodboard</Text>
+          <View style={styles.card}>
+            <Text style={styles.stepTitle}>📅 Logistique & Moodboard</Text>
+            <Text style={styles.stepDescription}>Date, durée et inspirations visuelles</Text>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Date de l'événement</Text>
@@ -652,13 +663,14 @@ export default function NouvelleDemandeClient() {
       </ScrollView>
 
       {/* Navigation & Submit */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+      <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.buttonRow}>
           {step > 1 && (
             <TouchableOpacity
               style={[styles.button, styles.buttonSecondary]}
               onPress={() => setStep(step - 1)}
             >
+              <Ionicons name="arrow-back" size={20} color="#5C6BC0" />
               <Text style={styles.buttonSecondaryText}>Précédent</Text>
             </TouchableOpacity>
           )}
@@ -669,6 +681,7 @@ export default function NouvelleDemandeClient() {
               onPress={() => setStep(step + 1)}
             >
               <Text style={styles.buttonPrimaryText}>Suivant</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -679,7 +692,10 @@ export default function NouvelleDemandeClient() {
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.buttonPrimaryText}>Envoyer</Text>
+                <>
+                  <Ionicons name="send" size={20} color="#fff" />
+                  <Text style={styles.buttonPrimaryText}>Publier</Text>
+                </>
               )}
             </TouchableOpacity>
           )}
@@ -692,130 +708,197 @@ export default function NouvelleDemandeClient() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: '#F8F9FC',
+  },
+  headerContainer: {
+    backgroundColor: '#5C6BC0',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   stepsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 20,
     gap: 8,
   },
   stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#DDD',
+    width: 32,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   stepDotActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
   },
-  section: {
-    padding: 16,
-    paddingBottom: 100,
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    margin: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   stepTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#222',
-    marginBottom: 20,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2C3E50',
+    marginBottom: 6,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#34495E',
     marginBottom: 12,
   },
   formGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#222',
-    backgroundColor: '#FAFAFA',
+    borderColor: '#E8EBF0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#2C3E50',
+    backgroundColor: '#FAFBFC',
   },
   bioInput: {
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
+    paddingTop: 14,
   },
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: '#FAFBFC',
+    borderWidth: 1,
+    borderColor: '#E8EBF0',
   },
   optionButtonSelected: {
-    backgroundColor: '#F0F5FF',
+    backgroundColor: '#EEF1FF',
+    borderColor: '#5C6BC0',
   },
   radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#DDD',
+    borderColor: '#BDC3C7',
     marginRight: 12,
   },
   radioSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary,
+    borderColor: '#5C6BC0',
+    backgroundColor: '#5C6BC0',
+    borderWidth: 6,
   },
   optionText: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 15,
+    color: '#34495E',
     flex: 1,
   },
   optionTextSelected: {
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#5C6BC0',
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#F9F9F9',
-    marginBottom: 8,
+    borderColor: '#E8EBF0',
+    backgroundColor: '#FAFBFC',
   },
   chipSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: '#5C6BC0',
+    borderColor: '#5C6BC0',
   },
   chipText: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 14,
+    color: '#7F8C8D',
   },
   chipTextSelected: {
     color: '#FFF',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   checkboxGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: '#FAFBFC',
+    borderWidth: 1,
+    borderColor: '#E8EBF0',
   },
   checkbox: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 15,
+    color: '#34495E',
     flex: 1,
   },
   budgetRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 20,
   },
   budgetInput: {
     flex: 1,
@@ -823,16 +906,17 @@ const styles = StyleSheet.create({
   addPhotoButton: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: COLORS.primary,
-    borderRadius: 8,
+    borderColor: '#5C6BC0',
+    borderRadius: 12,
     paddingVertical: 20,
     alignItems: 'center',
     marginBottom: 16,
+    backgroundColor: '#F8F9FF',
   },
   addPhotoText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: '#5C6BC0',
   },
   moodboardGrid: {
     flexDirection: 'row',
@@ -843,7 +927,7 @@ const styles = StyleSheet.create({
   moodboardItem: {
     width: '48%',
     aspectRatio: 1,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#F0F0F0',
   },
@@ -853,20 +937,38 @@ const styles = StyleSheet.create({
   },
   deleteText: {
     position: 'absolute',
-    top: 4,
+    top: 8,
     right: 8,
-    fontSize: 18,
+    fontSize: 20,
     color: '#FFF',
     fontWeight: 'bold',
     backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
   },
-  bottomBar: {
-    padding: 12,
-    backgroundColor: '#FFF',
+  footerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: '#E8EBF0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   buttonRow: {
     flexDirection: 'row',
@@ -874,24 +976,40 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   buttonPrimary: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#5C6BC0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#5C6BC0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   buttonPrimaryText: {
     color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
   buttonSecondary: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F8F9FC',
+    borderWidth: 1,
+    borderColor: '#E8EBF0',
   },
   buttonSecondaryText: {
-    color: '#333',
-    fontSize: 14,
+    color: '#5C6BC0',
+    fontSize: 16,
     fontWeight: '600',
   },
 });
