@@ -268,7 +268,15 @@ export default function NouvelleDemandeClient() {
         {/* STEP 1: CATÉGORIE & STYLE */}
         {step === 1 && (
           <View style={styles.card}>
-            <Text style={styles.stepTitle}>📸 Catégorie & Style</Text>
+                        // Fichier: app/client/profil/profil.tsx ligne 106
+            // Remplacer:
+            .from('demandes_service')
+            // Par:
+            .from('demandes_client')            // Fichier: app/client/profil/profil.tsx ligne 106
+            // Remplacer:
+            .from('demandes_service')
+            // Par:
+            .from('demandes_client')<Text style={styles.stepTitle}>📸 Catégorie & Style</Text>
             <Text style={styles.stepDescription}>Décrivez votre besoin photo en quelques mots</Text>
 
             <Text style={styles.label}>Quelle est votre besoin ? *</Text>

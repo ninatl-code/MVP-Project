@@ -1539,6 +1539,42 @@
     "ordinal_position": 72
   },
   {
+    "table_name": "demandes_client",
+    "column_name": "styles_recherches",
+    "data_type": "ARRAY",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'{}'::text[]",
+    "ordinal_position": 73
+  },
+  {
+    "table_name": "demandes_client",
+    "column_name": "atmosphere",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'natural'::text",
+    "ordinal_position": 74
+  },
+  {
+    "table_name": "demandes_client",
+    "column_name": "comfort_level",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'neutral'::text",
+    "ordinal_position": 75
+  },
+  {
+    "table_name": "demandes_client",
+    "column_name": "moodboard_notes",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 76
+  },
+  {
     "table_name": "devis",
     "column_name": "id",
     "data_type": "uuid",
@@ -2529,6 +2565,195 @@
     "ordinal_position": 9
   },
   {
+    "table_name": "integrations",
+    "column_name": "id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()",
+    "ordinal_position": 1
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "prestataire_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 2
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "provider",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 3
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "access_token",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 4
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "refresh_token",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 5
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "expires_at",
+    "data_type": "timestamp with time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 6
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "true",
+    "ordinal_position": 7
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "metadata",
+    "data_type": "jsonb",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb",
+    "ordinal_position": 8
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "ordinal_position": 9
+  },
+  {
+    "table_name": "integrations",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "ordinal_position": 10
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()",
+    "ordinal_position": 1
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "demande_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 2
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "photographer_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 3
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "match_score",
+    "data_type": "integer",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 4
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "match_reasons",
+    "data_type": "ARRAY",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'{}'::text[]",
+    "ordinal_position": 5
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "status",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'pending'::text",
+    "ordinal_position": 6
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "photographer_message",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 7
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "photographe_quote",
+    "data_type": "jsonb",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 8
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "CURRENT_TIMESTAMP",
+    "ordinal_position": 9
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "responded_at",
+    "data_type": "timestamp without time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 10
+  },
+  {
+    "table_name": "matchings",
+    "column_name": "accepted_at",
+    "data_type": "timestamp without time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 11
+  },
+  {
     "table_name": "messages",
     "column_name": "id",
     "data_type": "uuid",
@@ -2626,6 +2851,69 @@
     "is_nullable": "YES",
     "column_default": "now()",
     "ordinal_position": 11
+  },
+  {
+    "table_name": "messages_matching",
+    "column_name": "id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()",
+    "ordinal_position": 1
+  },
+  {
+    "table_name": "messages_matching",
+    "column_name": "matching_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 2
+  },
+  {
+    "table_name": "messages_matching",
+    "column_name": "sender_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 3
+  },
+  {
+    "table_name": "messages_matching",
+    "column_name": "message",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 4
+  },
+  {
+    "table_name": "messages_matching",
+    "column_name": "attachments",
+    "data_type": "ARRAY",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'{}'::text[]",
+    "ordinal_position": 5
+  },
+  {
+    "table_name": "messages_matching",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "CURRENT_TIMESTAMP",
+    "ordinal_position": 6
+  },
+  {
+    "table_name": "messages_matching",
+    "column_name": "read_at",
+    "data_type": "timestamp without time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 7
   },
   {
     "table_name": "notifications",
@@ -3353,7 +3641,7 @@
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
-    "column_default": null,
+    "column_default": "gen_random_uuid()",
     "ordinal_position": 1
   },
   {
@@ -3362,7 +3650,7 @@
     "data_type": "USER-DEFINED",
     "character_maximum_length": null,
     "is_nullable": "NO",
-    "column_default": "'particulier'::type_utilisateur",
+    "column_default": "'particulier'::type_utilisateurs",
     "ordinal_position": 2
   },
   {
@@ -3508,6 +3796,15 @@
     "is_nullable": "YES",
     "column_default": null,
     "ordinal_position": 18
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "auth_user_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 20
   },
   {
     "table_name": "profils_photographe",
@@ -4111,6 +4408,42 @@
     "is_nullable": "YES",
     "column_default": "now()",
     "ordinal_position": 67
+  },
+  {
+    "table_name": "profils_photographe",
+    "column_name": "styles_photo",
+    "data_type": "ARRAY",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'{}'::text[]",
+    "ordinal_position": 68
+  },
+  {
+    "table_name": "profils_photographe",
+    "column_name": "disponibilite",
+    "data_type": "jsonb",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "'{\"evenings\": false, \"weekdays\": true, \"weekends\": true}'::jsonb",
+    "ordinal_position": 69
+  },
+  {
+    "table_name": "profils_photographe",
+    "column_name": "document_identite_recto_url",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 70
+  },
+  {
+    "table_name": "profils_photographe",
+    "column_name": "document_identite_verso_url",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 71
   },
   {
     "table_name": "remboursements",
@@ -4849,6 +5182,78 @@
     "is_nullable": "YES",
     "column_default": "now()",
     "ordinal_position": 61
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()",
+    "ordinal_position": 1
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "photographer_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 2
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "client_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 3
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "matching_id",
+    "data_type": "uuid",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 4
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "rating",
+    "data_type": "integer",
+    "character_maximum_length": null,
+    "is_nullable": "NO",
+    "column_default": null,
+    "ordinal_position": 5
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "comment",
+    "data_type": "text",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": null,
+    "ordinal_position": 6
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "CURRENT_TIMESTAMP",
+    "ordinal_position": 7
+  },
+  {
+    "table_name": "reviews_photographe",
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone",
+    "character_maximum_length": null,
+    "is_nullable": "YES",
+    "column_default": "CURRENT_TIMESTAMP",
+    "ordinal_position": 8
   },
   {
     "table_name": "spatial_ref_sys",

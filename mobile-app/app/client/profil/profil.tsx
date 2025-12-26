@@ -103,7 +103,7 @@ export default function ClientProfil() {
 
       // Get demandes (service requests)
       const { data: demandes } = await supabase
-        .from('demandes_service')
+        .from('demandes_client')
         .select('id')
         .eq('client_id', profileId);
 
