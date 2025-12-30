@@ -4,11 +4,12 @@ import { supabase } from '../../lib/supabaseClient'
 import Header from '../../components/HeaderParti'
 import RealTimeNotifications from '../../components/RealTimeNotifications'
 import { useCameraSplashNavigation } from '../../components/CameraSplash'
+import { useAuth } from '../../contexts/AuthContext'
 import { 
   Search, Minus, Plus, Calendar, Package, FileText, 
   Star, Clock, CheckCircle, AlertCircle, User, 
   ArrowRight, ArrowLeft, Filter, Grid3X3, List, Eye,
-  TrendingUp, Activity, Award, Heart
+  TrendingUp, Activity, Award, Heart, RefreshCcw, X
 } from "lucide-react";
 
 function ParticularHomeMenu() {
@@ -42,6 +43,21 @@ function ParticularHomeMenu() {
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationConditions, setCancellationConditions] = useState(null);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+
+  // Hook pour le switch de profil
+  const { availableProfiles, switchProfile, profileId } = useAuth();
+  const hasMultipleProfiles = availableProfiles?.length > 1;
+
+  // Fonction pour basculer vers le profil photographe
+  const handleSwitchToPhotographe = async () => {
+    const photographeProfile = availableProfiles?.find(p => p.role === 'photographe' || p.role === 'prestataire');
+    if (photographeProfile) {
+      await switchProfile(photographeProfile.id);
+      setShowSwitchModal(false);
+      router.push('/photographe/menu');
+    }
+  };
 
 
 
@@ -152,7 +168,7 @@ function ParticularHomeMenu() {
           console.log('✅ Notification avis trouvée:', notification);
           setTriggerAvisNotification(notification);
           // Nettoyer l'URL après usage
-          router.replace('/particuliers/menu', undefined, { shallow: true });
+          router.replace('/client/menu', undefined, { shallow: true });
         }
       };
       
@@ -1866,7 +1882,7 @@ function ParticularHomeMenu() {
                   cursor: 'pointer'
                 }}
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-800 to-blue-800 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => navigateWithSplash("/particuliers/search", "Recherche de prestataires...")}
+                onClick={() => navigateWithSplash("/client/search", "Recherche de prestataires...")}
               >
                 <Search className="w-5 h-5" />
                 Trouver un prestataire
@@ -1884,7 +1900,7 @@ function ParticularHomeMenu() {
                   transition: 'all 0.2s'
                 }}
                 className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
-                onClick={() => navigateWithSplash("/particuliers/profil#favoris", "Chargement de vos favoris...")}
+                onClick={() => navigateWithSplash("/client/profil#favoris", "Chargement de vos favoris...")}
                 onMouseOver={(e) => e.target.style.background = 'F8F9FB'}
                 onMouseOut={(e) => e.target.style.background = 'transparent'}
               >
@@ -1904,13 +1920,36 @@ function ParticularHomeMenu() {
                   transition: 'all 0.2s'
                 }}
                 className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
-                onClick={() => navigateWithSplash("/particuliers/messages", "Ouverture de la messagerie...")}
+                onClick={() => navigateWithSplash("/client/messages", "Ouverture de la messagerie...")}
                 onMouseOver={(e) => e.target.style.background = 'F8F9FB'}
                 onMouseOut={(e) => e.target.style.background = 'transparent'}
               >
                 <Activity className="w-5 h-5" />
                 Mes messages
               </button>
+              {/* Bouton Switch Profil */}
+              {hasMultipleProfiles && (
+                <button
+                  style={{
+                    background:'#130183',
+                    color:'#fff',
+                    borderRadius:10,
+                    padding:'8px 18px',
+                    fontWeight:600,
+                    fontSize:15,
+                    cursor:'pointer',
+                    transition: 'all 0.2s',
+                    border: 'none'
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
+                  onClick={() => setShowSwitchModal(true)}
+                  onMouseOver={(e) => e.target.style.background = '#5C6BC0'}
+                  onMouseOut={(e) => e.target.style.background = '#130183'}
+                >
+                  <RefreshCcw className="w-5 h-5" />
+                  Mode Photographe
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -2278,7 +2317,7 @@ function ParticularHomeMenu() {
               </p>
               <button
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => navigateWithSplash("/particuliers/search", "Recherche de prestataires...")}
+                onClick={() => navigateWithSplash("/client/search", "Recherche de prestataires...")}
               >
                 <Search className="w-5 h-5 inline mr-2" />
                 Trouver des prestataires
@@ -2297,7 +2336,7 @@ function ParticularHomeMenu() {
               </p>
               <button
                 className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => navigateWithSplash("/particuliers/search", "Recherche de services...")}
+                onClick={() => navigateWithSplash("/client/search", "Recherche de services...")}
               >
                 <Search className="w-5 h-5 inline mr-2" />
                 Rechercher des services
@@ -2321,7 +2360,7 @@ function ParticularHomeMenu() {
               </p>
               <button
                 className="bg-gradient-to-r from-blue-600 to-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => router.push("/particuliers/search")}
+                onClick={() => router.push("/client/search")}
               >
                 <Search className="w-5 h-5 inline mr-2" />
                 Découvrir les prestataires
@@ -2629,6 +2668,109 @@ function ParticularHomeMenu() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de changement de profil */}
+      {showSwitchModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setShowSwitchModal(false)}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '20px',
+              maxWidth: '400px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* En-tête */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div 
+                style={{
+                  backgroundColor: '#5C6BC020',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  display: 'inline-flex',
+                  marginBottom: '16px'
+                }}
+              >
+                <RefreshCcw style={{ width: '32px', height: '32px', color: '#130183' }} />
+              </div>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1C1C1E', marginBottom: '8px' }}>
+                Changer de profil
+              </h2>
+              <p style={{ fontSize: '14px', color: '#1C1C1EAA' }}>
+                Voulez-vous passer en mode Photographe ?
+              </p>
+              <p style={{ fontSize: '13px', color: '#1C1C1E80', marginTop: '8px' }}>
+                Vous pourrez accéder aux demandes, créer des devis et gérer vos réservations.
+              </p>
+            </div>
+
+            {/* Boutons */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowSwitchModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'white',
+                  color: '#1C1C1E',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#F8F9FB'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSwitchToPhotographe}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: '#130183',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#5C6BC0'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#130183'}
+              >
+                <CheckCircle style={{ width: '16px', height: '16px' }} />
+                Confirmer
+              </button>
             </div>
           </div>
         </div>

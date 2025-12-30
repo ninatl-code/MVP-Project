@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient';
 import { useRouter } from 'next/router';
-import HeaderPresta from '../../components/HeaderPresta';
+import HeaderPresta from '../../../components/HeaderPresta';
 import { 
   ShoppingCart, 
   Calendar, 

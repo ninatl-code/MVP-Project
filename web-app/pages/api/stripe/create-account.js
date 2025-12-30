@@ -35,8 +35,8 @@ export default async function handler(req, res) {
     // Génération du lien onboarding Stripe
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
-      refresh_url: "http://localhost:3000/prestataires/profil",
-      return_url: "http://localhost:3000/prestataires/profil",
+      refresh_url: "http://localhost:3000/photographe/profil",
+      return_url: "http://localhost:3000/photographe/profil",
       type: "account_onboarding",
     });
 

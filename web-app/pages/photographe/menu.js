@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { motion } from "framer-motion";
 import Header from '../../components/HeaderPresta';
 import { useCameraSplashNavigation } from '../../components/CameraSplash';
+import { useAuth } from '../../contexts/AuthContext';
 
 import {
   Calendar,
@@ -35,6 +36,7 @@ import {
   ArrowRight,
   Send,
   HelpCircle,
+  RefreshCcw,
 } from "lucide-react";
 
 // Palette Shooty
@@ -210,7 +212,7 @@ function NotificationsPopup({ userId }) {
               style={{ color: COLORS.primary }}
               onClick={() => {
                 setOpen(false);
-                router.push("/prestataires/notification");
+                router.push("/photographe/notification");
               }}
             >
               Voir toutes les notifications
@@ -367,7 +369,7 @@ function StartupChecklist({ userId, onHide }) {
           description: 'Photo, bio, localisation, coordonnées, réseaux sociaux',
           completed: profileComplete,
           icon: User,
-          action: () => router.push('/prestataires/profil'),
+          action: () => router.push('/photographe/profil'),
           actionText: 'Compléter le profil'
         },
         {
@@ -389,7 +391,7 @@ function StartupChecklist({ userId, onHide }) {
           description: 'Configurez vos paiements pour recevoir des reservations',
           completed: !!profile?.stripe_account_id,
           icon: CreditCard,
-          action: () => router.push('/prestataires/profil'),
+          action: () => router.push('/photographe/profil'),
           actionText: 'Configurer Stripe'
         },
         {
@@ -398,7 +400,7 @@ function StartupChecklist({ userId, onHide }) {
           description: 'Ajoutez au moins une prestation ou produit',
           completed: annonceCount > 0,
           icon: FileText,
-          action: () => router.push('/prestataires/prestations'),
+          action: () => router.push('/photographe/packages'),
           actionText: 'Créer une annonce'
         },
         {
@@ -407,7 +409,7 @@ function StartupChecklist({ userId, onHide }) {
           description: 'Faites connaître vos services sur les réseaux sociaux',
           completed: false, // Cette étape est toujours incomplète pour encourager le partage
           icon: Share2,
-          action: () => router.push('/prestataires/prestations'),
+          action: () => router.push('/photographe/packages'),
           actionText: 'Voir mes annonces'
         }
       ];
@@ -955,7 +957,28 @@ export default function ProviderHomeMenu() {
   const [showChecklist, setShowChecklist] = useState(true);
   const [userId, setUserId] = useState(null);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+  // Nouvelles stats alignées sur mobile
+  const [chiffreAffaires, setChiffreAffaires] = useState(0);
+  const [demandesVues, setDemandesVues] = useState(0);
+  const [messagesNonLus, setMessagesNonLus] = useState(0);
+  const [tauxAcceptation, setTauxAcceptation] = useState(0);
+  const [totalReservations, setTotalReservations] = useState(0);
   const router = useRouter();
+  
+  // Hook pour le switch de profil
+  const { availableProfiles, switchProfile, profileId } = useAuth();
+  const hasMultipleProfiles = availableProfiles?.length > 1;
+  
+  // Fonction pour basculer vers le profil client
+  const handleSwitchToClient = async () => {
+    const clientProfile = availableProfiles?.find(p => p.role === 'particulier');
+    if (clientProfile) {
+      await switchProfile(clientProfile.id);
+      setShowSwitchModal(false);
+      router.push('/client/menu');
+    }
+  };
 
   // Hook pour la navigation avec animation caméra
   const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000);
@@ -997,41 +1020,64 @@ export default function ProviderHomeMenu() {
         .single();
       setProfile(profileData);
 
-      // Nb réservations acceptées
-      const { count: acceptedCount } = await supabase
-        .from("reservations")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "confirmed");
-      setNbAccepted(acceptedCount || 0);
+      // Charger toutes les stats en parallèle (aligné sur mobile)
+      const [reservationsRes, devisRes, demandesRes, messagesRes] = await Promise.all([
+        supabase.from('reservations')
+          .select('id, montant_total, statut_reservation')
+          .eq('photographe_id', user.id),
+        supabase.from('devis')
+          .select('id, statut')
+          .eq('photographe_id', user.id),
+        supabase.from('demandes_client')
+          .select('id, photographes_notifies')
+          .contains('photographes_notifies', [user.id]),
+        supabase.from('conversations')
+          .select('id', { count: 'exact' })
+          .eq('artist_id', user.id)
+          .eq('lu', false)
+      ]);
 
-      // Nb réservations en attente
-      const { count: pendingCount } = await supabase
-        .from("reservations")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
-      setNbPending(pendingCount || 0);
+      // Total réservations
+      setTotalReservations(reservationsRes.data?.length || 0);
 
-      // Nb devis en attente
-      const { count: devisPending } = await supabase
-        .from("devis")
-        .select("*", { count: "exact", head: true })
-        .eq("prestataire_id", user.id)
-        .eq("status", "pending");
-      setNbDevisPending(devisPending || 0);
+      // Réservations acceptées (confirmée, en_cours, terminée)
+      const reservationsPayees = reservationsRes.data?.filter(r => 
+        r.statut_reservation === 'confirmee' || r.statut_reservation === 'en_cours' || r.statut_reservation === 'terminee'
+      ) || [];
+      setNbAccepted(reservationsPayees.length);
 
-      // Nb devis acceptés
-      const { count: devisAccepted } = await supabase
-        .from("devis")
-        .select("*", { count: "exact", head: true })
-        .eq("prestataire_id", user.id)
-        .eq("status", "accepted");
-      setNbDevisAccepted(devisAccepted || 0);
+      // Réservations en attente
+      const reservationsPending = reservationsRes.data?.filter(r => 
+        r.statut_reservation === 'en_attente' || r.statut_reservation === 'pending'
+      ) || [];
+      setNbPending(reservationsPending.length);
 
+      // Chiffre d'affaires (somme des réservations payées)
+      const ca = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
+      setChiffreAffaires(ca);
+
+      // Statistiques devis
+      const devisData = devisRes.data || [];
+      const devisEnAttente = devisData.filter(d => d.statut === 'en_attente' || d.statut === 'pending').length;
+      const devisAcceptes = devisData.filter(d => d.statut === 'accepte' || d.statut === 'accepted').length;
+      setNbDevisPending(devisEnAttente);
+      setNbDevisAccepted(devisAcceptes);
+
+      // Taux d'acceptation
+      const taux = devisData.length > 0 ? Math.round((devisAcceptes / devisData.length) * 100) : 0;
+      setTauxAcceptation(taux);
+
+      // Demandes vues
+      setDemandesVues(demandesRes.data?.length || 0);
+
+      // Messages non lus
+      setMessagesNonLus(messagesRes.count || 0);
 
       // Nb prestations actives
       const { count: activeCount } = await supabase
         .from("annonces")
         .select("*", { count: "exact", head: true })
+        .eq("prestataire", user.id)
         .eq("actif", true);
       setNbActivePrestations(activeCount || 0);
     };
@@ -1043,7 +1089,7 @@ export default function ProviderHomeMenu() {
       title: "Devis",
       desc: "Gérer et suivre vos devis clients",
       icon: FileText,
-      onClick: () => navigateWithSplash("/prestataires/devis", "Chargement de vos devis..."),
+      onClick: () => navigateWithSplash("/photographe/devis", "Chargement de vos devis..."),
       gradient: `linear-gradient(135deg, #130183)`, // Accent gradient
       iconBg: '#820615'
     },
@@ -1051,7 +1097,7 @@ export default function ProviderHomeMenu() {
       title: "Réservations",
       desc: "Gérer vos réservations et confirmations",
       icon: Calendar,
-      onClick: () => navigateWithSplash("/prestataires/reservations", "Chargement des réservations..."),
+      onClick: () => navigateWithSplash("/photographe/reservations", "Chargement des réservations..."),
       gradient: `linear-gradient(135deg, #130183)`, // Accent gradient
       iconBg: '#820615'
     },
@@ -1059,7 +1105,7 @@ export default function ProviderHomeMenu() {
       title: "Mes annonces",
       desc: "Créer et gérer vos annonces",
       icon: Images,
-      onClick: () => navigateWithSplash("/prestataires/prestations", "Chargement de vos annonces..."),
+      onClick: () => navigateWithSplash("/photographe/packages", "Chargement de vos annonces..."),
       gradient: `linear-gradient(135deg,#130183)`, // Secondary gradient
       iconBg: '#820615'
     },
@@ -1067,7 +1113,7 @@ export default function ProviderHomeMenu() {
       title: "Planning",
       desc: "Visualiser votre calendrier",
       icon: ClipboardList,
-      onClick: () => navigateWithSplash("/prestataires/calendrier", "Chargement du planning..."),
+      onClick: () => navigateWithSplash("/photographe/calendar/calendrier", "Chargement du planning..."),
       gradient: COLORS.accent, // Primary to Accent
       iconBg: COLORS.accent
     },
@@ -1114,10 +1160,22 @@ export default function ProviderHomeMenu() {
 
             {/* Actions rapides */}
             <div className="flex gap-3">
+              {/* Bouton Switch Profil */}
+              {hasMultipleProfiles && (
+                <Button 
+                  variant="outline" 
+                  size="md"
+                  onClick={() => setShowSwitchModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Mode Client
+                </Button>
+              )}
               <Button 
                 variant="accent" 
                 size="md"
-                onClick={() => router.push("/prestataires/prestations")}
+                onClick={() => router.push("/photographe/packages")}
                 className="hidden lg:flex"
               >
                 <Plus className="w-4 h-4" />
@@ -1216,24 +1274,93 @@ export default function ProviderHomeMenu() {
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.secondary + '20' }}
+                      style={{ backgroundColor: '#10B98120' }}
                     >
-                      <BarChart3 className="w-5 h-5" style={{ color: COLORS.accent }} />
+                      <BarChart3 className="w-5 h-5" style={{ color: '#10B981' }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      CA ce mois
+                      Chiffre d'affaires
                     </p>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: COLORS.text }}>
-                    -
+                  <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(chiffreAffaires)}
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    Bientôt disponible
+                    Total réservations payées
                   </p>
                 </div>
               </CardContent>
             </Card>
             
+          </section>
+
+          {/* Statistiques supplémentaires - alignées sur mobile */}
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Demandes vues */}
+            <Card hover={true}>
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: '#3B82F620' }}
+                    >
+                      <Mail className="w-5 h-5" style={{ color: '#3B82F6' }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      Demandes vues
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: '#3B82F6' }}>
+                    {demandesVues}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Messages non lus */}
+            <Card hover={true}>
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: '#F59E0B20' }}
+                    >
+                      <MessageCircle className="w-5 h-5" style={{ color: '#F59E0B' }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      Messages non lus
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: '#F59E0B' }}>
+                    {messagesNonLus}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Taux d'acceptation */}
+            <Card hover={true}>
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: '#8B5CF620' }}
+                    >
+                      <Star className="w-5 h-5" style={{ color: '#8B5CF6' }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      Taux d'acceptation
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold" style={{ color: '#8B5CF6' }}>
+                    {tauxAcceptation}%
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           {/* Actions principales - 2 par ligne */}
@@ -1305,7 +1432,7 @@ export default function ProviderHomeMenu() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Raccourci Zones d'intervention */}
-              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/prestataires/profil#zones")}>
+              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/photographe/profil#zones")}>
                 <CardContent className="flex items-center gap-4">
                   <div
                     className="p-3 rounded-xl"
@@ -1326,7 +1453,7 @@ export default function ProviderHomeMenu() {
               </Card>
 
               {/* Raccourci Gestion documents */}
-              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/prestataires/profil#documents")}>
+              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/photographe/profil#documents")}>
                 <CardContent className="flex items-center gap-4">
                   <div
                     className="p-3 rounded-xl"
@@ -1371,6 +1498,109 @@ export default function ProviderHomeMenu() {
            </div>
           </section>
         </main>
+
+        {/* Modal de changement de profil */}
+        {showSwitchModal && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '20px'
+            }}
+            onClick={() => setShowSwitchModal(false)}
+          >
+            <div 
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                maxWidth: '400px',
+                width: '100%',
+                padding: '24px',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* En-tête */}
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <div 
+                  style={{
+                    backgroundColor: COLORS.secondary + '20',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    display: 'inline-flex',
+                    marginBottom: '16px'
+                  }}
+                >
+                  <RefreshCcw style={{ width: '32px', height: '32px', color: COLORS.accent }} />
+                </div>
+                <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: COLORS.text, marginBottom: '8px' }}>
+                  Changer de profil
+                </h2>
+                <p style={{ fontSize: '14px', color: COLORS.text + 'AA' }}>
+                  Voulez-vous passer en mode Client ?
+                </p>
+                <p style={{ fontSize: '13px', color: COLORS.text + '80', marginTop: '8px' }}>
+                  Vous pourrez rechercher des photographes et effectuer des réservations.
+                </p>
+              </div>
+
+              {/* Boutons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setShowSwitchModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'white',
+                    color: COLORS.text,
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = COLORS.background}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSwitchToClient}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    backgroundColor: COLORS.accent,
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = COLORS.secondary}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = COLORS.accent}
+                >
+                  <CheckCircle style={{ width: '16px', height: '16px' }} />
+                  Confirmer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal de support */}
         <SupportModal 

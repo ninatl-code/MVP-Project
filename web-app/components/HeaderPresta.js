@@ -1,7 +1,8 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, BarChart3 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, BarChart3, RefreshCcw } from "lucide-react";
 import { ShootyLogoSimple } from "./ShootyLogo";
 
 // Palette Shooty
@@ -32,6 +33,19 @@ export default function Header() {
   const [profile, setProfile] = useState(null);
   const [nbUnread, setNbUnread] = useState(0); // Ajout du state
   const router = useRouter();
+  
+  // Hook pour le switch de profil
+  const { availableProfiles, switchProfile } = useAuth();
+  const hasMultipleProfiles = availableProfiles?.length > 1;
+  
+  // Fonction pour basculer vers le profil client
+  const handleSwitchToClient = async () => {
+    const clientProfile = availableProfiles?.find(p => p.role === 'particulier');
+    if (clientProfile) {
+      await switchProfile(clientProfile.id);
+      router.push('/client/menu');
+    }
+  };
 
   // Déconnexion
   const handleLogout = async () => {
@@ -80,20 +94,44 @@ export default function Header() {
     <header className="sticky top-0 z-20 bg-white shadow-sm border-b border-slate-200">
       <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo & Titre */}
-        <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/prestataires/menu")}>
+        <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/photographe/menu")}>
           <ShootyLogoSimple width={120} height={40} />
           <span className="ml-4 text-base hidden sm:block" style={{color: 'var(--foreground)', opacity: 0.6}}>Espace artiste</span>
         </div>
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <IconButton onClick={() => router.push("/prestataires/menu")}
+          {/* Bouton Switch vers Client */}
+          {hasMultipleProfiles && (
+            <button
+              onClick={handleSwitchToClient}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+              style={{
+                backgroundColor: COLORS.secondary + '20',
+                color: COLORS.accent,
+                border: `1px solid ${COLORS.secondary}40`
+              }}
+              onMouseEnter={e => {
+                e.target.style.backgroundColor = COLORS.accent;
+                e.target.style.color = 'white';
+              }}
+              onMouseLeave={e => {
+                e.target.style.backgroundColor = COLORS.secondary + '20';
+                e.target.style.color = COLORS.accent;
+              }}
+              title="Passer en mode Client"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              <span className="hidden md:inline">Mode Client</span>
+            </button>
+          )}
+          <IconButton onClick={() => router.push("/photographe/menu")}
             className="text-white"
             style={{backgroundColor: COLORS.primary}}
             onMouseEnter={e => e.target.style.backgroundColor = COLORS.accent}
             onMouseLeave={e => e.target.style.backgroundColor = COLORS.primary}>
             <Menu className="w-5 h-5" />
           </IconButton>
-          <IconButton onClick={() => router.push("/prestataires/kpis")}
+          <IconButton onClick={() => router.push("/photographe/kpi/kpis")}
             className="text-white"
             style={{backgroundColor: COLORS.primary}}
             onMouseEnter={e => e.target.style.backgroundColor = COLORS.accent}
@@ -103,7 +141,7 @@ export default function Header() {
           </IconButton>
           <NotificationsPopup router={router} />
           <div className="relative">
-            <IconButton onClick={() => router.push("/prestataires/messages")}
+            <IconButton onClick={() => router.push("/photographe/messages")}
               className="bg-slate-700 hover:bg-slate-800 text-white">
               <MessageCircle className="w-5 h-5" />
             </IconButton>
@@ -118,7 +156,7 @@ export default function Header() {
           </IconButton>
           <button
             className="cursor-pointer ml-2 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-blue-700 overflow-hidden hover:border-slate-800 transition-colors"
-            onClick={() => router.push("/prestataires/profil")}
+            onClick={() => router.push("/photographe/profil")}
             type="button"
           >
             {profile?.photos ? (
@@ -236,7 +274,7 @@ function NotificationsPopup({ router }) {
           <div className="p-3 text-center">
             <button
               className="text-black-600 font-semibold hover:underline"
-              onClick={() => { setOpen(false); router.push("/prestataires/notification"); }}
+              onClick={() => { setOpen(false); router.push("/photographe/notification"); }}
             >
               Voir toutes les notifications
             </button>

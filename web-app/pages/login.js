@@ -95,7 +95,7 @@ function Login() {
       }
 
       // Redirection selon le rôle avec animation
-      const targetPath = profile?.role === 'prestataire' ? '/prestataires/menu' : '/particuliers/menu'
+      const targetPath = profile?.role === 'prestataire' ? '/photographe/menu' : '/client/menu'
       const message = profile?.role === 'prestataire' ? 'Accès à votre espace professionnel...' : 'Accès à votre espace...'
       console.log('6. Redirection vers:', targetPath)
       

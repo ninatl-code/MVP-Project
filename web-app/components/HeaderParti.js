@@ -1,7 +1,8 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, RefreshCcw } from "lucide-react";
 import { ShootyLogoSimple } from "./ShootyLogo";
 
 // Palette Shooty
@@ -32,6 +33,19 @@ export default function Header() {
   const [profile, setProfile] = useState(null);
   const [nbUnread, setNbUnread] = useState(0); // Ajout du state
   const router = useRouter();
+  
+  // Hook pour le switch de profil
+  const { availableProfiles, switchProfile } = useAuth();
+  const hasMultipleProfiles = availableProfiles?.length > 1;
+  
+  // Fonction pour basculer vers le profil photographe
+  const handleSwitchToPhotographe = async () => {
+    const photographeProfile = availableProfiles?.find(p => p.role === 'photographe' || p.role === 'prestataire');
+    if (photographeProfile) {
+      await switchProfile(photographeProfile.id);
+      router.push('/photographe/menu');
+    }
+  };
 
   // Déconnexion
   const handleLogout = async () => {
@@ -80,13 +94,37 @@ export default function Header() {
     <header className="sticky top-0 z-20 bg-white shadow-sm border-b border-slate-200">
       <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo & Titre */}
-        <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/particuliers/menu")}>
+        <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/client/menu")}>
           <ShootyLogoSimple width={120} height={40} />
           <span className="ml-4 text-base hidden sm:block" style={{color: 'var(--foreground)', opacity: 0.6}}>Espace client</span>
         </div>
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <IconButton onClick={() => router.push("/particuliers/menu")}
+          {/* Bouton Switch vers Photographe */}
+          {hasMultipleProfiles && (
+            <button
+              onClick={handleSwitchToPhotographe}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+              style={{
+                backgroundColor: COLORS.secondary + '20',
+                color: COLORS.accent,
+                border: `1px solid ${COLORS.secondary}40`
+              }}
+              onMouseEnter={e => {
+                e.target.style.backgroundColor = COLORS.accent;
+                e.target.style.color = 'white';
+              }}
+              onMouseLeave={e => {
+                e.target.style.backgroundColor = COLORS.secondary + '20';
+                e.target.style.color = COLORS.accent;
+              }}
+              title="Passer en mode Photographe"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              <span className="hidden md:inline">Mode Photographe</span>
+            </button>
+          )}
+          <IconButton onClick={() => router.push("/client/menu")}
             className="text-white"
             style={{backgroundColor: COLORS.accent}}
             onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
@@ -95,7 +133,7 @@ export default function Header() {
           </IconButton>
           <NotificationsPopup router={router} />
           <div className="relative">
-            <IconButton onClick={() => router.push("/particuliers/messages")}
+            <IconButton onClick={() => router.push("/client/messages")}
                         className="text-white"
                         style={{backgroundColor: COLORS.accent}}
                         onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
@@ -113,7 +151,7 @@ export default function Header() {
           </IconButton>
           <button
             className="cursor-pointer ml-2 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-blue-700 overflow-hidden hover:border-slate-800 transition-colors"
-            onClick={() => router.push("/particuliers/profil")}
+            onClick={() => router.push("/client/profil")}
             type="button"
           >
             {profile?.photos ? (
@@ -222,13 +260,13 @@ function NotificationsPopup({ router }) {
                     if (notif.type === 'avis') {
                       // Pour les notifications d'avis, rediriger vers menu.js avec un paramètre
                       setOpen(false);
-                      router.push(`/particuliers/menu?openAvis=${notif.id}`);
+                      router.push(`/client/menu?openAvis=${notif.id}`);
                     } else if (notif.type === 'message') {
                       setOpen(false);
-                      router.push('/particuliers/messages');
+                      router.push('/client/messages');
                     } else {
                       setOpen(false);
-                      router.push('/particuliers/notification');
+                      router.push('/client/notification');
                     }
                   }}
                   className={`flex items-start gap-3 p-4 border-b border-slate-50 ${notif.lu ? "bg-white" : "bg-pink-50"} hover:bg-slate-100 cursor-pointer transition ${notif.type === 'avis' ? 'hover:bg-purple-50' : ''}`}
@@ -246,7 +284,7 @@ function NotificationsPopup({ router }) {
           <div className="p-3 text-center">
             <button
               className="text-black-600 font-semibold hover:underline"
-              onClick={() => { setOpen(false); router.push("/particuliers/notification"); }}
+              onClick={() => { setOpen(false); router.push("/client/notification"); }}
             >
               Voir toutes les notifications
             </button>

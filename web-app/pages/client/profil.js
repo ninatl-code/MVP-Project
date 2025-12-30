@@ -448,7 +448,7 @@ function UserProfile() {
                     style={{ color: COLORS.primary, border: `2px solid ${COLORS.primary}20` }}
                     onMouseEnter={(e) => e.target.style.background = `${COLORS.primary}10`}
                     onMouseLeave={(e) => e.target.style.background = 'white'}
-                    onClick={() => router.push('/particuliers/menu')}
+                    onClick={() => router.push('/client/menu')}
                   >
                     Accéder au menu
                   </button>
@@ -623,7 +623,7 @@ function UserProfile() {
                   style={{ background: COLORS.primary }}
                   onMouseEnter={(e) => e.target.style.background = '#5048E5'}
                   onMouseLeave={(e) => e.target.style.background = COLORS.primary}
-                  onClick={() => router.push('/particuliers/menu')}
+                  onClick={() => router.push('/client/menu')}
                 >
                   Voir tous mes éléments
                 </button>
@@ -688,7 +688,7 @@ function UserProfile() {
               
               <div className="mt-6 pt-6 border-t border-gray-100">
                 <a
-                  href="/particuliers/favoris"
+                  href="/client/profil#favoris"
                   className="inline-flex items-center gap-2 font-semibold transition-colors"
                   style={{ color: COLORS.primary }}
                   onMouseEnter={(e) => e.target.style.color = '#5048E5'}

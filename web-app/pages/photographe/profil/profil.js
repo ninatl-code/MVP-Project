@@ -653,7 +653,7 @@ export default function UserProfile() {
                   )}
                   
                   <button
-                    onClick={() => router.push('/prestataires/kpis')}
+                    onClick={() => router.push('/photographe/kpi/kpis')}
                     className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-lg font-medium hover:bg-white/30 transition-colors border border-white/20 flex items-center gap-2"
                   >
                     <TrendingUp className="w-4 h-4" />
