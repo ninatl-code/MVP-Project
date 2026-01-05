@@ -72,7 +72,7 @@ function SearchProviders() {
         .from("annonces")
         .select(`
           *,
-          profiles:prestataire(nom, email, telephone, photos),
+          profiles:prestataire(nom, email, telephone, avatar_url),
           prestations:prestation(nom)
         `)
         .eq("actif", true);

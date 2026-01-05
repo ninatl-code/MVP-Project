@@ -1,22 +1,30 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
-import { Mail, Phone, MapPin, Heart, Edit, Save, Calendar, Camera } from "lucide-react";
+import { 
+  Mail, Phone, MapPin, Heart, Edit, Save, Calendar, Camera, LogOut, Settings,
+  Bell, Shield, CreditCard, Clock, Star, MessageCircle, FileText, Eye,
+  ChevronRight, User, Trash2, AlertCircle, CheckCircle, Lock, Globe
+} from "lucide-react";
 import Header from '../../components/HeaderParti';
 
 const DEFAULT_ANNONCE_IMG = "/shutterstock_2502519999.jpg";
 
-// Couleurs Shooty
+// Couleurs Shooty (aligné sur mobile)
 const COLORS = {
-  primary: '#635BFF',
+  primary: '#5C6BC0',
+  accent: '#130183',
   secondary: '#FFD369',
-  accent: '#FF7F50',
   background: '#F8F9FB',
-  text: '#1C1C1E'
+  text: '#222222',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444'
 };
 
 function UserProfile() {
   const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('profil');
   const [favorites, setFavorites] = useState([]);
   const [villeNom, setVilleNom] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -29,7 +37,10 @@ function UserProfile() {
   const [nbReservations, setNbReservations] = useState(0);
   const [nbCommandes, setNbCommandes] = useState(0);
   const [nbDevis, setNbDevis] = useState(0);
+  const [nbAvis, setNbAvis] = useState(0);
   const [favoriteAnnonces, setFavoriteAnnonces] = useState([]);
+  const [notifications, setNotifications] = useState({ email: true, sms: false, push: true });
+  const [recentActivity, setRecentActivity] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -57,9 +68,9 @@ function UserProfile() {
         // Récupération du profil
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("nom, photos, ville_id, email, telephone, bio")
+          .select("nom, avatar_url, ville, email, telephone")
           .eq("id", authUser.id)
-          .single();
+          .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
 
         console.log('📊 Profile query result:');
         console.log('  - Data:', profile);
@@ -67,39 +78,15 @@ function UserProfile() {
 
         if (profileError) {
           console.error('❌ Erreur lors de la récupération du profil:', profileError);
-          
-          // Si le profil n'existe pas (PGRST116), on le crée
-          if (profileError.code === 'PGRST116') {
-            console.log('⚠️ Profil inexistant, création d\'un nouveau profil...');
-            
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert([{
-                id: authUser.id,
-                email: authUser.email,
-                nom: authUser.user_metadata?.name || '',
-                role: 'particulier'
-              }]);
-
-            if (insertError) {
-              console.error('❌ Erreur lors de la création du profil:', insertError);
-              alert('Erreur lors de la création de votre profil. Veuillez contacter le support.');
-            } else {
-              console.log('✅ Profil créé avec succès, rechargement...');
-              window.location.reload();
-            }
-            return;
-          }
-          
           alert('Erreur lors du chargement du profil: ' + profileError.message);
           return;
         }
 
         if (!profile) {
-          console.log('⚠️ Aucun profil trouvé pour cet utilisateur');
-          // Créer un profil vide
+          console.log('⚠️ Aucun profil trouvé, création d\'un profil par défaut');
+          // Afficher un profil vide que l'utilisateur pourra remplir
           setUser({
-            name: authUser.user_metadata?.name || "",
+            name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || "",
             avatar: "",
             city: "",
             cityId: null,
@@ -108,6 +95,18 @@ function UserProfile() {
             about: ""
           });
           setEmailEdit(authUser.email || "");
+          setBioEdit("");
+          setPhoneEdit("");
+          setVilleEdit("");
+          setPhotoEdit("");
+          
+          // Charger la liste des villes quand même
+          const { data: villesData } = await supabase
+            .from("villes")
+            .select("id, ville")
+            .order("ville", { ascending: true });
+          setVillesList(villesData || []);
+          
           return;
         }
 
@@ -115,50 +114,33 @@ function UserProfile() {
           nom: profile.nom,
           email: profile.email,
           telephone: profile.telephone,
-          ville_id: profile.ville_id
+          ville: profile.ville
         });
 
         // Récupération de la ville
-        let villeLabel = "";
-        let villeIdValue = null;
-        if (profile?.ville_id) {
-          console.log('🏙️ Récupération de la ville, ID:', profile.ville_id);
-          const { data: villeData, error: villeError } = await supabase
-            .from("villes")
-            .select("id, ville")
-            .eq("id", profile.ville_id)
-            .single();
-          
-          if (villeError) {
-            console.error('❌ Erreur récupération ville:', villeError);
-          } else {
-            console.log('✅ Ville trouvée:', villeData);
-            villeLabel = villeData?.ville || "";
-            villeIdValue = villeData?.id || null;
-          }
-        }
+        let villeLabel = profile?.ville || "";
         setVilleNom(villeLabel);
 
         // Construction de l'objet utilisateur
         const userData = {
           name: profile?.nom || "",
-          avatar: profile?.photos || "",
+          avatar: profile?.avatar_url || "",
           city: villeLabel,
-          cityId: villeIdValue,
+          cityId: null,
           email: profile?.email || authUser.email || "",
           phone: profile?.telephone || "",
-          about: profile?.bio || ""
+          about: "" // bio n'existe pas dans profiles
         };
 
         console.log('✅ User data final:', userData);
         setUser(userData);
 
         // Initialisation des champs d'édition
-        setBioEdit(profile?.bio || "");
+        setBioEdit(""); // bio n'existe pas dans profiles
         setEmailEdit(profile?.email || authUser.email || "");
         setPhoneEdit(profile?.telephone || "");
         setVilleEdit(villeLabel);
-        setPhotoEdit(profile?.photos || "");
+        setPhotoEdit(profile?.avatar_url || "");
 
         // Récupération de la liste des villes
         console.log('🏙️ Chargement de la liste des villes...');
@@ -179,7 +161,7 @@ function UserProfile() {
         const { count: reservationsCount, error: resError } = await supabase
           .from('reservations')
           .select('id', { count: 'exact', head: true })
-          .eq('particulier_id', authUser.id);
+          .eq('client_id', authUser.id);
         
         if (resError) console.error('❌ Erreur réservations:', resError);
         else console.log('✅ Réservations:', reservationsCount);
@@ -199,18 +181,45 @@ function UserProfile() {
         const { count: devisCount, error: devisError } = await supabase
           .from('devis')
           .select('id', { count: 'exact', head: true })
-          .eq('particulier_id', authUser.id);
+          .eq('client_id', authUser.id);
         
         if (devisError) console.error('❌ Erreur devis:', devisError);
         else console.log('✅ Devis:', devisCount);
         setNbDevis(devisCount || 0);
+
+        // Récupère le nombre d'avis donnés
+        const { count: avisCount, error: avisError } = await supabase
+          .from('avis')
+          .select('id', { count: 'exact', head: true })
+          .eq('reviewer_id', authUser.id);
+        
+        if (avisError) console.error('❌ Erreur avis:', avisError);
+        else console.log('✅ Avis:', avisCount);
+        setNbAvis(avisCount || 0);
+
+        // Récupère l'activité récente (dernières réservations/devis)
+        const { data: recentRes } = await supabase
+          .from('reservations')
+          .select('id, created_at, statut, annonces(titre)')
+          .eq('client_id', authUser.id)
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        const activity = (recentRes || []).map(r => ({
+          id: r.id,
+          type: 'reservation',
+          title: r.annonces?.titre || 'Réservation',
+          status: r.statut,
+          date: r.created_at
+        }));
+        setRecentActivity(activity);
 
         // Récupère les annonces favorites du particulier
         console.log('❤️ Chargement des favoris...');
         const { data: favAnnonceData, error: favError } = await supabase
           .from("favoris")
           .select("id, annonce_id")
-          .eq("particulier_id", authUser.id);
+          .eq("client_id", authUser.id);
 
         if (favError) {
           console.error('❌ Erreur favoris:', favError);
@@ -316,20 +325,14 @@ function UserProfile() {
       alert("Erreur d'authentification : " + (authError?.message || "Utilisateur non trouvé"));
       return;
     }
-    // Récupère l'id de la ville sélectionnée
-    let villeIdToSave = null;
-    if (villeEdit) {
-      const villeObj = villesList.find(v => v.ville === villeEdit);
-      villeIdToSave = villeObj ? villeObj.id : null;
-    }
+    
     const { error } = await supabase
       .from("profiles")
       .update({
-        bio: bioEdit,
         email: emailEdit,
         telephone: phoneEdit,
-        ville_id: villeIdToSave,
-        photos: photoEdit
+        ville: villeEdit,
+        avatar_url: photoEdit
       })
       .eq("id", authUser.id);
 
@@ -631,7 +634,186 @@ function UserProfile() {
             </section>
           </div>
 
+          {/* Section Paramètres améliorée */}
+          <section className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
+                <Settings className="w-5 h-5 text-gray-500" />
+              </div>
+              <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+                Paramètres
+              </h2>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Notifications */}
+              <div className="p-4 rounded-xl border border-gray-200 hover:border-indigo-300 transition-all">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                      <Bell className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Notifications</p>
+                      <p className="text-sm text-gray-500">Gérez vos préférences</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+                <div className="space-y-3 pl-13">
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">Email</span>
+                    <button
+                      onClick={() => setNotifications({...notifications, email: !notifications.email})}
+                      className={`w-10 h-6 rounded-full transition-all ${notifications.email ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-all mx-1 mt-1 ${notifications.email ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">SMS</span>
+                    <button
+                      onClick={() => setNotifications({...notifications, sms: !notifications.sms})}
+                      className={`w-10 h-6 rounded-full transition-all ${notifications.sms ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-all mx-1 mt-1 ${notifications.sms ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">Push</span>
+                    <button
+                      onClick={() => setNotifications({...notifications, push: !notifications.push})}
+                      className={`w-10 h-6 rounded-full transition-all ${notifications.push ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-all mx-1 mt-1 ${notifications.push ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                    </button>
+                  </div>
+                </div>
+              </div>
 
+              {/* Sécurité */}
+              <div 
+                className="p-4 rounded-xl border border-gray-200 hover:border-green-300 transition-all cursor-pointer"
+                onClick={() => router.push('/client/securite')}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Sécurité</p>
+                      <p className="text-sm text-gray-500">Mot de passe, 2FA</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Confidentialité */}
+              <div 
+                className="p-4 rounded-xl border border-gray-200 hover:border-purple-300 transition-all cursor-pointer"
+                onClick={() => router.push('/client/confidentialite')}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                      <Lock className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Confidentialité</p>
+                      <p className="text-sm text-gray-500">Visibilité du profil, données</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Aide & Support */}
+              <div 
+                className="p-4 rounded-xl border border-gray-200 hover:border-blue-300 transition-all cursor-pointer"
+                onClick={() => router.push('/support')}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <MessageCircle className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">Aide & Support</p>
+                      <p className="text-sm text-gray-500">Centre d'aide, contacter le support</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Déconnexion */}
+              <button
+                onClick={async () => {
+                  if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+                    await supabase.auth.signOut();
+                    router.push('/login');
+                  }
+                }}
+                className="w-full p-4 rounded-xl border border-red-200 hover:bg-red-50 transition-all flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                    <LogOut className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-red-600">Se déconnecter</p>
+                    <p className="text-sm text-gray-500">Vous pourrez vous reconnecter à tout moment</p>
+                  </div>
+                </div>
+                <span className="text-gray-400 group-hover:text-red-500 transition-colors">→</span>
+              </button>
+            </div>
+          </section>
+
+          {/* Activité récente */}
+          {recentActivity.length > 0 && (
+            <section className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `${COLORS.primary}20` }}>
+                  <Clock className="w-5 h-5" style={{ color: COLORS.primary }} />
+                </div>
+                <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+                  Activité récente
+                </h2>
+              </div>
+              
+              <div className="space-y-3">
+                {recentActivity.map((activity, index) => (
+                  <div 
+                    key={activity.id || index}
+                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all cursor-pointer"
+                    onClick={() => router.push(`/client/reservations/${activity.id}`)}
+                  >
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      activity.status === 'confirmee' || activity.status === 'confirmed' ? 'bg-green-100' :
+                      activity.status === 'en_attente' || activity.status === 'pending' ? 'bg-yellow-100' :
+                      'bg-gray-100'
+                    }`}>
+                      <Calendar className={`w-5 h-5 ${
+                        activity.status === 'confirmee' || activity.status === 'confirmed' ? 'text-green-600' :
+                        activity.status === 'en_attente' || activity.status === 'pending' ? 'text-yellow-600' :
+                        'text-gray-500'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{activity.title}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(activity.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section Favoris Moderne */}
           {favoriteAnnonces.length > 0 ? (

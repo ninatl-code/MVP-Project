@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
-import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
+import { Mail, Lock, AlertCircle, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
 
 // Palette Shooty
@@ -20,6 +20,7 @@ function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
   const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
 
@@ -78,13 +79,12 @@ function Login() {
 
       // Vérifier le rôle
       console.log('4. Récupération du profil...')
-      const { data: profile, error: profileError } = await supabase
+      let { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, id')
         .eq('id', data.user.id)
-        .single()
 
-      console.log('5. Profil récupéré:', { role: profile?.role, error: profileError?.message })
+      console.log('5. Profils récupérés:', { count: profiles?.length, error: profileError?.message })
       
       if (profileError) {
         clearTimeout(timeout)
@@ -94,9 +94,39 @@ function Login() {
         return
       }
 
+      // Si aucun profil trouvé, créer automatiquement à partir des métadonnées
+      if (!profiles || profiles.length === 0) {
+        console.log('6. Aucun profil trouvé, création automatique...')
+        
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            nom: data.user.user_metadata?.nom || '',
+            telephone: data.user.user_metadata?.telephone || '',
+            role: data.user.user_metadata?.role || 'particulier'
+          })
+          .select('role, id')
+          .single()
+
+        if (insertError) {
+          clearTimeout(timeout)
+          console.error('Erreur création profil:', insertError)
+          setErrorMsg('Impossible de créer votre profil. Contactez le support.')
+          setLoading(false)
+          return
+        }
+
+        profiles = [newProfile]
+        console.log('7. Profil créé avec succès:', newProfile)
+      }
+
+      const profile = profiles[0]
+
       // Redirection selon le rôle avec animation
-      const targetPath = profile?.role === 'prestataire' ? '/photographe/menu' : '/client/menu'
-      const message = profile?.role === 'prestataire' ? 'Accès à votre espace professionnel...' : 'Accès à votre espace...'
+      const targetPath = profile?.role === 'prestataire' || profile?.role === 'photographe' ? '/photographe/menu' : '/client/menu'
+      const message = profile?.role === 'prestataire' || profile?.role === 'photographe' ? 'Accès à votre espace professionnel...' : 'Accès à votre espace...'
       console.log('6. Redirection vers:', targetPath)
       
       clearTimeout(timeout)
@@ -253,14 +283,14 @@ function Login() {
                   color: COLORS.text + '60'
                 }} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
                   required
                   style={{ 
                     width: '100%', 
-                    padding: '12px 16px 12px 44px', 
+                    padding: '12px 50px 12px 44px', 
                     borderRadius: 12, 
                     border: '2px solid #e5e7eb',
                     fontSize: 15,
@@ -271,6 +301,32 @@ function Login() {
                   onFocus={(e) => e.target.style.borderColor = COLORS.primary}
                   onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: COLORS.text + '60',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = COLORS.accent}
+                  onMouseLeave={(e) => e.currentTarget.style.color = COLORS.text + '60'}
+                >
+                  {showPassword ? 
+                    <EyeOff style={{ width: '20px', height: '20px' }} /> : 
+                    <Eye style={{ width: '20px', height: '20px' }} />
+                  }
+                </button>
               </div>
             </div>
 

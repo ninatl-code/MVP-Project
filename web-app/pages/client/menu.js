@@ -9,8 +9,21 @@ import {
   Search, Minus, Plus, Calendar, Package, FileText, 
   Star, Clock, CheckCircle, AlertCircle, User, 
   ArrowRight, ArrowLeft, Filter, Grid3X3, List, Eye,
-  TrendingUp, Activity, Award, Heart, RefreshCcw, X
+  TrendingUp, Activity, Award, Heart, RefreshCcw, X,
+  Megaphone, ChevronRight
 } from "lucide-react";
+
+// Palette Shooty
+const COLORS = {
+  primary: '#E8EAF6',     
+  secondary: '#5C6BC0',    
+  accent: '#130183',      
+  background: '#F8F9FB',  
+  text: '#1C1C1E',
+  success: '#10B981',
+  warning: '#F59E0B',
+  info: '#3B82F6',
+};
 
 function ParticularHomeMenu() {
   const router = useRouter();
@@ -33,6 +46,8 @@ function ParticularHomeMenu() {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [loadingDevisAction, setLoadingDevisAction] = useState(false);
   const [existingAvis, setExistingAvis] = useState([]);
+  // Stats alignées sur mobile
+  const [stats, setStats] = useState({ demandes: 0, devis: 0, reservations: 0, avis: 0 });
   const [showRatingForm, setShowRatingForm] = useState(null);
   const [triggerAvisNotification, setTriggerAvisNotification] = useState(null);
   const [ratingValue, setRatingValue] = useState(0);
@@ -69,7 +84,7 @@ function ParticularHomeMenu() {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("nom, photos")
+        .select("nom, avatar_url")
         .eq("id", user.id)
         .single();
       setProfile(profileData);
@@ -85,9 +100,52 @@ function ParticularHomeMenu() {
         .select("*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre, conditions_annulation)")
         .eq("particulier_id", user.id);
       setReservations(reservationsData || []);
+
+      // Charger les stats alignées sur mobile
+      await loadStats(user.id);
     };
     fetchData();
   }, []);
+
+  // Fonction pour charger les stats (aligné sur mobile)
+  const loadStats = async (profileId) => {
+    if (!profileId) return;
+
+    try {
+      // Compter les demandes
+      const { count: demandesCount } = await supabase
+        .from('demandes_client')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', profileId);
+
+      // Compter les devis
+      const { count: devisCount } = await supabase
+        .from('devis')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', profileId);
+
+      // Compter les réservations
+      const { count: reservationsCount } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', profileId);
+
+      // Compter les avis donnés
+      const { count: avisCount } = await supabase
+        .from('avis')
+        .select('*', { count: 'exact', head: true })
+        .eq('auteur_id', profileId);
+
+      setStats({
+        demandes: demandesCount || 0,
+        devis: devisCount || 0,
+        reservations: reservationsCount || 0,
+        avis: avisCount || 0,
+      });
+    } catch (error) {
+      console.error('Erreur lors du chargement des stats:', error);
+    }
+  };
 
   useEffect(() => {
     const fetchPrestations = async () => {
@@ -1855,107 +1913,225 @@ function ParticularHomeMenu() {
       )}
       
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-        {/* Hero Section avec statistiques */}
-        <div className="bg-white shadow-sm border-b border-gray-100">
+        {/* Hero Section avec gradient (aligné sur mobile) */}
+        <div 
+          className="shadow-sm"
+          style={{ 
+            background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.secondary})`,
+            borderBottomLeftRadius: '24px',
+            borderBottomRightRadius: '24px'
+          }}
+        >
           <div className="max-w-6xl mx-auto px-6 py-8">
             <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
               {/* Greeting Section */}
               <div className="flex-1">
-                <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-4 mb-2">
                   <div>
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                      Bonjour {profile?.nom ? profile.nom.split(" ")[0] : ""}!
+                    <p className="text-white opacity-90 text-lg">Bonjour 👋</p>
+                    <h1 className="text-2xl lg:text-3xl font-bold text-white">
+                      Mon espace Client
                     </h1>
-                    <p className="text-gray-600">Gérez vos réservations et devis en un coup d'œil</p>
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 mt-6">
-              <button
-                style={{
-                  cursor: 'pointer'
-                }}
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-800 to-blue-800 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => navigateWithSplash("/client/search", "Recherche de prestataires...")}
-              >
-                <Search className="w-5 h-5" />
-                Trouver un prestataire
-              </button>
-              <button
-                style={{
-                  background:'#transparent',
-                  color:'#23232B',
-                  borderColor:'#E6E6E6',
-                  borderRadius:10,
-                  padding:'8px 18px',
-                  fontWeight:600,
-                  fontSize:15,
-                  cursor:'pointer',
-                  transition: 'all 0.2s'
-                }}
-                className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
-                onClick={() => navigateWithSplash("/client/profil#favoris", "Chargement de vos favoris...")}
-                onMouseOver={(e) => e.target.style.background = 'F8F9FB'}
-                onMouseOut={(e) => e.target.style.background = 'transparent'}
-              >
-                <Heart className="w-5 h-5" />
-                Mes favoris
-              </button>
-              <button
-                style={{
-                  background:'#transparent',
-                  color:'#23232B',
-                  borderColor:'#E6E6E6',
-                  borderRadius:10,
-                  padding:'8px 18px',
-                  fontWeight:600,
-                  fontSize:15,
-                  cursor:'pointer',
-                  transition: 'all 0.2s'
-                }}
-                className="flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-all"
-                onClick={() => navigateWithSplash("/client/messages", "Ouverture de la messagerie...")}
-                onMouseOver={(e) => e.target.style.background = 'F8F9FB'}
-                onMouseOut={(e) => e.target.style.background = 'transparent'}
-              >
-                <Activity className="w-5 h-5" />
-                Mes messages
-              </button>
-              {/* Bouton Switch Profil */}
+              
+              {/* Bouton Switch Profil dans le header */}
               {hasMultipleProfiles && (
                 <button
-                  style={{
-                    background:'#130183',
-                    color:'#fff',
-                    borderRadius:10,
-                    padding:'8px 18px',
-                    fontWeight:600,
-                    fontSize:15,
-                    cursor:'pointer',
-                    transition: 'all 0.2s',
-                    border: 'none'
-                  }}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
                   onClick={() => setShowSwitchModal(true)}
-                  onMouseOver={(e) => e.target.style.background = '#5C6BC0'}
-                  onMouseOut={(e) => e.target.style.background = '#130183'}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all"
+                  style={{ 
+                    background: 'rgba(255,255,255,0.25)',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    color: 'white'
+                  }}
                 >
                   <RefreshCcw className="w-5 h-5" />
-                  Mode Photographe
+                  <span className="font-semibold text-sm">Mode Photographe</span>
                 </button>
               )}
+            </div>
+
+            {/* Stats compactes (aligné sur mobile) */}
+            <div className="flex justify-between items-center mt-6 px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.15)' }}>
+              <div className="text-center flex-1 border-r border-white/30">
+                <p className="text-2xl font-bold text-white">{stats.demandes}</p>
+                <p className="text-xs text-white/80">Demandes</p>
+              </div>
+              <div className="text-center flex-1 border-r border-white/30">
+                <p className="text-2xl font-bold text-white">{stats.devis}</p>
+                <p className="text-xs text-white/80">Devis</p>
+              </div>
+              <div className="text-center flex-1">
+                <p className="text-2xl font-bold text-white">{stats.reservations}</p>
+                <p className="text-xs text-white/80">Réservations</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Section "Comment trouver un photographe" (aligné sur mobile) */}
         <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-2" style={{ color: COLORS.text }}>
+              💡 Comment trouver un photographe ?
+            </h2>
+            <p className="text-sm" style={{ color: COLORS.text + 'AA' }}>
+              Choisissez la méthode qui vous convient
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Option 1 - Poster une demande (Recommandé) */}
+            <div 
+              className="relative rounded-2xl p-6 cursor-pointer transition-all hover:shadow-lg overflow-hidden"
+              style={{ background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.secondary})` }}
+              onClick={() => router.push('/client/demandes/nouvelle-demande')}
+            >
+              <div 
+                className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ background: '#10B981', color: 'white' }}
+              >
+                ⭐ Recommandé
+              </div>
+              
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                  <Megaphone className="w-7 h-7 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-white">Poster une demande</h3>
+                  <p className="text-sm text-white/80">Recevez plusieurs devis</p>
+                </div>
+                <ArrowRight className="w-8 h-8 text-white" />
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-white/90">Gratuit et sans engagement</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-white/90">Les photographes viennent à vous</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-white/90">Comparez facilement les offres</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Option 2 - Rechercher activement */}
+            <div 
+              className="rounded-2xl p-6 cursor-pointer transition-all hover:shadow-lg border-2"
+              style={{ background: 'white', borderColor: '#E5E7EB' }}
+              onClick={() => router.push('/client/search')}
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: COLORS.primary }}>
+                  <Search className="w-7 h-7" style={{ color: COLORS.accent }} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold" style={{ color: COLORS.text }}>Rechercher activement</h3>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Parcourez les profils</p>
+                </div>
+                <ArrowRight className="w-8 h-8" style={{ color: COLORS.accent }} />
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" style={{ color: COLORS.secondary }} />
+                  <span className="text-sm" style={{ color: COLORS.text + 'CC' }}>Consultez les portfolios</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" style={{ color: COLORS.secondary }} />
+                  <span className="text-sm" style={{ color: COLORS.text + 'CC' }}>Filtres détaillés (budget, lieu...)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" style={{ color: COLORS.secondary }} />
+                  <span className="text-sm" style={{ color: COLORS.text + 'CC' }}>Contactez directement</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Menu rapide compact (aligné sur mobile) */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4" style={{ color: COLORS.text }}>
+              Mes espaces
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Demandes */}
+              <div 
+                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
+                onClick={() => router.push('/client/demandes/mes-demandes')}
+              >
+                <div className="relative inline-flex">
+                  <FileText className="w-7 h-7" style={{ color: COLORS.accent }} />
+                  {stats.demandes > 0 && (
+                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {stats.demandes}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Demandes</p>
+              </div>
+
+              {/* Devis */}
+              <div 
+                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
+                onClick={() => router.push('/client/devis/devis-list')}
+              >
+                <div className="relative inline-flex">
+                  <Package className="w-7 h-7" style={{ color: COLORS.accent }} />
+                  {stats.devis > 0 && (
+                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {stats.devis}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Devis</p>
+              </div>
+
+              {/* Réservations */}
+              <div 
+                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
+                onClick={() => router.push('/client/reservations/reservations-list')}
+              >
+                <div className="relative inline-flex">
+                  <Calendar className="w-7 h-7" style={{ color: COLORS.accent }} />
+                  {stats.reservations > 0 && (
+                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {stats.reservations}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Réservations</p>
+              </div>
+
+              {/* Avis */}
+              <div 
+                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
+                onClick={() => router.push('/client/avis/avis-list')}
+              >
+                <div className="relative inline-flex">
+                  <Star className="w-7 h-7" style={{ color: COLORS.accent }} />
+                  {stats.avis > 0 && (
+                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {stats.avis}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Avis</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contenu existant : Tabs et devis/réservations */}
+        <div className="max-w-6xl mx-auto px-6 pb-8">
           {/* Navigation Tabs */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             {/* Onglet Vue d'ensemble */}

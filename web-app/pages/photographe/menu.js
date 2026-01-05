@@ -37,6 +37,12 @@ import {
   Send,
   HelpCircle,
   RefreshCcw,
+  Receipt,
+  Tag,
+  Wallet,
+  Zap,
+  ChevronRight,
+  ImageIcon,
 } from "lucide-react";
 
 // Palette Shooty
@@ -338,7 +344,14 @@ function StartupChecklist({ userId, onHide }) {
       // Récupérer les données du profil
       const { data: profile } = await supabase
         .from("profiles")
-        .select("photos, bio, ville_id, email, telephone, instagram, facebook, linkedin, website, stripe_account_id")
+        .select("avatar_url, ville, email, telephone")
+        .eq("id", userId)
+        .single();
+
+      // Récupérer les données photographe séparément
+      const { data: photoProfile } = await supabase
+        .from("profils_photographe")
+        .select("bio, instagram, facebook, linkedin, site_web")
         .eq("id", userId)
         .single();
 
@@ -964,6 +977,9 @@ export default function ProviderHomeMenu() {
   const [messagesNonLus, setMessagesNonLus] = useState(0);
   const [tauxAcceptation, setTauxAcceptation] = useState(0);
   const [totalReservations, setTotalReservations] = useState(0);
+  // Nouveau: Profil incomplet (aligné sur mobile)
+  const [profileComplete, setProfileComplete] = useState(true);
+  const [missingSteps, setMissingSteps] = useState([]);
   const router = useRouter();
   
   // Hook pour le switch de profil
@@ -1015,7 +1031,7 @@ export default function ProviderHomeMenu() {
       // Récupère le profil
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("nom, photos")
+        .select("nom, avatar_url")
         .eq("id", user.id)
         .single();
       setProfile(profileData);
@@ -1023,7 +1039,7 @@ export default function ProviderHomeMenu() {
       // Charger toutes les stats en parallèle (aligné sur mobile)
       const [reservationsRes, devisRes, demandesRes, messagesRes] = await Promise.all([
         supabase.from('reservations')
-          .select('id, montant_total, statut_reservation')
+          .select('id, montant_total, statut')
           .eq('photographe_id', user.id),
         supabase.from('devis')
           .select('id, statut')
@@ -1033,8 +1049,8 @@ export default function ProviderHomeMenu() {
           .contains('photographes_notifies', [user.id]),
         supabase.from('conversations')
           .select('id', { count: 'exact' })
-          .eq('artist_id', user.id)
-          .eq('lu', false)
+          .eq('photographe_id', user.id)
+          .gt('unread_count_photographe', 0)
       ]);
 
       // Total réservations
@@ -1042,13 +1058,13 @@ export default function ProviderHomeMenu() {
 
       // Réservations acceptées (confirmée, en_cours, terminée)
       const reservationsPayees = reservationsRes.data?.filter(r => 
-        r.statut_reservation === 'confirmee' || r.statut_reservation === 'en_cours' || r.statut_reservation === 'terminee'
+        r.statut === 'confirmee' || r.statut === 'en_cours' || r.statut === 'terminee'
       ) || [];
       setNbAccepted(reservationsPayees.length);
 
       // Réservations en attente
       const reservationsPending = reservationsRes.data?.filter(r => 
-        r.statut_reservation === 'en_attente' || r.statut_reservation === 'pending'
+        r.statut === 'en_attente' || r.statut === 'pending'
       ) || [];
       setNbPending(reservationsPending.length);
 
@@ -1080,9 +1096,55 @@ export default function ProviderHomeMenu() {
         .eq("prestataire", user.id)
         .eq("actif", true);
       setNbActivePrestations(activeCount || 0);
+
+      // Vérifier complétude du profil photographe (aligné sur mobile)
+      await checkProfileCompleteness(user.id);
     };
     fetchProfileAndStats();
   }, []);
+
+  // Fonction pour vérifier la complétude du profil (aligné sur mobile)
+  const checkProfileCompleteness = async (userId) => {
+    try {
+      const { data: profilPhoto, error } = await supabase
+        .from('profils_photographe')
+        .select('bio, specialisations, portfolio_photos, rayon_deplacement_km, tarifs_indicatifs')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erreur vérification profil:', error);
+        return;
+      }
+
+      const missing = [];
+
+      if (!profilPhoto) {
+        missing.push('Créer votre profil photographe');
+      } else {
+        if (!profilPhoto.bio || profilPhoto.bio.length < 50) {
+          missing.push('Compléter votre biographie (min. 50 caractères)');
+        }
+        if (!profilPhoto.specialisations || profilPhoto.specialisations.length === 0) {
+          missing.push('Sélectionner vos spécialisations');
+        }
+        if (!profilPhoto.portfolio_photos || profilPhoto.portfolio_photos.length < 3) {
+          missing.push('Ajouter au moins 3 photos à votre portfolio');
+        }
+        if (!profilPhoto.rayon_deplacement_km || profilPhoto.rayon_deplacement_km <= 0) {
+          missing.push('Définir votre rayon de déplacement');
+        }
+        if (!profilPhoto.tarifs_indicatifs || Object.keys(profilPhoto.tarifs_indicatifs).length === 0) {
+          missing.push('Renseigner vos tarifs indicatifs');
+        }
+      }
+
+      setProfileComplete(missing.length === 0);
+      setMissingSteps(missing);
+    } catch (error) {
+      console.error('Erreur checkProfileCompleteness:', error);
+    }
+  };
 
   const tiles = [
     {
@@ -1184,66 +1246,52 @@ export default function ProviderHomeMenu() {
             </div>
           </div>
 
-          {/* Checklist de démarrage */}
-          {showChecklist && userId && (
-            <StartupChecklist 
-              userId={userId} 
-              onHide={hideChecklistPermanently} 
-            />
+          {/* Alerte Profil Incomplet (aligné sur mobile) */}
+          {!profileComplete && missingSteps.length > 0 && (
+            <div 
+              className="mb-8 rounded-2xl p-6 border-2"
+              style={{ 
+                background: 'linear-gradient(135deg, #FFF3CD, #FFE8A3)',
+                borderColor: '#F59E0B'
+              }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <AlertTriangle className="w-6 h-6" style={{ color: '#F59E0B' }} />
+                <h3 className="text-lg font-bold" style={{ color: COLORS.text }}>
+                  Profil incomplet
+                </h3>
+              </div>
+              <p className="text-sm mb-4" style={{ color: COLORS.text + 'CC' }}>
+                Complétez votre profil pour recevoir plus de demandes
+              </p>
+              <div className="space-y-2 mb-4">
+                {missingSteps.map((step, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" style={{ color: '#F59E0B' }} />
+                    <span className="text-sm" style={{ color: COLORS.text }}>{step}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => router.push('/photographe/profil')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-white font-semibold text-sm transition-all hover:bg-amber-50"
+                style={{ borderColor: '#F59E0B', color: '#F59E0B' }}
+              >
+                Compléter mon profil
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           )}
 
-          {/* Statistiques modernes */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Statistiques principales - cliquables */}
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             
-            {/* Annonces actives */}
-            <Card hover={true}>
-              <CardContent className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div 
-                      className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.secondary + '20' }}
-                    >
-                      <TrendingUp className="w-5 h-5" style={{ color: COLORS.accent }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Annonces actives
-                    </p>
-                  </div>
-                  <p className="text-3xl font-bold" style={{ color: COLORS.text }}>
-                    {nbActivePrestations}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Devis */}
-            <Card hover={true}>
-              <CardContent className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div 
-                      className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.secondary + '40' }}
-                    >
-                      <Package className="w-5 h-5" style={{ color: COLORS.accent }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Devis en attente
-                    </p>
-                  </div>
-                  <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
-                    {nbDevisPending}
-                  </p>
-                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    Acceptés : <span className="font-semibold">{nbDevisAccepted}</span>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Réservations */}
-            <Card hover={true} className="md:col-span-2 lg:col-span-1">
+            {/* Réservations - cliquable */}
+            <Card 
+              hover={true} 
+              className="cursor-pointer"
+              onClick={() => router.push("/photographe/reservations")}
+            >
               <CardContent className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -1254,50 +1302,26 @@ export default function ProviderHomeMenu() {
                       <Calendar className="w-5 h-5" style={{ color: COLORS.accent }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Réservations en attente
+                      Réservations
                     </p>
                   </div>
                   <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
-                    {nbPending}
+                    {totalReservations}
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    Acceptées : <span className="font-semibold">{nbAccepted}</span>
+                    En attente : <span className="font-semibold text-amber-500">{nbPending}</span>
                   </p>
                 </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </CardContent>
             </Card>
 
-            {/* Chiffre d'affaires */}
-            <Card hover={true}>
-              <CardContent className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div 
-                      className="p-2 rounded-xl"
-                      style={{ backgroundColor: '#10B98120' }}
-                    >
-                      <BarChart3 className="w-5 h-5" style={{ color: '#10B981' }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Chiffre d'affaires
-                    </p>
-                  </div>
-                  <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
-                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(chiffreAffaires)}
-                  </p>
-                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    Total réservations payées
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            
-          </section>
-
-          {/* Statistiques supplémentaires - alignées sur mobile */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Demandes vues */}
-            <Card hover={true}>
+            {/* Demandes vues - cliquable */}
+            <Card 
+              hover={true}
+              className="cursor-pointer"
+              onClick={() => router.push("/photographe/demandes")}
+            >
               <CardContent className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -1315,164 +1339,239 @@ export default function ProviderHomeMenu() {
                     {demandesVues}
                   </p>
                 </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </CardContent>
             </Card>
 
-            {/* Messages non lus */}
-            <Card hover={true}>
+            {/* Devis envoyés - cliquable */}
+            <Card 
+              hover={true}
+              className="cursor-pointer"
+              onClick={() => router.push("/photographe/devis")}
+            >
               <CardContent className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: '#F59E0B20' }}
+                      style={{ backgroundColor: COLORS.secondary + '40' }}
                     >
-                      <MessageCircle className="w-5 h-5" style={{ color: '#F59E0B' }} />
+                      <FileText className="w-5 h-5" style={{ color: COLORS.accent }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Messages non lus
+                      Devis envoyés
                     </p>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: '#F59E0B' }}>
-                    {messagesNonLus}
+                  <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
+                    {nbDevisPending + nbDevisAccepted}
+                  </p>
+                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
+                    Acceptés : <span className="font-semibold text-green-500">{nbDevisAccepted}</span>
                   </p>
                 </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </CardContent>
             </Card>
 
-            {/* Taux d'acceptation */}
-            <Card hover={true}>
+            {/* Planning - cliquable */}
+            <Card 
+              hover={true}
+              className="cursor-pointer"
+              onClick={() => router.push("/photographe/calendar/calendrier")}
+            >
               <CardContent className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: '#8B5CF620' }}
+                      style={{ backgroundColor: '#10B98120' }}
                     >
-                      <Star className="w-5 h-5" style={{ color: '#8B5CF6' }} />
+                      <ClipboardList className="w-5 h-5" style={{ color: '#10B981' }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Taux d'acceptation
+                      Planning
                     </p>
                   </div>
-                  <p className="text-3xl font-bold" style={{ color: '#8B5CF6' }}>
-                    {tauxAcceptation}%
+                  <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
+                    {nbActivePrestations}
+                  </p>
+                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
+                    Prestations actives
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </CardContent>
+            </Card>
+            
+          </section>
+
+          {/* Chiffre d'affaires - seul, non cliquable */}
+          <section className="mb-8">
+            <Card>
+              <CardContent className="flex items-center justify-center py-6">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    <div 
+                      className="p-3 rounded-xl"
+                      style={{ backgroundColor: '#10B98120' }}
+                    >
+                      <BarChart3 className="w-6 h-6" style={{ color: '#10B981' }} />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium mb-1" style={{ color: COLORS.text + 'CC' }}>
+                    Chiffre d'affaires total
+                  </p>
+                  <p className="text-4xl font-bold" style={{ color: '#10B981' }}>
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(chiffreAffaires)}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: COLORS.text + '80' }}>
+                    Somme des réservations payées
                   </p>
                 </div>
               </CardContent>
             </Card>
           </section>
 
-          {/* Actions principales - 2 par ligne */}
+          {/* Section Gestion (aligné sur mobile) */}
           <section className="mb-8">
             <h2 
               className="text-xl font-bold mb-6"
               style={{ color: COLORS.text }}
             >
-              Actions rapides
+              Gestion
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {tiles.map((tile, idx) => (
-                <motion.div
-                  key={tile.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * idx, duration: 0.3 }}
-                  onClick={tile.onClick}
-                  className="cursor-pointer"
-                >
-                  <Card hover={true} className="group h-full">
-                    <CardContent className="flex items-center gap-4 p-8">
-                      <div
-                        className="p-4 rounded-2xl transition-all duration-200 group-hover:scale-110"
-                        style={{
-                          background: tile.gradient,
-                          boxShadow: '0 4px 12px rgba(99, 91, 255, 0.15)'
-                        }}
-                      >
-                        {tile.icon && (
-                          <tile.icon className="w-7 h-7 text-white" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h2 
-                          className="font-bold mb-1.5 group-hover:opacity-80 transition-all"
-                          style={{ color: '#1C1C1E', fontSize: '1.25rem' }}
-                        >
-                          {tile.title}
-                        </h2>
-                        <p 
-                          className="text-sm leading-relaxed"
-                          style={{ color: COLORS.text + 'AA' }}
-                        >
-                          {tile.desc}
-                        </p>
-                      </div>
-                      <ArrowRight 
-                        className="w-6 h-6 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200"
-                        style={{ color: COLORS.primary }}
-                      />
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+            <Card className="overflow-hidden">
+              {/* Médiathèque */}
+              <div 
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => router.push("/photographe/mediatheque")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#FEE2E2' }}>
+                  <ImageIcon className="w-6 h-6" style={{ color: '#EF4444' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Médiathèque</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Gérer mes photos</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+
+              {/* Avis clients */}
+              <div 
+                className="flex items-center gap-4 p-5 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => router.push("/photographe/avis-dashboard")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#FEF3C7' }}>
+                  <Star className="w-6 h-6" style={{ color: '#F59E0B' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Avis clients</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Gérer ma réputation</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+            </Card>
           </section>
 
-          {/* Section Raccourcis professionnels */}
+          {/* Section Finances (aligné sur mobile) */}
           <section className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 
-                className="text-xl font-bold"
-                style={{ color: COLORS.text }}
+            <h2 
+              className="text-xl font-bold mb-6"
+              style={{ color: COLORS.text }}
+            >
+              Finances
+            </h2>
+            <Card className="overflow-hidden">
+              {/* Factures */}
+              <div 
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => router.push("/photographe/factures")}
               >
-                Raccourcis
-              </h2>
-            </div>
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#DBEAFE' }}>
+                  <Receipt className="w-6 h-6" style={{ color: '#3B82F6' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Factures</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Générer et consulter</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Raccourci Zones d'intervention */}
-              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/photographe/profil#zones")}>
-                <CardContent className="flex items-center gap-4">
-                  <div
-                    className="p-3 rounded-xl"
-                    style={{ backgroundColor: COLORS.primary + '20' }}
-                  >
-                    <MapPin className="w-5 h-5" style={{ color: COLORS.accent }} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-sm mb-1" style={{ color: COLORS.text }}>
-                      Zones d'intervention
-                    </h4>
-                    <p className="text-xs" style={{ color: COLORS.text + 'CC' }}>
-                      Définir où vous intervenez
-                    </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
-                </CardContent>
-              </Card>
+              {/* Packages */}
+              <div 
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => router.push("/photographe/packages")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#FEF3C7' }}>
+                  <Tag className="w-6 h-6" style={{ color: '#F59E0B' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Mes Packages</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Offres standardisées</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
 
-              {/* Raccourci Gestion documents */}
-              <Card hover={true} className="group cursor-pointer" onClick={() => router.push("/photographe/profil#documents")}>
-                <CardContent className="flex items-center gap-4">
-                  <div
-                    className="p-3 rounded-xl"
-                    style={{ backgroundColor: 'transparent' + '40' }}
-                  >
-                    <Briefcase className="w-5 h-5" style={{ color: COLORS.accent }} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-sm mb-1" style={{ color: COLORS.text }}>
-                      Documents professionnels
-                    </h4>
-                    <p className="text-xs" style={{ color: COLORS.text + 'CC' }}>
-                      Gérer vos certifications
-                    </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
-                </CardContent>
-              </Card>
-            </div>
+              {/* Remboursements */}
+              <div 
+                className="flex items-center gap-4 p-5 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => router.push("/photographe/remboursements")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#EDE9FE' }}>
+                  <Wallet className="w-6 h-6" style={{ color: '#8B5CF6' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Remboursements</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Historique des paiements</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+            </Card>
+          </section>
+
+          {/* Section Paramètres (aligné sur mobile) */}
+          <section className="mb-8">
+            <h2 
+              className="text-xl font-bold mb-6"
+              style={{ color: COLORS.text }}
+            >
+              Paramètres
+            </h2>
+            <Card className="overflow-hidden">
+              {/* Ma localisation */}
+              <div 
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => router.push("/photographe/profil#zones")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#DBEAFE' }}>
+                  <MapPin className="w-6 h-6" style={{ color: '#3B82F6' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Ma localisation</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Zones d'intervention</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+
+              {/* Intégrations & Paiements */}
+              <div 
+                className="flex items-center gap-4 p-5 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => router.push("/photographe/integrations")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#E8F5E9' }}>
+                  <Zap className="w-6 h-6" style={{ color: '#10B981' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Intégrations & Paiements</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Stripe, Google Calendar</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+            </Card>
           </section>
 
           {/* Footer avec déconnexion */}

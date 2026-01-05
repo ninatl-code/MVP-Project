@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [profileId, setProfileId] = useState(null);
   const [activeRole, setActiveRole] = useState(null);
   const [availableProfiles, setAvailableProfiles] = useState([]);
+  const [photographeProfile, setPhotographeProfile] = useState(null);
 
   useEffect(() => {
     const getInitialSession = async () => {
@@ -37,8 +38,8 @@ export const AuthProvider = ({ children }) => {
           // Get available profiles
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, role, nom, email, telephone, avatar_url, photos')
-            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
+            .select('id, role, nom, email, telephone, avatar_url')
+            .eq('id', session.user.id);
           
           if (profiles && profiles.length > 0) {
             setAvailableProfiles(profiles);
@@ -85,8 +86,8 @@ export const AuthProvider = ({ children }) => {
         if (session?.user) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, role, nom, email, telephone, avatar_url, photos')
-            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
+            .select('id, role, nom, email, telephone, avatar_url')
+            .eq('id', session.user.id);
           
           if (profiles && profiles.length > 0) {
             setAvailableProfiles(profiles);
@@ -182,6 +183,48 @@ export const AuthProvider = ({ children }) => {
     return availableProfiles.find(p => p.id === profileId) || null;
   };
 
+  // Charger le profil photographe détaillé
+  const loadPhotographeProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profils_photographe')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (!error && data) {
+        setPhotographeProfile(data);
+      } else {
+        // Essayer avec user_id si id ne fonctionne pas
+        const { data: dataByUserId, error: error2 } = await supabase
+          .from('profils_photographe')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        
+        if (!error2 && dataByUserId) {
+          setPhotographeProfile(dataByUserId);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading photographe profile:', err);
+    }
+  };
+
+  // Rafraîchir le profil photographe
+  const refreshProfile = async () => {
+    if (profileId) {
+      await loadPhotographeProfile(profileId);
+    }
+  };
+
+  // Charger le profil photographe quand le profileId change
+  useEffect(() => {
+    if (profileId && (activeRole === 'photographe' || activeRole === 'prestataire')) {
+      loadPhotographeProfile(profileId);
+    }
+  }, [profileId, activeRole]);
+
   const value = {
     user,
     session,
@@ -189,11 +232,13 @@ export const AuthProvider = ({ children }) => {
     profileId,
     activeRole,
     availableProfiles,
+    photographeProfile,
     signUp,
     signIn,
     signOut,
     switchProfile,
     getActiveProfile,
+    refreshProfile,
     isAuthenticated: !!session,
     isPhotographe: activeRole === 'photographe' || activeRole === 'prestataire',
     isParticulier: activeRole === 'particulier',

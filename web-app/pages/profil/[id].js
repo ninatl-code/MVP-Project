@@ -89,7 +89,7 @@ export default function ProfilPage() {
           .from('avis')
           .select(`
             *,
-            profiles!avis_user_id_fkey(nom, photos)
+            profiles!avis_user_id_fkey(nom, avatar_url)
           `)
           .eq('prestataire_id', id)
           .order('created_at', { ascending: false })

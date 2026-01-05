@@ -132,7 +132,7 @@ export default function MessagesParticulier() {
       );
       const { data: profiles, error: profileError } = await supabase
         .from("profiles")
-        .select("id, nom, role, photos")
+        .select("id, nom, role, avatar_url")
         .in("id", userIds);
       if (profileError || !profiles) return;
 

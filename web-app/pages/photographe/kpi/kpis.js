@@ -279,9 +279,10 @@ export default function KPIs() {
           </div>
 
           {loading ? (
-            <div className="text-center">
+            <div className="text-center py-12">
               <Activity className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-              <p className="text-gray-600">Chargement...</p>
+              <p className="text-gray-600">Chargement de vos statistiques...</p>
+              <p className="text-gray-400 text-sm mt-2">Cette opération peut prendre quelques secondes</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

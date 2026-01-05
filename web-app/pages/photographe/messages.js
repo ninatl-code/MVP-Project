@@ -123,7 +123,7 @@ export default function MessagesParticulier() {
       const { data: conversationsData } = await supabase
         .from('conversations')
         .select('id, artist_id, client_id, annonce_id, last_message, created_at, updated, deletion_dateParti, lu')
-        .eq('artist_id', authData.user.id)
+        .eq('photographe_id', authData.user.id)
         .is('deletion_datePresta', null)
         .order('updated', { ascending: false });
 
@@ -142,7 +142,7 @@ export default function MessagesParticulier() {
       const userIds = Array.from(new Set(messages.flatMap(m => [m.sender_id, m.receiver_id])));
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, nom, photos, role')
+        .select('id, nom, avatar_url, role')
         .in('id', userIds);
 
       const profileMap = {};
