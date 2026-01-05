@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, role, nom, email, telephone, avatar_url')
-            .eq('id', session.user.id);
+            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
           
           if (profiles && profiles.length > 0) {
             setAvailableProfiles(profiles);
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, role, nom, email, telephone, avatar_url')
-            .eq('id', session.user.id);
+            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
           
           if (profiles && profiles.length > 0) {
             setAvailableProfiles(profiles);
