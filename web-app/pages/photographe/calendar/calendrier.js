@@ -1778,7 +1778,7 @@ function PrestataireCalendar() {
       console.log('📋 Chargement des annonces pour utilisateur:', user.id)
 
       const { data: annoncesData, error } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .select('id, titre, tarif_unit')
         .eq('prestataire', user.id)
         .eq('actif', true)
@@ -1818,7 +1818,7 @@ function PrestataireCalendar() {
         .from('blocked_slots')
         .select(`
           id, date, motif, created_at, annonce_id,
-          annonces!blocked_slots_annonce_id_fkey(titre, tarif_unit)
+          prestations_photographe!blocked_slots_annonce_id_fkey(titre, tarif_unit)
         `)
         .eq('prestataire_id', user.id)
 

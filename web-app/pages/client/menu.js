@@ -91,13 +91,13 @@ function ParticularHomeMenu() {
 
       const { data: devisData } = await supabase
         .from("devis")
-        .select("*, annonces!devis_annonce_id_fkey(titre), profiles!devis_prestataire_id_fkey(nom, email)")
+        .select("*, prestations_photographe!devis_annonce_id_fkey(titre), profiles!devis_prestataire_id_fkey(nom, email)")
         .eq("particulier_id", user.id);
       setDevis(devisData || []);
 
       const { data: reservationsData } = await supabase
         .from("reservations")
-        .select("*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre, conditions_annulation)")
+        .select("*, profiles!reservations_prestataire_id_fkey(nom, email), prestations_photographe!reservations_annonce_id_fkey(titre, conditions_annulation)")
         .eq("particulier_id", user.id);
       setReservations(reservationsData || []);
 
@@ -164,7 +164,7 @@ function ParticularHomeMenu() {
 
       let query = supabase
         .from('reservations')
-        .select('*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre, conditions_annulation)')
+        .select('*, profiles!reservations_prestataire_id_fkey(nom, email), prestations_photographe!reservations_annonce_id_fkey(titre, conditions_annulation)')
 
       query = query.eq('particulier_id', user.id)
 
@@ -271,7 +271,7 @@ function ParticularHomeMenu() {
         
         // Récupérer l'annonce
         const { data: annonceResult, error: annonceError } = await supabase
-          .from('annonces')
+          .from('prestations_photographe')
           .select('id, prestataire, titre')
           .eq('id', reservationData.annonce_id)
           .single();
@@ -355,7 +355,7 @@ function ParticularHomeMenu() {
     try {
       // Récupérer les conditions d'annulation de l'annonce
       const { data: annonceData, error } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .select('conditions_annulation')
         .eq('id', reservation.annonce_id)
         .single();
@@ -551,7 +551,7 @@ function ParticularHomeMenu() {
       // Rafraîchir les données
       const { data: updatedReservations } = await supabase
         .from('reservations')
-        .select('*, profiles!reservations_prestataire_id_fkey(nom, email), annonces!reservations_annonce_id_fkey(titre)')
+        .select('*, profiles!reservations_prestataire_id_fkey(nom, email), prestations_photographe!reservations_annonce_id_fkey(titre)')
         .eq('particulier_id', userId);
       
       setReservations(updatedReservations || []);

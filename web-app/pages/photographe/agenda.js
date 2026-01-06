@@ -53,11 +53,11 @@ export default function AgendaPage() {
 
       // Fetch indisponibilites
       const { data: indisData, error: indisError } = await supabase
-        .from('indisponibilites')
+        .from('blocked_slots')
         .select('*')
         .eq('photographe_id', photographeProfile.id)
-        .gte('date_fin', monthStart.toISOString())
-        .lte('date_debut', monthEnd.toISOString());
+        .gte('end_datetime', monthStart.toISOString())
+        .lte('start_datetime', monthEnd.toISOString());
 
       if (indisError) throw indisError;
       setIndisponibilites(indisData || []);
@@ -85,8 +85,8 @@ export default function AgendaPage() {
     );
 
     const dayIndisponibilites = indisponibilites.filter(i => {
-      const start = parseISO(i.date_debut);
-      const end = parseISO(i.date_fin);
+      const start = parseISO(i.start_datetime);
+      const end = parseISO(i.end_datetime);
       return date >= start && date <= end;
     });
 
@@ -357,7 +357,7 @@ function DayDetails({ date, events, photographeId, onUpdate }) {
           )}
           
           <p className="text-xs text-red-500 mt-2">
-            Du {format(parseISO(indispo.date_debut), 'dd/MM')} au {format(parseISO(indispo.date_fin), 'dd/MM')}
+            Du {format(parseISO(indispo.start_datetime), 'dd/MM')} au {format(parseISO(indispo.end_datetime), 'dd/MM')}
           </p>
         </div>
       ))}
@@ -368,12 +368,9 @@ function DayDetails({ date, events, photographeId, onUpdate }) {
 function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    date_debut: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-    date_fin: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-    motif: '',
-    journee_entiere: true,
-    heure_debut: '',
-    heure_fin: '',
+    start_datetime: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+    end_datetime: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+    reason: '',
   });
 
   const handleSubmit = async (e) => {
@@ -382,15 +379,12 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
 
     try {
       const { error } = await supabase
-        .from('indisponibilites')
+        .from('blocked_slots')
         .insert({
           photographe_id: photographeId,
-          date_debut: formData.date_debut,
-          date_fin: formData.date_fin,
-          motif: formData.motif || null,
-          journee_entiere: formData.journee_entiere,
-          heure_debut: formData.journee_entiere ? null : formData.heure_debut,
-          heure_fin: formData.journee_entiere ? null : formData.heure_fin,
+          start_datetime: formData.start_datetime,
+          end_datetime: formData.end_datetime,
+          reason: formData.reason || null,
         });
 
       if (error) throw error;
@@ -423,8 +417,8 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
               <input
                 type="date"
                 required
-                value={formData.date_debut}
-                onChange={(e) => setFormData(prev => ({ ...prev, date_debut: e.target.value }))}
+                value={formData.start_datetime}
+                onChange={(e) => setFormData(prev => ({ ...prev, start_datetime: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -435,62 +429,23 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
               <input
                 type="date"
                 required
-                value={formData.date_fin}
-                onChange={(e) => setFormData(prev => ({ ...prev, date_fin: e.target.value }))}
-                min={formData.date_debut}
+                value={formData.end_datetime}
+                onChange={(e) => setFormData(prev => ({ ...prev, end_datetime: e.target.value }))}
+                min={formData.start_datetime}
                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.journee_entiere}
-                onChange={(e) => setFormData(prev => ({ ...prev, journee_entiere: e.target.checked }))}
-                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">Journée(s) entière(s)</span>
-            </label>
-          </div>
-
-          {!formData.journee_entiere && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Heure début
-                </label>
-                <input
-                  type="time"
-                  value={formData.heure_debut}
-                  onChange={(e) => setFormData(prev => ({ ...prev, heure_debut: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Heure fin
-                </label>
-                <input
-                  type="time"
-                  value={formData.heure_fin}
-                  onChange={(e) => setFormData(prev => ({ ...prev, heure_fin: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-          )}
-
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Motif (optionnel)
+              Raison (optionnel)
             </label>
-            <input
-              type="text"
-              value={formData.motif}
-              onChange={(e) => setFormData(prev => ({ ...prev, motif: e.target.value }))}
-              placeholder="Ex: Vacances, Rendez-vous personnel..."
+            <textarea
+              value={formData.reason}
+              onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
+              rows={3}
+              placeholder="Ex: Vacances, Formation..."
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             />
           </div>

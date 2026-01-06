@@ -63,8 +63,8 @@ export default function ClientDashboard() {
           .gte('date_prestation', new Date().toISOString().split('T')[0]),
         supabase
           .from('messages')
-          .select('*, conversation:conversations!inner(participant_1, participant_2)', { count: 'exact', head: true })
-          .or(`conversation.participant_1.eq.${profileId},conversation.participant_2.eq.${profileId}`)
+          .select('*, conversation:conversations!inner(client_id, photographe_id)', { count: 'exact', head: true })
+          .or(`conversation.client_id.eq.${profileId},conversation.photographe_id.eq.${profileId}`)
           .eq('lu', false)
           .neq('expediteur_id', profileId),
         supabase

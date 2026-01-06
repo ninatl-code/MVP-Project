@@ -92,16 +92,16 @@ export default function InvoicePage() {
         .from('reservations')
         .select(`
           id,
-          date_debut,
-          date_fin,
+          start_datetime,
+          end_datetime,
           montant_total,
           statut,
-          annonces(titre, tarif_unit),
+          prestations_photographe(titre, tarif_unit),
           profiles!reservations_particulier_id_fkey(nom, email, telephone, adresse, code_postal, ville)
         `)
         .eq('prestataire_id', user.id)
         .eq('statut', 'confirmée')
-        .order('date_debut', { ascending: false })
+        .order('start_datetime', { ascending: false })
       
       if (!resasError && resas) {
         setReservations(resas)
@@ -780,7 +780,7 @@ export default function InvoicePage() {
                 <option value="">-- Sélectionner --</option>
                 {reservations.map(resa => (
                   <option key={resa.id} value={resa.id}>
-                    {resa.annonces?.titre} - {new Date(resa.date_debut).toLocaleDateString('fr-FR')} - {resa.montant_total}€
+                    {resa.prestations_photographe?.titre} - {new Date(resa.start_datetime).toLocaleDateString('fr-FR')} - {resa.montant_total}€
                   </option>
                 ))}
               </select>

@@ -171,7 +171,7 @@ export default function PhotographeProfilPage() {
 
       // Annonces
       const { data: annonces } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .select('id, rate, vues')
         .eq('prestataire', userId);
 

@@ -33,7 +33,7 @@ export default function DevisPrestataire() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data, error } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .select('id, titre')
         .eq('prestataire', user.id)
       if (!error) setAnnonces(data)
@@ -68,7 +68,7 @@ export default function DevisPrestataire() {
 
       let query = supabase
         .from('devis')
-        .select('*, profiles!devis_particulier_id_fkey(nom, email), annonces!devis_annonce_id_fkey(titre, conditions_annulation)')
+        .select('*, profiles!devis_particulier_id_fkey(nom, email), prestations_photographe!devis_annonce_id_fkey(titre, conditions_annulation)')
         .eq('prestataire_id', user.id)
 
       if (statusFilter !== 'all') {

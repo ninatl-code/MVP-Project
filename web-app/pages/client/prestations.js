@@ -23,7 +23,7 @@ export default function PrestationsPrestataire() {
         setUserId(user.id)
         // Récupérer toutes les annonces avec leurs zones d'intervention
         const { data, error } = await supabase
-          .from('annonces')
+          .from('prestations_photographe')
           .select(`
             id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, 
             acompte_percent, equipement, prestation, actif, prestataire, conditions_annulation,
@@ -100,7 +100,7 @@ export default function PrestationsPrestataire() {
       
       // Enfin supprimer les annonces
       const { error } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .delete()
         .in('id', selectedIds)
       
@@ -123,7 +123,7 @@ export default function PrestationsPrestataire() {
   const handleDisable = async () => {
     if (selectedIds.length === 0) return
     const { error } = await supabase
-      .from('annonces')
+      .from('prestations_photographe')
       .update({ actif: false })
       .in('id', selectedIds)
     if (!error) {
@@ -143,7 +143,7 @@ export default function PrestationsPrestataire() {
   const handleReactivate = async () => {
     if (selectedIds.length === 0) return;
     const { error } = await supabase
-      .from('annonces')
+      .from('prestations_photographe')
       .update({ actif: true })
       .in('id', selectedIds);
     if (!error) {
@@ -248,7 +248,7 @@ export default function PrestationsPrestataire() {
           if (e.target.type === 'checkbox') return;
           // Recherche les infos complètes de l'annonce avec les zones d'intervention
           const { data: annonceDetails, error } = await supabase
-            .from('annonces')
+            .from('prestations_photographe')
             .select(`
               *, 
               prestations(*),
@@ -472,7 +472,7 @@ export default function PrestationsPrestataire() {
                 try {
                   // Charger les détails complets de l'annonce
                   const { data: annonceDetails, error: fetchError } = await supabase
-                    .from('annonces')
+                    .from('prestations_photographe')
                     .select(`
                       *, 
                       prestations(*),
@@ -729,7 +729,7 @@ export default function PrestationsPrestataire() {
       console.log('Données à insérer:', insertData); // Debug
       
       const { data: insertedAnnonce, error: insertError } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .insert([insertData])
         .select('id')
         .single();
@@ -779,7 +779,7 @@ export default function PrestationsPrestataire() {
         
         // Rafraîchir la liste des prestations
         const { data, error } = await supabase
-          .from('annonces')
+          .from('prestations_photographe')
           .select(`
             id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, 
             acompte_percent, equipement, prestation, actif, prestataire, conditions_annulation,
@@ -2534,7 +2534,7 @@ export default function PrestationsPrestataire() {
                   
                   // Mise à jour de l'annonce existante
                   const { error: updateError } = await supabase
-                    .from('annonces')
+                    .from('prestations_photographe')
                     .update(updateData)
                     .eq('id', prestation.id)
 
@@ -2570,7 +2570,7 @@ export default function PrestationsPrestataire() {
                     onClose()
                     // Rafraîchir la liste des prestations
                     const { data, error } = await supabase
-                      .from('annonces')
+                      .from('prestations_photographe')
                       .select(`
                         id, titre, description, photos, tarif_unit, unit_tarif, prix_fixe, 
                         acompte_percent, equipement, prestation, actif, prestataire, conditions_annulation,

@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       .from('reservations')
       .select(`
         *,
-        annonces!reservations_annonce_id_fkey(conditions_annulation, titre)
+        prestations_photographe!reservations_annonce_id_fkey(conditions_annulation, titre)
       `)
       .eq('id', reservationId)
       .eq('particulier_id', userId)
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
         .from('commandes')
         .select(`
           *,
-          annonces!commandes_annonce_id_fkey(conditions_annulation, titre)
+          prestations_photographe!commandes_annonce_id_fkey(conditions_annulation, titre)
         `)
         .eq('id', reservationId)
         .eq('particulier_id', userId)

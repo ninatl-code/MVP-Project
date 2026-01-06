@@ -17,7 +17,7 @@ export default function ReservationsPrestataire() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data, error } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .select('id, titre')
         .eq('prestataire', user.id)
       if (!error) setAnnonces(data)

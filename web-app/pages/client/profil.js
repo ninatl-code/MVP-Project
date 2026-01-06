@@ -33,7 +33,6 @@ function UserProfile() {
   const [phoneEdit, setPhoneEdit] = useState("");
   const [villeEdit, setVilleEdit] = useState("");
   const [photoEdit, setPhotoEdit] = useState("");
-  const [photoCouvertureEdit, setPhotoCouvertureEdit] = useState("");
   const [villesList, setVillesList] = useState([]);
   const [nbReservations, setNbReservations] = useState(0);
   const [nbCommandes, setNbCommandes] = useState(0);
@@ -69,7 +68,7 @@ function UserProfile() {
         // Récupération du profil
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("nom, avatar_url, ville, email, telephone")
+          .select("nom, avatar_url, ville, email, telephone, description")
           .eq("id", authUser.id)
           .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
 
@@ -223,7 +222,7 @@ function UserProfile() {
         console.log('❤️ Chargement des favoris...');
         const { data: favAnnonceData, error: favError } = await supabase
           .from("favoris")
-          .select("id, annonce_id")
+          .select("id, photographe_id")
           .eq("client_id", authUser.id);
 
         if (favError) {
@@ -234,10 +233,10 @@ function UserProfile() {
 
         let annoncesList = [];
         if (favAnnonceData && favAnnonceData.length > 0) {
-          const annonceIds = favAnnonceData.map(f => f.annonce_id).filter(Boolean);
+          const annonceIds = favAnnonceData.map(f => f.photographe_id).filter(Boolean);
           if (annonceIds.length > 0) {
             const { data: annoncesData, error: annoncesError } = await supabase
-              .from("annonces")
+              .from("prestations_photographe")
               .select("id, titre, photos")
               .in("id", annonceIds);
             
@@ -316,16 +315,31 @@ function UserProfile() {
   }
 
   // Gestion upload photo
-  const handlePhotoUpload = async (e, type = 'avatar') => {
+  const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
+    // Validation du type de fichier
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image');
+      return;
+    }
+    
+    // Validation de la taille (5 Mo max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('L\'image ne doit pas dépasser 5 Mo');
+      return;
+    }
+    
     const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return;
+    if (!authUser) {
+      alert('Vous devez être connecté');
+      return;
+    }
 
     const fileExt = file.name.split('.').pop();
-    const fileName = `${authUser.id}-${type}-${Date.now()}.${fileExt}`;
-    const filePath = `${type}/${fileName}`;
+    const fileName = `${authUser.id}-avatar-${Date.now()}.${fileExt}`;
+    const filePath = `avatar/${fileName}`;
 
     try {
       // Upload vers Supabase Storage
@@ -344,14 +358,11 @@ function UserProfile() {
         .from('photos')
         .getPublicUrl(filePath);
 
-      if (type === 'avatar') {
-        setPhotoEdit(publicUrl);
-      } else if (type === 'cover') {
-        setPhotoCouvertureEdit(publicUrl);
-      }
+      setPhotoEdit(publicUrl);
+      alert('Photo téléchargée ! Cliquez sur Sauvegarder pour appliquer.');
     } catch (error) {
       console.error('Erreur upload:', error);
-      alert('Erreur lors du téléchargement de l\'image');
+      alert('Erreur lors du téléchargement: ' + (error.message || 'Erreur inconnue'));
     }
   };
 
@@ -382,6 +393,7 @@ function UserProfile() {
         "Détails : " + (error.details || "Aucun détail")
       );
     } else {
+      alert('Profil mis à jour avec succès !');
       setEditMode(false);
       window.location.reload();
     }

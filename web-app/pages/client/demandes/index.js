@@ -47,7 +47,7 @@ export default function MesDemandesPage() {
           *,
           devis(count)
         `)
-        .eq('particulier_id', profileId)
+        .eq('client_id', profileId)
         .order('created_at', { ascending: false });
 
       if (filter !== 'all') {

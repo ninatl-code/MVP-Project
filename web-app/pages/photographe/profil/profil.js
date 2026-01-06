@@ -184,7 +184,7 @@ export default function UserProfile() {
     try {
       // 1. Annonces
       const { data: annonces } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .select('id, rate, vues')
         .eq('prestataire', prestataireId);
 
@@ -232,7 +232,7 @@ export default function UserProfile() {
     try {
       // 1. Récupérer toutes les annonces du prestataire
       const { data: annonces, error: annoncesError } = await supabase
-        .from('annonces')
+        .from('prestations_photographe')
         .select('id, rate')
         .eq('prestataire', authUser.id);
 

@@ -31,7 +31,7 @@ export default function MesRemboursements() {
         *,
         reservations!remboursements_reservation_id_fkey(
           date,
-          annonces!reservations_annonce_id_fkey(titre, prestataire),
+          prestations_photographe!reservations_annonce_id_fkey(titre, prestataire),
           profiles!reservations_prestataire_id_fkey(nom)
         )
       `)

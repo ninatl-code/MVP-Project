@@ -45,7 +45,7 @@ export default function PhotographeProfilePage() {
 
       // Fetch packages
       const { data: packagesData } = await supabase
-        .from('packages')
+        .from('packages_types')
         .select('*')
         .eq('photographe_id', id)
         .eq('actif', true)

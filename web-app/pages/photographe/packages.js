@@ -27,7 +27,7 @@ export default function PackagesPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('packages')
+        .from('packages_types')
         .select('*')
         .eq('photographe_id', photographeProfile.id)
         .order('ordre', { ascending: true });
@@ -44,7 +44,7 @@ export default function PackagesPage() {
   const handleToggleActive = async (packageId, currentStatus) => {
     try {
       const { error } = await supabase
-        .from('packages')
+        .from('packages_types')
         .update({ actif: !currentStatus })
         .eq('id', packageId);
 
@@ -61,7 +61,7 @@ export default function PackagesPage() {
     setDeleting(packageId);
     try {
       const { error } = await supabase
-        .from('packages')
+        .from('packages_types')
         .delete()
         .eq('id', packageId);
 
@@ -276,13 +276,13 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
 
       if (pkg?.id) {
         const { error } = await supabase
-          .from('packages')
+          .from('packages_types')
           .update(data)
           .eq('id', pkg.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('packages')
+          .from('packages_types')
           .insert(data);
         if (error) throw error;
       }

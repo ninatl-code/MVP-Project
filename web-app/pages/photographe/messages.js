@@ -152,7 +152,7 @@ export default function MessagesParticulier() {
       let annonceTitlesMap = {};
       if (annonceIds.length > 0) {
         const { data: annoncesData } = await supabase
-          .from('annonces')
+          .from('prestations_photographe')
           .select('id, titre')
           .in('id', annonceIds);
         if (annoncesData) annoncesData.forEach(a => { annonceTitlesMap[a.id] = a.titre; });

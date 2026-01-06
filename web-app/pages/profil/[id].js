@@ -66,7 +66,7 @@ export default function ProfilPage() {
       // Si c'est un prestataire, récupérer ses annonces
       if (profileData.role === 'prestataire') {
         const { data: annoncesData } = await supabase
-          .from('annonces')
+          .from('prestations_photographe')
           .select(`
             id,
             titre,

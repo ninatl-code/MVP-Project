@@ -78,7 +78,7 @@ export default function KPIs() {
         { data: reservations }
       ] = await Promise.all([
         supabase
-          .from('annonces')
+          .from('prestations_photographe')
           .select('id, titre, tarif_unit, rate, comment, vues')
           .eq('prestataire', prestataireId),
         supabase

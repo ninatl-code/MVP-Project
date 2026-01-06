@@ -112,7 +112,7 @@ export default function CreateDemandePage() {
       const { data, error: insertError } = await supabase
         .from('demandes_client')
         .insert({
-          particulier_id: profileId,
+          client_id: profileId,
           titre: formData.titre,
           categorie: formData.categorie,
           description: formData.description,
