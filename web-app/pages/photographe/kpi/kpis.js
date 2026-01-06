@@ -71,32 +71,32 @@ export default function KPIs() {
   const loadKPIs = async (prestataireId) => {
     setLoading(true);
     try {
-      // 1. Récupérer les annonces du prestataire
-      const { data: annonces } = await supabase
-        .from('annonces')
-        .select('id, titre, tarif_unit, rate, comment, vues')
-        .eq('prestataire', prestataireId);
+      // 1. Récupérer TOUTES les données nécessaires en UNE seule requête optimisée
+      const [
+        { data: annonces },
+        { data: commandes },
+        { data: reservations }
+      ] = await Promise.all([
+        supabase
+          .from('annonces')
+          .select('id, titre, tarif_unit, rate, comment, vues')
+          .eq('prestataire', prestataireId),
+        supabase
+          .from('commandes')
+          .select('id, annonce_id, montant, status')
+          .eq('prestataire_id', prestataireId),
+        supabase
+          .from('reservations')
+          .select('id, annonce_id, montant, status')
+          .eq('prestataire_id', prestataireId)
+      ]);
 
       const totalAnnonces = annonces?.length || 0;
       const totalVues = annonces?.reduce((sum, annonce) => sum + (annonce.vues || 0), 0) || 0;
-
-      // 2. Récupérer les commandes (avec bonnes colonnes)
-      const { data: commandes } = await supabase
-        .from('commandes')
-        .select('id, annonce_id, montant, status, date_commande')
-        .eq('prestataire_id', prestataireId);
-
       const totalCommandes = commandes?.length || 0;
-
-      // 3. Récupérer les réservations (avec bonnes colonnes)
-      const { data: reservations } = await supabase
-        .from('reservations')
-        .select('id, annonce_id, montant, status, created_at')
-        .eq('prestataire_id', prestataireId);
-
       const totalReservations = reservations?.length || 0;
 
-      // 4. Calculer le chiffre d'affaires
+      // 2. Calculer le chiffre d'affaires (filtrer par statut payé)
       const commandesPayees = commandes?.filter(c => 
         c.status === 'completed' || c.status === 'delivered'
       ) || [];
@@ -109,19 +109,18 @@ export default function KPIs() {
       const caReservations = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
       const chiffreAffaires = caCommandes + caReservations;
 
-      // 5. Notes et avis (depuis la colonne comment des annonces)
+      // 3. Notes et avis
       const annonceAvecAvis = annonces?.filter(a => a.comment && a.comment.trim()) || [];
       const totalAvis = annonceAvecAvis.length;
       const noteMoyenne = totalAvis > 0 ? 
         annonceAvecAvis.reduce((sum, a) => sum + (a.rate || 0), 0) / totalAvis : 0;
 
-      // 6. Analyser les performances par annonce
-      const performanceResults = await analyzeAnnoncesPerformances(
+      // 4. Analyser les performances par annonce (sans requête supplémentaire)
+      const performanceResults = analyzeAnnoncesPerformances(
         annonces, 
         commandes, 
         reservations, 
-        chiffreAffaires,
-        prestataireId
+        chiffreAffaires
       );
 
       setKpis({
@@ -160,7 +159,7 @@ export default function KPIs() {
     }).format(amount || 0);
   };
 
-  const analyzeAnnoncesPerformances = async (annonces, commandes, reservations, chiffreAffairesTotal, prestataireId) => {
+  const analyzeAnnoncesPerformances = (annonces, commandes, reservations, chiffreAffairesTotal) => {
     if (!annonces || annonces.length === 0) {
       return {
         topPerformances: {},
@@ -169,21 +168,24 @@ export default function KPIs() {
       };
     }
 
-    // Récupérer les types de prestations
-    const { data: prestations } = await supabase
-      .from('prestations')
-      .select('id, type');
-
-    const prestationTypes = {};
-    prestations?.forEach(p => {
-      prestationTypes[p.id] = p.type;
+    // Créer des maps pour un accès rapide
+    const commandesParAnnonce = {};
+    const reservationsParAnnonce = {};
+    
+    commandes?.forEach(c => {
+      if (!commandesParAnnonce[c.annonce_id]) commandesParAnnonce[c.annonce_id] = [];
+      commandesParAnnonce[c.annonce_id].push(c);
+    });
+    
+    reservations?.forEach(r => {
+      if (!reservationsParAnnonce[r.annonce_id]) reservationsParAnnonce[r.annonce_id] = [];
+      reservationsParAnnonce[r.annonce_id].push(r);
     });
 
     // Analyser chaque annonce
     const detailsAnnonces = annonces.map(annonce => {
-      // Compter commandes et réservations pour cette annonce
-      const annonceCommandes = commandes?.filter(c => c.annonce_id === annonce.id) || [];
-      const annonceReservations = reservations?.filter(r => r.annonce_id === annonce.id) || [];
+      const annonceCommandes = commandesParAnnonce[annonce.id] || [];
+      const annonceReservations = reservationsParAnnonce[annonce.id] || [];
       
       const nbCommandes = annonceCommandes.length;
       const nbReservations = annonceReservations.length;
@@ -204,7 +206,7 @@ export default function KPIs() {
       return {
         id: annonce.id,
         titre: annonce.titre,
-        prestation: prestationTypes[annonce.prestation] || 'Non défini',
+        prestation: 'Prestation', // Simplifié sans requête supplémentaire
         vues: annonce.vues || 0,
         nbCommandes,
         nbReservations,

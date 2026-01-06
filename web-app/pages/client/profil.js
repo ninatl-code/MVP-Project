@@ -33,6 +33,7 @@ function UserProfile() {
   const [phoneEdit, setPhoneEdit] = useState("");
   const [villeEdit, setVilleEdit] = useState("");
   const [photoEdit, setPhotoEdit] = useState("");
+  const [photoCouvertureEdit, setPhotoCouvertureEdit] = useState("");
   const [villesList, setVillesList] = useState([]);
   const [nbReservations, setNbReservations] = useState(0);
   const [nbCommandes, setNbCommandes] = useState(0);
@@ -121,10 +122,14 @@ function UserProfile() {
         let villeLabel = profile?.ville || "";
         setVilleNom(villeLabel);
 
+        // Filtrer avatar_url: ignorer les chemins locaux (file://)
+        const avatarUrl = profile?.avatar_url || "";
+        const validAvatar = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') ? avatarUrl : "";
+
         // Construction de l'objet utilisateur
         const userData = {
           name: profile?.nom || "",
-          avatar: profile?.avatar_url || "",
+          avatar: validAvatar,
           city: villeLabel,
           cityId: null,
           email: profile?.email || authUser.email || "",
@@ -140,7 +145,7 @@ function UserProfile() {
         setEmailEdit(profile?.email || authUser.email || "");
         setPhoneEdit(profile?.telephone || "");
         setVilleEdit(villeLabel);
-        setPhotoEdit(profile?.avatar_url || "");
+        setPhotoEdit(validAvatar);
 
         // Récupération de la liste des villes
         console.log('🏙️ Chargement de la liste des villes...');
@@ -311,11 +316,43 @@ function UserProfile() {
   }
 
   // Gestion upload photo
-  const handlePhotoUpload = async (e) => {
+  const handlePhotoUpload = async (e, type = 'avatar') => {
     const file = e.target.files[0];
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setPhotoEdit(base64);
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${authUser.id}-${type}-${Date.now()}.${fileExt}`;
+    const filePath = `${type}/${fileName}`;
+
+    try {
+      // Upload vers Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Récupérer l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath);
+
+      if (type === 'avatar') {
+        setPhotoEdit(publicUrl);
+      } else if (type === 'cover') {
+        setPhotoCouvertureEdit(publicUrl);
+      }
+    } catch (error) {
+      console.error('Erreur upload:', error);
+      alert('Erreur lors du téléchargement de l\'image');
+    }
   };
 
   // Sauvegarde des modifications

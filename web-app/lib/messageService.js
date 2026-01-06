@@ -294,7 +294,11 @@ export const uploadMessageAttachment = async (conversationId, file) => {
 
     const { data, error } = await supabase.storage
       .from('message-attachments')
-      .upload(fileName, file);
+      .upload(fileName, file, {
+        contentType: file.type,
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (error) throw error;
 

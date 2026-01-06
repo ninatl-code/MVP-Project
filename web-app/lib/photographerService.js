@@ -120,7 +120,11 @@ export const uploadPortfolioPhoto = async (userId, file) => {
 
     const { data, error } = await supabase.storage
       .from('portfolio')
-      .upload(fileName, file);
+      .upload(fileName, file, {
+        contentType: file.type || 'image/jpeg',
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (error) throw error;
 

@@ -126,7 +126,11 @@ export default function MediathequePage() {
         // Upload to storage
         const { error: uploadError } = await supabase.storage
           .from('media_library')
-          .upload(filePath, file);
+          .upload(filePath, file, {
+            contentType: file.type,
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) throw uploadError;
 

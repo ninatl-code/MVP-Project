@@ -303,6 +303,7 @@ export default function InvoicePage() {
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('logos-factures')
         .upload(fileName, file, {
+          contentType: file.type || 'image/png',
           cacheControl: '3600',
           upsert: false
         })

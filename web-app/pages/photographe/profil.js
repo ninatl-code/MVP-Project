@@ -88,6 +88,7 @@ export default function PhotographeProfilPage() {
   const [verificationStatus, setVerificationStatus] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [stats, setStats] = useState({
     totalAnnonces: 0,
     totalReservations: 0,
@@ -221,7 +222,11 @@ export default function PhotographeProfilPage() {
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
@@ -307,6 +312,7 @@ export default function PhotographeProfilPage() {
           website: photoProfile?.site_web || '',
           specialites: photoProfile?.specialisations || photoProfile?.categories || [],
           tarif_horaire: photoProfile?.tarif_horaire || '',
+          photo_couverture: photoProfile?.photo_couverture || '',
           // Autres champs de profils_photographe si nécessaire
         };
         
@@ -404,41 +410,131 @@ export default function PhotographeProfilPage() {
   };
 
   const handlePhotoUpload = async (e, type) => {
+    console.log('🎯 handlePhotoUpload appelé avec type:', type);
+    console.log('📁 Event:', e);
+    console.log('📁 Files:', e.target.files);
+    
     const file = e.target.files?.[0];
-    if (!file) return;
+    console.log('📁 File sélectionné:', file);
+    
+    if (!file) {
+      console.log('❌ Aucun fichier sélectionné');
+      return;
+    }
 
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (!currentUser) return;
+    console.log('✅ Fichier:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      sizeInMB: (file.size / 1024 / 1024).toFixed(2) + ' MB'
+    });
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${currentUser.id}-${type}-${Date.now()}.${fileExt}`;
-    const filePath = `${type}/${fileName}`;
+    // Validation
+    if (!file.type.startsWith('image/')) {
+      console.log('❌ Pas une image:', file.type);
+      alert('Veuillez sélectionner une image');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      console.log('❌ Fichier trop volumineux:', file.size);
+      alert('L\'image ne doit pas dépasser 5 Mo');
+      return;
+    }
+
+    console.log('✅ Validation OK, début upload...');
+    setUploadingPhoto(true);
 
     try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        alert('Vous devez être connecté');
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}-${type}-${Date.now()}.${fileExt}`;
+      const filePath = `${type}/${fileName}`;
+
+      console.log('Upload démarré:', { type, fileName });
+
       // Upload to storage
       const { error: uploadError } = await supabase.storage
-        .from('profiles')
-        .upload(filePath, file);
+        .from('photos')
+        .upload(filePath, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Erreur upload storage:', uploadError);
+        throw uploadError;
+      }
+
+      console.log('Upload réussi, récupération URL...');
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('profiles')
+        .from('photos')
         .getPublicUrl(filePath);
 
-      // Update profile - utiliser 'avatar_url' comme dans la table profiles
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', currentUser.id);
+      console.log('URL publique:', publicUrl);
 
-      if (updateError) throw updateError;
+      // Update profile selon le type
+      if (type === 'avatar') {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('id', currentUser.id);
+        
+        if (updateError) {
+          console.error('Erreur update avatar:', updateError);
+          throw updateError;
+        }
+        
+        console.log('Avatar mis à jour dans profiles');
+        setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
+        alert('Photo de profil mise à jour !');
+      } else if (type === 'cover') {
+        // Vérifier si l'enregistrement existe
+        const { data: existing } = await supabase
+          .from('profils_photographe')
+          .select('id')
+          .eq('id', currentUser.id)
+          .single();
 
-      setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
+        if (existing) {
+          // Update si existe
+          const { error: updateError } = await supabase
+            .from('profils_photographe')
+            .update({ photo_couverture: publicUrl })
+            .eq('id', currentUser.id);
+          
+          if (updateError) {
+            console.error('Erreur update couverture:', updateError);
+            throw updateError;
+          }
+        } else {
+          // Insert si n'existe pas
+          const { error: insertError } = await supabase
+            .from('profils_photographe')
+            .insert({ id: currentUser.id, photo_couverture: publicUrl });
+          
+          if (insertError) {
+            console.error('Erreur insert couverture:', insertError);
+            throw insertError;
+          }
+        }
+        
+        console.log('Photo de couverture mise à jour dans profils_photographe');
+        setProfile(prev => ({ ...prev, photo_couverture: publicUrl }));
+        alert('Photo de couverture mise à jour !');
+      }
     } catch (error) {
       console.error('Error uploading photo:', error);
-      alert('Erreur lors du téléchargement');
+      alert('Erreur lors du téléchargement: ' + (error.message || 'Erreur inconnue'));
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -456,13 +552,17 @@ export default function PhotographeProfilPage() {
 
       try {
         const { error: uploadError } = await supabase.storage
-          .from('profiles')
-          .upload(filePath, file);
+          .from('photos')
+          .upload(filePath, file, {
+            contentType: file.type,
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('profiles')
+          .from('photos')
           .getPublicUrl(filePath);
 
         const { error: insertError } = await supabase
@@ -597,15 +697,41 @@ export default function PhotographeProfilPage() {
       
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Cover Photo */}
-        <div className="relative h-48 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-t-2xl overflow-hidden">
-          <label className="absolute bottom-4 right-4 px-3 py-1.5 bg-white/90 rounded-lg cursor-pointer hover:bg-white transition-all flex items-center gap-2">
-            <Camera className="w-4 h-4" />
-            <span className="text-sm">Photo de profil</span>
+        <div className="relative h-48 rounded-t-2xl overflow-hidden">
+          {profile?.photo_couverture && (profile.photo_couverture.startsWith('http://') || profile.photo_couverture.startsWith('https://')) ? (
+            <img 
+              src={profile.photo_couverture} 
+              alt="Photo de couverture" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
+          )}
+          <label 
+            className="absolute bottom-4 right-4 px-3 py-1.5 bg-white/90 rounded-lg cursor-pointer hover:bg-white transition-all flex items-center gap-2"
+            onClick={() => console.log('🖱️ Label cliqué')}
+          >
+            {uploadingPhoto ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Upload...</span>
+              </>
+            ) : (
+              <>
+                <Camera className="w-4 h-4" />
+                <span className="text-sm">Photo de couverture</span>
+              </>
+            )}
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => handlePhotoUpload(e, 'avatar')}
+              onChange={(e) => {
+                console.log('📸 Input onChange déclenché');
+                handlePhotoUpload(e, 'cover');
+              }}
+              onClick={() => console.log('📸 Input cliqué')}
               className="hidden"
+              disabled={uploadingPhoto}
             />
           </label>
         </div>
@@ -615,7 +741,7 @@ export default function PhotographeProfilPage() {
           <div className="flex items-end gap-6 -mt-12">
             <div className="relative">
               <div className="w-28 h-28 rounded-2xl bg-gray-200 border-4 border-white shadow-lg overflow-hidden">
-                {profile?.avatar_url ? (
+                {profile?.avatar_url && (profile.avatar_url.startsWith('http://') || profile.avatar_url.startsWith('https://')) ? (
                   <img 
                     src={profile.avatar_url} 
                     alt={profile.nom || 'Avatar'} 
