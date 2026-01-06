@@ -166,15 +166,19 @@ export default function VerificationPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const fileName = `${documentType}_${user.id}_${Date.now()}.${file.mimeType?.includes('pdf') ? 'pdf' : 'jpg'}`;
+      const fileName = `${documentType}_${user.id}_${Date.now()}.jpg`;
+      
+      // Convert file URI to blob
+      const response = await fetch(file.uri);
+      const blob = await response.blob();
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('verification_documents')
-        .upload(fileName, {
-          uri: file.uri,
-          type: file.mimeType || 'image/jpeg',
-          name: fileName,
-        } as any);
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 

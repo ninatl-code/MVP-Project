@@ -407,7 +407,8 @@ export default function ProfilComplet() {
             .from('photos')
             .upload(filePath, byteArray, {
               contentType: 'image/jpeg',
-              upsert: true,
+              cacheControl: '3600',
+              upsert: false
             });
 
           let docUrl = imageUri;
@@ -456,7 +457,7 @@ export default function ProfilComplet() {
   const pickIdDocumentPDF = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/*'],
+        type: ['image/*'], // Only allow images, not PDFs since bucket doesn't support it
         copyToCacheDirectory: true,
       });
 
@@ -483,16 +484,17 @@ export default function ProfilComplet() {
         }
         const byteArray = new Uint8Array(byteNumbers);
 
-        const extension = file.name.split('.').pop() || 'pdf';
+        const extension = file.name.split('.').pop() || 'jpg';
         const fileName = `id_document_${session.user.id}_${Date.now()}.${extension}`;
         const filePath = `documents/${fileName}`;
 
-        // Upload to storage
+        // Upload to storage - force image content type
         const { data, error } = await supabase.storage
           .from('photos')
           .upload(filePath, byteArray, {
-            contentType: file.mimeType || 'application/pdf',
-            upsert: true,
+            contentType: file.mimeType || 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false
           });
 
         let docUrl = fileUri;
@@ -592,20 +594,25 @@ export default function ProfilComplet() {
             .from('photos')
             .upload(filePath, byteArray, {
               contentType: 'image/jpeg',
-              upsert: true,
+              cacheControl: '3600',
+              upsert: false
             });
 
-          let photoUrl = imageUri; // Fallback to local URI
-
-          if (!error && data) {
-            // Get public URL if upload successful
-            const { data: publicUrlData } = supabase.storage
-              .from('photos')
-              .getPublicUrl(filePath);
-            if (publicUrlData?.publicUrl) {
-              photoUrl = publicUrlData.publicUrl;
-            }
+          // Ne sauvegarder QUE si l'upload a réussi
+          if (error || !data) {
+            throw new Error(error?.message || 'Échec de l\'upload vers le stockage cloud');
           }
+
+          // Get public URL
+          const { data: publicUrlData } = supabase.storage
+            .from('photos')
+            .getPublicUrl(filePath);
+          
+          if (!publicUrlData?.publicUrl) {
+            throw new Error('Impossible d\'obtenir l\'URL publique');
+          }
+
+          const photoUrl = publicUrlData.publicUrl;
 
           // Update profiles table with photo (use auth_user_id AND role)
           const { error: updateError } = await supabase
@@ -622,24 +629,14 @@ export default function ProfilComplet() {
           setSaving(false);
           Alert.alert('Succès', 'Photo de profil mise à jour');
         } catch (error: any) {
-          // Fallback: save local URI if cloud storage fails
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-              await supabase
-                .from('profiles')
-                .update({ avatar_url: imageUri })
-                .eq('auth_user_id', session.user.id)
-                .eq('role', 'photographe');
-              setProfilePhotoUri(imageUri);
-              setSaving(false);
-              Alert.alert('Succès', 'Photo de profil mise à jour (stockage local)');
-            }
-          } catch (fallbackError) {
-            setSaving(false);
-            console.error('Erreur fallback:', fallbackError);
-            Alert.alert('Erreur', 'Impossible de sauvegarder la photo');
-          }
+          // Afficher une erreur claire sans fallback local
+          setSaving(false);
+          console.error('Erreur upload photo:', error);
+          Alert.alert(
+            'Erreur d\'upload', 
+            'Impossible d\'enregistrer votre photo. Vérifiez votre connexion internet et réessayez.\n\n' + 
+            (error.message || 'Erreur inconnue')
+          );
         }
       }
     } catch (error: any) {
@@ -1256,16 +1253,16 @@ export default function ProfilComplet() {
 
               <View style={styles.divider} />
 
-              {/* PDF Option */}
+              {/* Additional Image Option */}
               <View style={{ marginTop: 12 }}>
-                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Ou télécharger un PDF</Text>
+                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Ou choisir une autre image</Text>
                 <TouchableOpacity 
                   style={styles.uploadButton}
                   onPress={pickIdDocumentPDF}
                   disabled={saving}
                 >
-                  <Ionicons name="document-text" size={20} color={COLORS.primary} />
-                  <Text style={styles.uploadButtonText}>Choisir un PDF</Text>
+                  <Ionicons name="images" size={20} color={COLORS.primary} />
+                  <Text style={styles.uploadButtonText}>Choisir une image</Text>
                 </TouchableOpacity>
               </View>
             </View>

@@ -244,17 +244,21 @@ export default function ClientProfil() {
             upsert: true
           });
 
-        let photoUrl = imageUri; // Fallback to local URI
-
-        if (!uploadError && data) {
-          // Get public URL if upload successful
-          const { data: publicUrlData } = supabase.storage
-            .from('photos')
-            .getPublicUrl(filePath);
-          if (publicUrlData?.publicUrl) {
-            photoUrl = publicUrlData.publicUrl;
-          }
+        // Ne sauvegarder QUE si l'upload a réussi
+        if (uploadError || !data) {
+          throw new Error(uploadError?.message || 'Échec de l\'upload vers le stockage cloud');
         }
+
+        // Get public URL
+        const { data: publicUrlData } = supabase.storage
+          .from('photos')
+          .getPublicUrl(filePath);
+        
+        if (!publicUrlData?.publicUrl) {
+          throw new Error('Impossible d\'obtenir l\'URL publique');
+        }
+
+        const photoUrl = publicUrlData.publicUrl;
 
         // Update profile with new photo URL
         const { error: updateError } = await supabase
@@ -264,14 +268,16 @@ export default function ClientProfil() {
 
         if (updateError) throw updateError;
 
-        if (updateError) throw updateError;
-
         Alert.alert('Succès', 'Photo de profil mise à jour');
         fetchProfile();
       }
     } catch (error) {
       console.error('Erreur upload photo:', error);
-      Alert.alert('Erreur', 'Impossible de télécharger la photo');
+      Alert.alert(
+        'Erreur d\'upload', 
+        'Impossible d\'enregistrer votre photo. Vérifiez votre connexion internet et réessayez.\n\n' + 
+        (error.message || 'Erreur inconnue')
+      );
     } finally {
       setUploadingPhoto(false);
     }

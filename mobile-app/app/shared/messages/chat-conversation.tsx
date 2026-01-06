@@ -208,7 +208,11 @@ export default function ChatConversationScreen() {
 
         const { error: uploadError } = await supabase.storage
           .from('message_attachments')
-          .upload(filePath, blob);
+          .upload(filePath, blob, {
+            contentType: attachment.type || 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) throw uploadError;
 

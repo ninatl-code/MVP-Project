@@ -129,13 +129,18 @@ export default function SubmitReviewPage() {
       if (photos.length > 0) {
         for (const photo of photos) {
           const fileName = `review_${reservationId}_${Date.now()}_${Math.random()}.jpg`;
+          
+          // Convert URI to blob
+          const response = await fetch(photo);
+          const blob = await response.blob();
+          
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('review_photos')
-            .upload(fileName, {
-              uri: photo,
-              type: 'image/jpeg',
-              name: fileName,
-            } as any);
+            .upload(fileName, blob, {
+              contentType: 'image/jpeg',
+              cacheControl: '3600',
+              upsert: false
+            });
 
           if (uploadError) throw uploadError;
 
