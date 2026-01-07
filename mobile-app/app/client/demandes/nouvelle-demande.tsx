@@ -40,14 +40,6 @@ const STYLES = [
   { id: 'vintage', label: 'Vintage / Argentique' },
 ];
 
-const LOCATION_TYPES = [
-  { id: 'indoor', label: 'Intérieur' },
-  { id: 'outdoor', label: 'Extérieur' },
-  { id: 'studio', label: 'Studio' },
-  { id: 'home', label: 'Domicile' },
-  { id: 'workplace', label: 'Entreprise' },
-];
-
 const USAGE_TYPES = [
   { id: 'album', label: 'Album photo' },
   { id: 'prints', label: 'Tirage imprimés' },
@@ -63,49 +55,32 @@ const RETOUCHING_LEVELS = [
   { id: 'advanced', label: 'Avancée (retouche créative complète)' },
 ];
 
-const COMFORT_LEVELS = [
-  { id: 'shy', label: 'Timide / Stressé par la photo' },
-  { id: 'neutral', label: 'Neutre / Normal' },
-  { id: 'comfortable', label: 'À l\'aise devant la caméra' },
-  { id: 'professional', label: 'Expérience photo' },
-];
-
-const ATMOSPHERES = [
-  { id: 'natural', label: 'Naturelle / Spontanée' },
-  { id: 'posed', label: 'Posée / Structurée' },
-  { id: 'fun', label: 'Fun / Ludique' },
-  { id: 'serious', label: 'Sérieuse / Corporate' },
-];
-
 interface BookingRequest {
-  category: string;
-  styles: string[];
-  location_address: string;
-  location_city: string;
-  location_type: string;
-  studio_needed: boolean;
-  studio_provider?: string;
-  total_people: number;
-  people_in_photos: number;
-  has_children: boolean;
-  children_age?: number;
-  has_babies: boolean;
-  needs_makeup: boolean;
-  needs_hair: boolean;
-  needs_stylist: boolean;
-  usage_types: string[];
-  num_photos: number;
-  retouching_level: string;
+  titre: string;
+  description: string;
+  categorie: string;
+  type_evenement: string;
+  nb_personnes: number;
+  lieu: string;
+  ville: string;
+  adresse_complete: string;
+  code_postal: string;
+  date_souhaitee: Date;
+  duree_estimee_heures: number;
+  type_prestation: string[];
+  style_souhaite: string[];
+  nb_photos_souhaitees: number;
+  niveau_retouche: string;
   budget_min: number;
   budget_max: number;
-  atmosphere: string;
-  comfort_level: string;
-  special_requirements: string;
-  event_date: Date;
-  session_duration: number;
-  constraints: string;
-  reference_photos: string[];
-  moodboard_notes: string;
+  services_souhaites: {
+    maquillage: boolean;
+    coiffure: boolean;
+    stylisme: boolean;
+  };
+  contraintes_horaires: string;
+  instructions_speciales: string;
+  photos_inspiration: string[];
 }
 
 export default function NouvelleDemandeClient() {
@@ -114,32 +89,31 @@ export default function NouvelleDemandeClient() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [request, setRequest] = useState<BookingRequest>({
-    category: '',
-    styles: [],
-    location_address: '',
-    location_city: '',
-    location_type: '',
-    studio_needed: false,
-    total_people: 1,
-    people_in_photos: 1,
-    has_children: false,
-    has_babies: false,
-    needs_makeup: false,
-    needs_hair: false,
-    needs_stylist: false,
-    usage_types: [],
-    num_photos: 50,
-    retouching_level: 'standard',
+    titre: '',
+    description: '',
+    categorie: '',
+    type_evenement: '',
+    nb_personnes: 1,
+    lieu: '',
+    ville: '',
+    adresse_complete: '',
+    code_postal: '',
+    date_souhaitee: new Date(),
+    duree_estimee_heures: 2,
+    type_prestation: [],
+    style_souhaite: [],
+    nb_photos_souhaitees: 50,
+    niveau_retouche: 'standard',
     budget_min: 300,
     budget_max: 1000,
-    atmosphere: 'natural',
-    comfort_level: 'neutral',
-    special_requirements: '',
-    event_date: new Date(),
-    session_duration: 2,
-    constraints: '',
-    reference_photos: [],
-    moodboard_notes: '',
+    services_souhaites: {
+      maquillage: false,
+      coiffure: false,
+      stylisme: false,
+    },
+    contraintes_horaires: '',
+    instructions_speciales: '',
+    photos_inspiration: [],
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -155,7 +129,7 @@ export default function NouvelleDemandeClient() {
       if (!result.canceled) {
         setRequest(prev => ({
           ...prev,
-          reference_photos: [...prev.reference_photos, result.assets[0].uri],
+          photos_inspiration: [...prev.photos_inspiration, result.assets[0].uri],
         }));
       }
     } catch (error) {
@@ -164,9 +138,25 @@ export default function NouvelleDemandeClient() {
   };
 
   const submitRequest = async () => {
-    // Validation: seuls category et event_date sont obligatoires
-    if (!request.category) {
+    // Validation des champs obligatoires
+    if (!request.titre.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir un titre');
+      return;
+    }
+    if (!request.description.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir une description');
+      return;
+    }
+    if (!request.categorie) {
       Alert.alert('Erreur', 'Veuillez sélectionner une catégorie');
+      return;
+    }
+    if (!request.lieu.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir un lieu');
+      return;
+    }
+    if (!request.ville.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir une ville');
       return;
     }
 
@@ -175,40 +165,42 @@ export default function NouvelleDemandeClient() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
 
+      // Récupérer le profile ID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (!profile) throw new Error('Profil introuvable');
+
       // Créer la demande dans Supabase
       const { error } = await supabase
         .from('demandes_client')
         .insert({
-          client_id: user.id,
-          category: request.category,
-          styles_recherches: request.styles.length > 0 ? request.styles : null,
-          location_address: request.location_address || null,
-          location_city: request.location_city || null,
-          location_type: request.location_type || null,
-          studio_needed: request.studio_needed,
-          studio_provider: request.studio_provider || null,
-          total_people: request.total_people || 1,
-          people_in_photos: request.people_in_photos || 1,
-          has_children: request.has_children,
-          children_age: request.children_age || null,
-          has_babies: request.has_babies,
-          needs_makeup: request.needs_makeup,
-          needs_hair: request.needs_hair,
-          needs_stylist: request.needs_stylist,
-          usage_types: request.usage_types.length > 0 ? request.usage_types : null,
-          num_photos: request.num_photos || 50,
-          retouching_level: request.retouching_level,
+          client_id: profile.id,
+          titre: request.titre,
+          description: request.description,
+          categorie: request.categorie,
+          type_evenement: request.type_evenement || null,
+          nb_personnes: request.nb_personnes || null,
+          lieu: request.lieu,
+          ville: request.ville,
+          adresse_complete: request.adresse_complete || null,
+          code_postal: request.code_postal || null,
+          date_souhaitee: request.date_souhaitee.toISOString().split('T')[0],
+          duree_estimee_heures: request.duree_estimee_heures || null,
+          type_prestation: request.type_prestation.length > 0 ? request.type_prestation : [],
+          style_souhaite: request.style_souhaite.length > 0 ? request.style_souhaite : [],
+          nb_photos_souhaitees: request.nb_photos_souhaitees || null,
+          niveau_retouche: request.niveau_retouche || null,
           budget_min: request.budget_min || null,
           budget_max: request.budget_max || null,
-          atmosphere: request.atmosphere,
-          comfort_level: request.comfort_level,
-          special_requirements: request.special_requirements || null,
-          event_date: request.event_date,
-          session_duration: request.session_duration || 2,
-          constraints: request.constraints || null,
-          reference_photos: request.reference_photos.length > 0 ? request.reference_photos : null,
-          moodboard_notes: request.moodboard_notes || null,
-          status: 'pending',
+          services_souhaites: request.services_souhaites,
+          contraintes_horaires: request.contraintes_horaires || null,
+          instructions_speciales: request.instructions_speciales || null,
+          photos_inspiration: request.photos_inspiration.length > 0 ? request.photos_inspiration : [],
+          statut: 'ouverte',
         });
 
       if (error) throw error;
@@ -254,7 +246,7 @@ export default function NouvelleDemandeClient() {
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Nouvelle demande</Text>
-            <Text style={styles.headerSubtitle}>Étape {step}/5 - Tous les champs sont optionnels sauf la catégorie</Text>
+            <Text style={styles.headerSubtitle}>Étape {step}/5 - Champs obligatoires: titre, description, catégorie, lieu, ville</Text>
           </View>
         </View>
         {renderStepIndicator()}
@@ -265,66 +257,79 @@ export default function NouvelleDemandeClient() {
         contentContainerStyle={{ paddingBottom: 200 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* STEP 1: CATÉGORIE & STYLE */}
+        {/* STEP 1: INFORMATIONS DE BASE */}
         {step === 1 && (
           <View style={styles.card}>
-                        // Fichier: app/client/profil/profil.tsx ligne 106
-            // Remplacer:
-            .from('demandes_service')
-            // Par:
-            .from('demandes_client')            // Fichier: app/client/profil/profil.tsx ligne 106
-            // Remplacer:
-            .from('demandes_service')
-            // Par:
-            .from('demandes_client')<Text style={styles.stepTitle}>📸 Catégorie & Style</Text>
-            <Text style={styles.stepDescription}>Décrivez votre besoin photo en quelques mots</Text>
+            <Text style={styles.stepTitle}>📝 Informations de base</Text>
+            <Text style={styles.stepDescription}>Titre et description de votre demande</Text>
 
-            <Text style={styles.label}>Quelle est votre besoin ? *</Text>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Titre de la demande *</Text>
+              <TextInput
+                style={styles.input}
+                value={request.titre}
+                onChangeText={text => setRequest({ ...request, titre: text })}
+                placeholder="Ex: Shooting mariage champêtre"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Description détaillée *</Text>
+              <TextInput
+                style={[styles.input, styles.bioInput]}
+                value={request.description}
+                onChangeText={text => setRequest({ ...request, description: text })}
+                placeholder="Décrivez votre besoin en détail..."
+                multiline
+              />
+            </View>
+
+            <Text style={styles.label}>Catégorie *</Text>
             {CATEGORIES.map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={[
                   styles.optionButton,
-                  request.category === cat.id && styles.optionButtonSelected,
+                  request.categorie === cat.id && styles.optionButtonSelected,
                 ]}
-                onPress={() => setRequest({ ...request, category: cat.id })}
+                onPress={() => setRequest({ ...request, categorie: cat.id })}
               >
                 <View
                   style={[
                     styles.radio,
-                    request.category === cat.id && styles.radioSelected,
+                    request.categorie === cat.id && styles.radioSelected,
                   ]}
                 />
                 <Text style={[
                   styles.optionText,
-                  request.category === cat.id && styles.optionTextSelected,
+                  request.categorie === cat.id && styles.optionTextSelected,
                 ]}>
                   {cat.label}
                 </Text>
               </TouchableOpacity>
             ))}
 
-            <Text style={[styles.label, { marginTop: 24 }]}>Styles photographiques (optionnel, multi-sélection)</Text>
+            <Text style={[styles.label, { marginTop: 24 }]}>Styles photographiques (optionnel)</Text>
             <View style={styles.gridContainer}>
               {STYLES.map(style => (
                 <TouchableOpacity
                   key={style.id}
                   style={[
                     styles.chip,
-                    request.styles.includes(style.id) && styles.chipSelected,
+                    request.style_souhaite.includes(style.id) && styles.chipSelected,
                   ]}
                   onPress={() => {
                     setRequest(prev => ({
                       ...prev,
-                      styles: prev.styles.includes(style.id)
-                        ? prev.styles.filter(s => s !== style.id)
-                        : [...prev.styles, style.id],
+                      style_souhaite: prev.style_souhaite.includes(style.id)
+                        ? prev.style_souhaite.filter(s => s !== style.id)
+                        : [...prev.style_souhaite, style.id],
                     }));
                   }}
                 >
                   <Text style={[
                     styles.chipText,
-                    request.styles.includes(style.id) && styles.chipTextSelected,
+                    request.style_souhaite.includes(style.id) && styles.chipTextSelected,
                   ]}>
                     {style.label}
                   </Text>
@@ -341,80 +346,63 @@ export default function NouvelleDemandeClient() {
             <Text style={styles.stepDescription}>Où et avec combien de personnes ?</Text>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Adresse (optionnel)</Text>
+              <Text style={styles.label}>Lieu *</Text>
               <TextInput
                 style={styles.input}
-                value={request.location_address}
-                onChangeText={text => setRequest({ ...request, location_address: text })}
+                value={request.lieu}
+                onChangeText={text => setRequest({ ...request, lieu: text })}
+                placeholder="Ex: Studio photo, Domicile, Parc..."
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Ville *</Text>
+              <TextInput
+                style={styles.input}
+                value={request.ville}
+                onChangeText={text => setRequest({ ...request, ville: text })}
+                placeholder="Paris"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Adresse complète (optionnel)</Text>
+              <TextInput
+                style={styles.input}
+                value={request.adresse_complete}
+                onChangeText={text => setRequest({ ...request, adresse_complete: text })}
                 placeholder="123 Rue de Paris"
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Ville (optionnel)</Text>
+              <Text style={styles.label}>Code postal (optionnel)</Text>
               <TextInput
                 style={styles.input}
-                value={request.location_city}
-                onChangeText={text => setRequest({ ...request, location_city: text })}
-                placeholder="Paris"
-              />
-            </View>
-
-            <Text style={styles.label}>Type de lieu (optionnel)</Text>
-            {LOCATION_TYPES.map(loc => (
-              <TouchableOpacity
-                key={loc.id}
-                style={[
-                  styles.optionButton,
-                  request.location_type === loc.id && styles.optionButtonSelected,
-                ]}
-                onPress={() => setRequest({ ...request, location_type: loc.id })}
-              >
-                <View
-                  style={[
-                    styles.radio,
-                    request.location_type === loc.id && styles.radioSelected,
-                  ]}
-                />
-                <Text style={styles.optionText}>{loc.label}</Text>
-              </TouchableOpacity>
-            ))}
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Nombre total de personnes</Text>
-              <TextInput
-                style={styles.input}
-                value={request.total_people.toString()}
-                onChangeText={text => setRequest({ ...request, total_people: parseInt(text) || 1 })}
+                value={request.code_postal}
+                onChangeText={text => setRequest({ ...request, code_postal: text })}
+                placeholder="75001"
                 keyboardType="numeric"
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Personnes à photographier</Text>
+              <Text style={styles.label}>Nombre de personnes</Text>
               <TextInput
                 style={styles.input}
-                value={request.people_in_photos.toString()}
-                onChangeText={text => setRequest({ ...request, people_in_photos: parseInt(text) || 1 })}
+                value={request.nb_personnes.toString()}
+                onChangeText={text => setRequest({ ...request, nb_personnes: parseInt(text) || 1 })}
                 keyboardType="numeric"
               />
             </View>
 
-            <View style={styles.checkboxGroup}>
-              <Text style={styles.checkbox}>
-                {request.has_children ? '☑️' : '☐'} Enfants présents
-              </Text>
-              <TouchableOpacity
-                onPress={() => setRequest({ ...request, has_children: !request.has_children })}
-              />
-            </View>
-
-            <View style={styles.checkboxGroup}>
-              <Text style={styles.checkbox}>
-                {request.has_babies ? '☑️' : '☐'} Bébés présents
-              </Text>
-              <TouchableOpacity
-                onPress={() => setRequest({ ...request, has_babies: !request.has_babies })}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Type d'événement (optionnel)</Text>
+              <TextInput
+                style={styles.input}
+                value={request.type_evenement}
+                onChangeText={text => setRequest({ ...request, type_evenement: text })}
+                placeholder="Ex: Mariage, Anniversaire, Corporate..."
               />
             </View>
           </View>
@@ -426,45 +414,54 @@ export default function NouvelleDemandeClient() {
             <Text style={styles.stepTitle}>✨ Services & Livrables</Text>
             <Text style={styles.stepDescription}>Services additionnels et nombre de photos</Text>
 
-            <View style={styles.checkboxGroup}>
+            <TouchableOpacity
+              style={styles.checkboxGroup}
+              onPress={() => setRequest({ ...request, services_souhaites: { ...request.services_souhaites, maquillage: !request.services_souhaites.maquillage } })}
+            >
               <Text style={styles.checkbox}>
-                {request.needs_makeup ? '☑️' : '☐'} Maquillage/Coiffure
+                {request.services_souhaites.maquillage ? '☑️' : '☐'} Maquillage
               </Text>
-              <TouchableOpacity
-                onPress={() => setRequest({ ...request, needs_makeup: !request.needs_makeup })}
-              />
-            </View>
+            </TouchableOpacity>
 
-            <View style={styles.checkboxGroup}>
+            <TouchableOpacity
+              style={styles.checkboxGroup}
+              onPress={() => setRequest({ ...request, services_souhaites: { ...request.services_souhaites, coiffure: !request.services_souhaites.coiffure } })}
+            >
               <Text style={styles.checkbox}>
-                {request.needs_stylist ? '☑️' : '☐'} Styliste
+                {request.services_souhaites.coiffure ? '☑️' : '☐'} Coiffure
               </Text>
-              <TouchableOpacity
-                onPress={() => setRequest({ ...request, needs_stylist: !request.needs_stylist })}
-              />
-            </View>
+            </TouchableOpacity>
 
-            <Text style={[styles.label, { marginTop: 20 }]}>Usages des photos</Text>
+            <TouchableOpacity
+              style={styles.checkboxGroup}
+              onPress={() => setRequest({ ...request, services_souhaites: { ...request.services_souhaites, stylisme: !request.services_souhaites.stylisme } })}
+            >
+              <Text style={styles.checkbox}>
+                {request.services_souhaites.stylisme ? '☑️' : '☐'} Stylisme
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.label, { marginTop: 20 }]}>Types de prestation</Text>
             <View style={styles.gridContainer}>
               {USAGE_TYPES.map(usage => (
                 <TouchableOpacity
                   key={usage.id}
                   style={[
                     styles.chip,
-                    request.usage_types.includes(usage.id) && styles.chipSelected,
+                    request.type_prestation.includes(usage.id) && styles.chipSelected,
                   ]}
                   onPress={() => {
                     setRequest(prev => ({
                       ...prev,
-                      usage_types: prev.usage_types.includes(usage.id)
-                        ? prev.usage_types.filter(u => u !== usage.id)
-                        : [...prev.usage_types, usage.id],
+                      type_prestation: prev.type_prestation.includes(usage.id)
+                        ? prev.type_prestation.filter(u => u !== usage.id)
+                        : [...prev.type_prestation, usage.id],
                     }));
                   }}
                 >
                   <Text style={[
                     styles.chipText,
-                    request.usage_types.includes(usage.id) && styles.chipTextSelected,
+                    request.type_prestation.includes(usage.id) && styles.chipTextSelected,
                   ]}>
                     {usage.label}
                   </Text>
@@ -476,8 +473,8 @@ export default function NouvelleDemandeClient() {
               <Text style={styles.label}>Nombre de photos souhaité</Text>
               <TextInput
                 style={styles.input}
-                value={request.num_photos.toString()}
-                onChangeText={text => setRequest({ ...request, num_photos: parseInt(text) || 50 })}
+                value={request.nb_photos_souhaitees.toString()}
+                onChangeText={text => setRequest({ ...request, nb_photos_souhaitees: parseInt(text) || 50 })}
                 keyboardType="numeric"
               />
             </View>
@@ -488,14 +485,14 @@ export default function NouvelleDemandeClient() {
                 key={level.id}
                 style={[
                   styles.optionButton,
-                  request.retouching_level === level.id && styles.optionButtonSelected,
+                  request.niveau_retouche === level.id && styles.optionButtonSelected,
                 ]}
-                onPress={() => setRequest({ ...request, retouching_level: level.id })}
+                onPress={() => setRequest({ ...request, niveau_retouche: level.id })}
               >
                 <View
                   style={[
                     styles.radio,
-                    request.retouching_level === level.id && styles.radioSelected,
+                    request.niveau_retouche === level.id && styles.radioSelected,
                   ]}
                 />
                 <Text style={styles.optionText}>{level.label}</Text>
@@ -504,11 +501,11 @@ export default function NouvelleDemandeClient() {
           </View>
         )}
 
-        {/* STEP 4: BUDGET & PRÉFÉRENCES */}
+        {/* STEP 4: BUDGET & CONTRAINTES */}
         {step === 4 && (
           <View style={styles.card}>
-            <Text style={styles.stepTitle}>💰 Budget & Préférences</Text>
-            <Text style={styles.stepDescription}>Votre budget et l'ambiance souhaitée</Text>
+            <Text style={styles.stepTitle}>💰 Budget & Contraintes</Text>
+            <Text style={styles.stepDescription}>Votre budget et contraintes horaires</Text>
 
             <View style={styles.budgetRow}>
               <View style={styles.budgetInput}>
@@ -531,140 +528,89 @@ export default function NouvelleDemandeClient() {
               </View>
             </View>
 
-            <Text style={[styles.label, { marginTop: 20 }]}>Ambiance recherchée</Text>
-            {ATMOSPHERES.map(atm => (
-              <TouchableOpacity
-                key={atm.id}
-                style={[
-                  styles.optionButton,
-                  request.atmosphere === atm.id && styles.optionButtonSelected,
-                ]}
-                onPress={() => setRequest({ ...request, atmosphere: atm.id })}
-              >
-                <View
-                  style={[
-                    styles.radio,
-                    request.atmosphere === atm.id && styles.radioSelected,
-                  ]}
-                />
-                <Text style={styles.optionText}>{atm.label}</Text>
-              </TouchableOpacity>
-            ))}
-
-            <Text style={[styles.label, { marginTop: 20 }]}>Votre aisance devant la caméra</Text>
-            {COMFORT_LEVELS.map(comfort => (
-              <TouchableOpacity
-                key={comfort.id}
-                style={[
-                  styles.optionButton,
-                  request.comfort_level === comfort.id && styles.optionButtonSelected,
-                ]}
-                onPress={() => setRequest({ ...request, comfort_level: comfort.id })}
-              >
-                <View
-                  style={[
-                    styles.radio,
-                    request.comfort_level === comfort.id && styles.radioSelected,
-                  ]}
-                />
-                <Text style={styles.optionText}>{comfort.label}</Text>
-              </TouchableOpacity>
-            ))}
-
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Besoins spécifiques</Text>
+              <Text style={styles.label}>Contraintes horaires (optionnel)</Text>
               <TextInput
                 style={[styles.input, styles.bioInput]}
-                value={request.special_requirements}
-                onChangeText={text => setRequest({ ...request, special_requirements: text })}
-                placeholder="Ex: accessibilité handicapé, allergie à un produit..."
+                value={request.contraintes_horaires}
+                onChangeText={text => setRequest({ ...request, contraintes_horaires: text })}
+                placeholder="Ex: disponible uniquement le matin, après 14h..."
+                multiline
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Instructions spéciales (optionnel)</Text>
+              <TextInput
+                style={[styles.input, styles.bioInput]}
+                value={request.instructions_speciales}
+                onChangeText={text => setRequest({ ...request, instructions_speciales: text })}
+                placeholder="Ex: accessibilité handicapé, allergie à un produit, préférences particulières..."
                 multiline
               />
             </View>
           </View>
         )}
 
-        {/* STEP 5: LOGISTIQUE & MOODBOARD */}
+        {/* STEP 5: DATE & INSPIRATIONS */}
         {step === 5 && (
           <View style={styles.card}>
-            <Text style={styles.stepTitle}>📅 Logistique & Moodboard</Text>
-            <Text style={styles.stepDescription}>Date, durée et inspirations visuelles</Text>
+            <Text style={styles.stepTitle}>📅 Date & Inspirations</Text>
+            <Text style={styles.stepDescription}>Date souhaitée et photos d'inspiration</Text>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Date de l'événement</Text>
+              <Text style={styles.label}>Date souhaitée</Text>
               <TouchableOpacity
                 style={styles.input}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text>{request.event_date.toLocaleDateString('fr-FR')}</Text>
+                <Text>{request.date_souhaitee.toLocaleDateString('fr-FR')}</Text>
               </TouchableOpacity>
             </View>
 
             {showDatePicker && (
               <DateTimePicker
-                value={request.event_date}
+                value={request.date_souhaitee}
                 mode="date"
                 display="default"
                 onChange={(event, selectedDate) => {
                   setShowDatePicker(false);
                   if (selectedDate) {
-                    setRequest({ ...request, event_date: selectedDate });
+                    setRequest({ ...request, date_souhaitee: selectedDate });
                   }
                 }}
               />
             )}
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Durée de la séance (heures)</Text>
+              <Text style={styles.label}>Durée estimée (heures)</Text>
               <TextInput
                 style={styles.input}
-                value={request.session_duration.toString()}
-                onChangeText={text => setRequest({ ...request, session_duration: parseInt(text) || 1 })}
+                value={request.duree_estimee_heures.toString()}
+                onChangeText={text => setRequest({ ...request, duree_estimee_heures: parseInt(text) || 1 })}
                 keyboardType="numeric"
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Contraintes logistiques</Text>
-              <TextInput
-                style={[styles.input, styles.bioInput]}
-                value={request.constraints}
-                onChangeText={text => setRequest({ ...request, constraints: text })}
-                placeholder="Ex: parking limité, accès difficile, horaires limités..."
-                multiline
-              />
-            </View>
-
-            <Text style={[styles.label, { marginTop: 20 }]}>Moodboard (photos de référence)</Text>
+            <Text style={[styles.label, { marginTop: 20 }]}>Photos d'inspiration (optionnel)</Text>
             <TouchableOpacity style={styles.addPhotoButton} onPress={pickMoodboardPhoto}>
               <Text style={styles.addPhotoText}>+ Ajouter une photo</Text>
             </TouchableOpacity>
 
             <View style={styles.moodboardGrid}>
-              {request.reference_photos.map((photo, index) => (
+              {request.photos_inspiration.map((photo, index) => (
                 <View key={index} style={styles.moodboardItem}>
                   <Image source={{ uri: photo }} style={styles.moodboardImage} />
                   <TouchableOpacity
                     onPress={() => setRequest({
                       ...request,
-                      reference_photos: request.reference_photos.filter((_, i) => i !== index),
+                      photos_inspiration: request.photos_inspiration.filter((_, i) => i !== index),
                     })}
                   >
                     <Text style={styles.deleteText}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Notes sur le style recherché</Text>
-              <TextInput
-                style={[styles.input, styles.bioInput]}
-                value={request.moodboard_notes}
-                onChangeText={text => setRequest({ ...request, moodboard_notes: text })}
-                placeholder="Décrivez le style, ambiance, références..."
-                multiline
-              />
             </View>
           </View>
         )}

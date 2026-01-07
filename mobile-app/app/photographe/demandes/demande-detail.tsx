@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getDemandeById } from '@/lib/demandeService';
 import { calculateMatchScore } from '@/lib/matchingService';
+import { countDemandeDevis, hasAlreadySentDevis } from '@/lib/devisService';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -25,6 +26,8 @@ export default function PhotographeDemandeDetailScreen() {
   const [photographe, setPhotographe] = useState<any>(null);
   const [matchScore, setMatchScore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [nombreDevis, setNombreDevis] = useState(0);
+  const [dejaEnvoye, setDejaEnvoye] = useState(false);
 
   const loadData = async () => {
     try {
@@ -35,10 +38,11 @@ export default function PhotographeDemandeDetailScreen() {
       setDemande(demandeData);
 
       // Charger le profil photographe
+      // Note: profils_photographe.id est lié à profiles.id via la clé primaire
       const { data: photoData, error: photoError } = await supabase
         .from('profils_photographe')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('id', user!.id)
         .single();
 
       if (photoError) throw photoError;
@@ -49,6 +53,14 @@ export default function PhotographeDemandeDetailScreen() {
         const score = calculateMatchScore(demandeData, photoData);
         setMatchScore(score);
       }
+
+      // Charger le nombre de devis pour cette demande
+      const count = await countDemandeDevis(demandeId);
+      setNombreDevis(count);
+
+      // Vérifier si ce photographe a déjà envoyé un devis
+      const alreadySent = await hasAlreadySentDevis(user!.id, demandeId);
+      setDejaEnvoye(alreadySent);
     } catch (error: any) {
       console.error('❌ Erreur chargement demande:', error);
       Alert.alert('Erreur', 'Impossible de charger la demande');
@@ -63,10 +75,6 @@ export default function PhotographeDemandeDetailScreen() {
       loadData();
     }
   }, [demandeId]);
-
-  const handleSendDevis = () => {
-    router.push(`/photographe/devis/create-devis?demande=${demandeId}` as any);
-  };
 
   if (loading) {
     return (
@@ -220,15 +228,16 @@ export default function PhotographeDemandeDetailScreen() {
           <Text style={styles.sectionTitle}>Compétition</Text>
           <View style={styles.statsContainer}>
             <View style={styles.statBox}>
-              <Ionicons name="people-outline" size={24} color="#999" />
-              <Text style={styles.statValue}>{demande.photographes_notifies?.length || 0}</Text>
-              <Text style={styles.statLabel}>Photographes notifiés</Text>
-            </View>
-            <View style={styles.statBox}>
               <Ionicons name="document-text-outline" size={24} color="#999" />
-              <Text style={styles.statValue}>{demande.nombre_devis_recus || 0}</Text>
-              <Text style={styles.statLabel}>Devis déjà envoyés</Text>
+              <Text style={styles.statValue}>{nombreDevis}</Text>
+              <Text style={styles.statLabel}>Devis envoyés</Text>
             </View>
+            {dejaEnvoye && (
+              <View style={styles.statBox}>
+                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                <Text style={[styles.statLabel, { color: '#4CAF50', fontWeight: '600' }]}>Vous avez déjà envoyé un devis</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -252,11 +261,14 @@ export default function PhotographeDemandeDetailScreen() {
             <Text style={styles.secondaryButtonText}>Contacter le client</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.devisButton} 
-            onPress={() => router.push(`/photographe/devis/devis-create?demandeId=${demandeId}` as any)}
+            style={[styles.devisButton, dejaEnvoye && styles.disabledButton]} 
+            onPress={() => !dejaEnvoye && router.push(`/photographe/devis/devis-create?demandeId=${demandeId}` as any)}
+            disabled={dejaEnvoye}
           >
             <Ionicons name="document-text-outline" size={20} color="#fff" />
-            <Text style={styles.devisButtonText}>Envoyer un devis</Text>
+            <Text style={styles.devisButtonText}>
+              {dejaEnvoye ? 'Devis déjà envoyé' : 'Envoyer un devis'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -483,5 +495,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#9E9E9E',
+    opacity: 0.7,
   },
 });

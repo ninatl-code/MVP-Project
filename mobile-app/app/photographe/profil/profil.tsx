@@ -715,6 +715,27 @@ export default function ProfilPhotographe() {
           </View>
         </View>
 
+        {/* Sécurité */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.passwordCard}
+            onPress={() => router.push('/photographe/profil/change-password' as any)}
+          >
+            <View style={styles.passwordContainer}>
+              <View style={styles.passwordLeft}>
+                <View style={styles.passwordIconContainer}>
+                  <Ionicons name="lock-closed-outline" size={24} color={COLORS.primary} />
+                </View>
+                <View>
+                  <Text style={styles.passwordTitle}>Changer le mot de passe</Text>
+                  <Text style={styles.passwordSubtitle}>Modifier votre mot de passe</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Bouton de déconnexion */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutCard} onPress={handleLogout}>
@@ -793,7 +814,48 @@ const styles = StyleSheet.create({
   stripeStatusLabel: { fontSize: 14, color: COLORS.textLight, fontWeight: '600' },
   stripeStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.backgroundLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  stripeStatusText: { fontSize: 14, color: COLORS.text, fontWeight: '500' },  logoutCard: {
+  stripeStatusText: { fontSize: 14, color: COLORS.text, fontWeight: '500' },
+  passwordCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  passwordLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  passwordIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  passwordTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  passwordSubtitle: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  logoutCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,

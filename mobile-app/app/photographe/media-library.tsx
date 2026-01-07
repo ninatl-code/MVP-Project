@@ -120,16 +120,20 @@ export default function MediaLibraryScreen() {
       // Load reservations as "albums"
       const { data: reservations, error: resError } = await supabase
         .from('reservations')
-        .select('id, client_nom, service_start_datetime')
+        .select(`
+          id,
+          date,
+          client:profiles!client_id(nom, prenom)
+        `)
         .eq('photographe_id', user.id)
-        .order('service_start_datetime', { ascending: false })
+        .order('date', { ascending: false })
         .limit(10);
 
       if (resError) throw resError;
       
       const albums = (reservations || []).map((res: any) => ({
         id: res.id,
-        title: res.client_nom || 'Réservation',
+        title: res.client ? `${res.client.prenom || ''} ${res.client.nom}`.trim() : 'Réservation',
         item_count: 0,
       }));
       

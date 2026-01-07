@@ -10,67 +10,57 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getDevisById, acceptDevis, refuseDevis, markDevisAsRead } from '@/lib/devisService';
+import { getDemandeDevis, accepterDevis, refuserDevis, getDevisById } from '@/lib/devisService';
+import { getDemandeById } from '@/lib/demandeService';
 import { Ionicons } from '@expo/vector-icons';
 
-const STATUT_COLORS = {
-  envoye: '#2196F3',
-  lu: '#FF9800',
-  accepte: '#4CAF50',
-  refuse: '#F44336',
-  expire: '#9E9E9E',
-};
-
-const STATUT_LABELS = {
-  envoye: 'Envoyé',
-  lu: 'Lu',
-  accepte: 'Accepté',
-  refuse: 'Refusé',
-  expire: 'Expiré',
-};
-
-export default function DevisDetailScreen() {
+export default function ClientDevisDetailScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const devisId = params.id as string;
+  const demandeId = params.demandeId as string;
 
-  const [devis, setDevis] = useState<any>(null);
+  const [demande, setDemande] = useState<any>(null);
+  const [devisList, setDevisList] = useState<any[]>([]);
+  const [selectedDevis, setSelectedDevis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const loadDevis = async () => {
+  useEffect(() => {
+    loadData();
+  }, [demandeId]);
+
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getDevisById(devisId);
-      setDevis(data);
+      
+      // Charger la demande
+      const demandeData = await getDemandeById(demandeId);
+      setDemande(demandeData);
 
-      // Marquer comme lu si ce n'est pas déjà fait
-      if (data.statut === 'envoye') {
-        await markDevisAsRead(devisId);
-        // Recharger pour mettre à jour le statut
-        const updatedData = await getDevisById(devisId);
-        setDevis(updatedData);
+      // Charger tous les devis
+      const devisData = await getDemandeDevis(demandeId);
+      setDevisList(devisData);
+
+      // Sélectionner le premier devis par défaut
+      if (devisData.length > 0) {
+        setSelectedDevis(devisData[0]);
       }
     } catch (error: any) {
-      console.error('❌ Erreur chargement devis:', error);
-      Alert.alert('Erreur', 'Impossible de charger le devis');
+      console.error('❌ Erreur chargement données:', error);
+      Alert.alert('Erreur', 'Impossible de charger les devis');
       router.back();
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (devisId) {
-      loadDevis();
-    }
-  }, [devisId]);
+  const handleAccept = async () => {
+    if (!selectedDevis) return;
 
-  const handleAcceptDevis = async () => {
     Alert.alert(
-      'Accepter le devis',
-      'En acceptant ce devis, une réservation sera créée et les autres devis pour cette demande seront automatiquement refusés. Confirmer ?',
+      'Accepter ce devis',
+      `Vous êtes sur le point d'accepter le devis de ${selectedDevis.photographe?.nom || 'ce photographe'}.\n\nCela refusera automatiquement tous les autres devis et marquera votre demande comme pourvue.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -79,18 +69,20 @@ export default function DevisDetailScreen() {
           onPress: async () => {
             try {
               setActionLoading(true);
-              await acceptDevis(devisId, user?.id || '');
+              await accepterDevis(selectedDevis.id, demandeId);
+              
               Alert.alert(
-                'Devis accepté !',
-                'Une réservation a été créée. Vous pouvez maintenant procéder au paiement.',
+                'Devis accepté',
+                'Le devis a été accepté avec succès. Le photographe va être notifié.',
                 [
                   {
-                    text: 'Voir la réservation',
-                    onPress: () => router.push('/client/reservations/mes-reservations' as any),
+                    text: 'OK',
+                    onPress: () => router.push('/client/reservations/reservations'),
                   },
                 ]
               );
             } catch (error: any) {
+              console.error('❌ Erreur acceptation:', error);
               Alert.alert('Erreur', error.message || 'Impossible d\'accepter le devis');
             } finally {
               setActionLoading(false);
@@ -101,25 +93,53 @@ export default function DevisDetailScreen() {
     );
   };
 
-  const handleRefuseDevis = async () => {
-    Alert.alert('Refuser le devis', 'Êtes-vous sûr de vouloir refuser ce devis ?', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Refuser',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setActionLoading(true);
-            await refuseDevis(devisId);
-            Alert.alert('Devis refusé', '', [{ text: 'OK', onPress: () => router.back() }]);
-          } catch (error: any) {
-            Alert.alert('Erreur', error.message || 'Impossible de refuser le devis');
-          } finally {
-            setActionLoading(false);
-          }
+  const handleRefuse = async () => {
+    if (!selectedDevis) return;
+
+    Alert.alert(
+      'Refuser ce devis',
+      `Êtes-vous sûr de vouloir refuser le devis de ${selectedDevis.photographe?.nom || 'ce photographe'} ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Refuser',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              await refuserDevis(selectedDevis.id);
+              
+              // Recharger les données
+              await loadData();
+              
+              Alert.alert('Devis refusé', 'Le devis a été refusé.');
+            } catch (error: any) {
+              console.error('❌ Erreur refus:', error);
+              Alert.alert('Erreur', error.message || 'Impossible de refuser le devis');
+            } finally {
+              setActionLoading(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
+  };
+
+  const getStatutBadge = (statut: string) => {
+    switch (statut) {
+      case 'accepte':
+        return { text: 'Accepté', color: '#4CAF50', icon: 'checkmark-circle' as const };
+      case 'refuse':
+        return { text: 'Refusé', color: '#f44336', icon: 'close-circle' as const };
+      case 'lu':
+        return { text: 'Lu', color: '#2196F3', icon: 'eye' as const };
+      case 'envoye':
+        return { text: 'Nouveau', color: '#FF9800', icon: 'mail-unread' as const };
+      case 'expire':
+        return { text: 'Expiré', color: '#9E9E9E', icon: 'time' as const };
+      default:
+        return { text: statut, color: '#9E9E9E', icon: 'help-circle' as const };
+    }
   };
 
   if (loading) {
@@ -130,205 +150,297 @@ export default function DevisDetailScreen() {
     );
   }
 
-  if (!devis) {
-    return null;
+  if (!demande || devisList.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="document-text-outline" size={80} color="#ccc" />
+        <Text style={styles.emptyTitle}>Aucun devis</Text>
+        <Text style={styles.emptyText}>
+          Cette demande n'a pas encore reçu de devis.
+        </Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>Retour</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
-  const canAcceptOrRefuse = devis.statut === 'envoye' || devis.statut === 'lu';
-  const isExpireSoon =
-    canAcceptOrRefuse &&
-    devis.expire_le &&
-    new Date(devis.expire_le).getTime() - Date.now() < 2 * 24 * 60 * 60 * 1000;
-
-  const daysRemaining = devis.expire_le
-    ? Math.max(0, Math.ceil((new Date(devis.expire_le).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0;
+  const badge = selectedDevis ? getStatutBadge(selectedDevis.statut) : null;
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <View
-            style={[
-              styles.statutBadge,
-              { backgroundColor: STATUT_COLORS[devis.statut as keyof typeof STATUT_COLORS] },
-            ]}
-          >
-            <Text style={styles.statutText}>
-              {STATUT_LABELS[devis.statut as keyof typeof STATUT_LABELS]}
-            </Text>
-          </View>
+      {/* Header avec demande */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {demande.titre}
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            {devisList.length} devis reçu{devisList.length > 1 ? 's' : ''}
+          </Text>
         </View>
+      </View>
 
-        <View style={styles.card}>
-          <Text style={styles.title}>{devis.titre}</Text>
-          <TouchableOpacity
-            onPress={() =>
-              router.push(`/client/particuliers/photographe-profile?id=${devis.photographe_user_id}` as any)
-            }
-          >
-            <Text style={styles.photographeLink}>
-              par {devis.photographe_nom || 'Photographe'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {isExpireSoon && (
-          <View style={styles.warningCard}>
-            <Ionicons name="time-outline" size={24} color="#FF9800" />
-            <Text style={styles.warningText}>
-              Ce devis expire dans {daysRemaining} jour{daysRemaining > 1 ? 's' : ''}
-            </Text>
-          </View>
-        )}
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>{devis.description}</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Tarification</Text>
-
-          <View style={styles.tarificationRow}>
-            <Text style={styles.tarificationLabel}>Tarif de base</Text>
-            <Text style={styles.tarificationValue}>{devis.tarif_base}€</Text>
-          </View>
-
-          {devis.frais_deplacement > 0 && (
-            <View style={styles.tarificationRow}>
-              <Text style={styles.tarificationLabel}>Frais de déplacement</Text>
-              <Text style={styles.tarificationValue}>{devis.frais_deplacement}€</Text>
-            </View>
-          )}
-
-          {devis.options_supplementaires && devis.options_supplementaires.length > 0 && (
-            <View style={styles.optionsContainer}>
-              <Text style={styles.tarificationLabel}>Options supplémentaires :</Text>
-              {devis.options_supplementaires.map((option: any, index: number) => (
-                <View key={index} style={styles.optionRow}>
-                  <Text style={styles.optionNom}>{option.nom}</Text>
-                  <Text style={styles.optionPrix}>{option.prix}€</Text>
+      {/* Liste des photographes */}
+      {devisList.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.photographerList}
+          contentContainerStyle={styles.photographerListContent}
+        >
+          {devisList.map((devis) => {
+            const isSelected = selectedDevis?.id === devis.id;
+            const devisBadge = getStatutBadge(devis.statut);
+            
+            return (
+              <TouchableOpacity
+                key={devis.id}
+                style={[
+                  styles.photographerCard,
+                  isSelected && styles.photographerCardSelected,
+                ]}
+                onPress={() => setSelectedDevis(devis)}
+              >
+                <View
+                  style={[
+                    styles.photographerAvatar,
+                    { backgroundColor: devisBadge.color + '20' },
+                  ]}
+                >
+                  <Text style={[styles.photographerInitial, { color: devisBadge.color }]}>
+                    {devis.photographe?.nom?.charAt(0) || '?'}
+                  </Text>
                 </View>
-              ))}
+                <Text style={styles.photographerName} numberOfLines={1}>
+                  {devis.photographe?.nom || 'Photographe'}
+                </Text>
+                <Text style={styles.photographerPrice}>{devis.montant_total}€</Text>
+                <View style={[styles.miniStatusBadge, { backgroundColor: devisBadge.color }]}>
+                  <Ionicons name={devisBadge.icon} size={12} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* Détails du devis sélectionné */}
+      {selectedDevis && (
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          {/* En-tête du devis */}
+          <View style={styles.devisHeader}>
+            <View style={styles.photographerInfo}>
+              <View
+                style={[
+                  styles.photographerAvatarLarge,
+                  { backgroundColor: badge!.color + '20' },
+                ]}
+              >
+                <Text style={[styles.photographerInitialLarge, { color: badge!.color }]}>
+                  {selectedDevis.photographe?.nom?.charAt(0) || '?'}
+                </Text>
+              </View>
+              <View style={styles.photographerDetails}>
+                <Text style={styles.photographerNameLarge}>
+                  {selectedDevis.photographe?.nom || 'Photographe'}
+                </Text>
+                {selectedDevis.photographe?.ville && (
+                  <View style={styles.photographerLocation}>
+                    <Ionicons name="location-outline" size={14} color="#666" />
+                    <Text style={styles.photographerLocationText}>
+                      {selectedDevis.photographe.ville}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          )}
-
-          {devis.remise > 0 && (
-            <View style={styles.tarificationRow}>
-              <Text style={[styles.tarificationLabel, styles.remiseLabel]}>Remise</Text>
-              <Text style={[styles.tarificationValue, styles.remiseValue]}>-{devis.remise}€</Text>
-            </View>
-          )}
-
-          <View style={[styles.tarificationRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{devis.montant_total}€</Text>
-          </View>
-        </View>
-
-        {devis.conditions_particulieres && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Conditions particulières</Text>
-            <Text style={styles.description}>{devis.conditions_particulieres}</Text>
-          </View>
-        )}
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Informations</Text>
-
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={20} color="#666" />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Envoyé le</Text>
-              <Text style={styles.infoValue}>
-                {new Date(devis.envoye_le).toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
+            
+            <View style={[styles.statusBadge, { backgroundColor: badge!.color + '20' }]}>
+              <Ionicons name={badge!.icon} size={16} color={badge!.color} />
+              <Text style={[styles.statusText, { color: badge!.color }]}>
+                {badge!.text}
               </Text>
             </View>
           </View>
 
-          {devis.lu_le && (
-            <View style={styles.infoRow}>
-              <Ionicons name="eye-outline" size={20} color="#666" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Lu le</Text>
-                <Text style={styles.infoValue}>
-                  {new Date(devis.lu_le).toLocaleDateString('fr-FR')}
+          {/* Titre et description */}
+          <View style={styles.section}>
+            <Text style={styles.devisTitle}>{selectedDevis.titre}</Text>
+            {selectedDevis.description && (
+              <Text style={styles.devisDescription}>{selectedDevis.description}</Text>
+            )}
+          </View>
+
+          {/* Message personnalisé */}
+          {selectedDevis.message_personnalise && (
+            <View style={styles.messageCard}>
+              <View style={styles.messageHeader}>
+                <Ionicons name="chatbubble-outline" size={20} color="#5C6BC0" />
+                <Text style={styles.messageTitle}>Message du photographe</Text>
+              </View>
+              <Text style={styles.messageText}>{selectedDevis.message_personnalise}</Text>
+            </View>
+          )}
+
+          {/* Tarification */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tarification</Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Tarif de base</Text>
+              <Text style={styles.priceValue}>{selectedDevis.tarif_base}€</Text>
+            </View>
+            {selectedDevis.frais_deplacement > 0 && (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Frais de déplacement</Text>
+                <Text style={styles.priceValue}>+{selectedDevis.frais_deplacement}€</Text>
+              </View>
+            )}
+            {selectedDevis.remise_montant > 0 && (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Remise</Text>
+                <Text style={[styles.priceValue, { color: '#4CAF50' }]}>
+                  -{selectedDevis.remise_montant}€
+                </Text>
+              </View>
+            )}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Montant total</Text>
+              <Text style={styles.totalValue}>{selectedDevis.montant_total}€</Text>
+            </View>
+          </View>
+
+          {/* Prestation */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Détails de la prestation</Text>
+            <View style={styles.detailGrid}>
+              <View style={styles.detailItem}>
+                <Ionicons name="time-outline" size={20} color="#5C6BC0" />
+                <Text style={styles.detailLabel}>Durée</Text>
+                <Text style={styles.detailValue}>
+                  {selectedDevis.duree_prestation_heures}h
+                </Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Ionicons name="camera-outline" size={20} color="#5C6BC0" />
+                <Text style={styles.detailLabel}>Photos</Text>
+                <Text style={styles.detailValue}>{selectedDevis.nb_photos_livrees}</Text>
+              </View>
+              {selectedDevis.nb_videos_livrees > 0 && (
+                <View style={styles.detailItem}>
+                  <Ionicons name="videocam-outline" size={20} color="#5C6BC0" />
+                  <Text style={styles.detailLabel}>Vidéos</Text>
+                  <Text style={styles.detailValue}>{selectedDevis.nb_videos_livrees}</Text>
+                </View>
+              )}
+              <View style={styles.detailItem}>
+                <Ionicons name="calendar-outline" size={20} color="#5C6BC0" />
+                <Text style={styles.detailLabel}>Livraison</Text>
+                <Text style={styles.detailValue}>
+                  {selectedDevis.delai_livraison_jours}j
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Retouches */}
+          {(selectedDevis.retouches_incluses || selectedDevis.niveau_retouche) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Retouches</Text>
+              <View style={styles.infoRow}>
+                <Ionicons name="brush-outline" size={20} color="#666" />
+                <View style={styles.infoContent}>
+                  {selectedDevis.retouches_incluses && (
+                    <Text style={styles.infoText}>
+                      {selectedDevis.retouches_incluses} retouches incluses
+                    </Text>
+                  )}
+                  {selectedDevis.niveau_retouche && (
+                    <Text style={styles.infoTextSecondary}>
+                      Niveau : {selectedDevis.niveau_retouche}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Paiement */}
+          {selectedDevis.acompte_requis_percent > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Conditions de paiement</Text>
+              <View style={styles.infoRow}>
+                <Ionicons name="card-outline" size={20} color="#666" />
+                <Text style={styles.infoText}>
+                  Acompte de {selectedDevis.acompte_requis_percent}% requis (
+                  {((selectedDevis.montant_total * selectedDevis.acompte_requis_percent) / 100).toFixed(2)}€)
                 </Text>
               </View>
             </View>
           )}
 
-          {devis.delai_validite_jours > 0 && (
-            <View style={styles.infoRow}>
-              <Ionicons name="hourglass-outline" size={20} color="#666" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Validité</Text>
-                <Text style={styles.infoValue}>{devis.delai_validite_jours} jours</Text>
-              </View>
-            </View>
-          )}
-
-          {devis.expire_le && (
-            <View style={styles.infoRow}>
-              <Ionicons name="alarm-outline" size={20} color="#666" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Expire le</Text>
-                <Text style={styles.infoValue}>
-                  {new Date(devis.expire_le).toLocaleDateString('fr-FR')}
+          {/* Validité */}
+          {selectedDevis.expire_le && (
+            <View style={styles.section}>
+              <View style={styles.infoRow}>
+                <Ionicons name="time-outline" size={20} color="#666" />
+                <Text style={styles.infoText}>
+                  Valide jusqu'au{' '}
+                  {new Date(selectedDevis.expire_le).toLocaleDateString('fr-FR')}
                 </Text>
               </View>
             </View>
           )}
-        </View>
 
-        {devis.statut === 'accepte' && devis.reservation_id && (
-          <View style={styles.successCard}>
-            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
-            <Text style={styles.successText}>Ce devis a été accepté !</Text>
+          {/* Dates */}
+          <View style={styles.datesSection}>
+            <Text style={styles.dateText}>
+              Envoyé le {new Date(selectedDevis.envoye_le).toLocaleDateString('fr-FR')}
+            </Text>
+            {selectedDevis.lu_le && (
+              <Text style={styles.dateText}>
+                Lu le {new Date(selectedDevis.lu_le).toLocaleDateString('fr-FR')}
+              </Text>
+            )}
           </View>
-        )}
-
-        {devis.statut === 'refuse' && (
-          <View style={styles.refuseCard}>
-            <Ionicons name="close-circle" size={24} color="#F44336" />
-            <Text style={styles.refuseText}>Ce devis a été refusé</Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {canAcceptOrRefuse && !actionLoading && (
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.refuseButton}
-            onPress={handleRefuseDevis}
-            disabled={actionLoading}
-          >
-            <Ionicons name="close-outline" size={20} color="#F44336" />
-            <Text style={styles.refuseButtonText}>Refuser</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.acceptButton}
-            onPress={handleAcceptDevis}
-            disabled={actionLoading}
-          >
-            <Ionicons name="checkmark-outline" size={20} color="#fff" />
-            <Text style={styles.acceptButtonText}>Accepter</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       )}
 
-      {actionLoading && (
+      {/* Actions */}
+      {selectedDevis && selectedDevis.statut !== 'accepte' && selectedDevis.statut !== 'refuse' && (
         <View style={styles.footer}>
-          <ActivityIndicator size="large" color="#5C6BC0" />
+          <TouchableOpacity
+            style={[styles.refuseButton, actionLoading && styles.buttonDisabled]}
+            onPress={handleRefuse}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator size="small" color="#f44336" />
+            ) : (
+              <>
+                <Ionicons name="close-circle-outline" size={20} color="#f44336" />
+                <Text style={styles.refuseButtonText}>Refuser</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.acceptButton, actionLoading && styles.buttonDisabled]}
+            onPress={handleAccept}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                <Text style={styles.acceptButtonText}>Accepter</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -345,121 +457,215 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerBackButton: {
+    padding: 4,
+    marginRight: 12,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  photographerList: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  photographerListContent: {
+    padding: 16,
+    gap: 12,
+  },
+  photographerCard: {
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
+    minWidth: 100,
+    position: 'relative',
+  },
+  photographerCardSelected: {
+    borderColor: '#5C6BC0',
+    backgroundColor: '#E8EAF6',
+  },
+  photographerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  photographerInitial: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  photographerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  photographerPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#5C6BC0',
+  },
+  miniStatusBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   content: {
+    flex: 1,
+  },
+  contentContainer: {
     padding: 16,
     paddingBottom: 100,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  backButton: {
-    padding: 4,
-  },
-  statutBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statutText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  card: {
+  devisHeader: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
   },
-  title: {
+  photographerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  photographerAvatarLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  photographerInitialLarge: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  photographerDetails: {
+    flex: 1,
+  },
+  photographerNameLarge: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  photographeLink: {
-    fontSize: 16,
-    color: '#5C6BC0',
-    fontWeight: '500',
-  },
-  warningCard: {
+  photographerLocation: {
     flexDirection: 'row',
-    backgroundColor: '#FFF3E0',
+    alignItems: 'center',
+    gap: 4,
+  },
+  photographerLocationText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  section: {
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    alignItems: 'center',
-  },
-  warningText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#FF9800',
-    fontWeight: '600',
-    marginLeft: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 16,
+  },
+  devisTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
     marginBottom: 12,
   },
-  description: {
+  devisDescription: {
     fontSize: 16,
     color: '#666',
     lineHeight: 24,
   },
-  tarificationRow: {
+  messageCard: {
+    backgroundColor: '#E8EAF6',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  messageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  messageTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5C6BC0',
+  },
+  messageText: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 24,
+  },
+  priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  tarificationLabel: {
-    fontSize: 15,
+  priceLabel: {
+    fontSize: 16,
     color: '#666',
   },
-  tarificationValue: {
-    fontSize: 15,
-    fontWeight: '500',
+  priceValue: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#333',
   },
-  optionsContainer: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  optionRow: {
+  totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingLeft: 12,
-  },
-  optionNom: {
-    fontSize: 14,
-    color: '#666',
-  },
-  optionPrix: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  remiseLabel: {
-    color: '#4CAF50',
-  },
-  remiseValue: {
-    color: '#4CAF50',
-  },
-  totalRow: {
-    borderBottomWidth: 0,
-    marginTop: 8,
     paddingTop: 12,
+    marginTop: 8,
     borderTopWidth: 2,
-    borderTopColor: '#333',
+    borderTopColor: '#e0e0e0',
   },
   totalLabel: {
     fontSize: 18,
@@ -471,53 +677,58 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#5C6BC0',
   },
+  detailGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  detailItem: {
+    flex: 1,
+    minWidth: '45%',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+  },
+  detailValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 4,
+  },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    alignItems: 'center',
+    gap: 12,
   },
   infoContent: {
     flex: 1,
-    marginLeft: 12,
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 15,
+  infoText: {
+    fontSize: 16,
     color: '#333',
-    fontWeight: '500',
+    flex: 1,
   },
-  successCard: {
-    flexDirection: 'row',
-    backgroundColor: '#E8F5E9',
+  infoTextSecondary: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  datesSection: {
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    alignItems: 'center',
   },
-  successText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: '600',
-    marginLeft: 12,
-  },
-  refuseCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFEBEE',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  refuseText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#F44336',
-    fontWeight: '600',
-    marginLeft: 12,
+  dateText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
   },
   footer: {
     position: 'absolute',
@@ -525,8 +736,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    backgroundColor: '#fff',
     padding: 16,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     gap: 12,
@@ -536,31 +747,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFEBEE',
+    gap: 8,
     padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F44336',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#f44336',
   },
   refuseButtonText: {
-    color: '#F44336',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 6,
+    color: '#f44336',
   },
   acceptButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#5C6BC0',
+    gap: 8,
     padding: 16,
     borderRadius: 12,
+    backgroundColor: '#4CAF50',
   },
   acceptButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    backgroundColor: '#5C6BC0',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 6,
   },
 });

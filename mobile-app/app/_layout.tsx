@@ -19,7 +19,7 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <StatusBar barStyle="dark-content" translucent={true} backgroundColor="transparent" />
+      <StatusBar translucent={true} backgroundColor="transparent" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="loading" options={{ headerShown: false }} />

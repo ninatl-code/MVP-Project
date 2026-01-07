@@ -37,7 +37,7 @@ interface Invoice {
   notes?: string;
   conditions_paiement?: string;
   lignes?: LineItem[];
-  client?: { nom: string; email: string; telephone?: string };
+  client?: { nom: string; email: string; telephone?: string; adresse?: string; ville?: string; code_postal?: string };
 }
 
 export default function InvoiceDetail() {
@@ -59,7 +59,7 @@ export default function InvoiceDetail() {
         .from('factures')
         .select(`
           *,
-          client:profiles!client_id(nom, email, telephone)
+          client:profiles!client_id(nom, email, telephone, adresse, ville, code_postal)
         `)
         .eq('id', id)
         .single();
@@ -200,8 +200,15 @@ export default function InvoiceDetail() {
               <Text style={styles.clientDetail}>{invoice.client.email}</Text>
               {invoice.client.telephone && (
                 <Text style={styles.clientDetail}>{invoice.client.telephone}</Text>
+              )}              {invoice.client.adresse && (
+                <Text style={styles.clientDetail}>{invoice.client.adresse}</Text>
               )}
-            </View>
+              {(invoice.client.code_postal || invoice.client.ville) && (
+                <Text style={styles.clientDetail}>
+                  {invoice.client.code_postal && `${invoice.client.code_postal} `}
+                  {invoice.client.ville}
+                </Text>
+              )}            </View>
           </View>
         )}
 

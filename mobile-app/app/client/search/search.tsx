@@ -41,8 +41,6 @@ const SORT_OPTIONS = [
 
 interface Photographe {
   id: string;
-  user_id: string;
-  nom: string;
   bio: string;
   photo_profil: string | null;
   specialisations: string[];
@@ -53,6 +51,12 @@ interface Photographe {
   statut_verification: 'non_verifie' | 'en_attente' | 'verifie' | 'refuse';
   disponibilite_generale: boolean;
   photos_portfolio: any[];
+  photographe_profile?: {
+    nom: string;
+    prenom: string;
+    ville: string;
+    avatar_url: string;
+  };
 }
 
 export default function SearchPhotographes() {
@@ -73,7 +77,6 @@ export default function SearchPhotographes() {
         .from('profils_photographe')
         .select(`
           id,
-          user_id,
           bio,
           photo_profil,
           specialisations,
@@ -84,7 +87,12 @@ export default function SearchPhotographes() {
           statut_verification,
           disponibilite_generale,
           photos_portfolio,
-          profiles!profils_photographe_user_id_fkey (nom)
+          photographe_profile:profiles!profils_photographe_id_fkey (
+            nom,
+            prenom,
+            ville,
+            avatar_url
+          )
         `)
         .eq('disponibilite_generale', true);
 
@@ -178,7 +186,7 @@ export default function SearchPhotographes() {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => router.push(`/client/particuliers/photographe-profile?id=${item.user_id}` as any)}
+        onPress={() => router.push(`/client/particuliers/photographe-profile?id=${item.id}` as any)}
       >
         <View style={styles.cardHeader}>
           <Image
@@ -191,7 +199,9 @@ export default function SearchPhotographes() {
           />
           <View style={styles.headerContent}>
             <View style={styles.nameRow}>
-              <Text style={styles.name}>{item.nom}</Text>
+              <Text style={styles.name}>
+                {item.photographe_profile?.prenom || ''} {item.photographe_profile?.nom || 'Photographe'}
+              </Text>
               {item.statut_verification === 'verifie' && (
                 <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
               )}
@@ -245,7 +255,7 @@ export default function SearchPhotographes() {
           style={styles.contactButton}
           onPress={(e) => {
             e.stopPropagation();
-            handleContactPhotographe(item.user_id);
+            handleContactPhotographe(item.id);
           }}
         >
           <Ionicons name="chatbubble-outline" size={18} color="#fff" />

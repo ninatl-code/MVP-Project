@@ -41,11 +41,17 @@ export default function ClientMenu() {
         .select('*', { count: 'exact', head: true })
         .eq('client_id', profileId);
 
-      // Compter les devis
+      // Compter les devis reçus
+      const { data: demandes } = await supabase
+        .from('demandes_client')
+        .select('id')
+        .eq('client_id', profileId);
+      
+      const demandeIds = demandes?.map(d => d.id) || [];
       const { count: devisCount } = await supabase
         .from('devis')
         .select('*', { count: 'exact', head: true })
-        .eq('client_id', profileId);
+        .in('demande_id', demandeIds);
 
       // Compter les réservations
       const { count: reservationsCount } = await supabase
@@ -128,14 +134,23 @@ export default function ClientMenu() {
               <Text style={styles.headerTitle}>Mon espace Client</Text>
             </View>
             
-            {hasMultipleProfiles && (
+            <View style={styles.headerButtons}>
               <TouchableOpacity
-                style={styles.switchButton}
-                onPress={() => setShowSwitchModal(true)}
+                style={styles.notificationButton}
+                onPress={() => router.push('/client/notification' as any)}
               >
-                <Ionicons name="swap-horizontal" size={22} color="#fff" />
+                <Ionicons name="notifications-outline" size={24} color="#fff" />
               </TouchableOpacity>
-            )}
+              
+              {hasMultipleProfiles && (
+                <TouchableOpacity
+                  style={styles.switchButton}
+                  onPress={() => setShowSwitchModal(true)}
+                >
+                  <Ionicons name="swap-horizontal" size={22} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {/* Stats compactes */}
@@ -297,6 +312,47 @@ export default function ClientMenu() {
           </View>
         </View>
 
+        {/* Section Paramètres */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Paramètres</Text>
+          
+          <TouchableOpacity
+            style={styles.settingsCard}
+            onPress={() => router.push('/client/profil/change-password' as any)}
+          >
+            <View style={styles.settingsCardContent}>
+              <View style={styles.settingsLeft}>
+                <View style={styles.settingsIconContainer}>
+                  <Ionicons name="lock-closed-outline" size={24} color="#130183" />
+                </View>
+                <View>
+                  <Text style={styles.settingsTitle}>Changer le mot de passe</Text>
+                  <Text style={styles.settingsSubtitle}>Modifier votre mot de passe</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingsCard, { marginTop: 12 }]}
+            onPress={() => setShowLogoutModal(true)}
+          >
+            <View style={styles.settingsCardContent}>
+              <View style={styles.settingsLeft}>
+                <View style={[styles.settingsIconContainer, { backgroundColor: '#FEF3F2' }]}>
+                  <Ionicons name="log-out-outline" size={24} color="#F04438" />
+                </View>
+                <View>
+                  <Text style={[styles.settingsTitle, { color: '#F04438' }]}>Déconnexion</Text>
+                  <Text style={styles.settingsSubtitle}>Se déconnecter de l'application</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
       {/* Modal de changement de profil */}
@@ -402,6 +458,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  notificationButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   welcomeText: {
     fontSize: 14,
@@ -626,6 +694,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     textAlign: 'center',
+  },
+
+  // Section Paramètres
+  settingsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  settingsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  settingsCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  settingsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  settingsIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#E8EAF6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  settingsSubtitle: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
   },
 
   // Déconnexion

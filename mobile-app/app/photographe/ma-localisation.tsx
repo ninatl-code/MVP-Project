@@ -53,14 +53,21 @@ export default function MaLocalisationPage() {
 
       setUserId(user.id);
 
-      // Charger les données du profil
+      // Charger les données du profil (localisation dans profiles)
       const { data, error } = await supabase
         .from('profiles')
-        .select('latitude, longitude, adresse, ville, code_postal, rayon_deplacement_km')
+        .select('latitude, longitude, adresse, ville, code_postal')
         .eq('id', user.id)
         .single();
 
       if (error) throw error;
+
+      // Charger rayon_deplacement_km depuis profils_photographe
+      const { data: photoData } = await supabase
+        .from('profils_photographe')
+        .select('rayon_deplacement_km')
+        .eq('id', user.id)
+        .single();
 
       if (data) {
         setLatitude(data.latitude);
@@ -68,7 +75,7 @@ export default function MaLocalisationPage() {
         setAdresse(data.adresse || '');
         setVille(data.ville || '');
         setCodePostal(data.code_postal || '');
-        setRayonIntervention(data.rayon_deplacement_km || 20);
+        setRayonIntervention(photoData?.rayon_deplacement_km || 20);
 
         if (data.latitude && data.longitude) {
           setRegion({
@@ -164,7 +171,8 @@ export default function MaLocalisationPage() {
 
       setSaving(true);
 
-      const { error } = await supabase
+      // Sauvegarder les données de localisation dans profiles
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           latitude,
@@ -172,11 +180,20 @@ export default function MaLocalisationPage() {
           adresse,
           ville,
           code_postal: codePostal,
+        })
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      // Sauvegarder rayon_deplacement_km dans profils_photographe
+      const { error: photoError } = await supabase
+        .from('profils_photographe')
+        .update({
           rayon_deplacement_km: rayonIntervention,
         })
         .eq('id', userId);
 
-      if (error) throw error;
+      if (photoError) throw photoError;
 
       Alert.alert('✅ Enregistré', 'Votre localisation a été mise à jour', [
         { text: 'OK', onPress: () => router.back() }

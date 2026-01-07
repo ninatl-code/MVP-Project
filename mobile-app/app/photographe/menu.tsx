@@ -116,7 +116,7 @@ export default function MenuPrestataire() {
     const [reservationsRes, devisRes, demandesRes, messagesRes] = await Promise.all([
       supabase.from('reservations').select('id, montant_total, statut_reservation').eq('photographe_id', authUser.id),
       supabase.from('devis').select('id, statut').eq('photographe_id', authUser.id),
-      supabase.from('demandes_client').select('id, photographes_notifies').contains('photographes_notifies', [authUser.id]),
+      supabase.from('demandes_client').select('id').eq('statut', 'ouverte'),
       supabase.from('conversations').select('id', { count: 'exact' }).eq('artist_id', authUser.id).eq('lu', false)
     ]);
 

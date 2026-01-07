@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabaseClient';
 import FooterPresta from '@/components/photographe/FooterPresta';
+import FooterParti from '@/components/client/FooterParti';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
 const COLORS = {
@@ -74,13 +75,13 @@ export default function MessagesListScreen() {
 
       // Determine if user is client or provider by checking their role
       const { data: profile } = await supabase
-        .from('users')
+        .from('profiles')
         .select('role')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
         .single();
 
-      const role = profile?.role || 'client';
-      setUserRole(role);
+      const role = profile?.role || 'particulier';
+      setUserRole(role === 'photographe' ? 'provider' : 'client');
 
       // Get conversations where user is either client or provider
       const { data: conversationsData, error } = await supabase
@@ -288,7 +289,7 @@ export default function MessagesListScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-      <FooterPresta />
+      {userRole === 'provider' ? <FooterPresta /> : <FooterParti />}
     </SafeAreaView>
   );
 }

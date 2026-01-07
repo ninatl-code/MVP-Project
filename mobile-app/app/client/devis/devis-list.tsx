@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,193 +7,210 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 
-const STATUT_COLORS = {
-  envoye: '#2196F3',
-  lu: '#FF9800',
-  accepte: '#4CAF50',
-  refuse: '#F44336',
-  expire: '#9E9E9E',
-};
+interface DemandeWithDevis {
+  id: string;
+  titre: string;
+  categorie: string;
+  ville: string;
+  date_souhaitee: string;
+  statut: string;
+  devis_count: number;
+  devis_accepte: number;
+  devis_envoye: number;
+  devis_lu: number;
+  devis_refuse: number;
+  created_at: string;
+}
 
-const STATUT_LABELS = {
-  envoye: 'Envoyé',
-  lu: 'Lu',
-  accepte: 'Accepté',
-  refuse: 'Refusé',
-  expire: 'Expiré',
-};
-
-export default function DevisListScreen() {
+export default function ClientDevisListScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [devis, setDevis] = useState<any[]>([]);
+  const [demandes, setDemandes] = useState<DemandeWithDevis[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedStatut, setSelectedStatut] = useState('');
 
-  const loadDevis = async () => {
+  useEffect(() => {
+    loadDemandes();
+  }, [user]);
+
+  const loadDemandes = async () => {
     try {
-      // Récupérer toutes les demandes du client avec leurs devis
+      if (!user?.id) return;
+
+      // Récupérer toutes les demandes du client
       const { data: demandesData, error: demandesError } = await supabase
         .from('demandes_client')
-        .select('id, titre')
-        .eq('client_id', user!.id);
+        .select('*')
+        .eq('client_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (demandesError) throw demandesError;
 
-      if (!demandesData || demandesData.length === 0) {
-        setDevis([]);
-        return;
-      }
+      // Pour chaque demande, compter les devis et leurs statuts
+      const demandesWithDevis = await Promise.all(
+        demandesData.map(async (demande) => {
+          const { data: devisData, error: devisError } = await supabase
+            .from('devis')
+            .select('statut')
+            .eq('demande_id', demande.id);
 
-      const demandeIds = demandesData.map((d) => d.id);
+          if (devisError) {
+            console.error('Erreur récupération devis:', devisError);
+            return {
+              ...demande,
+              devis_count: 0,
+              devis_accepte: 0,
+              devis_envoye: 0,
+              devis_lu: 0,
+              devis_refuse: 0,
+            };
+          }
 
-      // Récupérer tous les devis pour ces demandes
-      const { data: devisData, error: devisError } = await supabase
-        .from('devis')
-        .select(`
-          id,
-          demande_id,
-          photographe_id,
-          titre,
-          description,
-          montant_total,
-          statut,
-          envoye_le,
-          lu_le,
-          expire_le,
-          profils_photographe!devis_photographe_id_fkey (
-            user_id,
-            photo_profil,
-            note_moyenne,
-            statut_verification,
-            profiles!profils_photographe_user_id_fkey (nom)
-          )
-        `)
-        .in('demande_id', demandeIds)
-        .order('envoye_le', { ascending: false });
+          return {
+            ...demande,
+            devis_count: devisData.length,
+            devis_accepte: devisData.filter((d) => d.statut === 'accepte').length,
+            devis_envoye: devisData.filter((d) => d.statut === 'envoye').length,
+            devis_lu: devisData.filter((d) => d.statut === 'lu').length,
+            devis_refuse: devisData.filter((d) => d.statut === 'refuse').length,
+          };
+        })
+      );
 
-      if (devisError) throw devisError;
-
-      // Formater les données
-      const formattedDevis = (devisData || []).map((d: any) => {
-        const demande = demandesData.find((dm) => dm.id === d.demande_id);
-        return {
-          ...d,
-          demande_titre: demande?.titre || 'Demande supprimée',
-          photographe_nom: d.profils_photographe?.profiles?.nom || 'Photographe',
-          photographe_photo: d.profils_photographe?.photo_profil,
-          photographe_note: d.profils_photographe?.note_moyenne || 0,
-          photographe_verifie: d.profils_photographe?.statut_verification === 'verifie',
-        };
-      });
-
-      setDevis(formattedDevis);
+      // Filtrer uniquement les demandes qui ont au moins un devis
+      const demandesAvecDevis = demandesWithDevis.filter((d) => d.devis_count > 0);
+      setDemandes(demandesAvecDevis);
     } catch (error: any) {
-      console.error('❌ Erreur chargement devis:', error);
-      Alert.alert('Erreur', 'Impossible de charger les devis');
+      console.error('❌ Erreur chargement demandes:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    loadDevis();
-  }, []);
-
-  const onRefresh = useCallback(() => {
+  const onRefresh = () => {
     setRefreshing(true);
-    loadDevis();
-  }, []);
+    loadDemandes();
+  };
 
-  const filteredDevis = devis.filter((d) => {
-    if (selectedStatut && d.statut !== selectedStatut) return false;
-    return true;
-  });
+  const getStatusBadge = (demande: DemandeWithDevis) => {
+    if (demande.devis_accepte > 0) {
+      return {
+        text: 'Devis accepté',
+        color: '#4CAF50',
+        icon: 'checkmark-circle' as const,
+      };
+    }
+    if (demande.devis_envoye > 0 || demande.devis_lu > 0) {
+      return {
+        text: 'En attente',
+        color: '#FF9800',
+        icon: 'time-outline' as const,
+      };
+    }
+    if (demande.devis_refuse > 0 && demande.devis_envoye === 0 && demande.devis_lu === 0) {
+      return {
+        text: 'Tous refusés',
+        color: '#9E9E9E',
+        icon: 'close-circle' as const,
+      };
+    }
+    return {
+      text: 'Nouveaux devis',
+      color: '#2196F3',
+      icon: 'mail-unread-outline' as const,
+    };
+  };
 
-  const renderDevisCard = ({ item }: { item: any }) => {
-    const isExpireSoon =
-      item.statut === 'envoye' &&
-      item.expire_le &&
-      new Date(item.expire_le).getTime() - Date.now() < 2 * 24 * 60 * 60 * 1000;
+  const renderDemandeItem = ({ item }: { item: DemandeWithDevis }) => {
+    const statusBadge = getStatusBadge(item);
+    const hasNewDevis = item.devis_envoye > 0 || item.devis_lu === 0;
 
     return (
       <TouchableOpacity
-        style={styles.card}
-        onPress={() => router.push(`/client/devis/devis-detail?id=${item.id}`)}
+        style={styles.demandeCard}
+        onPress={() =>
+          router.push({
+            pathname: '/client/devis/devis-detail',
+            params: { demandeId: item.id },
+          })
+        }
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={styles.photographeNom}>{item.photographe_nom}</Text>
-            {item.photographe_verifie && (
-              <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
-            )}
-          </View>
-          <View
-            style={[
-              styles.statutBadge,
-              { backgroundColor: STATUT_COLORS[item.statut as keyof typeof STATUT_COLORS] },
-            ]}
-          >
-            <Text style={styles.statutText}>
-              {STATUT_LABELS[item.statut as keyof typeof STATUT_LABELS]}
+            <Text style={styles.cardTitle} numberOfLines={1}>
+              {item.titre}
             </Text>
+            <View style={styles.cardMeta}>
+              <View style={styles.metaItem}>
+                <Ionicons name="pricetag-outline" size={14} color="#666" />
+                <Text style={styles.metaText}>{item.categorie}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Ionicons name="location-outline" size={14} color="#666" />
+                <Text style={styles.metaText}>{item.ville}</Text>
+              </View>
+            </View>
           </View>
+          {hasNewDevis && (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>NEW</Text>
+            </View>
+          )}
         </View>
 
-        <Text style={styles.devisTitre} numberOfLines={2}>
-          {item.titre}
-        </Text>
-
-        <Text style={styles.demandeTitre} numberOfLines={1}>
-          Pour: {item.demande_titre}
-        </Text>
-
-        <View style={styles.cardContent}>
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={16} color="#666" />
-            <Text style={styles.infoText}>
-              Envoyé le {new Date(item.envoye_le).toLocaleDateString('fr-FR')}
-            </Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Ionicons name="document-text-outline" size={20} color="#5C6BC0" />
+            <Text style={styles.statValue}>{item.devis_count}</Text>
+            <Text style={styles.statLabel}>devis reçus</Text>
           </View>
 
-          {item.photographe_note > 0 && (
-            <View style={styles.infoRow}>
-              <Ionicons name="star" size={16} color="#FFB300" />
-              <Text style={styles.infoText}>{item.photographe_note.toFixed(1)}</Text>
+          {item.devis_accepte > 0 && (
+            <View style={styles.statItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+              <Text style={[styles.statValue, { color: '#4CAF50' }]}>
+                {item.devis_accepte}
+              </Text>
+              <Text style={styles.statLabel}>accepté</Text>
             </View>
           )}
 
-          {isExpireSoon && (
-            <View style={[styles.infoRow, styles.warningRow]}>
-              <Ionicons name="time-outline" size={16} color="#FF9800" />
-              <Text style={styles.warningText}>Expire bientôt</Text>
+          {(item.devis_envoye > 0 || item.devis_lu > 0) && (
+            <View style={styles.statItem}>
+              <Ionicons name="time-outline" size={20} color="#FF9800" />
+              <Text style={[styles.statValue, { color: '#FF9800' }]}>
+                {item.devis_envoye + item.devis_lu}
+              </Text>
+              <Text style={styles.statLabel}>en attente</Text>
+            </View>
+          )}
+
+          {item.devis_refuse > 0 && (
+            <View style={styles.statItem}>
+              <Ionicons name="close-circle" size={20} color="#9E9E9E" />
+              <Text style={[styles.statValue, { color: '#9E9E9E' }]}>
+                {item.devis_refuse}
+              </Text>
+              <Text style={styles.statLabel}>refusé</Text>
             </View>
           )}
         </View>
 
         <View style={styles.cardFooter}>
-          <Text style={styles.montant}>{item.montant_total}€</Text>
-          {item.statut === 'accepte' && (
-            <TouchableOpacity
-              style={styles.reservationButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                router.push(`/client/reservations/mes-reservations` as any);
-              }}
-            >
-              <Text style={styles.reservationButtonText}>Voir la réservation</Text>
-              <Ionicons name="arrow-forward" size={16} color="#5C6BC0" />
-            </TouchableOpacity>
-          )}
+          <View style={[styles.statusBadge, { backgroundColor: statusBadge.color + '20' }]}>
+            <Ionicons name={statusBadge.icon} size={16} color={statusBadge.color} />
+            <Text style={[styles.statusText, { color: statusBadge.color }]}>
+              {statusBadge.text}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#666" />
         </View>
       </TouchableOpacity>
     );
@@ -207,69 +224,47 @@ export default function DevisListScreen() {
     );
   }
 
+  if (demandes.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="document-text-outline" size={80} color="#ccc" />
+        <Text style={styles.emptyTitle}>Aucun devis reçu</Text>
+        <Text style={styles.emptyText}>
+          Les devis envoyés par les photographes apparaîtront ici.
+        </Text>
+        <TouchableOpacity
+          style={styles.emptyButton}
+          onPress={() => router.push('/client/demandes/nouvelle-demande')}
+        >
+          <Ionicons name="add-circle-outline" size={24} color="#fff" />
+          <Text style={styles.emptyButtonText}>Créer une demande</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Mes devis</Text>
+        <Text style={styles.headerTitle}>Mes devis</Text>
+        <Text style={styles.headerSubtitle}>
+          {demandes.length} demande{demandes.length > 1 ? 's' : ''} avec devis
+        </Text>
       </View>
 
-      <View style={styles.filtersContainer}>
-        <Text style={styles.filterLabel}>Statut :</Text>
-        <View style={styles.filterChips}>
-          {['', 'envoye', 'lu', 'accepte', 'refuse', 'expire'].map((statut) => (
-            <TouchableOpacity
-              key={statut}
-              style={[
-                styles.filterChip,
-                selectedStatut === statut && styles.filterChipSelected,
-              ]}
-              onPress={() => setSelectedStatut(statut)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  selectedStatut === statut && styles.filterChipTextSelected,
-                ]}
-              >
-                {statut === ''
-                  ? 'Tous'
-                  : STATUT_LABELS[statut as keyof typeof STATUT_LABELS]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {filteredDevis.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyTitle}>Aucun devis</Text>
-          <Text style={styles.emptyText}>
-            {devis.length === 0
-              ? 'Vous n\'avez pas encore reçu de devis. Créez une demande pour en recevoir !'
-              : 'Aucun devis ne correspond à vos filtres'}
-          </Text>
-          {devis.length === 0 && (
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={() => router.push('/client/demandes/nouvelle-demande')}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#fff" />
-              <Text style={styles.ctaButtonText}>Créer une demande</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ) : (
-        <FlatList
-          data={filteredDevis}
-          renderItem={renderDevisCard}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#5C6BC0']} />
-          }
-        />
-      )}
+      <FlatList
+        data={demandes}
+        renderItem={renderDemandeItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#5C6BC0']}
+          />
+        }
+      />
     </View>
   );
 }
@@ -285,163 +280,112 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    padding: 16,
     backgroundColor: '#fff',
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  title: {
+  headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
   },
-  filtersContainer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  filterLabel: {
+  headerSubtitle: {
     fontSize: 14,
-    fontWeight: '600',
     color: '#666',
-    marginBottom: 8,
-  },
-  filterChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  filterChipSelected: {
-    backgroundColor: '#5C6BC0',
-    borderColor: '#5C6BC0',
-  },
-  filterChipText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  filterChipTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
   },
   listContent: {
     padding: 16,
   },
-  card: {
+  demandeCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
-    overflow: 'hidden',
-    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   cardHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
   },
-  photographeNom: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginRight: 6,
-  },
-  statutBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statutText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  devisTitre: {
+  cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    paddingHorizontal: 16,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  demandeTitre: {
-    fontSize: 14,
-    color: '#666',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+  cardMeta: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  cardContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  infoRow: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    gap: 4,
   },
-  infoText: {
+  metaText: {
     fontSize: 14,
     color: '#666',
-    marginLeft: 6,
   },
-  warningRow: {
-    backgroundColor: '#FFF3E0',
+  newBadge: {
+    backgroundColor: '#f44336',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    borderRadius: 4,
   },
-  warningText: {
+  newBadgeText: {
     fontSize: 12,
-    color: '#FF9800',
-    fontWeight: '600',
-    marginLeft: 6,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#f0f0f0',
+    marginBottom: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#5C6BC0',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
-  montant: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#5C6BC0',
-  },
-  reservationButton: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E3F2FD',
+    gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
   },
-  reservationButtonText: {
-    fontSize: 13,
-    color: '#5C6BC0',
+  statusText: {
+    fontSize: 14,
     fontWeight: '600',
-    marginRight: 4,
   },
   emptyContainer: {
     flex: 1,
@@ -450,30 +394,31 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
     marginTop: 16,
+    marginBottom: 8,
   },
   emptyText: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
-    marginTop: 8,
+    marginBottom: 24,
+    lineHeight: 24,
   },
-  ctaButton: {
+  emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     backgroundColor: '#5C6BC0',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 24,
-    marginTop: 24,
+    borderRadius: 8,
   },
-  ctaButtonText: {
+  emptyButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
   },
 });

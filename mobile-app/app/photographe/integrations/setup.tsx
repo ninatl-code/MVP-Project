@@ -39,28 +39,35 @@ export default function IntegrationSetupScreen() {
   const [loading, setLoading] = useState(false);
 
   const getProviderConfig = (provider: string) => {
+    const stripeClientId = process.env.EXPO_PUBLIC_STRIPE_OAUTH_CLIENT_ID || '';
+    const stripeRedirectUri = process.env.EXPO_PUBLIC_STRIPE_OAUTH_REDIRECT_URI || 'https://votre-domaine.com/api/stripe/callback';
+    const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID || '';
+    const googleRedirectUri = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_REDIRECT_URI || 'https://votre-domaine.com/api/google/callback';
+
     const configs: { [key: string]: any } = {
       stripe: {
         name: 'Stripe',
         description: 'Configuration du compte Stripe Connect',
-        authUrl: `https://connect.stripe.com/oauth/authorize?client_id=${process.env.EXPO_PUBLIC_STRIPE_OAUTH_CLIENT_ID}&type=standard&redirect_uri=${encodeURIComponent(process.env.EXPO_PUBLIC_STRIPE_OAUTH_REDIRECT_URI || '')}`,
+        authUrl: stripeClientId ? `https://connect.stripe.com/oauth/authorize?client_id=${stripeClientId}&type=standard&redirect_uri=${encodeURIComponent(stripeRedirectUri)}` : '',
         instructions: [
           'Vous serez redirigé vers Stripe Connect',
           'Connectez-vous avec votre compte Stripe',
           'Autorisez l\'accès à votre compte',
           'Vous serez redirigé automatiquement',
         ],
+        configured: !!stripeClientId,
       },
       google_calendar: {
         name: 'Google Calendar',
         description: 'Synchronisez votre calendrier Google',
-        authUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID}&scope=calendar&response_type=code&redirect_uri=${encodeURIComponent(process.env.EXPO_PUBLIC_GOOGLE_OAUTH_REDIRECT_URI || '')}`,
+        authUrl: googleClientId ? `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&scope=calendar&response_type=code&redirect_uri=${encodeURIComponent(googleRedirectUri)}` : '',
         instructions: [
           'Vous serez redirigé vers Google',
           'Connectez-vous avec votre compte Google',
           'Autorisez l\'accès à votre calendrier',
           'Vous serez redirigé automatiquement',
         ],
+        configured: !!googleClientId,
       },
     };
     return configs[provider] || configs.stripe;
@@ -71,12 +78,24 @@ export default function IntegrationSetupScreen() {
     try {
       const config = getProviderConfig(provider);
       
-      // Check if OAuth URL is properly configured
-      if (!config.authUrl || config.authUrl.includes('undefined')) {
+      // Check if OAuth is configured
+      if (!config.configured || !config.authUrl) {
         Alert.alert(
-          'Configuration incomplète',
-          `La configuration OAuth pour ${config.name} n'est pas complète. Veuillez contacter l'administrateur.`,
-          [{ text: 'OK', onPress: () => router.back() }]
+          'Configuration requise',
+          `La configuration OAuth pour ${config.name} n'est pas encore disponible.\n\n` +
+          `Pour configurer ${config.name}, veuillez :\n` +
+          `1. Créer un compte ${config.name} Connect\n` +
+          `2. Contacter l'administrateur pour la configuration\n` +
+          `3. Ou configurer manuellement depuis le dashboard web`,
+          [
+            { text: 'Fermer', style: 'cancel', onPress: () => router.back() },
+            { text: 'Configuration manuelle', onPress: () => {
+              // Ouvrir le dashboard web ou une documentation
+              if (provider === 'stripe') {
+                Linking.openURL('https://dashboard.stripe.com/');
+              }
+            }}
+          ]
         );
         return;
       }

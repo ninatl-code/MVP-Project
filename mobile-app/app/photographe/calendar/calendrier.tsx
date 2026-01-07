@@ -114,11 +114,11 @@ export default function CalendrierPrestataire() {
       .select(`
         id, 
         date, 
-        status,
-        montant,
-        commentaire,
-        client_nom,
-        demande_id
+        statut,
+        montant_total,
+        notes_photographe,
+        demande_id,
+        client:profiles!client_id(nom, prenom)
       `)
       .eq('photographe_id', userId)
       .order('date', { ascending: true });
@@ -137,7 +137,7 @@ export default function CalendrierPrestataire() {
     if (blockedError) console.error('❌ Error blocked:', blockedError);
 
     // Mapper les réservations
-    const reservationEvents: Event[] = (reservations || []).map(r => {
+    const reservationEvents: Event[] = (reservations || []).map((r: any) => {
       const dateObj = new Date(r.date);
       const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
       const timeStr = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -148,9 +148,9 @@ export default function CalendrierPrestataire() {
         title: 'Réservation',
         type: 'reservation' as const,
         time: timeStr,
-        montant: r.montant,
-        client_name: r.client_nom,
-        status: r.status
+        montant: r.montant_total,
+        client_name: r.client ? `${r.client.prenom || ''} ${r.client.nom}`.trim() : 'Client',
+        status: r.statut
       };
     });
 
