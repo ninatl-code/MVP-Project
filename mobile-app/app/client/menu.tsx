@@ -135,13 +135,6 @@ export default function ClientMenu() {
             </View>
             
             <View style={styles.headerButtons}>
-              <TouchableOpacity
-                style={styles.notificationButton}
-                onPress={() => router.push('/client/notification' as any)}
-              >
-                <Ionicons name="notifications-outline" size={24} color="#fff" />
-              </TouchableOpacity>
-              
               {hasMultipleProfiles && (
                 <TouchableOpacity
                   style={styles.switchButton}
@@ -311,48 +304,7 @@ export default function ClientMenu() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Section Paramètres */}
-        <View style={styles.settingsSection}>
-          <Text style={styles.sectionTitle}>Paramètres</Text>
-          
-          <TouchableOpacity
-            style={styles.settingsCard}
-            onPress={() => router.push('/client/profil/change-password' as any)}
-          >
-            <View style={styles.settingsCardContent}>
-              <View style={styles.settingsLeft}>
-                <View style={styles.settingsIconContainer}>
-                  <Ionicons name="lock-closed-outline" size={24} color="#130183" />
-                </View>
-                <View>
-                  <Text style={styles.settingsTitle}>Changer le mot de passe</Text>
-                  <Text style={styles.settingsSubtitle}>Modifier votre mot de passe</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.settingsCard, { marginTop: 12 }]}
-            onPress={() => setShowLogoutModal(true)}
-          >
-            <View style={styles.settingsCardContent}>
-              <View style={styles.settingsLeft}>
-                <View style={[styles.settingsIconContainer, { backgroundColor: '#FEF3F2' }]}>
-                  <Ionicons name="log-out-outline" size={24} color="#F04438" />
-                </View>
-                <View>
-                  <Text style={[styles.settingsTitle, { color: '#F04438' }]}>Déconnexion</Text>
-                  <Text style={styles.settingsSubtitle}>Se déconnecter de l'application</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
+        
       </ScrollView>
 
       {/* Modal de changement de profil */}

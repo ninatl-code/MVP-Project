@@ -558,7 +558,7 @@ export default function ClientProfil() {
           </View>
         </View>
 
-        {/* Section Déconnexion */}
+        {/* Section Paramètres */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="settings-outline" size={20} color={COLORS.textLight} />
@@ -566,6 +566,24 @@ export default function ClientProfil() {
           </View>
 
           <View style={styles.card}>
+            <TouchableOpacity 
+              style={styles.logoutContainer} 
+              onPress={() => router.push('/client/profil/change-password' as any)}
+            >
+              <View style={styles.actionLeft}>
+                <View style={[styles.actionIconContainer, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="lock-closed-outline" size={24} color={COLORS.primary} />
+                </View>
+                <View>
+                  <Text style={styles.actionText}>Changer le mot de passe</Text>
+                  <Text style={styles.logoutSubtitle}>Modifier votre mot de passe</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
             <TouchableOpacity style={styles.logoutContainer} onPress={handleLogout}>
               <View style={styles.logoutLeft}>
                 <View style={styles.logoutIconContainer}>
@@ -885,11 +903,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: COLORS.text,
   },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 4,
-  },
 
   // Logout
   logoutContainer: {
@@ -921,5 +934,10 @@ const styles = StyleSheet.create({
   logoutSubtitle: {
     fontSize: 12,
     color: COLORS.textLight,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 12,
   },
 });

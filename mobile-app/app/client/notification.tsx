@@ -35,8 +35,8 @@ export default function NotificationsClient() {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const router = useRouter();
 
-  // Gérer le StatusBar - blanc sur le fond dégradé
-  useStatusBarStyle('light-content', '#5C6BC0');
+  // Gérer le StatusBar - noir sur fond blanc
+  useStatusBarStyle('dark-content', '#FFFFFF');
 
   useEffect(() => {
     fetchNotifications();
@@ -175,8 +175,6 @@ export default function NotificationsClient() {
           )}
         />
       )}
-
-      <FooterParti />
     </SafeAreaView>
   );
 }

@@ -91,7 +91,7 @@ export default function FooterParti() {
           <Text style={styles.label}>Messages</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.tab} onPress={() => router.push('/shared/avis/notifications')}>
+        <TouchableOpacity style={styles.tab} onPress={() => router.push('/client/notification')}>
           <View style={styles.tabContent}>
             <Ionicons name="notifications-outline" size={22} color={COLORS.accent} />
             {stats.notifications > 0 && (

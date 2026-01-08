@@ -8,11 +8,13 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getClientDemandes, annulerDemande } from '@/lib/demandeService';
 import { Ionicons } from '@expo/vector-icons';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
 const STATUT_COLORS = {
   ouverte: '#4CAF50',
@@ -39,7 +41,7 @@ const CATEGORIES = [
 ];
 
 export default function MesDemandesScreen() {
-  const { user } = useAuth();
+  const { user, profileId } = useAuth();
   const router = useRouter();
   const [demandes, setDemandes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,9 +49,14 @@ export default function MesDemandesScreen() {
   const [selectedStatut, setSelectedStatut] = useState('');
   const [selectedCategorie, setSelectedCategorie] = useState('');
 
+  // Barre de statut en noir
+  useStatusBarStyle('dark-content', '#FFFFFF');
+
   const loadDemandes = async () => {
+    if (!profileId) return;
+    
     try {
-      const data = await getClientDemandes(user!.id);
+      const data = await getClientDemandes(profileId);
       setDemandes(data);
     } catch (error: any) {
       console.error('❌ Erreur chargement demandes:', error);
@@ -209,15 +216,9 @@ export default function MesDemandesScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Mes demandes</Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => router.push('/client/demandes/nouvelle-demande' as any)}
-        >
-          <Ionicons name="add-circle" size={28} color="#5C6BC0" />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.filtersContainer}>
@@ -239,29 +240,6 @@ export default function MesDemandesScreen() {
                 ]}
               >
                 {statut === '' ? 'Toutes' : STATUT_LABELS[statut as keyof typeof STATUT_LABELS]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.filterLabel}>Catégorie :</Text>
-        <View style={styles.filterChips}>
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat.value}
-              style={[
-                styles.filterChip,
-                selectedCategorie === cat.value && styles.filterChipSelected,
-              ]}
-              onPress={() => setSelectedCategorie(cat.value)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  selectedCategorie === cat.value && styles.filterChipTextSelected,
-                ]}
-              >
-                {cat.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -300,7 +278,7 @@ export default function MesDemandesScreen() {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -513,22 +491,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
-  },
-  createButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#5C6BC0',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
   createFirstButton: {
     flexDirection: 'row',

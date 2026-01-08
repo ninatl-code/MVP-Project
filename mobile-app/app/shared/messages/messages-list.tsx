@@ -49,8 +49,8 @@ interface Conversation {
 }
 
 export default function MessagesListScreen() {
-  // Gérer le StatusBar - blanc sur le fond dégradé
-  useStatusBarStyle('light-content', '#5C6BC0');
+  // Gérer le StatusBar - noir sur fond blanc
+  useStatusBarStyle('dark-content', '#FFFFFF');
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -272,12 +272,12 @@ export default function MessagesListScreen() {
         <View style={styles.emptyState}>
           <Ionicons name="chatbubbles-outline" size={64} color={COLORS.border} />
           <Text style={styles.emptyStateTitle}>
-            {searchQuery ? 'No Results' : 'No Conversations'}
+            {searchQuery ? 'Aucun résultat' : 'Aucune conversation'}
           </Text>
           <Text style={styles.emptyStateText}>
             {searchQuery
-              ? 'Try searching with a different name'
-              : 'Start chatting with clients or providers to see conversations here'}
+              ? 'Essayez de rechercher avec un autre nom'
+              : 'Commencez à discuter avec des clients ou des prestataires pour voir les conversations ici'}
           </Text>
         </View>
       ) : (

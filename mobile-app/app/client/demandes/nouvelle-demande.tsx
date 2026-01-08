@@ -11,6 +11,7 @@ import {
   FlatList,
   Image,
   Platform,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -63,7 +64,6 @@ interface BookingRequest {
   nb_personnes: number;
   lieu: string;
   ville: string;
-  adresse_complete: string;
   code_postal: string;
   date_souhaitee: Date;
   duree_estimee_heures: number;
@@ -71,7 +71,6 @@ interface BookingRequest {
   style_souhaite: string[];
   nb_photos_souhaitees: number;
   niveau_retouche: string;
-  budget_min: number;
   budget_max: number;
   services_souhaites: {
     maquillage: boolean;
@@ -96,7 +95,6 @@ export default function NouvelleDemandeClient() {
     nb_personnes: 1,
     lieu: '',
     ville: '',
-    adresse_complete: '',
     code_postal: '',
     date_souhaitee: new Date(),
     duree_estimee_heures: 2,
@@ -104,7 +102,6 @@ export default function NouvelleDemandeClient() {
     style_souhaite: [],
     nb_photos_souhaitees: 50,
     niveau_retouche: 'standard',
-    budget_min: 300,
     budget_max: 1000,
     services_souhaites: {
       maquillage: false,
@@ -117,6 +114,42 @@ export default function NouvelleDemandeClient() {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const validateStep = () => {
+    if (step === 1) {
+      if (!request.titre.trim()) {
+        Alert.alert('Champ obligatoire', 'Veuillez saisir un titre');
+        return false;
+      }
+      if (!request.description.trim()) {
+        Alert.alert('Champ obligatoire', 'Veuillez saisir une description');
+        return false;
+      }
+      if (!request.categorie) {
+        Alert.alert('Champ obligatoire', 'Veuillez sélectionner une catégorie');
+        return false;
+      }
+    }
+    if (step === 2) {
+      if (!request.lieu.trim()) {
+        Alert.alert('Champ obligatoire', 'Veuillez saisir un lieu');
+        return false;
+      }
+      if (!request.ville.trim()) {
+        Alert.alert('Champ obligatoire', 'Veuillez saisir une ville');
+        return false;
+      }
+      if (!request.code_postal.trim()) {
+        Alert.alert('Champ obligatoire', 'Veuillez saisir un code postal');
+        return false;
+      }
+      if (request.code_postal.length !== 5) {
+        Alert.alert('Code postal invalide', 'Le code postal doit contenir exactement 5 chiffres');
+        return false;
+      }
+    }
+    return true;
+  };
 
   const pickMoodboardPhoto = async () => {
     try {
@@ -159,20 +192,32 @@ export default function NouvelleDemandeClient() {
       Alert.alert('Erreur', 'Veuillez saisir une ville');
       return;
     }
+    if (!request.code_postal.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir un code postal');
+      return;
+    }
+    if (request.code_postal.length !== 5) {
+      Alert.alert('Erreur', 'Le code postal doit contenir exactement 5 chiffres');
+      return;
+    }
 
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
 
-      // Récupérer le profile ID
-      const { data: profile } = await supabase
+      // Récupérer le profile ID du client (particulier)
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('auth_user_id', user.id)
+        .eq('role', 'particulier')
         .single();
 
-      if (!profile) throw new Error('Profil introuvable');
+      if (profileError || !profile) {
+        console.error('Erreur profil:', profileError);
+        throw new Error('Profil introuvable');
+      }
 
       // Créer la demande dans Supabase
       const { error } = await supabase
@@ -186,7 +231,6 @@ export default function NouvelleDemandeClient() {
           nb_personnes: request.nb_personnes || null,
           lieu: request.lieu,
           ville: request.ville,
-          adresse_complete: request.adresse_complete || null,
           code_postal: request.code_postal || null,
           date_souhaitee: request.date_souhaitee.toISOString().split('T')[0],
           duree_estimee_heures: request.duree_estimee_heures || null,
@@ -194,7 +238,6 @@ export default function NouvelleDemandeClient() {
           style_souhaite: request.style_souhaite.length > 0 ? request.style_souhaite : [],
           nb_photos_souhaitees: request.nb_photos_souhaitees || null,
           niveau_retouche: request.niveau_retouche || null,
-          budget_min: request.budget_min || null,
           budget_max: request.budget_max || null,
           services_souhaites: request.services_souhaites,
           contraintes_horaires: request.contraintes_horaires || null,
@@ -254,7 +297,7 @@ export default function NouvelleDemandeClient() {
 
       <ScrollView 
         style={styles.content} 
-        contentContainerStyle={{ paddingBottom: 200 }}
+        contentContainerStyle={{ paddingBottom: 220 }}
         showsVerticalScrollIndicator={false}
       >
         {/* STEP 1: INFORMATIONS DE BASE */}
@@ -366,23 +409,18 @@ export default function NouvelleDemandeClient() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Adresse complète (optionnel)</Text>
-              <TextInput
-                style={styles.input}
-                value={request.adresse_complete}
-                onChangeText={text => setRequest({ ...request, adresse_complete: text })}
-                placeholder="123 Rue de Paris"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Code postal (optionnel)</Text>
+              <Text style={styles.label}>Code postal *</Text>
               <TextInput
                 style={styles.input}
                 value={request.code_postal}
-                onChangeText={text => setRequest({ ...request, code_postal: text })}
+                onChangeText={text => {
+                  // Limiter à 5 chiffres maximum
+                  const numericValue = text.replace(/[^0-9]/g, '').slice(0, 5);
+                  setRequest({ ...request, code_postal: numericValue });
+                }}
                 placeholder="75001"
                 keyboardType="numeric"
+                maxLength={5}
               />
             </View>
 
@@ -390,9 +428,10 @@ export default function NouvelleDemandeClient() {
               <Text style={styles.label}>Nombre de personnes</Text>
               <TextInput
                 style={styles.input}
-                value={request.nb_personnes.toString()}
-                onChangeText={text => setRequest({ ...request, nb_personnes: parseInt(text) || 1 })}
+                value={request.nb_personnes === 0 ? '' : request.nb_personnes.toString()}
+                onChangeText={text => setRequest({ ...request, nb_personnes: text === '' ? 0 : parseInt(text) || 0 })}
                 keyboardType="numeric"
+                placeholder="1"
               />
             </View>
 
@@ -473,9 +512,10 @@ export default function NouvelleDemandeClient() {
               <Text style={styles.label}>Nombre de photos souhaité</Text>
               <TextInput
                 style={styles.input}
-                value={request.nb_photos_souhaitees.toString()}
-                onChangeText={text => setRequest({ ...request, nb_photos_souhaitees: parseInt(text) || 50 })}
+                value={request.nb_photos_souhaitees === 0 ? '' : request.nb_photos_souhaitees.toString()}
+                onChangeText={text => setRequest({ ...request, nb_photos_souhaitees: text === '' ? 0 : parseInt(text) || 0 })}
                 keyboardType="numeric"
+                placeholder="50"
               />
             </View>
 
@@ -507,25 +547,14 @@ export default function NouvelleDemandeClient() {
             <Text style={styles.stepTitle}>💰 Budget & Contraintes</Text>
             <Text style={styles.stepDescription}>Votre budget et contraintes horaires</Text>
 
-            <View style={styles.budgetRow}>
-              <View style={styles.budgetInput}>
-                <Text style={styles.label}>Budget min (€)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={request.budget_min.toString()}
-                  onChangeText={text => setRequest({ ...request, budget_min: parseInt(text) || 0 })}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={styles.budgetInput}>
-                <Text style={styles.label}>Budget max (€)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={request.budget_max.toString()}
-                  onChangeText={text => setRequest({ ...request, budget_max: parseInt(text) || 1000 })}
-                  keyboardType="numeric"
-                />
-              </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Budget max (€)</Text>
+              <TextInput
+                style={styles.input}
+                value={request.budget_max.toString()}
+                onChangeText={text => setRequest({ ...request, budget_max: parseInt(text) || 1000 })}
+                keyboardType="numeric"
+              />
             </View>
 
             <View style={styles.formGroup}>
@@ -561,34 +590,80 @@ export default function NouvelleDemandeClient() {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Date souhaitée</Text>
               <TouchableOpacity
-                style={styles.input}
+                style={[styles.input, { justifyContent: 'center' }]}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text>{request.date_souhaitee.toLocaleDateString('fr-FR')}</Text>
+                <Text style={{ fontSize: 15, color: '#2C3E50' }}>{request.date_souhaitee.toLocaleDateString('fr-FR')}</Text>
               </TouchableOpacity>
             </View>
 
-            {showDatePicker && (
+            {showDatePicker && Platform.OS === 'android' && (
               <DateTimePicker
                 value={request.date_souhaitee}
                 mode="date"
                 display="default"
                 onChange={(event, selectedDate) => {
-                  setShowDatePicker(false);
-                  if (selectedDate) {
+                  if (event.type === 'set' && selectedDate) {
                     setRequest({ ...request, date_souhaitee: selectedDate });
+                    setShowDatePicker(false);
+                  } else if (event.type === 'dismissed') {
+                    setShowDatePicker(false);
                   }
                 }}
               />
+            )}
+
+            {showDatePicker && Platform.OS === 'ios' && (
+              <Modal
+                visible={showDatePicker}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowDatePicker(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Sélectionner une date</Text>
+                    <DateTimePicker
+                      value={request.date_souhaitee}
+                      mode="date"
+                      display="inline"
+                      themeVariant="light"
+                      accentColor="#5C6BC0"
+                      textColor="#000000"
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) {
+                          setRequest({ ...request, date_souhaitee: selectedDate });
+                        }
+                      }}
+                      style={{ backgroundColor: '#FFFFFF' }}
+                    />
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.modalButtonCancel]}
+                        onPress={() => setShowDatePicker(false)}
+                      >
+                        <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.modalButtonOk]}
+                        onPress={() => setShowDatePicker(false)}
+                      >
+                        <Text style={styles.modalButtonTextOk}>OK</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
             )}
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Durée estimée (heures)</Text>
               <TextInput
                 style={styles.input}
-                value={request.duree_estimee_heures.toString()}
-                onChangeText={text => setRequest({ ...request, duree_estimee_heures: parseInt(text) || 1 })}
+                value={request.duree_estimee_heures === 0 ? '' : request.duree_estimee_heures.toString()}
+                onChangeText={text => setRequest({ ...request, duree_estimee_heures: text === '' ? 0 : parseInt(text) || 0 })}
                 keyboardType="numeric"
+                placeholder="2"
               />
             </View>
 
@@ -632,7 +707,11 @@ export default function NouvelleDemandeClient() {
           {step < 5 ? (
             <TouchableOpacity
               style={[styles.button, styles.buttonPrimary, { flex: step === 1 ? 1 : 0.5 }]}
-              onPress={() => setStep(step + 1)}
+              onPress={() => {
+                if (validateStep()) {
+                  setStep(step + 1);
+                }
+              }}
             >
               <Text style={styles.buttonPrimaryText}>Suivant</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
@@ -965,5 +1044,66 @@ const styles = StyleSheet.create({
     color: '#5C6BC0',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 15,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2C3E50',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#F8F9FC',
+    borderWidth: 1,
+    borderColor: '#E8EBF0',
+  },
+  modalButtonOk: {
+    backgroundColor: '#5C6BC0',
+  },
+  modalButtonTextCancel: {
+    color: '#5C6BC0',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonTextOk: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
