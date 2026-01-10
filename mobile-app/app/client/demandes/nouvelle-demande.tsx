@@ -22,38 +22,38 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 const CATEGORIES = [
-  { id: 'portrait', label: 'Portrait / Book' },
-  { id: 'event', label: 'Événement (mariage, anniversaire, corporate)' },
-  { id: 'product', label: 'Shooting produit' },
-  { id: 'real_estate', label: 'Immobilier / Architecture' },
-  { id: 'fashion', label: 'Mode / Éditorial' },
-  { id: 'family', label: 'Grossesse / Naissance / Famille' },
-  { id: 'corporate', label: 'Corporate / Portrait pro' },
-  { id: 'reportage', label: 'Reportage (entreprise, artisan)' },
+  { id: 'Portrait / Book', label: 'Portrait / Book' },
+  { id: 'Événement', label: 'Événement (mariage, anniversaire, corporate)' },
+  { id: 'Shooting produit', label: 'Shooting produit' },
+  { id: 'Immobilier / Architecture', label: 'Immobilier / Architecture' },
+  { id: 'Mode / Éditorial', label: 'Mode / Éditorial' },
+  { id: 'Grossesse / Naissance / Famille', label: 'Grossesse / Naissance / Famille' },
+  { id: 'Corporate / Portrait pro', label: 'Corporate / Portrait pro' },
+  { id: 'Reportage (entreprise, artisan)', label: 'Reportage (entreprise, artisan)' },
 ];
 
 const STYLES = [
-  { id: 'luminous', label: 'Lumineux / Naturel' },
-  { id: 'dark_moody', label: 'Dark & Moody' },
-  { id: 'studio', label: 'Studio / Fond uni' },
-  { id: 'lifestyle', label: 'Lifestyle / Spontané' },
-  { id: 'artistic', label: 'Artistique / Créatif' },
-  { id: 'vintage', label: 'Vintage / Argentique' },
+  { id: 'Lumineux / Naturel', label: 'Lumineux / Naturel' },
+  { id: 'Dark & Moody', label: 'Dark & Moody' },
+  { id: 'Studio / Fond uni', label: 'Studio / Fond uni' },
+  { id: 'Lifestyle / Spontané', label: 'Lifestyle / Spontané' },
+  { id: 'Artistique / Créatif', label: 'Artistique / Créatif' },
+  { id: 'Vintage / Argentique', label: 'Vintage / Argentique' },
 ];
 
 const USAGE_TYPES = [
-  { id: 'album', label: 'Album photo' },
-  { id: 'prints', label: 'Tirage imprimés' },
-  { id: 'social', label: 'Réseaux sociaux' },
-  { id: 'website', label: 'Site web' },
-  { id: 'advertising', label: 'Publicité / Marketing' },
-  { id: 'commercial', label: 'Usage commercial' },
+  { id: 'Album photo', label: 'Album photo' },
+  { id: 'Tirage imprimés', label: 'Tirage imprimés' },
+  { id: 'Réseaux sociaux', label: 'Réseaux sociaux' },
+  { id: 'Site web', label: 'Site web' },
+  { id: 'Publicité / Marketing', label: 'Publicité / Marketing' },
+  { id: 'Usage commercial', label: 'Usage commercial' },
 ];
 
 const RETOUCHING_LEVELS = [
-  { id: 'basic', label: 'Basique (crop, lumière, couleurs)' },
-  { id: 'standard', label: 'Standard (+ retouche peau, yeux)' },
-  { id: 'advanced', label: 'Avancée (retouche créative complète)' },
+  { id: 'Basique', label: 'Basique (crop, lumière, couleurs)' },
+  { id: 'Standard', label: 'Standard (+ retouche peau, yeux)' },
+  { id: 'Avancée', label: 'Avancée (retouche créative complète)' },
 ];
 
 interface BookingRequest {
@@ -101,7 +101,7 @@ export default function NouvelleDemandeClient() {
     type_prestation: [],
     style_souhaite: [],
     nb_photos_souhaitees: 50,
-    niveau_retouche: 'standard',
+    niveau_retouche: 'Standard',
     budget_max: 1000,
     services_souhaites: {
       maquillage: false,

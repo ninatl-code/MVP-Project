@@ -18,13 +18,15 @@ import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
 const STATUT_COLORS = {
   ouverte: '#4CAF50',
-  pourvue: '#2196F3',
+  en_cours: '#2196F3',
+  pourvue: '#5C6BC0',
   annulee: '#FF9800',
   expiree: '#9E9E9E',
 };
 
 const STATUT_LABELS = {
   ouverte: 'Ouverte',
+  en_cours: 'En cours',
   pourvue: 'Pourvue',
   annulee: 'Annulée',
   expiree: 'Expirée',
@@ -149,7 +151,7 @@ export default function MesDemandesScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="location-outline" size={16} color="#666" />
             <Text style={styles.infoText}>
-              {item.lieu_ville} ({item.lieu_code_postal})
+              {item.ville || item.lieu_ville} ({item.code_postal || item.lieu_code_postal})
             </Text>
           </View>
 
@@ -189,8 +191,18 @@ export default function MesDemandesScreen() {
           </View>
         </View>
 
-        {isOuverte && (
+        {(item.statut === 'ouverte' || item.statut === 'en_cours') && (
           <View style={styles.cardFooter}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                router.push(`/client/demandes/demande-detail?id=${item.id}&edit=true`);
+              }}
+            >
+              <Ionicons name="create-outline" size={18} color="#5C6BC0" />
+              <Text style={styles.editButtonText}>Modifier</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={(e) => {
@@ -224,7 +236,7 @@ export default function MesDemandesScreen() {
       <View style={styles.filtersContainer}>
         <Text style={styles.filterLabel}>Statut :</Text>
         <View style={styles.filterChips}>
-          {['', 'ouverte', 'pourvue', 'annulee', 'expiree'].map((statut) => (
+          {['', 'ouverte', 'en_cours', 'pourvue', 'annulee', 'expiree'].map((statut) => (
             <TouchableOpacity
               key={statut}
               style={[
@@ -446,12 +458,28 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
     padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    flex: 1,
+  },
+  editButtonText: {
+    fontSize: 14,
+    color: '#5C6BC0',
+    fontWeight: '600',
+    marginLeft: 6,
   },
   cancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 8,
+    flex: 1,
   },
   cancelButtonText: {
     fontSize: 14,

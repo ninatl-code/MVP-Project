@@ -11,18 +11,20 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getDemandeById, annulerDemande } from '@/lib/demandeService';
-import { getDevisForDemande } from '@/lib/devisService';
+import { getDemandeDevis } from '@/lib/devisService';
 import { Ionicons } from '@expo/vector-icons';
 
 const STATUT_COLORS = {
   ouverte: '#4CAF50',
-  pourvue: '#2196F3',
+  en_cours: '#2196F3',
+  pourvue: '#5C6BC0',
   annulee: '#FF9800',
   expiree: '#9E9E9E',
 };
 
 const STATUT_LABELS = {
   ouverte: 'Ouverte',
+  en_cours: 'En cours',
   pourvue: 'Pourvue',
   annulee: 'Annulée',
   expiree: 'Expirée',
@@ -43,7 +45,7 @@ export default function DemandeDetailScreen() {
       setLoading(true);
       const [demandeData, devisData] = await Promise.all([
         getDemandeById(demandeId),
-        getDevisForDemande(demandeId),
+        getDemandeDevis(demandeId),
       ]);
 
       setDemande(demandeData);
@@ -234,7 +236,7 @@ export default function DemandeDetailScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Devis reçus ({devis.length})</Text>
               {devis.length > 1 && (
-                <TouchableOpacity onPress={() => router.push(`/client/devis/devis-comparaison?demande=${demandeId}`)}>
+                <TouchableOpacity onPress={() => router.push(`/client/devis/devis-comparaison?demande=${demandeId}` as any)}>
                   <Text style={styles.compareLink}>Comparer</Text>
                 </TouchableOpacity>
               )}

@@ -63,6 +63,13 @@ export default function ChangePasswordScreen() {
     try {
       setLoading(true);
 
+      // Vérifier la session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      }
+
       // Update password in Supabase Auth
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
@@ -80,6 +87,11 @@ export default function ChangePasswordScreen() {
           },
         ]
       );
+      
+      // Réinitialiser les champs
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (error: any) {
       console.error('Error changing password:', error);
       Alert.alert(

@@ -21,7 +21,7 @@ export interface DemandeClient {
   lieu_longitude?: number;
   budget_min?: number;
   budget_max?: number;
-  statut: 'ouverte' | 'pourvue' | 'annulee' | 'expiree';
+  statut: 'ouverte' | 'en_cours' | 'pourvue' | 'annulee' | 'expiree';
   nombre_devis_recus: number;
   photographes_notifies: string[];
   photographes_interesses: string[];
@@ -60,7 +60,7 @@ export interface UpdateDemandeData {
   lieu_longitude?: number;
   budget_min?: number;
   budget_max?: number;
-  statut?: 'ouverte' | 'pourvue' | 'annulee' | 'expiree';
+  statut?: 'ouverte' | 'en_cours' | 'pourvue' | 'annulee' | 'expiree';
 }
 
 /**
