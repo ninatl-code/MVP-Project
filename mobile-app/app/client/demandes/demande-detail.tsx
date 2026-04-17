@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -187,10 +187,10 @@ export default function DemandeDetailScreen() {
                 <Text style={styles.detailLabel}>Budget</Text>
                 <Text style={styles.detailValue}>
                   {demande.budget_min && demande.budget_max
-                    ? `${demande.budget_min}€ - ${demande.budget_max}€`
+                    ? `${demande.budget_min} DH - ${demande.budget_max} DH`
                     : demande.budget_min
-                    ? `À partir de ${demande.budget_min}€`
-                    : `Jusqu'à ${demande.budget_max}€`}
+                    ? `À partir de ${demande.budget_min} DH`
+                    : `Jusqu'à ${demande.budget_max} DH`}
                 </Text>
               </View>
             </View>
@@ -214,7 +214,7 @@ export default function DemandeDetailScreen() {
             <View style={styles.statBox}>
               <Ionicons name="people-outline" size={32} color="#5C6BC0" />
               <Text style={styles.statValue}>{demande.photographes_notifies?.length || 0}</Text>
-              <Text style={styles.statLabel}>Photographes notifiés</Text>
+              <Text style={styles.statLabel}>Prestataires notifiés</Text>
             </View>
 
             <View style={styles.statBox}>
@@ -226,7 +226,7 @@ export default function DemandeDetailScreen() {
             <View style={styles.statBox}>
               <Ionicons name="heart-outline" size={32} color="#5C6BC0" />
               <Text style={styles.statValue}>{demande.photographes_interesses?.length || 0}</Text>
-              <Text style={styles.statLabel}>Photographes intéressés</Text>
+              <Text style={styles.statLabel}>Prestataires intéressés</Text>
             </View>
           </View>
         </View>
@@ -254,7 +254,7 @@ export default function DemandeDetailScreen() {
                     <Text style={styles.devisTitre}>{d.titre}</Text>
                   </View>
                   <View style={styles.devisPrix}>
-                    <Text style={styles.devisMontant}>{d.montant_total}€</Text>
+                    <Text style={styles.devisMontant}>{d.montant_total} DH</Text>
                     {d.statut === 'accepte' && (
                       <View style={styles.accepteBadge}>
                         <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
@@ -280,7 +280,7 @@ export default function DemandeDetailScreen() {
             <Ionicons name="information-circle-outline" size={24} color="#5C6BC0" />
             <Text style={styles.infoText}>
               Votre demande a été envoyée à {demande.photographes_notifies?.length || 0}{' '}
-              photographe(s). Vous recevrez une notification dès qu'un photographe vous enverra un
+              prestataire(s). Vous recevrez une notification dès qu'un prestataire vous enverra un
               devis.
             </Text>
           </View>

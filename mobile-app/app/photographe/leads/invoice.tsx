@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+﻿import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -246,10 +246,10 @@ export default function InvoiceDetail() {
                 <Text style={styles.lineDescription}>{line.description}</Text>
                 <View style={styles.lineDetails}>
                   <Text style={styles.lineDetailText}>
-                    {line.quantite} × {line.prix_unitaire.toFixed(2)} €
+                    {line.quantite} × {line.prix_unitaire.toFixed(2)}  DH
                   </Text>
                   <Text style={styles.lineTotal}>
-                    {(line.quantite * line.prix_unitaire).toFixed(2)} €
+                    {(line.quantite * line.prix_unitaire).toFixed(2)}  DH
                   </Text>
                 </View>
               </View>
@@ -266,18 +266,18 @@ export default function InvoiceDetail() {
           {invoice.montant_ht !== undefined && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total HT</Text>
-              <Text style={styles.totalValue}>{invoice.montant_ht.toFixed(2)} €</Text>
+              <Text style={styles.totalValue}>{invoice.montant_ht.toFixed(2)}  DH</Text>
             </View>
           )}
           {invoice.montant_tva !== undefined && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TVA (20%)</Text>
-              <Text style={styles.totalValue}>{invoice.montant_tva.toFixed(2)} €</Text>
+              <Text style={styles.totalValue}>{invoice.montant_tva.toFixed(2)}  DH</Text>
             </View>
           )}
           <View style={[styles.totalRow, styles.totalRowFinal]}>
             <Text style={styles.totalLabelFinal}>Total TTC</Text>
-            <Text style={styles.totalValueFinal}>{invoice.montant_total.toFixed(2)} €</Text>
+            <Text style={styles.totalValueFinal}>{invoice.montant_total.toFixed(2)}  DH</Text>
           </View>
         </View>
 

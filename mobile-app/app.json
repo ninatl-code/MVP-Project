@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Shooty",
-    "slug": "shooty",
+    "name": "Wedoria",
+    "slug": "wedoria",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/shooty-logo.png",
@@ -10,13 +10,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.shooty.app",
+      "bundleIdentifier": "com.wedoria.app",
       "config": {
         "googleMapsApiKey": "VOTRE_CLE_GOOGLE_MAPS_IOS"
       }
     },
     "android": {
-      "package": "com.shooty.app",
+      "package": "com.wedoria.app",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/shooty-logo.png"

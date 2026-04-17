@@ -238,7 +238,7 @@ export default function Signup() {
                   />
                 </View>
                 <Text style={[styles.roleButtonText, roles.includes('photographe') && styles.roleButtonTextActive]}>
-                  Photographe
+                  Prestataire
                 </Text>
                 {roles.includes('photographe') && (
                   <Ionicons name="checkmark-circle" size={20} color={COLORS.accent} style={styles.roleCheckIcon} />

@@ -498,7 +498,7 @@ export default function ClientProfil() {
                   numberOfLines={6}
                 />
                 <Text style={styles.bioHint}>
-                  Une bonne présentation aide les photographes à mieux comprendre vos attentes.
+                  Une bonne présentation aide les prestataires à mieux comprendre vos attentes.
                 </Text>
               </View>
             )}

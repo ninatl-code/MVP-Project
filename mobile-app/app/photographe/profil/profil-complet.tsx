@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -1006,7 +1006,7 @@ export default function ProfilComplet() {
                 </Text>
                 <View style={styles.tarifRow}>
                   <View style={styles.tarifInput}>
-                    <Text style={styles.label}>Min (€)</Text>
+                    <Text style={styles.label}>Min (MAD)</Text>
                     <TextInput
                       style={styles.input}
                       value={tarif.min.toString()}
@@ -1024,7 +1024,7 @@ export default function ProfilComplet() {
                     />
                   </View>
                   <View style={styles.tarifInput}>
-                    <Text style={styles.label}>Max (€)</Text>
+                    <Text style={styles.label}>Max (MAD)</Text>
                     <TextInput
                       style={styles.input}
                       value={tarif.max.toString()}
@@ -1046,7 +1046,7 @@ export default function ProfilComplet() {
             ))}
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Frais déplacement par km (€/km)</Text>
+              <Text style={styles.label}>Frais déplacement par km (MAD/km)</Text>
               <TextInput
                 style={styles.input}
                 value={profile.frais_deplacement_par_km.toString()}

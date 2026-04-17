@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
+﻿import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
@@ -318,20 +318,20 @@ export default function ReservationDetailPage() {
           <View style={styles.card}>
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Montant total</Text>
-              <Text style={styles.priceValue}>{reservation.montant?.toFixed(2) || '0.00'} €</Text>
+              <Text style={styles.priceValue}>{reservation.montant?.toFixed(2) || '0.00'}  DH</Text>
             </View>
             {reservation.montant_acompte > 0 && (
               <>
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabel}>Acompte versé</Text>
                   <Text style={styles.priceValueSuccess}>
-                    {reservation.montant_acompte?.toFixed(2)} €
+                    {reservation.montant_acompte?.toFixed(2)}  DH
                   </Text>
                 </View>
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabel}>Reste à payer</Text>
                   <Text style={styles.priceValue}>
-                    {(reservation.montant - reservation.montant_acompte).toFixed(2)} €
+                    {(reservation.montant - reservation.montant_acompte).toFixed(2)}  DH
                   </Text>
                 </View>
               </>

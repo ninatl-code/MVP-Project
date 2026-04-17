@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,16 +21,14 @@ import { COLORS } from '../../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-const CATEGORIES = [
-  { id: 'Portrait / Book', label: 'Portrait / Book' },
-  { id: 'Événement', label: 'Événement (mariage, anniversaire, corporate)' },
-  { id: 'Shooting produit', label: 'Shooting produit' },
-  { id: 'Immobilier / Architecture', label: 'Immobilier / Architecture' },
-  { id: 'Mode / Éditorial', label: 'Mode / Éditorial' },
-  { id: 'Grossesse / Naissance / Famille', label: 'Grossesse / Naissance / Famille' },
-  { id: 'Corporate / Portrait pro', label: 'Corporate / Portrait pro' },
-  { id: 'Reportage (entreprise, artisan)', label: 'Reportage (entreprise, artisan)' },
-];
+const CATEGORY_ICONS: Record<string, string> = {
+  'services-domicile': '🔧',
+  'beaute-bien-etre': '💆',
+  'evenementiel': '🎉',
+  'transport': '🚗',
+  'digital': '💻',
+  'education': '📚',
+};
 
 const STYLES = [
   { id: 'Lumineux / Naturel', label: 'Lumineux / Naturel' },
@@ -87,6 +85,7 @@ export default function NouvelleDemandeClient() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: string }[]>([]);
   const [request, setRequest] = useState<BookingRequest>({
     titre: '',
     description: '',
@@ -114,6 +113,23 @@ export default function NouvelleDemandeClient() {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('prestations')
+      .select('id, nom, slug, description')
+      .eq('actif', true)
+      .order('ordre', { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setCategories(data.map(c => ({
+            id: c.slug,
+            label: c.nom,
+            icon: CATEGORY_ICONS[c.slug] || '📋',
+          })));
+        }
+      });
+  }, []);
 
   const validateStep = () => {
     if (step === 1) {
@@ -250,7 +266,7 @@ export default function NouvelleDemandeClient() {
 
       Alert.alert(
         'Demande créée !',
-        'Votre demande a été publiée. Les photographes correspondants vont recevoir une notification.',
+        'Votre demande a été publiée. Les prestataires correspondants vont recevoir une notification.',
         [
           {
             text: 'OK',
@@ -312,7 +328,7 @@ export default function NouvelleDemandeClient() {
                 style={styles.input}
                 value={request.titre}
                 onChangeText={text => setRequest({ ...request, titre: text })}
-                placeholder="Ex: Shooting mariage champêtre"
+                placeholder="Ex: Mariage champêtre"
               />
             </View>
 
@@ -328,7 +344,10 @@ export default function NouvelleDemandeClient() {
             </View>
 
             <Text style={styles.label}>Catégorie *</Text>
-            {CATEGORIES.map(cat => (
+            {categories.length === 0
+              ? <ActivityIndicator color="#6366f1" style={{ marginVertical: 12 }} />
+              : null}
+            {categories.map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={[
@@ -404,7 +423,7 @@ export default function NouvelleDemandeClient() {
                 style={styles.input}
                 value={request.ville}
                 onChangeText={text => setRequest({ ...request, ville: text })}
-                placeholder="Paris"
+                placeholder="Casablanca"
               />
             </View>
 
@@ -548,7 +567,7 @@ export default function NouvelleDemandeClient() {
             <Text style={styles.stepDescription}>Votre budget et contraintes horaires</Text>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Budget max (€)</Text>
+              <Text style={styles.label}>Budget max (MAD)</Text>
               <TextInput
                 style={styles.input}
                 value={request.budget_max.toString()}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, Alert, Image, Dimensions } from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -147,7 +147,7 @@ export default function PackageDetail() {
   const handleContacter = () => {
     if (!packageData) return;
     Alert.alert(
-      'Contacter le photographe',
+      'Contacter le prestataire',
       `Email: ${packageData.photographe_email}\nTél: ${packageData.photographe_tel}`,
       [
         { text: 'Annuler', style: 'cancel' },
@@ -157,8 +157,8 @@ export default function PackageDetail() {
   };
 
   const formatCurrency = (min: number, max: number) => {
-    if (min === max) return `${min}€`;
-    return `${min}€ - ${max}€`;
+    if (min === max) return `${min} DH`;
+    return `${min} DH - ${max} DH`;
   };
 
   if (loading) {
@@ -249,7 +249,7 @@ export default function PackageDetail() {
           {/* Price section */}
           <View style={styles.priceSection}>
             <Text style={styles.priceLabel}>Tarif</Text>
-            <Text style={styles.priceValue}>{packageData.prix_fixe}€</Text>
+            <Text style={styles.priceValue}>{packageData.prix_fixe} DH</Text>
           </View>
 
           {/* Prestataire section */}

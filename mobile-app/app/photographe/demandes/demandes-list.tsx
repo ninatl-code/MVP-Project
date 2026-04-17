@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -155,10 +155,10 @@ export default function DemandesListScreen() {
               <Ionicons name="cash-outline" size={16} color="#666" />
               <Text style={styles.infoText}>
                 {demande.budget_min && demande.budget_max
-                  ? `${demande.budget_min}€ - ${demande.budget_max}€`
+                  ? `${demande.budget_min} DH - ${demande.budget_max} DH`
                   : demande.budget_min
-                  ? `À partir de ${demande.budget_min}€`
-                  : `Jusqu'à ${demande.budget_max}€`}
+                  ? `À partir de ${demande.budget_min} DH`
+                  : `Jusqu'à ${demande.budget_max} DH`}
               </Text>
             </View>
           )}

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Service de validation pour les formulaires
  * Fournit des validations réutilisables et des messages d'erreur
  */
@@ -95,10 +95,12 @@ export function validateEmail(email: string): boolean {
 }
 
 /**
- * Valide un numéro de téléphone français
+ * Valide un numéro de téléphone marocain
  */
 export function validatePhoneNumber(phone: string): boolean {
-  const phoneRegex = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
+  // Format marocain: +212 ou 00212 ou 0, suivi de 6-7 chiffres
+  // Ex: +212 6 12 34 56 78, 0612345678, 00212612345678
+  const phoneRegex = /^(?:(?:\+|00)212|0)\s*[5-7](?:[\s.-]*\d){8}$/;
   return phoneRegex.test(phone);
 }
 
@@ -159,7 +161,7 @@ export function validatePhotographeProfile(data: PhotographeProfile): Validation
   // Tarif horaire
   if (data.hourly_rate !== undefined && data.hourly_rate !== null) {
     if (data.hourly_rate < 20) {
-      errors.hourly_rate = 'Le tarif horaire minimum est de 20€';
+      errors.hourly_rate = 'Le tarif horaire minimum est de 20 DH';
     }
     if (data.hourly_rate > 1000) {
       errors.hourly_rate = 'Le tarif horaire semble irréaliste';

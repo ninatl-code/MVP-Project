@@ -277,7 +277,7 @@ export default function LaisserAvisPage() {
           <Text style={styles.sectionTitle}>Titre de votre avis</Text>
           <TextInput
             style={styles.inputTitre}
-            placeholder="Ex: Excellent photographe !"
+            placeholder="Ex: Excellent prestataire !"
             value={titre}
             onChangeText={setTitre}
             maxLength={100}

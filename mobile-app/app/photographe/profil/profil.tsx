@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -518,7 +518,7 @@ export default function ProfilPhotographe() {
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
                     <Text style={styles.infoValue}>
-                      {value?.min || 0}€ - {value?.max || 0}€
+                      {value?.min || 0} DH - {value?.max || 0} DH
                     </Text>
                   </View>
                 </View>
@@ -529,7 +529,7 @@ export default function ProfilPhotographe() {
                   <Ionicons name="car" size={20} color={COLORS.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Frais de déplacement</Text>
-                    <Text style={styles.infoValue}>{profile.frais_deplacement_par_km}€/km</Text>
+                    <Text style={styles.infoValue}>{profile.frais_deplacement_par_km}MAD/km</Text>
                   </View>
                 </View>
               )}

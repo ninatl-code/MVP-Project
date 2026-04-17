@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -214,10 +214,10 @@ export default function DevisCreateScreen() {
             <View style={styles.budgetHint}>
               <Text style={styles.budgetHintText}>
                 Budget client : {demande.budget_min && demande.budget_max
-                  ? `${demande.budget_min}€ - ${demande.budget_max}€`
+                  ? `${demande.budget_min} DH - ${demande.budget_max} DH`
                   : demande.budget_min
-                  ? `À partir de ${demande.budget_min}€`
-                  : `Jusqu'à ${demande.budget_max}€`}
+                  ? `À partir de ${demande.budget_min} DH`
+                  : `Jusqu'à ${demande.budget_max} DH`}
               </Text>
             </View>
           )}
@@ -284,7 +284,7 @@ export default function DevisCreateScreen() {
                 value={tarifBase}
                 onChangeText={setTarifBase}
               />
-              <Text style={styles.inputIcon}>€</Text>
+              <Text style={styles.inputIcon}> DH</Text>
             </View>
           </View>
 
@@ -298,7 +298,7 @@ export default function DevisCreateScreen() {
                 value={fraisDeplacement}
                 onChangeText={setFraisDeplacement}
               />
-              <Text style={styles.inputIcon}>€</Text>
+              <Text style={styles.inputIcon}> DH</Text>
             </View>
           </View>
 
@@ -312,13 +312,13 @@ export default function DevisCreateScreen() {
                 value={remiseMontant}
                 onChangeText={setRemiseMontant}
               />
-              <Text style={styles.inputIcon}>€</Text>
+              <Text style={styles.inputIcon}> DH</Text>
             </View>
           </View>
 
           <View style={styles.totalCard}>
             <Text style={styles.totalLabel}>Montant total</Text>
-            <Text style={styles.totalValue}>{montantTotal.toFixed(2)}€</Text>
+            <Text style={styles.totalValue}>{montantTotal.toFixed(2)} DH</Text>
           </View>
         </View>
 

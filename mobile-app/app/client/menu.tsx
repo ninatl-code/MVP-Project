@@ -165,9 +165,9 @@ export default function ClientMenu() {
           </View>
         </LinearGradient>
 
-        {/* Section "Comment trouver un photographe" */}
+        {/* Section "Comment trouver un prestataire" */}
         <View style={styles.howItWorksSection}>
-          <Text style={styles.howItWorksTitle}>💡 Comment trouver un photographe ?</Text>
+          <Text style={styles.howItWorksTitle}>💡 Comment trouver un prestataire ?</Text>
           <Text style={styles.howItWorksSubtitle}>Choisissez la méthode qui vous convient</Text>
           
           {/* Option 1 - Poster une demande (Recommandé) */}
@@ -196,7 +196,7 @@ export default function ClientMenu() {
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.benefitText}>Les photographes viennent à vous</Text>
+                <Text style={styles.benefitText}>Les prestataires viennent à vous</Text>
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
@@ -321,7 +321,7 @@ export default function ClientMenu() {
               <Text style={styles.modalTitle}>Changer de profil</Text>
             </View>
             <Text style={styles.modalText}>
-              Voulez-vous passer en mode Photographe ?
+              Voulez-vous passer en mode Prestataire ?
             </Text>
             <Text style={styles.modalSubtext}>
               Vous pourrez accéder aux demandes, créer des devis et gérer vos réservations.

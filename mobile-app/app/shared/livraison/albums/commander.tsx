@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -42,7 +42,7 @@ export default function CommanderAlbumScreen() {
 
     Alert.alert(
       'Confirmer la commande',
-      `Montant total: ${total.toFixed(2)}€\n\nVoulez-vous procéder au paiement ?`,
+      `Montant total: ${total.toFixed(2)} DH\n\nVoulez-vous procéder au paiement ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -121,7 +121,7 @@ export default function CommanderAlbumScreen() {
                 </View>
               </View>
               <Text style={styles.livraisonPrix}>
-                {option.prix === 0 ? 'Gratuit' : `${option.prix.toFixed(2)}€`}
+                {option.prix === 0 ? 'Gratuit' : `${option.prix.toFixed(2)} DH`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -158,7 +158,7 @@ export default function CommanderAlbumScreen() {
               <Text style={styles.inputLabel}>Ville *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Paris"
+                placeholder="Casablanca"
                 value={ville}
                 onChangeText={setVille}
               />
@@ -193,17 +193,17 @@ export default function CommanderAlbumScreen() {
         <View style={styles.totalCard}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Album</Text>
-            <Text style={styles.totalValue}>{prixBase.toFixed(2)}€</Text>
+            <Text style={styles.totalValue}>{prixBase.toFixed(2)} DH</Text>
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Livraison</Text>
             <Text style={styles.totalValue}>
-              {fraisLivraison === 0 ? 'Gratuit' : `${fraisLivraison.toFixed(2)}€`}
+              {fraisLivraison === 0 ? 'Gratuit' : `${fraisLivraison.toFixed(2)} DH`}
             </Text>
           </View>
           <View style={[styles.totalRow, styles.totalFinal]}>
             <Text style={styles.totalFinalLabel}>Total</Text>
-            <Text style={styles.totalFinalValue}>{total.toFixed(2)}€</Text>
+            <Text style={styles.totalFinalValue}>{total.toFixed(2)} DH</Text>
           </View>
         </View>
 
@@ -222,7 +222,7 @@ export default function CommanderAlbumScreen() {
         <TouchableOpacity style={styles.payerButton} onPress={handleValider}>
           <Ionicons name="lock-closed" size={20} color="#FFF" />
           <Text style={styles.payerButtonText}>
-            Payer {total.toFixed(2)}€
+            Payer {total.toFixed(2)} DH
           </Text>
         </TouchableOpacity>
       </View>

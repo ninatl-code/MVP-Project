@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -106,7 +106,7 @@ export default function AlbumsIndexScreen() {
               </View>
 
               <Text style={styles.albumPrix}>
-                À partir de {type.prixDepart.toFixed(2)}€
+                À partir de {type.prixDepart.toFixed(2)} DH
               </Text>
             </View>
 

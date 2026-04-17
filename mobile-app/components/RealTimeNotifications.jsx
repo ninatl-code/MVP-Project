@@ -227,7 +227,7 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
             toastMsg = 'Devis refusé'
             break
           case 'demande_pourvue':
-            toastMsg = 'Demande pourvue par un autre photographe'
+            toastMsg = 'Demande pourvue par un autre prestataire'
             break
           case 'galerie_ready':
             toastMsg = '📷 Vos photos sont prêtes !'

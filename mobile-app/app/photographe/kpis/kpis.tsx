@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native';
+﻿import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
@@ -333,7 +333,7 @@ export default function KPIsPrestataire() {
             <Ionicons name="cash-outline" size={32} color={COLORS.success} />
             <View style={styles.mainCardContent}>
               <Text style={styles.mainCardLabel}>Chiffre d'affaires</Text>
-              <Text style={styles.mainCardValue}>{getCAByPeriod().toFixed(2)} €</Text>
+              <Text style={styles.mainCardValue}>{getCAByPeriod().toFixed(2)}  DH</Text>
             </View>
           </View>
           
@@ -375,7 +375,7 @@ export default function KPIsPrestataire() {
 
           <View style={styles.metricCard}>
             <Ionicons name="card" size={24} color={COLORS.warning} />
-            <Text style={styles.metricValue}>{stats.panierMoyen.toFixed(0)} €</Text>
+            <Text style={styles.metricValue}>{stats.panierMoyen.toFixed(0)}  DH</Text>
             <Text style={styles.metricLabel}>Panier moyen</Text>
           </View>
 
@@ -437,7 +437,7 @@ export default function KPIsPrestataire() {
                 <View style={styles.serviceInfo}>
                   <Text style={styles.serviceName}>{service.titre}</Text>
                   <Text style={styles.serviceStats}>
-                    {service.count} réservations • {service.ca.toFixed(2)} €
+                    {service.count} réservations • {service.ca.toFixed(2)}  DH
                   </Text>
                 </View>
               </View>
@@ -468,12 +468,12 @@ export default function KPIsPrestataire() {
           <View style={styles.comparisonRow}>
             <View style={styles.comparisonItem}>
               <Text style={styles.comparisonLabel}>Mois actuel</Text>
-              <Text style={styles.comparisonValue}>{stats.caMoisActuel.toFixed(2)} €</Text>
+              <Text style={styles.comparisonValue}>{stats.caMoisActuel.toFixed(2)}  DH</Text>
             </View>
             <Ionicons name="arrow-forward" size={24} color={COLORS.textLight} />
             <View style={styles.comparisonItem}>
               <Text style={styles.comparisonLabel}>Mois précédent</Text>
-              <Text style={styles.comparisonValue}>{stats.caMoisPrecedent.toFixed(2)} €</Text>
+              <Text style={styles.comparisonValue}>{stats.caMoisPrecedent.toFixed(2)}  DH</Text>
             </View>
           </View>
         </View>

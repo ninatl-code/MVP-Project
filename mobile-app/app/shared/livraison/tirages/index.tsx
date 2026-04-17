@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -116,7 +116,7 @@ export default function TiragesScreen() {
                 {format.description && (
                   <Text style={styles.formatDescription}>{format.description}</Text>
                 )}
-                <Text style={styles.formatPrix}>{format.prixUnitaire.toFixed(2)}€</Text>
+                <Text style={styles.formatPrix}>{format.prixUnitaire.toFixed(2)} DH</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -139,7 +139,7 @@ export default function TiragesScreen() {
                   >
                     <Text style={styles.optionNom}>{finition.nom}</Text>
                     {finition.prix > 0 && (
-                      <Text style={styles.optionPrix}>+{finition.prix.toFixed(2)}€</Text>
+                      <Text style={styles.optionPrix}>+{finition.prix.toFixed(2)} DH</Text>
                     )}
                   </TouchableOpacity>
                 ))}
@@ -161,7 +161,7 @@ export default function TiragesScreen() {
                   >
                     <Text style={styles.optionNom}>{papier.nom}</Text>
                     {papier.prix > 0 && (
-                      <Text style={styles.optionPrix}>+{papier.prix.toFixed(2)}€</Text>
+                      <Text style={styles.optionPrix}>+{papier.prix.toFixed(2)} DH</Text>
                     )}
                   </TouchableOpacity>
                 ))}
@@ -214,7 +214,7 @@ export default function TiragesScreen() {
               </View>
               <View style={[styles.summaryRow, styles.summaryTotal]}>
                 <Text style={styles.totalLabel}>Total:</Text>
-                <Text style={styles.totalValue}>{calculerTotal().toFixed(2)}€</Text>
+                <Text style={styles.totalValue}>{calculerTotal().toFixed(2)} DH</Text>
               </View>
             </View>
           </>

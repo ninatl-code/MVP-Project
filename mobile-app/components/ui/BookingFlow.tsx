@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -202,17 +202,17 @@ export default function BookingFlow({
           
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Prix total du service</Text>
-            <Text style={styles.priceValue}>{basePrice.toFixed(2)}€</Text>
+            <Text style={styles.priceValue}>{basePrice.toFixed(2)} DH</Text>
           </View>
           
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Acompte à payer maintenant ({acomptePercent}%)</Text>
-            <Text style={styles.acompteValue}>{acompteAmount.toFixed(2)}€</Text>
+            <Text style={styles.acompteValue}>{acompteAmount.toFixed(2)} DH</Text>
           </View>
           
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Solde à payer au prestataire</Text>
-            <Text style={styles.priceValue}>{remainingAmount.toFixed(2)}€</Text>
+            <Text style={styles.priceValue}>{remainingAmount.toFixed(2)} DH</Text>
           </View>
         </View>
 
@@ -228,7 +228,7 @@ export default function BookingFlow({
 
         <View style={styles.buttonContainer}>
           <Button
-            title={`Payer l'acompte ${acompteAmount.toFixed(2)}€`}
+            title={`Payer l'acompte ${acompteAmount.toFixed(2)} DH`}
             onPress={handleBookingConfirmation}
             style={styles.confirmButton}
           />

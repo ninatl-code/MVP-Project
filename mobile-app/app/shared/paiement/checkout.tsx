@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -191,7 +191,7 @@ export default function CheckoutPage() {
         await supabase.from('notifications').insert({
           user_id: annonceData.prestataire_id,
           type: 'paiement_recu',
-          contenu: `Paiement de ${reservation.montant}€ reçu pour "${reservation.annonce_titre}"`,
+          contenu: `Paiement de ${reservation.montant} DH reçu pour "${reservation.annonce_titre}"`,
           lu: false,
           created_at: new Date().toISOString()
         });
@@ -277,7 +277,7 @@ export default function CheckoutPage() {
               </View>
               <View style={[styles.summaryRow, styles.totalRow]}>
                 <Text style={styles.totalLabel}>Total à payer</Text>
-                <Text style={styles.totalValue}>{reservation.montant}€</Text>
+                <Text style={styles.totalValue}>{reservation.montant} DH</Text>
               </View>
             </View>
           </View>
@@ -359,7 +359,7 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <Ionicons name="lock-closed" size={20} color={COLORS.background} />
-                  <Text style={styles.payButtonText}>Payer {reservation.montant}€</Text>
+                  <Text style={styles.payButtonText}>Payer {reservation.montant} DH</Text>
                 </>
               )}
             </TouchableOpacity>

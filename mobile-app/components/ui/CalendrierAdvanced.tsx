@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -83,7 +83,7 @@ export function AdvancedStats({ events }: { events: Event[] }) {
   const stats = [
     {
       label: 'Revenus totaux',
-      value: `${totalRevenue.toFixed(2)}€`,
+      value: `${totalRevenue.toFixed(2)} DH`,
       icon: 'cash',
       color: COLORS.success
     },
@@ -95,7 +95,7 @@ export function AdvancedStats({ events }: { events: Event[] }) {
     },
     {
       label: 'Panier moyen',
-      value: `${avgReservationValue.toFixed(2)}€`,
+      value: `${avgReservationValue.toFixed(2)} DH`,
       icon: 'trending-up',
       color: COLORS.warning
     },
@@ -165,7 +165,7 @@ export function EventListView({
                 <View style={styles.listEventHeader}>
                   <Text style={styles.listEventTitle}>{event.title}</Text>
                   {event.montant && (
-                    <Text style={styles.listEventAmount}>{event.montant}€</Text>
+                    <Text style={styles.listEventAmount}>{event.montant} DH</Text>
                   )}
                 </View>
                 <View style={styles.listEventDetails}>

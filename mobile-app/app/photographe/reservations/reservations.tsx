@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, SafeAreaView } from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -347,7 +347,7 @@ export default function ReservationsPrestataire() {
 
                   <View style={styles.detailRow}>
                     <Ionicons name="cash-outline" size={18} color={COLORS.success} />
-                    <Text style={[styles.detailText, styles.priceText]}>{reservation.montant_total}€</Text>
+                    <Text style={[styles.detailText, styles.priceText]}>{reservation.montant_total} DH</Text>
                   </View>
 
                   {reservation.notes_photographe && (

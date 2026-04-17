@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -121,7 +121,7 @@ export default function PaymentSheet({
 
       <View style={styles.buttonContainer}>
         <Button
-          title={isProcessing ? 'Traitement...' : `Payer ${amount.toFixed(2)}€`}
+          title={isProcessing ? 'Traitement...' : `Payer ${amount.toFixed(2)} DH`}
           onPress={handlePayment}
           disabled={isProcessing}
           style={styles.payButton}

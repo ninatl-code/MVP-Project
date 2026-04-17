@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -126,7 +126,7 @@ export default function PhotographeDevisListScreen() {
       <View style={styles.devisDetails}>
         <View style={styles.detailItem}>
           <Ionicons name="cash-outline" size={18} color="#5C6BC0" />
-          <Text style={styles.detailValue}>{item.montant_total}€</Text>
+          <Text style={styles.detailValue}>{item.montant_total} DH</Text>
         </View>
         <View style={styles.detailItem}>
           <Ionicons name="images-outline" size={18} color="#5C6BC0" />

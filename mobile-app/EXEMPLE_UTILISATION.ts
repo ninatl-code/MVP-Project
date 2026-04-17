@@ -1,4 +1,4 @@
-/**
+﻿/**
  * EXEMPLE D'UTILISATION - Système de Matching
  * Montre comment intégrer tous les composants ensemble
  */
@@ -60,8 +60,8 @@ export const EXEMPLE_PROFIL_PHOTOGRAPHE = {
     reportage: { min: 600, max: 2500 },
   },
   
-  tarif_deplacements: 0.5, // €/km
-  tarif_studio: 50, // €/heure
+  tarif_deplacements: 0.5, // MAD/km
+  tarif_studio: 50, // MAD/heure
   
   // Localisation
   rayon_deplacement: 100, // km
@@ -168,7 +168,7 @@ export const EXEMPLE_MATCHING_RESULTS = [
       '+30 points: Styles match (luminous, lifestyle)',
       '+20 points: Équipement générique',
       '+15 points: Disponibilité confirmée',
-      '+15 points: Tarif compétitif (650€ ≤ budget)',
+      '+15 points: Tarif compétitif (650 DH ≤ budget)',
       '+10 points: Rating excellent (4.8⭐)',
       '+5 points: À proximité (8km)',
       '+3 points: Maquilleur disponible',
@@ -241,7 +241,7 @@ export const UI_EXEMPLE_CARD_PHOTOGRAPHE = `
 ├─────────────────────────────────────────┤
 │ [Family] [Portrait] [+2]                │
 ├─────────────────────────────────────────┤
-│ Tarif estimé: €650 - €800               │
+│ Tarif estimé:  DH650 -  DH800               │
 ├─────────────────────────────────────────┤
 │  [Voir profil]  [Demander un devis]    │
 └─────────────────────────────────────────┘

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,16 +21,45 @@ const { width } = Dimensions.get('window');
 
 const CATEGORIES = [
   { label: 'Toutes', value: '' },
+  
+  // Événements
   { label: 'Mariage', value: 'Mariage' },
-  { label: 'Portrait', value: 'Portrait' },
   { label: 'Événementiel', value: 'Événementiel' },
-  { label: 'Corporate', value: 'Corporate' },
-  { label: 'Produit', value: 'Produit' },
-  { label: 'Architecture', value: 'Architecture' },
-  { label: 'Nature', value: 'Nature' },
-  { label: 'Sport', value: 'Sport' },
-  { label: 'Mode', value: 'Mode' },
-  { label: 'Culinaire', value: 'Culinaire' },
+  { label: 'Traiteur', value: 'Traiteur' },
+  { label: 'DJ & Musique', value: 'DJ & Musique' },
+  
+  // Photo & Vidéo
+  { label: 'Photographie', value: 'Photographie' },
+  { label: 'Vidéographie', value: 'Vidéographie' },
+  
+  // Maison & Réparations
+  { label: 'Ménage', value: 'Ménage' },
+  { label: 'Plomberie', value: 'Plomberie' },
+  { label: 'Électricité', value: 'Électricité' },
+  { label: 'Jardinage', value: 'Jardinage' },
+  { label: 'Peinture', value: 'Peinture' },
+  
+  // Construction
+  { label: 'Maçonnerie', value: 'Maçonnerie' },
+  { label: 'Menuiserie', value: 'Menuiserie' },
+  { label: 'Rénovation', value: 'Rénovation' },
+  
+  // Beauté
+  { label: 'Coiffure', value: 'Coiffure' },
+  { label: 'Maquillage', value: 'Maquillage' },
+  
+  // Services pro
+  { label: 'Développement web', value: 'Développement web' },
+  { label: 'Design', value: 'Design' },
+  { label: 'Marketing', value: 'Marketing' },
+  
+  // Transport
+  { label: 'Déménagement', value: 'Déménagement' },
+  { label: 'Livraison', value: 'Livraison' },
+  
+  // Autres
+  { label: 'Cours particuliers', value: 'Cours particuliers' },
+  { label: 'Coaching', value: 'Coaching' },
 ];
 
 const SORT_OPTIONS = [
@@ -240,7 +269,7 @@ export default function SearchPhotographes() {
           <View style={styles.infoRow}>
             <Ionicons name="cash-outline" size={16} color="#666" />
             <Text style={styles.infoText}>
-              À partir de {item.budget_min_prestation}€
+              À partir de {item.budget_min_prestation} DH
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -286,7 +315,7 @@ export default function SearchPhotographes() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.welcomeText}>Bienvenue</Text>
-              <Text style={styles.title}>Trouvez votre photographe</Text>
+              <Text style={styles.title}>Trouvez votre prestataire</Text>
             </View>
           </View>
 
@@ -375,7 +404,7 @@ export default function SearchPhotographes() {
 
       {showFilters && (
         <View style={styles.advancedFilters}>
-          <Text style={styles.filterLabel}>Budget max (€)</Text>
+          <Text style={styles.filterLabel}>Budget max (MAD)</Text>
           <TextInput
             style={styles.budgetInput}
             placeholder="Ex: 800"
@@ -388,7 +417,7 @@ export default function SearchPhotographes() {
       )}
 
       <Text style={styles.resultCount}>
-        {photographes.length} photographe{photographes.length > 1 ? 's' : ''} disponible{photographes.length > 1 ? 's' : ''}
+        {photographes.length} prestataire{photographes.length > 1 ? 's' : ''} disponible{photographes.length > 1 ? 's' : ''}
       </Text>
 
       {photographes.length === 0 ? (
@@ -396,10 +425,10 @@ export default function SearchPhotographes() {
           <View style={styles.emptyIllustration}>
             <Ionicons name="camera-outline" size={80} color="#E8EAF6" />
           </View>
-          <Text style={styles.emptyTitle}>Aucun photographe trouvé</Text>
+          <Text style={styles.emptyTitle}>Aucun prestataire trouvé</Text>
           <Text style={styles.emptyText}>
             {selectedCategorie 
-              ? `Aucun photographe disponible pour la catégorie "${selectedCategorie}"`
+              ? `Aucun prestataire disponible pour la catégorie "${selectedCategorie}"`
               : "Essayez de modifier vos critères de recherche"
             }
           </Text>
@@ -414,7 +443,7 @@ export default function SearchPhotographes() {
                 </View>
                 <View style={styles.guideStepContent}>
                   <Text style={styles.guideStepTitle}>Recherchez</Text>
-                  <Text style={styles.guideStepText}>Parcourez les profils de photographes</Text>
+                  <Text style={styles.guideStepText}>Parcourez les profils de prestataires</Text>
                 </View>
               </View>
               <View style={styles.guideStep}>
@@ -443,7 +472,7 @@ export default function SearchPhotographes() {
               style={styles.resetButton}
               onPress={() => setSelectedCategorie('')}
             >
-              <Text style={styles.resetButtonText}>Afficher tous les photographes</Text>
+              <Text style={styles.resetButtonText}>Afficher tous les prestataires</Text>
             </TouchableOpacity>
           )}
         </ScrollView>

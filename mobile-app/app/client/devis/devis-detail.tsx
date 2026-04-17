@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -218,7 +218,7 @@ export default function ClientDevisDetailScreen() {
                 <Text style={styles.photographerName} numberOfLines={1}>
                   {devis.photographe?.nom || 'Photographe'}
                 </Text>
-                <Text style={styles.photographerPrice}>{devis.montant_total}€</Text>
+                <Text style={styles.photographerPrice}>{devis.montant_total} DH</Text>
                 <View style={[styles.miniStatusBadge, { backgroundColor: devisBadge.color }]}>
                   <Ionicons name={devisBadge.icon} size={12} color="#fff" />
                 </View>
@@ -291,25 +291,25 @@ export default function ClientDevisDetailScreen() {
             <Text style={styles.sectionTitle}>Tarification</Text>
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Tarif de base</Text>
-              <Text style={styles.priceValue}>{selectedDevis.tarif_base}€</Text>
+              <Text style={styles.priceValue}>{selectedDevis.tarif_base} DH</Text>
             </View>
             {selectedDevis.frais_deplacement > 0 && (
               <View style={styles.priceRow}>
                 <Text style={styles.priceLabel}>Frais de déplacement</Text>
-                <Text style={styles.priceValue}>+{selectedDevis.frais_deplacement}€</Text>
+                <Text style={styles.priceValue}>+{selectedDevis.frais_deplacement} DH</Text>
               </View>
             )}
             {selectedDevis.remise_montant > 0 && (
               <View style={styles.priceRow}>
                 <Text style={styles.priceLabel}>Remise</Text>
                 <Text style={[styles.priceValue, { color: '#4CAF50' }]}>
-                  -{selectedDevis.remise_montant}€
+                  -{selectedDevis.remise_montant} DH
                 </Text>
               </View>
             )}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Montant total</Text>
-              <Text style={styles.totalValue}>{selectedDevis.montant_total}€</Text>
+              <Text style={styles.totalValue}>{selectedDevis.montant_total} DH</Text>
             </View>
           </View>
 
@@ -376,7 +376,7 @@ export default function ClientDevisDetailScreen() {
                 <Ionicons name="card-outline" size={20} color="#666" />
                 <Text style={styles.infoText}>
                   Acompte de {selectedDevis.acompte_requis_percent}% requis (
-                  {((selectedDevis.montant_total * selectedDevis.acompte_requis_percent) / 100).toFixed(2)}€)
+                  {((selectedDevis.montant_total * selectedDevis.acompte_requis_percent) / 100).toFixed(2)} DH)
                 </Text>
               </View>
             </View>

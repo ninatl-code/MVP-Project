@@ -66,7 +66,7 @@ export default function MenuPrestataire() {
       const missing: string[] = [];
 
       if (!profilPhoto) {
-        missing.push('Créer votre profil photographe');
+        missing.push('Créer votre profil prestataire');
       } else {
         if (!profilPhoto.bio || profilPhoto.bio.length < 50) {
           missing.push('Compléter votre biographie (min. 50 caractères)');
@@ -441,7 +441,7 @@ export default function MenuPrestataire() {
               Voulez-vous passer en mode Client ?
             </Text>
             <Text style={styles.modalSubtext}>
-              Vous pourrez revenir en mode Photographe à tout moment.
+              Vous pourrez revenir en mode Prestataire à tout moment.
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity

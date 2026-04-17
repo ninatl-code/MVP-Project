@@ -253,7 +253,7 @@ export default function MaLocalisationPage() {
               style={styles.input}
               value={ville}
               onChangeText={setVille}
-              placeholder="Paris"
+              placeholder="Casablanca"
             />
           </View>
 

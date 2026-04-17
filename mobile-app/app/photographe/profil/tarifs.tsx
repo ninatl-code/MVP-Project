@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -288,7 +288,7 @@ export default function TarifsScreen() {
             keyboardType="numeric"
           />
 
-          <Text style={styles.label}>Prix (€) *</Text>
+          <Text style={styles.label}>Prix (MAD) *</Text>
           <TextInput
             style={styles.input}
             value={prixPackage}
@@ -401,7 +401,7 @@ export default function TarifsScreen() {
                     trackColor={{ false: '#ccc', true: '#5C6BC0' }}
                   />
                 </View>
-                <Text style={styles.packagePrice}>{pkg.prix}€</Text>
+                <Text style={styles.packagePrice}>{pkg.prix} DH</Text>
               </View>
 
               {pkg.description && (

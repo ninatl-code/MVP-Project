@@ -302,6 +302,81 @@ export const ICON_SIZES = {
   '2xl': 40,
 };
 
+// Moroccan cities and regions
+export const MOROCCAN_CITIES = [
+  // Grand Casablanca
+  { id: 1, name: 'Casablanca', region: 'Casablanca-Settat' },
+  { id: 2, name: 'Mohammedia', region: 'Casablanca-Settat' },
+  { id: 3, name: 'Settat', region: 'Casablanca-Settat' },
+  { id: 4, name: 'El Jadida', region: 'Casablanca-Settat' },
+  { id: 5, name: 'Berrechid', region: 'Casablanca-Settat' },
+  
+  // Rabat-Salé-Kénitra
+  { id: 6, name: 'Rabat', region: 'Rabat-Salé-Kénitra' },
+  { id: 7, name: 'Salé', region: 'Rabat-Salé-Kénitra' },
+  { id: 8, name: 'Kénitra', region: 'Rabat-Salé-Kénitra' },
+  { id: 9, name: 'Témara', region: 'Rabat-Salé-Kénitra' },
+  { id: 10, name: 'Skhirat', region: 'Rabat-Salé-Kénitra' },
+  
+  // Marrakech-Safi
+  { id: 11, name: 'Marrakech', region: 'Marrakech-Safi' },
+  { id: 12, name: 'Safi', region: 'Marrakech-Safi' },
+  { id: 13, name: 'Essaouira', region: 'Marrakech-Safi' },
+  
+  // Fès-Meknès
+  { id: 14, name: 'Fès', region: 'Fès-Meknès' },
+  { id: 15, name: 'Meknès', region: 'Fès-Meknès' },
+  { id: 16, name: 'Ifrane', region: 'Fès-Meknès' },
+  
+  // Tanger-Tétouan-Al Hoceïma
+  { id: 17, name: 'Tanger', region: 'Tanger-Tétouan-Al Hoceïma' },
+  { id: 18, name: 'Tétouan', region: 'Tanger-Tétouan-Al Hoceïma' },
+  { id: 19, name: 'Al Hoceïma', region: 'Tanger-Tétouan-Al Hoceïma' },
+  { id: 20, name: 'Chefchaouen', region: 'Tanger-Tétouan-Al Hoceïma' },
+  { id: 21, name: 'Larache', region: 'Tanger-Tétouan-Al Hoceïma' },
+  
+  // Oriental
+  { id: 22, name: 'Oujda', region: 'Oriental' },
+  { id: 23, name: 'Nador', region: 'Oriental' },
+  { id: 24, name: 'Berkane', region: 'Oriental' },
+  
+  // Souss-Massa
+  { id: 25, name: 'Agadir', region: 'Souss-Massa' },
+  { id: 26, name: 'Inezgane', region: 'Souss-Massa' },
+  { id: 27, name: 'Taroudant', region: 'Souss-Massa' },
+  { id: 28, name: 'Tiznit', region: 'Souss-Massa' },
+  
+  // Béni Mellal-Khénifra
+  { id: 29, name: 'Béni Mellal', region: 'Béni Mellal-Khénifra' },
+  { id: 30, name: 'Khénifra', region: 'Béni Mellal-Khénifra' },
+  { id: 31, name: 'Khouribga', region: 'Béni Mellal-Khénifra' },
+  
+  // Drâa-Tafilalet
+  { id: 32, name: 'Errachidia', region: 'Drâa-Tafilalet' },
+  { id: 33, name: 'Ouarzazate', region: 'Drâa-Tafilalet' },
+  { id: 34, name: 'Zagora', region: 'Drâa-Tafilalet' },
+  
+  // Autres villes importantes
+  { id: 35, name: 'Guelmim', region: 'Guelmim-Oued Noun' },
+  { id: 36, name: 'Laâyoune', region: 'Laâyoune-Sakia El Hamra' },
+  { id: 37, name: 'Dakhla', region: 'Dakhla-Oued Ed-Dahab' },
+];
+
+export const MOROCCAN_REGIONS = [
+  'Casablanca-Settat',
+  'Rabat-Salé-Kénitra',
+  'Marrakech-Safi',
+  'Fès-Meknès',
+  'Tanger-Tétouan-Al Hoceïma',
+  'Oriental',
+  'Souss-Massa',
+  'Béni Mellal-Khénifra',
+  'Drâa-Tafilalet',
+  'Guelmim-Oued Noun',
+  'Laâyoune-Sakia El Hamra',
+  'Dakhla-Oued Ed-Dahab',
+];
+
 export default {
   COLORS,
   TYPOGRAPHY,
@@ -312,4 +387,6 @@ export default {
   BREAKPOINTS,
   LAYOUT,
   ICON_SIZES,
+  MOROCCAN_CITIES,
+  MOROCCAN_REGIONS,
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -209,14 +209,14 @@ export default function PhotographeDemandeDetailScreen() {
                 <Text style={styles.detailLabel}>Budget</Text>
                 <Text style={styles.detailValue}>
                   {demande.budget_min && demande.budget_max
-                    ? `${demande.budget_min}€ - ${demande.budget_max}€`
+                    ? `${demande.budget_min} DH - ${demande.budget_max} DH`
                     : demande.budget_min
-                    ? `À partir de ${demande.budget_min}€`
-                    : `Jusqu'à ${demande.budget_max}€`}
+                    ? `À partir de ${demande.budget_min} DH`
+                    : `Jusqu'à ${demande.budget_max} DH`}
                 </Text>
                 {photographe.budget_min_prestation && (
                   <Text style={styles.detailHint}>
-                    Votre tarif minimum : {photographe.budget_min_prestation}€
+                    Votre tarif minimum : {photographe.budget_min_prestation} DH
                   </Text>
                 )}
               </View>

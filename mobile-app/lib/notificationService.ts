@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+﻿import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from './supabaseClient';
@@ -379,7 +379,7 @@ export async function sendPaymentReceivedNotification(
         to: profile.push_token,
         sound: 'default',
         title: '💰 Paiement reçu',
-        body: `${paymentData.client_nom} a payé ${paymentData.montant}€ pour ${paymentData.service}`,
+        body: `${paymentData.client_nom} a payé ${paymentData.montant} DH pour ${paymentData.service}`,
         data: {
           type: 'payment',
         },
@@ -537,7 +537,7 @@ export async function notifyNewDemande(
   }
 ): Promise<void> {
   try {
-    const budgetText = demandeData.budget_max ? ` - Budget: ${demandeData.budget_max}€` : '';
+    const budgetText = demandeData.budget_max ? ` - Budget: ${demandeData.budget_max} DH` : '';
     
     await sendPushNotification(photographeId, {
       title: '📸 Nouvelle demande correspondant à votre profil',
@@ -584,7 +584,7 @@ export async function notifyNewDevis(
   try {
     await sendPushNotification(clientId, {
       title: '💰 Nouveau devis reçu',
-      body: `${devisData.photographe_nom} vous a envoyé un devis de ${devisData.montant_total}€ pour "${devisData.demande_titre}"`,
+      body: `${devisData.photographe_nom} vous a envoyé un devis de ${devisData.montant_total} DH pour "${devisData.demande_titre}"`,
       data: {
         type: 'new_devis',
         devis_id: devisData.id,
@@ -597,7 +597,7 @@ export async function notifyNewDevis(
       user_id: clientId,
       type: 'new_devis',
       titre: 'Nouveau devis',
-      contenu: `${devisData.photographe_nom} - ${devisData.montant_total}€`,
+      contenu: `${devisData.photographe_nom} - ${devisData.montant_total} DH`,
       lien: `/client/devis/${devisData.id}`,
       metadata: {
         devis_id: devisData.id,
@@ -667,7 +667,7 @@ export async function notifyDevisAccepte(
   try {
     await sendPushNotification(photographeId, {
       title: '🎉 Félicitations ! Devis accepté',
-      body: `${devisData.client_nom} a accepté votre devis de ${devisData.montant_total}€ pour le ${devisData.date_prestation}`,
+      body: `${devisData.client_nom} a accepté votre devis de ${devisData.montant_total} DH pour le ${devisData.date_prestation}`,
       data: {
         type: 'devis_accepte',
         devis_id: devisData.id,
@@ -678,7 +678,7 @@ export async function notifyDevisAccepte(
       user_id: photographeId,
       type: 'devis_accepte',
       titre: 'Devis accepté',
-      contenu: `${devisData.client_nom} - ${devisData.montant_total}€ - ${devisData.date_prestation}`,
+      contenu: `${devisData.client_nom} - ${devisData.montant_total} DH - ${devisData.date_prestation}`,
       lien: `/photographe/devis/${devisData.id}`,
       metadata: {
         devis_id: devisData.id,

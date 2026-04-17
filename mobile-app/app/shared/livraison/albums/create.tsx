@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -140,7 +140,7 @@ export default function CreateAlbumScreen() {
               >
                 <Text style={styles.couvertureNom}>{c.nom}</Text>
                 {c.prix > 0 && (
-                  <Text style={styles.couverturePrix}>+{c.prix}€</Text>
+                  <Text style={styles.couverturePrix}>+{c.prix} DH</Text>
                 )}
               </TouchableOpacity>
             ))}
@@ -151,7 +151,7 @@ export default function CreateAlbumScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Nombre de pages</Text>
           <Text style={styles.helperText}>
-            20 pages incluses, +{PRIX_PAGE}€ par page supplémentaire
+            20 pages incluses, +{PRIX_PAGE} DH par page supplémentaire
           </Text>
           <View style={styles.pagesGrid}>
             {PAGES_OPTIONS.map((p) => (
@@ -209,7 +209,7 @@ export default function CreateAlbumScreen() {
 
           <View style={[styles.summaryRow, styles.summaryTotal]}>
             <Text style={styles.totalLabel}>Total:</Text>
-            <Text style={styles.totalValue}>{calculerTotal().toFixed(2)}€</Text>
+            <Text style={styles.totalValue}>{calculerTotal().toFixed(2)} DH</Text>
           </View>
         </View>
       </ScrollView>

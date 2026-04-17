@@ -233,7 +233,7 @@ export default function MediaLibraryScreen() {
         .getPublicUrl(filePath);
 
       // Create media record in galeries_livraison (associate with recent reservation)
-      // Get the latest reservation for this photographer
+      // Get the latest reservation for this service provider
       const { data: latestRes } = await supabase
         .from('reservations')
         .select('id, client_id')

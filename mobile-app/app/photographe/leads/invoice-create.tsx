@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, Platform } from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -429,7 +429,7 @@ export default function InvoiceCreate() {
                 </View>
 
                 <View style={[styles.lineInput, { flex: 2 }]}>
-                  <Text style={styles.label}>Prix unitaire HT (€)</Text>
+                  <Text style={styles.label}>Prix unitaire HT (MAD)</Text>
                   <TextInput
                     style={styles.input}
                     value={String(item.prix_unitaire)}
@@ -444,7 +444,7 @@ export default function InvoiceCreate() {
               <View style={styles.lineTotal}>
                 <Text style={styles.lineTotalLabel}>Total ligne HT:</Text>
                 <Text style={styles.lineTotalValue}>
-                  {(item.quantite * item.prix_unitaire).toFixed(2)} €
+                  {(item.quantite * item.prix_unitaire).toFixed(2)}  DH
                 </Text>
               </View>
             </View>
@@ -460,15 +460,15 @@ export default function InvoiceCreate() {
         <View style={styles.section}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total HT</Text>
-            <Text style={styles.totalValue}>{montantHT.toFixed(2)} €</Text>
+            <Text style={styles.totalValue}>{montantHT.toFixed(2)}  DH</Text>
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>TVA (20%)</Text>
-            <Text style={styles.totalValue}>{montantTVA.toFixed(2)} €</Text>
+            <Text style={styles.totalValue}>{montantTVA.toFixed(2)}  DH</Text>
           </View>
           <View style={[styles.totalRow, styles.totalRowFinal]}>
             <Text style={styles.totalLabelFinal}>Total TTC</Text>
-            <Text style={styles.totalValueFinal}>{montantTTC.toFixed(2)} €</Text>
+            <Text style={styles.totalValueFinal}>{montantTTC.toFixed(2)}  DH</Text>
           </View>
         </View>
 

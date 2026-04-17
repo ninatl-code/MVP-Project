@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -182,7 +182,7 @@ export default function MesCommandesTiragesScreen() {
 
       <View style={styles.commandeFooter}>
         <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>{item.total.toFixed(2)}€</Text>
+        <Text style={styles.totalValue}>{item.total.toFixed(2)} DH</Text>
       </View>
     </TouchableOpacity>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -118,18 +118,18 @@ export default function PaymentHistoryScreen() {
           <View style={styles.paymentDetails}>
             <View style={styles.amountRow}>
               <Text style={styles.label}>Acompte payé</Text>
-              <Text style={styles.amount}>{payment.montant_acompte.toFixed(2)}€</Text>
+              <Text style={styles.amount}>{payment.montant_acompte.toFixed(2)} DH</Text>
             </View>
             
             <View style={styles.amountRow}>
               <Text style={styles.label}>Total service</Text>
-              <Text style={styles.totalAmount}>{payment.montant_total.toFixed(2)}€</Text>
+              <Text style={styles.totalAmount}>{payment.montant_total.toFixed(2)} DH</Text>
             </View>
             
             {payment.montant_restant > 0 && (
               <View style={styles.amountRow}>
                 <Text style={styles.label}>Solde restant</Text>
-                <Text style={styles.remainingAmount}>{payment.montant_restant.toFixed(2)}€</Text>
+                <Text style={styles.remainingAmount}>{payment.montant_restant.toFixed(2)} DH</Text>
               </View>
             )}
           </View>
@@ -173,7 +173,7 @@ export default function PaymentHistoryScreen() {
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{totalPaid.toFixed(0)}€</Text>
+                <Text style={styles.statValue}>{totalPaid.toFixed(0)} DH</Text>
                 <Text style={styles.statLabel}>Total payé</Text>
               </View>
             </View>

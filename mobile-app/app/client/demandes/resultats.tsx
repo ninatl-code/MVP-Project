@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -213,7 +213,7 @@ export default function RésultatsRecherche() {
       <View style={styles.priceRow}>
         <Text style={styles.priceLabel}>Tarif estimé:</Text>
         <Text style={styles.price}>
-          €{photographer.price_range.min || '?'} - €{photographer.price_range.max || '?'}
+           DH{photographer.price_range.min || '?'} -  DH{photographer.price_range.max || '?'}
         </Text>
       </View>
 

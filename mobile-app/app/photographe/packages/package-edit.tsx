@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -193,7 +193,7 @@ export default function PackageEditScreen() {
 
           <View style={styles.twoColumn}>
             <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Prix (€) *</Text>
+              <Text style={styles.label}>Prix (MAD) *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0.00"

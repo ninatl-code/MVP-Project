@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Animated } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,7 +66,7 @@ export default function PaymentSuccess() {
             
             <View style={styles.detailRow}>
               <Ionicons name="cash" size={20} color={COLORS.primary} />
-              <Text style={styles.detailLabel}>Montant payé : {montant}€</Text>
+              <Text style={styles.detailLabel}>Montant payé : {montant} DH</Text>
             </View>
 
             <View style={styles.detailRow}>

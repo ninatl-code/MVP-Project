@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
 import { supabase } from '@/lib/supabaseClient';
 import FooterPresta from '@/components/photographe/FooterPresta';
@@ -288,7 +288,7 @@ export default function CalendrierPrestataire() {
       .from('reservations')
       .insert({
         photographe_id: user.id,
-        client_id: user.id, // Photographer is creating for their own calendar
+        client_id: user.id, // Service provider is creating for their own calendar
         titre: clientNom,
         categorie: 'personnelle',
         date: dateTime.toISOString().split('T')[0],
@@ -409,7 +409,7 @@ export default function CalendrierPrestataire() {
         </View>
         <View style={[styles.statCard, { backgroundColor: '#E0F2FE' }]}>
           <Ionicons name="cash" size={28} color={COLORS.primary} />
-          <Text style={styles.statValue}>{stats.revenue.toFixed(0)}€</Text>
+          <Text style={styles.statValue}>{stats.revenue.toFixed(0)} DH</Text>
           <Text style={styles.statLabel}>Revenus</Text>
         </View>
       </View>
@@ -534,7 +534,7 @@ export default function CalendrierPrestataire() {
                   <Text style={styles.eventDetail}>👤 {event.client_name}</Text>
                 )}
                 {event.montant && (
-                  <Text style={styles.eventDetail}>💰 {event.montant}€</Text>
+                  <Text style={styles.eventDetail}>💰 {event.montant} DH</Text>
                 )}
                 {event.motif && (
                   <Text style={styles.eventDetail}>📝 {event.motif}</Text>
@@ -680,7 +680,7 @@ export default function CalendrierPrestataire() {
                       />
                     </View>
                     <View style={styles.col}>
-                      <Text style={styles.inputLabel}>Montant (€)</Text>
+                      <Text style={styles.inputLabel}>Montant (MAD)</Text>
                       <TextInput
                         style={styles.input}
                         value={montant}

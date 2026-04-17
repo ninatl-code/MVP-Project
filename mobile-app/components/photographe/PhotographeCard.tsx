@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -62,7 +62,7 @@ export default function PhotographeCard({
 
         {photographe.tarif_horaire && (
           <Text style={styles.tarif}>
-            À partir de {photographe.tarif_horaire}€/heure
+            À partir de {photographe.tarif_horaire}MAD/heure
           </Text>
         )}
       </View>

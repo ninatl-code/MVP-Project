@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -181,7 +181,7 @@ export default function PackagesListScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.packagePrice}>{pkg.prix_fixe}€</Text>
+                  <Text style={styles.packagePrice}>{pkg.prix_fixe} DH</Text>
                 </View>
 
                 {pkg.description && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -160,10 +160,10 @@ export default function MesDemandesScreen() {
               <Ionicons name="cash-outline" size={16} color="#666" />
               <Text style={styles.infoText}>
                 {item.budget_min && item.budget_max
-                  ? `${item.budget_min}€ - ${item.budget_max}€`
+                  ? `${item.budget_min} DH - ${item.budget_max} DH`
                   : item.budget_min
-                  ? `À partir de ${item.budget_min}€`
-                  : `Jusqu'à ${item.budget_max}€`}
+                  ? `À partir de ${item.budget_min} DH`
+                  : `Jusqu'à ${item.budget_max} DH`}
               </Text>
             </View>
           )}
@@ -266,7 +266,7 @@ export default function MesDemandesScreen() {
           </Text>
           <Text style={styles.emptyText}>
             {demandes.length === 0
-              ? 'Créez votre première demande pour trouver un photographe'
+              ? 'Créez votre première demande pour trouver un prestataire'
               : 'Essayez de modifier vos filtres'}
           </Text>
           {demandes.length === 0 && (
