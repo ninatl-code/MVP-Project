@@ -2,7 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
-import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, RefreshCcw } from "lucide-react";
+import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, RefreshCcw, User } from "lucide-react";
 import { ShootyLogoSimple } from "./ShootyLogo";
 
 // Palette Shooty
@@ -172,7 +172,11 @@ export default function Header() {
                   className="w-full h-full object-cover rounded-full"
                 />
               ) : (
-                <span>{profile?.nom ? profile.nom[0].toUpperCase() : "?"}</span>
+                profile?.nom ? (
+                  <span>{profile.nom[0].toUpperCase()}</span>
+                ) : (
+                  <User className="w-5 h-5" />
+                )
               )}
             </button>
             <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
@@ -195,13 +199,14 @@ function NotificationsPopup({ router }) {
   useEffect(() => {
     const fetchUserAndNotifications = async () => {
       setLoading(true);
-      const { data: authData } = await supabase.auth.getUser();
-      setUserId(authData?.user?.id);
-      if (!authData?.user?.id) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      const uid = session?.user?.id;
+      setUserId(uid);
+      if (!uid) return;
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', authData.user.id)
+        .eq('user_id', uid)
         .order('created_at', { ascending: false });
       if (!error && data) setNotifications(data);
       setLoading(false);

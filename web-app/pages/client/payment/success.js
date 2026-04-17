@@ -47,9 +47,8 @@ export default function PaymentSuccessPage() {
           .from('reservations')
           .select(`
             *,
-            photographe:profils_photographe(
+            photographe:profils_prestataire(
               nom_entreprise,
-              photo_profil,
               profile:profiles(nom, prenom)
             )
           `)
@@ -64,9 +63,8 @@ export default function PaymentSuccessPage() {
           .from('devis')
           .select(`
             *,
-            photographe:profils_photographe(
+            photographe:profils_prestataire(
               nom_entreprise,
-              photo_profil,
               profile:profiles(nom, prenom)
             ),
             demande:demandes_client(

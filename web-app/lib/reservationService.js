@@ -6,37 +6,38 @@ import { supabase } from './supabaseClient';
 export const createReservation = async ({
   clientId,
   photographe_id,
-  annonceId,
   devisId,
   datePrestation,
   heureDebut,
   heureFin,
   montant,
   lieu,
+  ville,
+  categorie = 'photographie',
+  titre = 'Réservation',
   notes,
 }) => {
   try {
-    // Generate reservation number
-    const numeroReservation = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
     const montantAcompte = Math.round(montant * 0.3 * 100) / 100;
 
     const { data, error } = await supabase
       .from('reservations')
       .insert({
-        numero_reservation: numeroReservation,
         client_id: clientId,
-        photographe_id,
-        annonce_id: annonceId,
+        prestataire_id: photographe_id,
         devis_id: devisId,
-        date_prestation: datePrestation,
+        titre,
+        categorie,
+        date: datePrestation,
         heure_debut: heureDebut,
         heure_fin: heureFin,
-        montant,
-        montant_acompte: montantAcompte,
-        lieu,
-        notes,
-        status: 'en_attente_paiement',
-        created_at: new Date().toISOString(),
+        montant_total: montant,
+        acompte_montant: montantAcompte,
+        solde_montant: montant - montantAcompte,
+        lieu: lieu || 'À définir',
+        ville,
+        notes_client: notes,
+        statut: 'pending',
       })
       .select()
       .single();
@@ -58,18 +59,17 @@ export const getClientReservations = async (clientId, status = null) => {
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_photographe_id_fkey(id, nom, email, telephone, avatar_url),
-        annonces(titre, photos, conditions_annulation),
-        devis(options, message)
+        profiles!reservations_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
+        devis(services_inclus, message_personnalise)
       `)
       .eq('client_id', clientId)
-      .order('date_prestation', { ascending: true });
+      .order('date', { ascending: true });
 
     if (status) {
       if (Array.isArray(status)) {
-        query = query.in('status', status);
+        query = query.in('statut', status);
       } else {
-        query = query.eq('status', status);
+        query = query.eq('statut', status);
       }
     }
 
@@ -93,17 +93,16 @@ export const getPhotographerReservations = async (photographeId, status = null) 
       .select(`
         *,
         profiles!reservations_client_id_fkey(id, nom, email, telephone, avatar_url),
-        annonces(titre, photos, conditions_annulation),
-        devis(options, message)
+        devis(services_inclus, message_personnalise)
       `)
-      .eq('photographe_id', photographeId)
-      .order('date_prestation', { ascending: true });
+      .eq('prestataire_id', photographeId)
+      .order('date', { ascending: true });
 
     if (status) {
       if (Array.isArray(status)) {
-        query = query.in('status', status);
+        query = query.in('statut', status);
       } else {
-        query = query.eq('status', status);
+        query = query.eq('statut', status);
       }
     }
 
@@ -127,8 +126,7 @@ export const getReservationById = async (reservationId) => {
       .select(`
         *,
         profiles!reservations_client_id_fkey(id, nom, email, telephone, avatar_url),
-        profiles!reservations_photographe_id_fkey(id, nom, email, telephone, avatar_url),
-        annonces(*),
+        profiles!reservations_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
         devis(*),
         paiements(*)
       `)
@@ -151,7 +149,7 @@ export const updateReservationStatus = async (reservationId, status, additionalD
     const { data, error } = await supabase
       .from('reservations')
       .update({
-        status,
+        statut: status,
         ...additionalData,
         updated_at: new Date().toISOString(),
       })
@@ -171,8 +169,8 @@ export const updateReservationStatus = async (reservationId, status, additionalD
  * Confirm reservation (service provider accepts)
  */
 export const confirmReservation = async (reservationId) => {
-  return updateReservationStatus(reservationId, 'confirmed', {
-    confirmed_at: new Date().toISOString(),
+  return updateReservationStatus(reservationId, 'confirme', {
+    date_confirmation: new Date().toISOString(),
   });
 };
 
@@ -180,9 +178,7 @@ export const confirmReservation = async (reservationId) => {
  * Complete reservation (after service is done)
  */
 export const completeReservation = async (reservationId) => {
-  return updateReservationStatus(reservationId, 'completed', {
-    completed_at: new Date().toISOString(),
-  });
+  return updateReservationStatus(reservationId, 'termine', {});
 };
 
 /**
@@ -193,10 +189,10 @@ export const cancelReservation = async (reservationId, reason, cancelledBy) => {
     const { data, error } = await supabase
       .from('reservations')
       .update({
-        status: 'cancelled',
-        cancel_reason: reason,
-        cancelled_by: cancelledBy,
-        cancelled_at: new Date().toISOString(),
+        statut: 'annule',
+        motif_annulation: reason,
+        annule_par: cancelledBy,
+        date_annulation: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', reservationId)
@@ -216,7 +212,7 @@ export const cancelReservation = async (reservationId, reason, cancelledBy) => {
  */
 export const getUpcomingReservations = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'client' ? 'client_id' : 'photographe_id';
+    const column = role === 'client' ? 'client_id' : 'prestataire_id';
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -224,12 +220,12 @@ export const getUpcomingReservations = async (userId, role = 'particulier') => {
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_${role === 'client' ? 'photographe' : 'client'}_id_fkey(nom, avatar_url)
+        profiles!reservations_${role === 'client' ? 'prestataire' : 'client'}_id_fkey(nom, avatar_url)
       `)
       .eq(column, userId)
-      .gte('date_prestation', today)
-      .lte('date_prestation', nextWeek)
-      .in('status', ['confirmed', 'acompte_paye'])
+      .gte('date', today)
+      .lte('date', nextWeek)
+      .in('statut', ['confirme', 'pending'])
       .order('date_prestation', { ascending: true });
 
     if (error) throw error;
@@ -245,11 +241,11 @@ export const getUpcomingReservations = async (userId, role = 'particulier') => {
  */
 export const getReservationStats = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'client' ? 'client_id' : 'photographe_id';
+    const column = role === 'client' ? 'client_id' : 'prestataire_id';
 
     const { data, error } = await supabase
       .from('reservations')
-      .select('status, montant, date_prestation')
+      .select('statut, montant_total, date')
       .eq(column, userId);
 
     if (error) throw error;
@@ -257,15 +253,14 @@ export const getReservationStats = async (userId, role = 'particulier') => {
     const now = new Date();
     const stats = {
       total: data?.length || 0,
-      pending: data?.filter(r => r.status === 'en_attente_paiement').length || 0,
-      confirmed: data?.filter(r => ['confirmed', 'acompte_paye'].includes(r.status)).length || 0,
-      completed: data?.filter(r => r.status === 'completed').length || 0,
-      cancelled: data?.filter(r => r.status === 'cancelled').length || 0,
-      upcoming: data?.filter(r => 
-        new Date(r.date_prestation) > now && 
-        ['confirmed', 'acompte_paye'].includes(r.status)
+      pending: data?.filter(r => r.statut === 'pending').length || 0,
+      confirmed: data?.filter(r => r.statut === 'confirme').length || 0,
+      completed: data?.filter(r => r.statut === 'termine').length || 0,
+      cancelled: data?.filter(r => r.statut === 'annule').length || 0,
+      upcoming: data?.filter(r =>
+        r.statut === 'confirme' && new Date(r.date) > now
       ).length || 0,
-      totalRevenue: data?.filter(r => r.status === 'completed').reduce((sum, r) => sum + r.montant, 0) || 0,
+      totalRevenue: data?.filter(r => r.statut === 'termine').reduce((sum, r) => sum + (r.montant_total || 0), 0) || 0,
     };
 
     return { stats, error: null };
@@ -279,12 +274,10 @@ export const getReservationStats = async (userId, role = 'particulier') => {
  * Reservation status labels and colors
  */
 export const RESERVATION_STATUS = {
-  en_attente_paiement: { label: 'En attente de paiement', color: 'yellow', icon: 'Clock' },
-  acompte_paye: { label: 'Acompte payé', color: 'blue', icon: 'CreditCard' },
-  confirmed: { label: 'Confirmée', color: 'green', icon: 'CheckCircle' },
-  completed: { label: 'Terminée', color: 'gray', icon: 'Check' },
-  cancelled: { label: 'Annulée', color: 'red', icon: 'X' },
-  refunded: { label: 'Remboursée', color: 'purple', icon: 'RefreshCw' },
+  pending: { label: 'En attente de paiement', color: 'yellow', icon: 'Clock' },
+  confirme: { label: 'Confirmée', color: 'green', icon: 'CheckCircle' },
+  termine: { label: 'Terminée', color: 'gray', icon: 'Check' },
+  annule: { label: 'Annulée', color: 'red', icon: 'X' },
 };
 
 /**
@@ -296,48 +289,47 @@ export const getCalendarEvents = async (photographeId, startDate, endDate) => {
       .from('reservations')
       .select(`
         id,
-        date_prestation,
+        date,
         heure_debut,
         heure_fin,
-        status,
-        montant,
+        statut,
+        montant_total,
         profiles!reservations_client_id_fkey(nom)
       `)
-      .eq('photographe_id', photographeId)
-      .gte('date_prestation', startDate)
-      .lte('date_prestation', endDate)
-      .not('status', 'eq', 'cancelled');
+      .eq('prestataire_id', photographeId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .not('statut', 'eq', 'annule');
 
     if (resError) throw resError;
 
     const { data: blockedSlots, error: blockedError } = await supabase
-      .from('indisponibilites')
+      .from('blocked_slots')
       .select('*')
-      .eq('photographe_id', photographeId)
-      .gte('date_fin', startDate)
-      .lte('date_debut', endDate);
+      .eq('prestataire_id', photographeId)
+      .gte('end_datetime', startDate)
+      .lte('start_datetime', endDate);
 
     if (blockedError) throw blockedError;
 
-    // Format as calendar events
     const events = [
       ...(reservations || []).map(r => ({
         id: r.id,
         type: 'reservation',
         title: `📷 ${r.profiles?.nom || 'Client'}`,
-        date: r.date_prestation,
+        date: r.date,
         start: r.heure_debut,
         end: r.heure_fin,
-        status: r.status,
-        color: RESERVATION_STATUS[r.status]?.color || 'gray',
+        statut: r.statut,
+        color: RESERVATION_STATUS[r.statut]?.color || 'gray',
       })),
       ...(blockedSlots || []).map(b => ({
         id: b.id,
         type: 'blocked',
-        title: b.motif || 'Indisponible',
-        date: b.date_debut,
-        start: b.date_debut,
-        end: b.date_fin,
+        title: b.reason || 'Indisponible',
+        date: b.start_datetime,
+        start: b.start_datetime,
+        end: b.end_datetime,
         color: 'red',
       })),
     ];

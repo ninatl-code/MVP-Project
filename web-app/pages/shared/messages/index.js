@@ -48,18 +48,18 @@ export default function MessagesPage() {
   const fetchConversations = async () => {
     try {
       const column = activeRole === 'photographe' || activeRole === 'prestataire' 
-        ? 'photographe_id' 
-        : 'particulier_id';
+        ? 'prestataire_id' 
+        : 'client_id';
       
       const { data, error } = await supabase
         .from('conversations')
         .select(`
           *,
-          particulier:profiles!conversations_particulier_id_fkey(id, nom, avatar_url),
-          photographe:profiles!conversations_photographe_id_fkey(id, nom, avatar_url)
+          client:profiles!conversations_client_id_fkey(id, nom, avatar_url),
+          prestataire:profiles!conversations_prestataire_id_fkey(id, nom, avatar_url)
         `)
         .eq(column, user.id)
-        .order('updated_at', { ascending: false });
+        .order('last_message_at', { ascending: false });
 
       if (error) throw error;
 
@@ -68,7 +68,7 @@ export default function MessagesPage() {
         (data || []).map(async (conv) => {
           const { data: lastMsg } = await supabase
             .from('messages')
-            .select('content, created_at, sender_id')
+            .select('contenu, created_at, sender_id')
             .eq('conversation_id', conv.id)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -78,8 +78,8 @@ export default function MessagesPage() {
             ...conv,
             lastMessage: lastMsg,
             otherParticipant: activeRole === 'photographe' || activeRole === 'prestataire' 
-              ? conv.particulier 
-              : conv.photographe,
+              ? conv.client 
+              : conv.prestataire,
           };
         })
       );
@@ -115,10 +115,10 @@ export default function MessagesPage() {
       // Mark messages as read
       await supabase
         .from('messages')
-        .update({ is_read: true, read_at: new Date().toISOString() })
+        .update({ lu: true, lu_at: new Date().toISOString() })
         .eq('conversation_id', conversationId)
         .neq('sender_id', user.id)
-        .eq('is_read', false);
+        .eq('lu', false);
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
@@ -165,8 +165,9 @@ export default function MessagesPage() {
         .insert({
           conversation_id: selectedConversation.id,
           sender_id: user.id,
-          content: newMessage.trim(),
-          created_at: new Date().toISOString(),
+          receiver_id: selectedConversation.otherParticipant?.id,
+          contenu: newMessage.trim(),
+          lu: false,
         });
 
       if (error) throw error;
@@ -174,7 +175,11 @@ export default function MessagesPage() {
       // Update conversation
       await supabase
         .from('conversations')
-        .update({ updated_at: new Date().toISOString() })
+        .update({ 
+          last_message_at: new Date().toISOString(),
+          last_message_text: newMessage.trim(),
+          last_message_sender_id: user.id,
+        })
         .eq('id', selectedConversation.id);
 
       setNewMessage('');
@@ -252,7 +257,7 @@ export default function MessagesPage() {
                           </span>
                         </div>
                         <p className="text-sm text-gray-500 truncate">
-                          {conv.lastMessage?.content || 'Aucun message'}
+                          {conv.lastMessage?.contenu || 'Aucun message'}
                         </p>
                       </div>
                     </div>
@@ -318,14 +323,14 @@ export default function MessagesPage() {
                                 : 'bg-white text-gray-900 rounded-bl-md shadow-sm'
                             }`}
                           >
-                            <p className="whitespace-pre-wrap">{message.content}</p>
+                            <p className="whitespace-pre-wrap">{message.contenu}</p>
                           </div>
                           <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : ''}`}>
                             <span className="text-xs text-gray-500">
                               {formatTime(message.created_at)}
                             </span>
                             {isOwn && (
-                              message.is_read 
+                              message.lu 
                                 ? <CheckCheck className="w-4 h-4 text-blue-500" />
                                 : <Check className="w-4 h-4 text-gray-400" />
                             )}

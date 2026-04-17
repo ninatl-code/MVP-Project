@@ -54,8 +54,8 @@ export default function DevisListPage() {
         .from('devis')
         .select(`
           *,
-          photographe:profils_photographe(
-            id, nom_entreprise, photo_profil, note_moyenne, verifie,
+          photographe:profils_prestataire(
+            id, nom_entreprise, note_moyenne, identite_verifiee,
             profile:profiles(nom)
           ),
           demande:demandes_client(id, titre, categorie, date_souhaitee, lieu)

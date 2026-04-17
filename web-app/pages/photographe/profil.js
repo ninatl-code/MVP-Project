@@ -9,8 +9,7 @@ import {
   Shield, FileText, CreditCard, Building, AlertCircle,
   CheckCircle, Clock, XCircle, Loader2, LogOut,
   Facebook, Linkedin, Briefcase, TrendingUp,
-  Layers, Home, Users, Sunset, Mountain, Palette,
-  Sparkles, Video, Aperture, Sun, Moon, Car, Euro, Lock
+  Layers, Home, Users, Sun, Moon, Car, Euro, Lock
 } from 'lucide-react';
 
 const COLORS = {
@@ -31,37 +30,18 @@ const DOCUMENT_TYPES = [
   { type: 'rib', label: "RIB", icon: FileText, description: 'Coordonnées bancaires pour les paiements', required: true },
 ];
 
-const SPECIALITES = [
-  'Portrait', 'Mariage', 'Événement', 'Corporate', 'Produit',
-  'Immobilier', 'Mode', 'Famille', 'Grossesse', 'Nouveau-né',
-  'Sport', 'Concert', 'Culinaire', 'Architecture', 'Lifestyle'
-];
-
-const STYLES_PHOTO = [
-  { id: 'naturel', label: 'Naturel / Lifestyle', icon: Sunset },
-  { id: 'studio', label: 'Studio / Éclairé', icon: Sun },
-  { id: 'artistique', label: 'Artistique / Créatif', icon: Palette },
-  { id: 'documentaire', label: 'Documentaire / Reportage', icon: Camera },
-  { id: 'minimaliste', label: 'Minimaliste / Épuré', icon: Mountain },
-  { id: 'vintage', label: 'Vintage / Rétro', icon: Aperture },
-];
-
-const EQUIPEMENT = [
-  { id: 'drone', label: 'Drone', icon: Video },
-  { id: 'eclairage_studio', label: 'Éclairage studio', icon: Sun },
-  { id: 'studio_mobile', label: 'Studio mobile', icon: Home },
-  { id: 'reflecteurs', label: 'Réflecteurs', icon: Sparkles },
-  { id: 'stabilisateur', label: 'Stabilisateur vidéo', icon: Video },
-  { id: 'fond_studio', label: 'Fonds studio', icon: Layers },
-];
-
 const EQUIPE = [
   { id: 'solo', label: 'Je travaille seul(e)', icon: User },
-  { id: 'assistant', label: 'Avec assistant(e)', icon: Users },
-  { id: 'maquilleur', label: 'Maquilleuse disponible', icon: Sparkles },
-  { id: 'styliste', label: 'Styliste disponible', icon: Palette },
-  { id: 'videaste', label: 'Vidéaste disponible', icon: Video },
+  { id: 'equipe', label: "J'ai une équipe", icon: Users },
+  { id: 'binome', label: "J'ai un binôme", icon: Users },
 ];
+
+const SPECIALISATIONS_MAP = {
+  'Services à domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage'],
+  'Transport & logistique': ['Chauffeur', 'Livraison', 'Déménagement'],
+  'Services digitaux': ['Développement', 'Design', 'Marketing'],
+  'Éducation & coaching': ['Cours particuliers', 'Coaching'],
+};
 
 const TARIFS_CATEGORIES = [
   { id: 'portrait', label: 'Portrait', icon: User },
@@ -89,6 +69,8 @@ export default function PhotographeProfilPage() {
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [prestationsCategories, setPrestationsCategories] = useState([]);
+  const [autreSpecInput, setAutreSpecInput] = useState('');
   const [stats, setStats] = useState({
     totalAnnonces: 0,
     totalReservations: 0,
@@ -109,15 +91,16 @@ export default function PhotographeProfilPage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
-    const initProfile = async () => {
-      try {
+    const initProfile = async () => {      try {
         const { data: { user: currentUser }, error } = await supabase.auth.getUser();
         console.log('User check:', currentUser?.email, error);
         
         if (currentUser) {
-          await fetchFullProfile(currentUser.id);
-          await fetchVerificationStatus(currentUser.id);
-          await loadStats(currentUser.id);
+          // Charger le profil et les stats en parallèle
+          await Promise.all([
+            fetchFullProfile(currentUser.id),
+            loadStats(currentUser.id),
+          ]);
         } else {
           console.log('No user found, redirecting to login');
           setLoading(false);
@@ -131,55 +114,29 @@ export default function PhotographeProfilPage() {
     initProfile();
   }, []);
 
+  useEffect(() => {
+    supabase
+      .from('prestations')
+      .select('id, nom, slug')
+      .eq('actif', true)
+      .order('ordre')
+      .then(({ data }) => {
+        if (data) setPrestationsCategories(data);
+      });
+  }, []);
+
   const fetchVerificationStatus = async (userId) => {
-    try {
-      if (!userId) return;
-
-      // Fetch verification status
-      const { data: statusData } = await supabase
-        .from('user_verification_status')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (statusData) {
-        setVerificationStatus(statusData);
-      }
-
-      // Fetch verification documents
-      const { data: docsData } = await supabase
-        .from('verification_documents')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (docsData) {
-        setDocuments(docsData);
-      }
-    } catch (error) {
-      console.error('Error fetching verification status:', error);
-    }
+    // Statut de vérification inclus dans fetchFullProfile via profils_prestataire
   };
 
   const loadStats = async (userId) => {
+    if (!userId) return;
     try {
-      if (!userId) {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        userId = currentUser?.id;
-      }
-      if (!userId) return;
-
-      // Annonces
-      const { data: annonces } = await supabase
-        .from('prestations_photographe')
-        .select('id, rate, vues')
-        .eq('prestataire', userId);
-
-      // Réservations - essayer les deux colonnes possibles
-      const { data: reservations } = await supabase
-        .from('reservations')
-        .select('id, montant, status')
-        .eq('prestataire_id', userId);
+      // Annonces et réservations en parallèle
+      const [{ data: annonces }, { data: reservations }] = await Promise.all([
+        supabase.from('prestations_photographe').select('id, rate, vues').eq('prestataire', userId),
+        supabase.from('reservations').select('id, montant, status').eq('prestataire_id', userId),
+      ]);
 
       const totalAnnonces = annonces?.length || 0;
       const totalReservations = reservations?.length || 0;
@@ -216,42 +173,31 @@ export default function PhotographeProfilPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${docType}-${Date.now()}.${fileExt}`;
-      const filePath = `verification/${fileName}`;
+      // Encoder en base64 — pas de Storage
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, file, {
-          contentType: file.type,
-          cacheControl: '3600',
-          upsert: false
-        });
+      const columnMap = { siret: 'documents_siret', kbis: 'documents_kbis', assurance: 'documents_assurance' };
+      const column = columnMap[docType];
+      if (!column) throw new Error('Type de document inconnu');
 
-      if (uploadError) throw uploadError;
+      const { error } = await supabase
+        .from('profils_prestataire')
+        .update({ [column]: base64, statut_validation: 'pending' })
+        .eq('id', user.id);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
+      if (error) throw error;
 
-      // Insert or update document record
-      const { error: insertError } = await supabase
-        .from('verification_documents')
-        .upsert({
-          user_id: user.id,
-          document_type: docType,
-          document_url: publicUrl,
-          verification_status: 'pending'
-        }, {
-          onConflict: 'user_id,document_type'
-        });
-
-      if (insertError) throw insertError;
-
-      await fetchVerificationStatus();
+      handleProfileChange(column, base64);
+      handleProfileChange('statut_validation', 'pending');
+      alert(`Document ${docType.toUpperCase()} chargé avec succès !`);
     } catch (error) {
       console.error('Error uploading document:', error);
-      alert('Erreur lors du téléchargement du document');
+      alert('Erreur lors du chargement du document : ' + error.message);
     } finally {
       setUploading(null);
     }
@@ -283,37 +229,40 @@ export default function PhotographeProfilPage() {
         return;
       }
 
-      // 1. Récupérer le profil de base depuis profiles
-      const { data: baseProfile, error: baseError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Récupérer les deux profils en parallèle
+      const [{ data: baseProfile, error: baseError }, { data: photoProfile }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('profils_prestataire').select('*').eq('id', userId).single(),
+      ]);
 
       console.log('🔍 profiles - data:', baseProfile, 'error:', baseError);
-
-      // 2. Récupérer le profil photographe depuis profils_photographe
-      const { data: photoProfile, error: photoError } = await supabase
-        .from('profils_photographe')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      console.log('🔍 profils_photographe - data:', photoProfile, 'error:', photoError);
 
       if (!baseError && baseProfile) {
         // Fusionner les deux sources de données
         const mergedProfile = {
           ...baseProfile,
           bio: photoProfile?.bio || '',
+          nom_entreprise: photoProfile?.nom_entreprise || '',
           instagram: photoProfile?.instagram || '',
           facebook: photoProfile?.facebook || '',
           linkedin: photoProfile?.linkedin || '',
           website: photoProfile?.site_web || '',
-          specialites: photoProfile?.specialisations || photoProfile?.categories || [],
-          tarif_horaire: photoProfile?.tarif_horaire || '',
+          specialisations: photoProfile?.specialisations || [],
+          categories: photoProfile?.categories || [],
+          equipe: photoProfile?.equipe || [],
+          materiel: photoProfile?.materiel || '',
+          tarif_horaire_min: photoProfile?.tarif_horaire_min || '',
           photo_couverture: photoProfile?.photo_couverture || '',
-          // Autres champs de profils_photographe si nécessaire
+          mobile: photoProfile?.mobile ?? true,
+          agence: photoProfile?.agence ?? false,
+          agence_adresse: photoProfile?.agence_adresse || '',
+          rayon_deplacement: photoProfile?.rayon_deplacement_km || 50,
+          frais_deplacement: photoProfile?.frais_deplacement_base || '',
+          documents_siret: photoProfile?.documents_siret || null,
+          documents_kbis: photoProfile?.documents_kbis || null,
+          documents_assurance: photoProfile?.documents_assurance || null,
+          statut_validation: photoProfile?.statut_validation || 'pending',
+          portfolio_photos: photoProfile?.portfolio_photos || [],
         };
         
         console.log('✅ Profil fusionné:', mergedProfile);
@@ -333,16 +282,9 @@ export default function PhotographeProfilPage() {
         });
       }
 
-      // Fetch portfolio
-      const { data: portfolio, error: portfolioError } = await supabase
-        .from('portfolio_images')
-        .select('*')
-        .eq('photographe_id', userId)
-        .order('ordre', { ascending: true });
-
-      if (!portfolioError) {
-        setPortfolioImages(portfolio || []);
-      }
+      // Portfolio depuis profils_prestataire.portfolio_photos
+      const portfolioPhotos = (photoProfile?.portfolio_photos || []).map((url, i) => ({ id: i, url, ordre: i }));
+      setPortfolioImages(portfolioPhotos);
     } catch (error) {
       console.error('Error fetching profile:', error);
       // En cas d'erreur, on affiche quand même le formulaire
@@ -376,24 +318,36 @@ export default function PhotographeProfilPage() {
           nom: profile.nom,
           email: profile.email,
           telephone: profile.telephone,
+          ville: villeNom || profile.ville || null,
         })
         .eq('id', currentUser.id);
 
       if (profileError) console.error('Erreur profiles:', profileError);
 
-      // 2. Sauvegarder dans profils_photographe (données étendues)
+      // 2. Sauvegarder dans profils_prestataire (données étendues)
       const { error: photoError } = await supabase
-        .from('profils_photographe')
-        .update({
-          bio: profile.bio,
-          instagram: profile.instagram,
-          facebook: profile.facebook,
-          linkedin: profile.linkedin,
-          site_web: profile.website,
-        })
-        .eq('id', currentUser.id);
+        .from('profils_prestataire')
+        .upsert({
+          id: currentUser.id,
+          bio: profile.bio || null,
+          nom_entreprise: profile.nom_entreprise || null,
+          instagram: profile.instagram || null,
+          facebook: profile.facebook || null,
+          linkedin: profile.linkedin || null,
+          site_web: profile.website || null,
+          categories: profile.categories || [],
+          specialisations: profile.specialisations || [],
+          equipe: profile.equipe || [],
+          materiel: profile.materiel || null,
+          tarif_horaire_min: parseFloat(profile.tarif_horaire_min) || null,
+          mobile: profile.mobile ?? true,
+          agence: profile.agence ?? false,
+          agence_adresse: profile.agence_adresse || null,
+          rayon_deplacement_km: parseInt(profile.rayon_deplacement) || 50,
+          frais_deplacement_base: parseFloat(profile.frais_deplacement) || null,
+        });
 
-      if (photoError) console.error('Erreur profils_photographe:', photoError);
+      if (photoError) console.error('Erreur profils_prestataire:', photoError);
 
       if (profileError || photoError) {
         throw new Error('Erreur lors de la sauvegarde');
@@ -410,124 +364,69 @@ export default function PhotographeProfilPage() {
   };
 
   const handlePhotoUpload = async (e, type) => {
-    console.log('🎯 handlePhotoUpload appelé avec type:', type);
-    console.log('📁 Event:', e);
-    console.log('📁 Files:', e.target.files);
-    
     const file = e.target.files?.[0];
-    console.log('📁 File sélectionné:', file);
-    
-    if (!file) {
-      console.log('❌ Aucun fichier sélectionné');
-      return;
-    }
+    if (!file) return;
 
-    console.log('✅ Fichier:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      sizeInMB: (file.size / 1024 / 1024).toFixed(2) + ' MB'
-    });
-
-    // Validation
     if (!file.type.startsWith('image/')) {
-      console.log('❌ Pas une image:', file.type);
       alert('Veuillez sélectionner une image');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      console.log('❌ Fichier trop volumineux:', file.size);
-      alert('L\'image ne doit pas dépasser 5 Mo');
+      alert("L'image ne doit pas dépasser 5 Mo");
       return;
     }
 
-    console.log('✅ Validation OK, début upload...');
     setUploadingPhoto(true);
 
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
-        alert('Vous devez être connecté');
-        return;
-      }
+      if (!currentUser) { alert('Vous devez être connecté'); return; }
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${currentUser.id}-${type}-${Date.now()}.${fileExt}`;
-      const filePath = `${type}/${fileName}`;
+      // Redimensionner via canvas et encoder en base64 (pas de Storage)
+      const base64 = await new Promise((resolve, reject) => {
+        const img = new window.Image();
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          img.onload = () => {
+            const SIZE = type === 'avatar' ? 200 : 800;
+            const HEIGHT = type === 'avatar' ? 200 : 300;
+            const canvas = document.createElement('canvas');
+            canvas.width = SIZE;
+            canvas.height = HEIGHT;
+            const ctx = canvas.getContext('2d');
+            if (type === 'avatar') {
+              // Crop carré centré
+              const side = Math.min(img.width, img.height);
+              const sx = (img.width - side) / 2;
+              const sy = (img.height - side) / 2;
+              ctx.drawImage(img, sx, sy, side, side, 0, 0, SIZE, SIZE);
+            } else {
+              ctx.drawImage(img, 0, 0, SIZE, HEIGHT);
+            }
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      console.log('Upload démarré:', { type, fileName });
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(filePath, file, {
-          contentType: file.type,
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('Erreur upload storage:', uploadError);
-        throw uploadError;
-      }
-
-      console.log('Upload réussi, récupération URL...');
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('photos')
-        .getPublicUrl(filePath);
-
-      console.log('URL publique:', publicUrl);
-
-      // Update profile selon le type
       if (type === 'avatar') {
         const { error: updateError } = await supabase
           .from('profiles')
-          .update({ avatar_url: publicUrl })
+          .update({ avatar_url: base64 })
           .eq('id', currentUser.id);
-        
-        if (updateError) {
-          console.error('Erreur update avatar:', updateError);
-          throw updateError;
-        }
-        
-        console.log('Avatar mis à jour dans profiles');
-        setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
+        if (updateError) throw updateError;
+        setProfile(prev => ({ ...prev, avatar_url: base64 }));
         alert('Photo de profil mise à jour !');
       } else if (type === 'cover') {
-        // Vérifier si l'enregistrement existe
-        const { data: existing } = await supabase
-          .from('profils_photographe')
-          .select('id')
-          .eq('id', currentUser.id)
-          .single();
-
-        if (existing) {
-          // Update si existe
-          const { error: updateError } = await supabase
-            .from('profils_photographe')
-            .update({ photo_couverture: publicUrl })
-            .eq('id', currentUser.id);
-          
-          if (updateError) {
-            console.error('Erreur update couverture:', updateError);
-            throw updateError;
-          }
-        } else {
-          // Insert si n'existe pas
-          const { error: insertError } = await supabase
-            .from('profils_photographe')
-            .insert({ id: currentUser.id, photo_couverture: publicUrl });
-          
-          if (insertError) {
-            console.error('Erreur insert couverture:', insertError);
-            throw insertError;
-          }
-        }
-        
-        console.log('Photo de couverture mise à jour dans profils_photographe');
-        setProfile(prev => ({ ...prev, photo_couverture: publicUrl }));
+        const { error: updateError } = await supabase
+          .from('profils_prestataire')
+          .update({ photo_couverture: base64 })
+          .eq('id', currentUser.id);
+        if (updateError) throw updateError;
+        setProfile(prev => ({ ...prev, photo_couverture: base64 }));
         alert('Photo de couverture mise à jour !');
       }
     } catch (error) {
@@ -546,36 +445,41 @@ export default function PhotographeProfilPage() {
     if (!currentUser) return;
 
     for (const file of files) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${currentUser.id}-portfolio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `portfolio/${fileName}`;
-
+      if (!file.type.startsWith('image/')) continue;
       try {
-        const { error: uploadError } = await supabase.storage
-          .from('photos')
-          .upload(filePath, file, {
-            contentType: file.type,
-            cacheControl: '3600',
-            upsert: false
-          });
+        // Redimensionner et encoder en base64
+        const base64 = await new Promise((resolve, reject) => {
+          const img = new window.Image();
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            img.onload = () => {
+              const MAX = 800;
+              const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.round(img.width * ratio);
+              canvas.height = Math.round(img.height * ratio);
+              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', 0.82));
+            };
+            img.onerror = reject;
+            img.src = ev.target.result;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
-        if (uploadError) throw uploadError;
+        const currentUrls = portfolioImages.map(i => i.url);
+        const newPhotos = [...currentUrls, base64];
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('photos')
-          .getPublicUrl(filePath);
+        const { error } = await supabase
+          .from('profils_prestataire')
+          .update({ portfolio_photos: newPhotos })
+          .eq('id', currentUser.id);
 
-        const { error: insertError } = await supabase
-          .from('portfolio_images')
-          .insert({
-            photographe_id: currentUser.id,
-            url: publicUrl,
-            ordre: portfolioImages.length,
-          });
+        if (error) throw error;
 
-        if (insertError) throw insertError;
-
-        setPortfolioImages(prev => [...prev, { url: publicUrl, ordre: prev.length }]);
+        handleProfileChange('portfolio_photos', newPhotos);
+        setPortfolioImages(newPhotos.map((url, i) => ({ id: i, url, ordre: i })));
       } catch (error) {
         console.error('Error uploading portfolio image:', error);
       }
@@ -584,25 +488,21 @@ export default function PhotographeProfilPage() {
 
   const handleDeletePortfolioImage = async (imageId, imageUrl) => {
     try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+
+      const newPhotos = portfolioImages.filter(img => img.id !== imageId).map(img => img.url);
       const { error } = await supabase
-        .from('portfolio_images')
-        .delete()
-        .eq('id', imageId);
+        .from('profils_prestataire')
+        .update({ portfolio_photos: newPhotos })
+        .eq('id', currentUser.id);
 
       if (error) throw error;
 
-      setPortfolioImages(prev => prev.filter(img => img.id !== imageId));
+      setPortfolioImages(newPhotos.map((url, i) => ({ id: i, url, ordre: i })));
+      handleProfileChange('portfolio_photos', newPhotos);
     } catch (error) {
       console.error('Error deleting image:', error);
-    }
-  };
-
-  const toggleSpecialite = (spec) => {
-    const currentSpecs = profile.specialites || [];
-    if (currentSpecs.includes(spec)) {
-      handleProfileChange('specialites', currentSpecs.filter(s => s !== spec));
-    } else {
-      handleProfileChange('specialites', [...currentSpecs, spec]);
     }
   };
 
@@ -698,42 +598,7 @@ export default function PhotographeProfilPage() {
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Cover Photo */}
         <div className="relative h-48 rounded-t-2xl overflow-hidden">
-          {profile?.photo_couverture && (profile.photo_couverture.startsWith('http://') || profile.photo_couverture.startsWith('https://')) ? (
-            <img 
-              src={profile.photo_couverture} 
-              alt="Photo de couverture" 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
-          )}
-          <label 
-            className="absolute bottom-4 right-4 px-3 py-1.5 bg-white/90 rounded-lg cursor-pointer hover:bg-white transition-all flex items-center gap-2"
-            onClick={() => console.log('🖱️ Label cliqué')}
-          >
-            {uploadingPhoto ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Upload...</span>
-              </>
-            ) : (
-              <>
-                <Camera className="w-4 h-4" />
-                <span className="text-sm">Photo de couverture</span>
-              </>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                console.log('📸 Input onChange déclenché');
-                handlePhotoUpload(e, 'cover');
-              }}
-              onClick={() => console.log('📸 Input cliqué')}
-              className="hidden"
-              disabled={uploadingPhoto}
-            />
-          </label>
+          <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
         </div>
 
         {/* Profile Header */}
@@ -741,7 +606,7 @@ export default function PhotographeProfilPage() {
           <div className="flex items-end gap-6 -mt-12">
             <div className="relative">
               <div className="w-28 h-28 rounded-2xl bg-gray-200 border-4 border-white shadow-lg overflow-hidden">
-                {profile?.avatar_url && (profile.avatar_url.startsWith('http://') || profile.avatar_url.startsWith('https://')) ? (
+                {profile?.avatar_url ? (
                   <img 
                     src={profile.avatar_url} 
                     alt={profile.nom || 'Avatar'} 
@@ -960,7 +825,7 @@ export default function PhotographeProfilPage() {
 
               {/* Documents à soumettre */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Documents à soumettre</h3>
+                <h2 className="font-semibold text-gray-900 mb-4">Documents à soumettre</h2>
                 <div className="space-y-4">
                   {DOCUMENT_TYPES.map(docType => {
                     const existingDoc = documents.find(d => d.document_type === docType.type);
@@ -1053,10 +918,10 @@ export default function PhotographeProfilPage() {
 
               {/* Section Sécurité - Mot de passe */}
               <div className="pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Lock className="w-5 h-5" style={{ color: COLORS.accent }} />
                   Sécurité
-                </h3>
+                </h2>
                 <button
                   onClick={() => setShowPasswordModal(true)}
                   className="w-full p-4 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all flex items-center justify-between group"
@@ -1071,24 +936,6 @@ export default function PhotographeProfilPage() {
                     </div>
                   </div>
                   <span className="text-gray-400 group-hover:text-indigo-500 transition-colors">→</span>
-                </button>
-              </div>
-
-              {/* Section Déconnexion */}
-              <div className="pt-6 border-t border-gray-200">
-                <button
-                  onClick={handleLogout}
-                  className="w-full p-4 rounded-xl border border-red-200 hover:bg-red-50 transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-                      <LogOut className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-red-600">Se déconnecter</p>
-                      <p className="text-sm text-gray-500">Vous pourrez vous reconnecter à tout moment</p>
-                    </div>
-                  </div>
                 </button>
               </div>
             </div>
@@ -1163,15 +1010,14 @@ export default function PhotographeProfilPage() {
                   <input
                     type="text"
                     value={villeNom || ''}
-                    disabled
-                    placeholder="Ville non renseignée"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
+                    onChange={(e) => setVilleNom(e.target.value)}
+                    placeholder="Paris, Lyon, Marseille..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-1">La ville est définie lors de l'inscription</p>
               </div>
 
-              <h3 className="text-lg font-semibold text-gray-900 pt-4 border-t">Réseaux sociaux</h3>
+              <h2 className="text-lg font-semibold text-gray-900 pt-4 border-t">Réseaux sociaux</h2>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1256,76 +1102,154 @@ export default function PhotographeProfilPage() {
             </div>
           )}
 
-          {/* Onglet Spécialités (aligné sur mobile) */}
+          {/* Onglet Spécialités */}
           {activeTab === 'specialites' && (
             <div className="space-y-8">
-              {/* Catégories de photographie */}
+              {/* Catégorie principale */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Catégories de photographie</h3>
-                <p className="text-sm text-gray-500 mb-4">Sélectionnez vos domaines d'expertise</p>
+                <h2 className="font-semibold text-gray-900 mb-2">Catégorie principale</h2>
+                <p className="text-sm text-gray-500 mb-4">Sélectionnez votre domaine d'activité (un seul choix)</p>
                 <div className="flex flex-wrap gap-2">
-                  {SPECIALITES.map(spec => (
-                    <button
-                      key={spec}
-                      type="button"
-                      onClick={() => toggleSpecialite(spec.toLowerCase())}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
-                        (profile?.specialites || []).includes(spec.toLowerCase())
-                          ? 'border-indigo-600 bg-indigo-600 text-white'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
-                      }`}
-                    >
-                      {spec}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Styles photographiques */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Styles photographiques</h3>
-                <p className="text-sm text-gray-500 mb-4">Décrivez votre approche artistique</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {STYLES_PHOTO.map(style => {
-                    const IconComponent = style.icon;
-                    const isSelected = (profile?.styles || []).includes(style.id);
+                  {prestationsCategories.map(cat => {
+                    const isSelected = (profile?.categories || [])[0] === cat.nom;
                     return (
                       <button
-                        key={style.id}
+                        key={cat.id}
                         type="button"
                         onClick={() => {
-                          const currentStyles = profile?.styles || [];
-                          if (currentStyles.includes(style.id)) {
-                            handleProfileChange('styles', currentStyles.filter(s => s !== style.id));
-                          } else {
-                            handleProfileChange('styles', [...currentStyles, style.id]);
-                          }
+                          handleProfileChange('categories', [cat.nom]);
+                          handleProfileChange('specialisations', []);
                         }}
-                        className={`p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                           isSelected
-                            ? 'border-indigo-600 bg-indigo-50'
-                            : 'border-gray-200 hover:border-indigo-300'
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
                         }`}
                       >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          isSelected ? 'bg-indigo-600' : 'bg-gray-100'
-                        }`}>
-                          <IconComponent className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
-                        </div>
-                        <span className={`text-sm font-medium ${isSelected ? 'text-indigo-900' : 'text-gray-700'}`}>
-                          {style.label}
-                        </span>
+                        {cat.nom}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
+              {/* Spécialisations (basées sur la catégorie choisie) */}
+              {(profile?.categories || []).length > 0 && SPECIALISATIONS_MAP[(profile?.categories || [])[0]] && (
+                <div>
+                  <h2 className="font-semibold text-gray-900 mb-2">Spécialisations</h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Vos spécialisations dans <span className="font-medium text-indigo-700">{(profile?.categories || [])[0]}</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {SPECIALISATIONS_MAP[(profile?.categories || [])[0]].map(spec => {
+                      const isSelected = (profile?.specialisations || []).includes(spec);
+                      return (
+                        <button
+                          key={spec}
+                          type="button"
+                          onClick={() => {
+                            const current = profile?.specialisations || [];
+                            handleProfileChange(
+                              'specialisations',
+                              isSelected ? current.filter(s => s !== spec) : [...current, spec]
+                            );
+                          }}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                            isSelected
+                              ? 'border-indigo-600 bg-indigo-600 text-white'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
+                          }`}
+                        >
+                          {spec}
+                        </button>
+                      );
+                    })}
+                    {/* Autre */}
+                    {(() => {
+                      const autreSelected = (profile?.specialisations || []).includes('Autre');
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = profile?.specialisations || [];
+                            handleProfileChange(
+                              'specialisations',
+                              autreSelected ? current.filter(s => s !== 'Autre') : [...current, 'Autre']
+                            );
+                            if (autreSelected) setAutreSpecInput('');
+                          }}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                            autreSelected
+                              ? 'border-indigo-600 bg-indigo-600 text-white'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
+                          }`}
+                        >
+                          Autre
+                        </button>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Champ libre si "Autre" coché */}
+                  {(profile?.specialisations || []).includes('Autre') && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-500 mb-2">Précisez vos autres spécialités</p>
+                      <div className="flex gap-2 mb-3">
+                        <input
+                          type="text"
+                          value={autreSpecInput}
+                          onChange={(e) => setAutreSpecInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = autreSpecInput.trim();
+                              if (val && val !== 'Autre' && !(profile?.specialisations || []).includes(val)) {
+                                handleProfileChange('specialisations', [...(profile?.specialisations || []), val]);
+                              }
+                              setAutreSpecInput('');
+                            }
+                          }}
+                          placeholder="Ex: Jardinage, Baby-sitting..."
+                          className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = autreSpecInput.trim();
+                            if (val && val !== 'Autre' && !(profile?.specialisations || []).includes(val)) {
+                              handleProfileChange('specialisations', [...(profile?.specialisations || []), val]);
+                            }
+                            setAutreSpecInput('');
+                          }}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700"
+                        >
+                          Ajouter
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(profile?.specialisations || []).filter(s => s !== 'Autre').map((spec, i) => (
+                          <span key={i} className="flex items-center gap-1 px-3 py-1.5 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
+                            {spec}
+                            <button
+                              type="button"
+                              onClick={() => handleProfileChange('specialisations', (profile?.specialisations || []).filter(s => s !== spec))}
+                              className="ml-1 text-indigo-500 hover:text-indigo-900"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Configuration équipe */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Configuration équipe</h3>
+                <h2 className="font-semibold text-gray-900 mb-2">Configuration équipe</h2>
                 <p className="text-sm text-gray-500 mb-4">Comment travaillez-vous ?</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {EQUIPE.map(item => {
                     const IconComponent = item.icon;
                     const isSelected = (profile?.equipe || []).includes(item.id);
@@ -1333,14 +1257,7 @@ export default function PhotographeProfilPage() {
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => {
-                          const currentEquipe = profile?.equipe || [];
-                          if (currentEquipe.includes(item.id)) {
-                            handleProfileChange('equipe', currentEquipe.filter(e => e !== item.id));
-                          } else {
-                            handleProfileChange('equipe', [...currentEquipe, item.id]);
-                          }
-                        }}
+                        onClick={() => handleProfileChange('equipe', [item.id])}
                         className={`p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
                           isSelected
                             ? 'border-green-500 bg-green-50'
@@ -1363,38 +1280,15 @@ export default function PhotographeProfilPage() {
 
               {/* Équipement disponible */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Équipement disponible</h3>
-                <p className="text-sm text-gray-500 mb-4">Matériel supplémentaire que vous proposez</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {EQUIPEMENT.map(item => {
-                    const IconComponent = item.icon;
-                    const isSelected = (profile?.equipement || []).includes(item.id);
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          const currentEquipement = profile?.equipement || [];
-                          if (currentEquipement.includes(item.id)) {
-                            handleProfileChange('equipement', currentEquipement.filter(e => e !== item.id));
-                          } else {
-                            handleProfileChange('equipement', [...currentEquipement, item.id]);
-                          }
-                        }}
-                        className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 ${
-                          isSelected
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 hover:border-purple-300'
-                        }`}
-                      >
-                        <IconComponent className={`w-5 h-5 ${isSelected ? 'text-purple-600' : 'text-gray-400'}`} />
-                        <span className={`text-sm font-medium ${isSelected ? 'text-purple-900' : 'text-gray-700'}`}>
-                          {item.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <h2 className="font-semibold text-gray-900 mb-2">Équipement disponible</h2>
+                <p className="text-sm text-gray-500 mb-4">Décrivez votre matériel ou équipement professionnel</p>
+                <textarea
+                  value={profile?.materiel || ''}
+                  onChange={(e) => handleProfileChange('materiel', e.target.value)}
+                  placeholder="Ex: véhicule utilitaire, outils professionnels, ordinateur portable, tablette graphique, matériel de nettoyage..." 
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
               </div>
 
               <button
@@ -1419,7 +1313,7 @@ export default function PhotographeProfilPage() {
             <div className="space-y-8">
               {/* Mode de travail */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Mode de travail</h3>
+                <h2 className="font-semibold text-gray-900 mb-4">Mode de travail</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Mobile */}
                   <div 
@@ -1462,7 +1356,7 @@ export default function PhotographeProfilPage() {
                         <Home className={`w-6 h-6 ${profile?.mode_studio ? 'text-white' : 'text-gray-500'}`} />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-gray-900">J'ai un studio</h4>
+                        <h4 className="font-semibold text-gray-900">J'ai un bureau</h4>
                         <p className="text-sm text-gray-500">Recevez vos clients</p>
                       </div>
                     </div>
@@ -1543,7 +1437,7 @@ export default function PhotographeProfilPage() {
 
               {/* Préférences horaires */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Préférences horaires</h3>
+                <h2 className="font-semibold text-gray-900 mb-4">Préférences horaires</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Weekend */}
                   <div 
@@ -1606,7 +1500,7 @@ export default function PhotographeProfilPage() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="font-semibold text-gray-900">Portfolio</h3>
+                  <h2 className="font-semibold text-gray-900">Portfolio</h2>
                   <p className="text-sm text-gray-500">{portfolioImages.length} photo(s)</p>
                 </div>
                 <label className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium cursor-pointer hover:bg-indigo-700 flex items-center gap-2">
@@ -1661,8 +1555,8 @@ export default function PhotographeProfilPage() {
                 </label>
                 <input
                   type="number"
-                  value={profile?.tarif_horaire || ''}
-                  onChange={(e) => handleProfileChange('tarif_horaire', parseFloat(e.target.value))}
+                  value={profile?.tarif_horaire_min || ''}
+                  onChange={(e) => handleProfileChange('tarif_horaire_min', parseFloat(e.target.value))}
                   placeholder="80"
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                 />
@@ -1733,7 +1627,7 @@ export default function PhotographeProfilPage() {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Mot de passe modifié !</h3>
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">Mot de passe modifié !</h2>
                 <p className="text-gray-500">Votre mot de passe a été mis à jour avec succès.</p>
               </div>
             ) : (

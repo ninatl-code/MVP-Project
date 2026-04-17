@@ -15,14 +15,13 @@ export const createMarketplacePayment = async ({
 }) => {
   try {
     // Get photographer's Stripe Connect account
-    const { data: integration, error: integrationError } = await supabase
-      .from('integrations')
+    const { data: prestataire, error: prestataireError } = await supabase
+      .from('profils_prestataire')
       .select('stripe_account_id')
-      .eq('user_id', photographeId)
-      .eq('provider', 'stripe')
+      .eq('id', photographeId)
       .single();
 
-    if (integrationError || !integration?.stripe_account_id) {
+    if (prestataireError || !prestataire?.stripe_account_id) {
       throw new Error('Photographer has not set up Stripe Connect');
     }
 
@@ -36,7 +35,7 @@ export const createMarketplacePayment = async ({
         reservationId,
         amount: depositAmount,
         totalAmount,
-        photographeStripeAccountId: integration.stripe_account_id,
+        photographeStripeAccountId: prestataire.stripe_account_id,
         platformFee: platformFee * DEPOSIT_PERCENT,
         customerEmail,
       }),
@@ -73,36 +72,22 @@ export const processDepositTransfer = async (reservationId) => {
     if (resError) throw resError;
 
     // Get photographer's Stripe account
-    const { data: integration } = await supabase
-      .from('integrations')
+    const { data: prestataire } = await supabase
+      .from('profils_prestataire')
       .select('stripe_account_id')
-      .eq('user_id', reservation.prestataire_id)
-      .eq('provider', 'stripe')
+      .eq('id', reservation.prestataire_id)
       .single();
 
-    if (!integration?.stripe_account_id) {
+    if (!prestataire?.stripe_account_id) {
       throw new Error('Photographer Stripe account not found');
     }
 
-    const depositAmount = reservation.montant_acompte || reservation.montant * DEPOSIT_PERCENT;
+    const depositAmount = reservation.acompte_montant || reservation.montant_total * DEPOSIT_PERCENT;
     const platformFee = depositAmount * PLATFORM_FEE_PERCENT;
     const transferAmount = depositAmount - platformFee;
 
-    // Create transfer record
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        reservation_id: reservationId,
-        type: 'deposit_transfer',
-        amount: transferAmount,
-        platform_fee: platformFee,
-        stripe_account_id: integration.stripe_account_id,
-        status: 'completed',
-      });
-
-    if (transactionError) {
-      console.error('Error recording transaction:', transactionError);
-    }
+    // Log transfer (transactions table removed — handle via Stripe webhooks)
+    console.info('Deposit transfer processed', { reservationId, transferAmount, stripeAccount: prestataire.stripe_account_id });
 
     return { success: true, transferAmount, error: null };
   } catch (error) {
@@ -124,7 +109,7 @@ export const processBalancePayment = async (reservationId) => {
 
     if (resError) throw resError;
 
-    const balanceAmount = reservation.montant - (reservation.montant_acompte || reservation.montant * DEPOSIT_PERCENT);
+    const balanceAmount = reservation.montant_total - (reservation.acompte_montant || reservation.montant_total * DEPOSIT_PERCENT);
     const platformFee = balanceAmount * PLATFORM_FEE_PERCENT;
     const transferAmount = balanceAmount - platformFee;
 
@@ -132,7 +117,7 @@ export const processBalancePayment = async (reservationId) => {
     const { error: updateError } = await supabase
       .from('reservations')
       .update({
-        status: 'completed',
+        statut: 'termine',
         solde_paye: true,
         updated_at: new Date().toISOString(),
       })
@@ -140,20 +125,8 @@ export const processBalancePayment = async (reservationId) => {
 
     if (updateError) throw updateError;
 
-    // Record balance transaction
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        reservation_id: reservationId,
-        type: 'balance_transfer',
-        amount: transferAmount,
-        platform_fee: platformFee,
-        status: 'completed',
-      });
-
-    if (transactionError) {
-      console.error('Error recording balance transaction:', transactionError);
-    }
+    // Log balance transfer (transactions table removed — handle via Stripe webhooks)
+    console.info('Balance transfer processed', { reservationId, transferAmount });
 
     return { success: true, transferAmount, error: null };
   } catch (error) {
@@ -169,17 +142,14 @@ export const processRefund = async (reservationId, reason) => {
   try {
     const { data: reservation, error: resError } = await supabase
       .from('reservations')
-      .select(`
-        *,
-        annonces!reservations_annonce_id_fkey(conditions_annulation)
-      `)
+      .select('*')
       .eq('id', reservationId)
       .single();
 
     if (resError) throw resError;
 
-    const cancellationPolicy = reservation.annonces?.conditions_annulation || 'flexible';
-    const daysBefore = Math.ceil((new Date(reservation.date_prestation) - new Date()) / (1000 * 60 * 60 * 24));
+    const cancellationPolicy = reservation.conditions_annulation || 'flexible';
+    const daysBefore = Math.ceil((new Date(reservation.date) - new Date()) / (1000 * 60 * 60 * 24));
     
     let refundPercent = 0;
     
@@ -198,7 +168,7 @@ export const processRefund = async (reservationId, reason) => {
         refundPercent = 0.5;
     }
 
-    const paidAmount = reservation.montant_acompte || reservation.montant * DEPOSIT_PERCENT;
+    const paidAmount = reservation.acompte_montant || reservation.montant_total * DEPOSIT_PERCENT;
     const refundAmount = paidAmount * refundPercent;
 
     // Call refund API
@@ -222,9 +192,8 @@ export const processRefund = async (reservationId, reason) => {
     await supabase
       .from('reservations')
       .update({
-        status: 'cancelled',
-        cancel_reason: reason,
-        refund_amount: refundAmount,
+        statut: 'annule',
+        motif_annulation: reason,
         updated_at: new Date().toISOString(),
       })
       .eq('id', reservationId);
@@ -267,16 +236,16 @@ export const getPhotographerEarnings = async (photographeId, period = 'month') =
     }
 
     const { data: transactions, error } = await supabase
-      .from('transactions')
-      .select('amount, platform_fee, created_at')
-      .eq('stripe_account_id', photographeId)
+      .from('paiements')
+      .select('montant, created_at')
+      .eq('prestataire_id', photographeId)
       .gte('created_at', dateFilter)
-      .eq('status', 'completed');
+      .eq('statut', 'completed');
 
     if (error) throw error;
 
-    const totalEarnings = transactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
-    const totalFees = transactions?.reduce((sum, t) => sum + t.platform_fee, 0) || 0;
+    const totalEarnings = transactions?.reduce((sum, t) => sum + t.montant, 0) || 0;
+    const totalFees = 0;
 
     return {
       totalEarnings,

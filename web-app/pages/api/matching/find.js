@@ -34,27 +34,25 @@ export default async function handler(req, res) {
         nom,
         email,
         avatar_url,
-        profils_photographe(
+        profils_prestataire(
           specialisations,
           rayon_deplacement_km,
-          tarif_horaire,
-          localisation,
-          is_verified,
+          tarif_horaire_min,
+          identite_verifiee,
           note_moyenne,
-          nombre_avis,
+          nb_avis,
           portfolio_photos
         )
       `)
-      .eq('role', 'photographe')
-      .eq('is_active', true);
+      .eq('role', 'photographe');
 
     if (photoError) throw photoError;
 
     // Calculate match scores
     const matches = photographers
-      .filter(p => p.profils_photographe)
+      .filter(p => p.profils_prestataire)
       .map(photographer => {
-        const profile = photographer.profils_photographe;
+        const profile = photographer.profils_prestataire;
         let score = 0;
         const matchReasons = [];
 
@@ -87,8 +85,8 @@ export default async function handler(req, res) {
         }
 
         // 3. Budget compatibility (20 points)
-        if (profile.tarif_horaire && demande.budget_max) {
-          const estimatedCost = profile.tarif_horaire * (demande.duree_estimee || 2);
+        if (profile.tarif_horaire_min && demande.budget_max) {
+          const estimatedCost = profile.tarif_horaire_min * (demande.duree_estimee_heures || 2);
           
           if (estimatedCost <= demande.budget_max) {
             score += 20;
@@ -100,7 +98,7 @@ export default async function handler(req, res) {
         }
 
         // 4. Verification status (10 points)
-        if (profile.is_verified) {
+        if (profile.identite_verifiee) {
           score += 10;
           matchReasons.push('Photographe vérifié');
         }
@@ -132,14 +130,13 @@ export default async function handler(req, res) {
         .from('matchings')
         .upsert({
           demande_id: demande_id,
-          photographe_id: match.photographe.id,
-          particulier_id: demande.particulier_id,
+          prestataire_id: match.photographe.id,
+          client_id: demande.client_id,
           match_score: match.matchScore,
           match_reasons: match.matchReasons,
           status: 'pending',
-          created_at: new Date().toISOString(),
         }, {
-          onConflict: 'demande_id,photographe_id',
+          onConflict: 'demande_id,prestataire_id',
         });
     }
 

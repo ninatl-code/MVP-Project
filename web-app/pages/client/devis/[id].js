@@ -47,16 +47,14 @@ export default function DevisDetailPage() {
         .from('devis')
         .select(`
           *,
-          photographe:profils_photographe(
+          photographe:profils_prestataire(
             id,
             nom_entreprise,
-            photo_profil,
             note_moyenne,
-            nombre_avis,
+            nb_avis,
             ville,
-            specialites,
-            verifie,
-            description,
+            specialisations,
+            identite_verifiee,
             profile:profiles(nom, prenom)
           ),
           demande:demandes_client(
@@ -87,7 +85,7 @@ export default function DevisDetailPage() {
       // Update devis status
       const { error: devisError } = await supabase
         .from('devis')
-        .update({ statut: 'accepte', date_acceptation: new Date().toISOString() })
+          .update({ statut: 'accepte', accepte_at: new Date().toISOString() })
         .eq('id', id);
 
       if (devisError) throw devisError;
@@ -96,7 +94,7 @@ export default function DevisDetailPage() {
       if (devis.demande_id) {
         await supabase
           .from('demandes_client')
-          .update({ status: 'fulfilled' })
+          .update({ statut: 'pourvue' })
           .eq('id', devis.demande_id);
       }
 
@@ -392,7 +390,7 @@ export default function DevisDetailPage() {
                     <div className="flex items-center gap-1 text-sm text-gray-500">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                       {photographe.note_moyenne.toFixed(1)}
-                      {photographe.nombre_avis > 0 && ` (${photographe.nombre_avis} avis)`}
+                      {photographe.nb_avis > 0 && ` (${photographe.nb_avis} avis)`}
                     </div>
                   )}
                   {photographe?.ville && (
@@ -425,14 +423,14 @@ export default function DevisDetailPage() {
 
               <div className="space-y-2">
                 <button
-                  onClick={() => router.push(`/messages?photographe=${devis.photographe_id}`)}
+                  onClick={() => router.push(`/messages?prestataire=${devis.prestataire_id}`)}
                   className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-5 h-5" />
                   Contacter
                 </button>
                 <button
-                  onClick={() => router.push(`/photographes/${devis.photographe_id}`)}
+                  onClick={() => router.push(`/photographes/${devis.prestataire_id}`)}
                   className="w-full px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
                 >
                   Voir le profil complet

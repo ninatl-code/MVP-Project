@@ -35,27 +35,26 @@ export default function AvisPage() {
     try {
       setLoading(true);
       
-      let query = supabase.from('avis').select(`
+      let query = supabase.from('reviews_photographe').select(`
         *,
-        auteur:profiles!avis_auteur_id_fkey(id, nom, avatar_url),
-        destinataire:profiles!avis_destinataire_id_fkey(id, nom, avatar_url),
-        reservation:reservations(id, date_prestation, type_prestation)
+        client:profiles!reviews_photographe_client_id_fkey(id, nom, avatar_url),
+        prestataire:profiles!reviews_photographe_prestataire_id_fkey(id, nom, avatar_url)
       `, { count: 'exact' });
 
       // Filter by role
       if (filter === 'received') {
-        query = query.eq('destinataire_id', user.id);
+        query = query.eq('prestataire_id', user.id);
       } else if (filter === 'given') {
-        query = query.eq('auteur_id', user.id);
+        query = query.eq('client_id', user.id);
       } else {
-        query = query.or(`auteur_id.eq.${user.id},destinataire_id.eq.${user.id}`);
+        query = query.or(`client_id.eq.${user.id},prestataire_id.eq.${user.id}`);
       }
 
       // Sort
       if (sortBy === 'highest') {
-        query = query.order('note', { ascending: false });
+        query = query.order('rating', { ascending: false });
       } else if (sortBy === 'lowest') {
-        query = query.order('note', { ascending: true });
+        query = query.order('rating', { ascending: true });
       } else {
         query = query.order('created_at', { ascending: false });
       }
@@ -299,7 +298,7 @@ export default function AvisPage() {
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            <span>{formatDate(review.reservation.date_prestation)}</span>
+                            <span>{review.reservation ? formatDate(review.reservation.date) : ''}</span>
                           </div>
                         </div>
                       )}

@@ -42,8 +42,8 @@ export const calculateMatchScore = (demande, photographe) => {
   }
 
   // 3. Budget compatibility (20 points)
-  if (photographe.tarif_horaire && demande.budget_max) {
-    const estimatedCost = photographe.tarif_horaire * (demande.duree_estimee || 2);
+  if (photographe.tarif_horaire_min && demande.budget_max) {
+    const estimatedCost = photographe.tarif_horaire_min * (demande.duree_estimee_heures || 2);
     
     if (estimatedCost <= demande.budget_max) {
       score += 20;
@@ -55,7 +55,7 @@ export const calculateMatchScore = (demande, photographe) => {
   }
 
   // 4. Verification status (10 points)
-  if (photographe.is_verified) {
+  if (photographe.identite_verifiee) {
     score += 10;
     matchReasons.push('Prestataire vérifié');
   }
@@ -94,29 +94,27 @@ export const findMatchingPhotographers = async (demandeId, limit = 10) => {
         nom,
         email,
         avatar_url,
-        profils_photographe(
+        profils_prestataire(
           specialisations,
           rayon_deplacement_km,
-          tarif_horaire,
-          localisation,
-          is_verified,
+          tarif_horaire_min,
+          identite_verifiee,
           note_moyenne,
-          nombre_avis,
+          nb_avis,
           portfolio_photos
         )
       `)
-      .eq('role', 'photographe')
-      .eq('is_active', true);
+      .eq('role', 'photographe');
 
     if (photoError) throw photoError;
 
     // Calculate scores and sort
     const matchedPhotographers = photographers
-      .filter(p => p.profils_photographe)
+      .filter(p => p.profils_prestataire)
       .map(p => {
         const { score, matchReasons } = calculateMatchScore(
           demande,
-          p.profils_photographe
+          p.profils_prestataire
         );
         return {
           ...p,
@@ -142,9 +140,9 @@ export const findMatchingDemandes = async (photographeId, limit = 20) => {
   try {
     // Get service provider profile
     const { data: photographe, error: profError } = await supabase
-      .from('profils_photographe')
+      .from('profils_prestataire')
       .select('*')
-      .eq('user_id', photographeId)
+      .eq('id', photographeId)
       .single();
 
     if (profError) {
@@ -158,7 +156,7 @@ export const findMatchingDemandes = async (photographeId, limit = 20) => {
         *,
         profiles!demandes_client_client_id_fkey(nom, avatar_url)
       `)
-      .eq('status', 'active')
+      .eq('statut', 'ouverte')
       .order('created_at', { ascending: false });
 
     if (demandeError) throw demandeError;
@@ -202,13 +200,12 @@ export const saveMatch = async ({
       .from('matchings')
       .upsert({
         demande_id: demandeId,
-        photographe_id: photographeId,
+        prestataire_id: photographeId,
         match_score: matchScore,
         match_reasons: matchReasons,
         status: 'pending',
-        created_at: new Date().toISOString(),
       }, {
-        onConflict: 'demande_id,photographe_id',
+        onConflict: 'demande_id,prestataire_id',
       })
       .select()
       .single();
@@ -232,7 +229,7 @@ export const getPhotographerMatches = async (photographeId, status = null) => {
         *,
         demandes_client(*)
       `)
-      .eq('photographe_id', photographeId)
+      .eq('prestataire_id', photographeId)
       .order('match_score', { ascending: false });
 
     if (status) {
@@ -279,11 +276,11 @@ export const checkPhotographerAvailability = async (photographeId, date) => {
   try {
     // Check blocked slots
     const { data: blockedSlots, error: blockedError } = await supabase
-      .from('indisponibilites')
+      .from('blocked_slots')
       .select('*')
-      .eq('photographe_id', photographeId)
-      .lte('date_debut', date)
-      .gte('date_fin', date);
+      .eq('prestataire_id', photographeId)
+      .lte('start_datetime', date)
+      .gte('end_datetime', date);
 
     if (blockedError) throw blockedError;
 
@@ -291,9 +288,9 @@ export const checkPhotographerAvailability = async (photographeId, date) => {
     const { data: reservations, error: resError } = await supabase
       .from('reservations')
       .select('*')
-      .eq('photographe_id', photographeId)
-      .eq('date_prestation', date)
-      .in('status', ['confirmed', 'acompte_paye', 'en_attente_paiement']);
+      .eq('prestataire_id', photographeId)
+      .eq('date', date)
+      .in('statut', ['confirme', 'pending']);
 
     if (resError) throw resError;
 

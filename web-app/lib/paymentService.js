@@ -39,8 +39,7 @@ export const confirmPayment = async (reservationId, stripeSessionId) => {
     const { data, error } = await supabase
       .from('reservations')
       .update({
-        status: 'acompte_paye',
-        stripe_session_id: stripeSessionId,
+        acompte_paye: true,
         updated_at: new Date().toISOString(),
       })
       .eq('id', reservationId)
@@ -54,10 +53,12 @@ export const confirmPayment = async (reservationId, stripeSessionId) => {
       .from('paiements')
       .insert({
         reservation_id: reservationId,
-        montant: data.montant_acompte || data.montant * 0.3,
-        status: 'completed',
+        client_id: data.client_id,
+        prestataire_id: data.prestataire_id,
+        montant: data.acompte_montant || Math.round((data.montant_total || 0) * 0.3 * 100) / 100,
+        statut: 'completed',
         stripe_session_id: stripeSessionId,
-        type: 'acompte',
+        type_paiement: 'acompte',
       });
 
     if (paymentError) {
@@ -76,7 +77,7 @@ export const confirmPayment = async (reservationId, stripeSessionId) => {
  */
 export const getPaymentHistory = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'particulier' ? 'particulier_id' : 'prestataire_id';
+    const column = role === 'particulier' ? 'client_id' : 'prestataire_id';
     
     const { data, error } = await supabase
       .from('paiements')
@@ -84,14 +85,14 @@ export const getPaymentHistory = async (userId, role = 'particulier') => {
         *,
         reservations!inner(
           id,
-          date_prestation,
-          montant,
-          status,
-          particulier_id,
+          date,
+          montant_total,
+          statut,
+          client_id,
           prestataire_id
         )
       `)
-      .eq(`reservations.${column}`, userId)
+      .eq(column, userId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

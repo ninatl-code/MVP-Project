@@ -12,59 +12,56 @@ export const searchPhotographers = async (filters = {}) => {
         nom,
         email,
         avatar_url,
-        photos,
-        profils_photographe(
+        profils_prestataire(
           bio,
           specialisations,
-          tarif_horaire,
+          tarif_horaire_min,
           rayon_deplacement_km,
-          localisation,
           note_moyenne,
-          nombre_avis,
+          nb_avis,
           portfolio_photos,
-          is_verified
+          identite_verifiee
         )
       `)
-      .eq('role', 'photographe')
-      .eq('is_active', true);
+      .eq('role', 'photographe');
 
     const { data, error } = await query;
 
     if (error) throw error;
 
     // Apply client-side filters (more flexible)
-    let filteredData = data?.filter(p => p.profils_photographe) || [];
+    let filteredData = data?.filter(p => p.profils_prestataire) || [];
 
     // Filter by specialization
     if (filters.specialisation) {
       filteredData = filteredData.filter(p => 
-        p.profils_photographe.specialisations?.includes(filters.specialisation)
+        p.profils_prestataire.specialisations?.includes(filters.specialisation)
       );
     }
 
     // Filter by price range
     if (filters.prix_min) {
       filteredData = filteredData.filter(p => 
-        p.profils_photographe.tarif_horaire >= filters.prix_min
+        p.profils_prestataire.tarif_horaire_min >= filters.prix_min
       );
     }
     if (filters.prix_max) {
       filteredData = filteredData.filter(p => 
-        p.profils_photographe.tarif_horaire <= filters.prix_max
+        p.profils_prestataire.tarif_horaire_min <= filters.prix_max
       );
     }
 
     // Filter by minimum rating
     if (filters.note_min) {
       filteredData = filteredData.filter(p => 
-        p.profils_photographe.note_moyenne >= filters.note_min
+        p.profils_prestataire.note_moyenne >= filters.note_min
       );
     }
 
     // Filter verified only
     if (filters.verified_only) {
       filteredData = filteredData.filter(p => 
-        p.profils_photographe.is_verified
+        p.profils_prestataire.identite_verifiee
       );
     }
 
@@ -73,22 +70,22 @@ export const searchPhotographers = async (filters = {}) => {
       switch (filters.sort_by) {
         case 'price_asc':
           filteredData.sort((a, b) => 
-            (a.profils_photographe.tarif_horaire || 0) - (b.profils_photographe.tarif_horaire || 0)
+            (a.profils_prestataire.tarif_horaire_min || 0) - (b.profils_prestataire.tarif_horaire_min || 0)
           );
           break;
         case 'price_desc':
           filteredData.sort((a, b) => 
-            (b.profils_photographe.tarif_horaire || 0) - (a.profils_photographe.tarif_horaire || 0)
+            (b.profils_prestataire.tarif_horaire_min || 0) - (a.profils_prestataire.tarif_horaire_min || 0)
           );
           break;
         case 'rating':
           filteredData.sort((a, b) => 
-            (b.profils_photographe.note_moyenne || 0) - (a.profils_photographe.note_moyenne || 0)
+            (b.profils_prestataire.note_moyenne || 0) - (a.profils_prestataire.note_moyenne || 0)
           );
           break;
         case 'reviews':
           filteredData.sort((a, b) => 
-            (b.profils_photographe.nombre_avis || 0) - (a.profils_photographe.nombre_avis || 0)
+            (b.profils_prestataire.nb_avis || 0) - (a.profils_prestataire.nb_avis || 0)
           );
           break;
       }
@@ -112,22 +109,16 @@ export const getPhotographerPublicProfile = async (photographeId) => {
         id,
         nom,
         avatar_url,
-        photos,
         created_at,
-        profils_photographe(
+        profils_prestataire(
           bio,
           specialisations,
-          tarif_horaire,
+          tarif_horaire_min,
           rayon_deplacement_km,
-          localisation,
           note_moyenne,
-          nombre_avis,
+          nb_avis,
           portfolio_photos,
-          is_verified,
-          ponctualite_moyenne,
-          qualite_moyenne,
-          communication_moyenne,
-          rapport_qualite_prix_moyenne
+          identite_verifiee
         )
       `)
       .eq('id', photographeId)
@@ -147,10 +138,10 @@ export const getPhotographerPublicProfile = async (photographeId) => {
 export const getPhotographerPublicPackages = async (photographeId) => {
   try {
     const { data, error } = await supabase
-      .from('packages')
+      .from('packages_types')
       .select('*')
-      .eq('photographe_id', photographeId)
-      .eq('is_active', true)
+      .eq('prestataire_id', photographeId)
+      .eq('actif', true)
       .order('prix_fixe', { ascending: true });
 
     if (error) throw error;
@@ -172,19 +163,18 @@ export const getFeaturedPhotographers = async (limit = 6) => {
         id,
         nom,
         avatar_url,
-        profils_photographe(
+        profils_prestataire(
           bio,
           specialisations,
-          tarif_horaire,
+          tarif_horaire_min,
           note_moyenne,
-          nombre_avis,
+          nb_avis,
           portfolio_photos,
-          is_verified
+          identite_verifiee
         )
       `)
       .eq('role', 'photographe')
-      .eq('is_active', true)
-      .not('profils_photographe', 'is', null)
+      .not('profils_prestataire', 'is', null)
       .order('created_at', { ascending: false })
       .limit(limit * 2); // Get more to filter
 
@@ -192,8 +182,8 @@ export const getFeaturedPhotographers = async (limit = 6) => {
 
     // Filter and sort by rating
     const filtered = data
-      ?.filter(p => p.profils_photographe && p.profils_photographe.portfolio_photos?.length > 0)
-      .sort((a, b) => (b.profils_photographe.note_moyenne || 0) - (a.profils_photographe.note_moyenne || 0))
+      ?.filter(p => p.profils_prestataire && p.profils_prestataire.portfolio_photos?.length > 0)
+      .sort((a, b) => (b.profils_prestataire.note_moyenne || 0) - (a.profils_prestataire.note_moyenne || 0))
       .slice(0, limit);
 
     return { data: filtered, error: null };
@@ -214,21 +204,20 @@ export const getPhotographersByCategory = async (category, limit = 10) => {
         id,
         nom,
         avatar_url,
-        profils_photographe(
+        profils_prestataire(
           specialisations,
-          tarif_horaire,
+          tarif_horaire_min,
           note_moyenne,
-          nombre_avis,
+          nb_avis,
           portfolio_photos
         )
       `)
-      .eq('role', 'photographe')
-      .eq('is_active', true);
+      .eq('role', 'photographe');
 
     if (error) throw error;
 
     const filtered = data
-      ?.filter(p => p.profils_photographe?.specialisations?.includes(category))
+      ?.filter(p => p.profils_prestataire?.specialisations?.includes(category))
       .slice(0, limit);
 
     return { data: filtered, error: null };
@@ -242,23 +231,8 @@ export const getPhotographersByCategory = async (category, limit = 10) => {
  * Track profile view
  */
 export const trackProfileView = async (photographeId, viewerId = null) => {
-  try {
-    const { error } = await supabase
-      .from('profile_views')
-      .insert({
-        photographe_id: photographeId,
-        viewer_id: viewerId,
-        viewed_at: new Date().toISOString(),
-      });
-
-    if (error) {
-      console.warn('Error tracking profile view:', error);
-    }
-    return { success: true };
-  } catch (error) {
-    console.warn('Error tracking profile view:', error);
-    return { success: false };
-  }
+  // profile_views table no longer exists — no-op
+  return { success: true };
 };
 
 /**

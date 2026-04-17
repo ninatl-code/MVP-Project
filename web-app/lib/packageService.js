@@ -10,28 +10,25 @@ export const createPackage = async ({
   categorie,
   prix_fixe,
   duree_minutes,
-  nb_photos,
-  options = [],
-  inclus = [],
+  options_disponibles = [],
+  services_inclus = [],
   conditions,
-  is_active = true,
+  actif = true,
 }) => {
   try {
     const { data, error } = await supabase
-      .from('packages')
+      .from('packages_types')
       .insert({
-        photographe_id: photographeId,
+        prestataire_id: photographeId,
         titre,
         description,
         categorie,
         prix_fixe,
         duree_minutes,
-        nb_photos,
-        options,
-        inclus,
+        options_disponibles,
+        services_inclus,
         conditions,
-        is_active,
-        created_at: new Date().toISOString(),
+        actif,
       })
       .select()
       .single();
@@ -50,13 +47,13 @@ export const createPackage = async ({
 export const getPhotographerPackages = async (photographeId, activeOnly = false) => {
   try {
     let query = supabase
-      .from('packages')
+      .from('packages_types')
       .select('*')
-      .eq('photographe_id', photographeId)
+      .eq('prestataire_id', photographeId)
       .order('prix_fixe', { ascending: true });
 
     if (activeOnly) {
-      query = query.eq('is_active', true);
+      query = query.eq('actif', true);
     }
 
     const { data, error } = await query;
@@ -75,10 +72,10 @@ export const getPhotographerPackages = async (photographeId, activeOnly = false)
 export const getPackageById = async (packageId) => {
   try {
     const { data, error } = await supabase
-      .from('packages')
+      .from('packages_types')
       .select(`
         *,
-        profiles!packages_photographe_id_fkey(id, nom, avatar_url)
+        profiles!packages_types_prestataire_id_fkey(id, nom, avatar_url)
       `)
       .eq('id', packageId)
       .single();
@@ -97,7 +94,7 @@ export const getPackageById = async (packageId) => {
 export const updatePackage = async (packageId, updates) => {
   try {
     const { data, error } = await supabase
-      .from('packages')
+      .from('packages_types')
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
@@ -120,7 +117,7 @@ export const updatePackage = async (packageId, updates) => {
 export const deletePackage = async (packageId) => {
   try {
     const { error } = await supabase
-      .from('packages')
+      .from('packages_types')
       .delete()
       .eq('id', packageId);
 
@@ -136,7 +133,7 @@ export const deletePackage = async (packageId) => {
  * Toggle package active status
  */
 export const togglePackageStatus = async (packageId, isActive) => {
-  return updatePackage(packageId, { is_active: isActive });
+  return updatePackage(packageId, { actif: isActive });
 };
 
 /**
@@ -145,17 +142,17 @@ export const togglePackageStatus = async (packageId, isActive) => {
 export const searchPackages = async (filters = {}) => {
   try {
     let query = supabase
-      .from('packages')
+      .from('packages_types')
       .select(`
         *,
-        profiles!packages_photographe_id_fkey(
+        profiles!packages_types_prestataire_id_fkey(
           id, 
           nom, 
           avatar_url,
-          profils_photographe(note_moyenne, nombre_avis, localisation)
+          profils_prestataire(note_moyenne, nb_avis)
         )
       `)
-      .eq('is_active', true);
+      .eq('actif', true);
 
     if (filters.categorie) {
       query = query.eq('categorie', filters.categorie);
@@ -188,7 +185,7 @@ export const searchPackages = async (filters = {}) => {
 export const duplicatePackage = async (packageId, photographeId) => {
   try {
     const { data: original, error: fetchError } = await supabase
-      .from('packages')
+      .from('packages_types')
       .select('*')
       .eq('id', packageId)
       .single();
@@ -198,13 +195,12 @@ export const duplicatePackage = async (packageId, photographeId) => {
     const { id, created_at, updated_at, ...packageData } = original;
     
     const { data, error } = await supabase
-      .from('packages')
+      .from('packages_types')
       .insert({
         ...packageData,
-        photographe_id: photographeId,
+        prestataire_id: photographeId,
         titre: `${packageData.titre} (copie)`,
-        is_active: false,
-        created_at: new Date().toISOString(),
+        actif: false,
       })
       .select()
       .single();

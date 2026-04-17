@@ -41,12 +41,11 @@ export default function DevisPaymentPage() {
         .from('devis')
         .select(`
           *,
-          photographe:profils_photographe(
+          photographe:profils_prestataire(
             id,
             nom_entreprise,
-            photo_profil,
             stripe_account_id,
-            verifie,
+            identite_verifiee,
             profile:profiles(nom, prenom)
           ),
           demande:demandes_client(
@@ -89,7 +88,7 @@ export default function DevisPaymentPage() {
         body: JSON.stringify({
           devisId: id,
           clientId: profileId,
-          photographeId: devis.photographe_id,
+          photographeId: devis.prestataire_id,
           photographeStripeAccountId: devis.photographe?.stripe_account_id,
           amount: depositAmount,
           platformFee,

@@ -19,71 +19,49 @@ export default function Homepage() {
   const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000);
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [stepMsg, setStepMsg] = useState("");
   const [categories, setCategories] = useState([]);
-  const [profiles, setProfiles] = useState({});
-  const [villes, setVilles] = useState({});
-  const [regions, setRegions] = useState({});
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   // Charger les catégories depuis la table prestations
   useEffect(() => {
-    const fetchCategories = async () => {
-      setStepMsg("Chargement des catégories...");
-      const { data, error } = await supabase.from("prestations").select("id, nom");
-      if (error) {
-        setStepMsg("Erreur chargement catégories : " + error.message);
-        setCategories([]);
-      } else {
-        setStepMsg("");
-        setCategories(data || []);
-      }
-    };
-    fetchCategories();
+    supabase.from("prestations").select("id, nom").then(({ data, error }) => {
+      setCategories(error ? [] : (data || []));
+      setCategoriesLoading(false);
+    });
   }, []);
 
-  // Charger tous les profils, villes et régions pour mapping id -> nom
-  useEffect(() => {
-    const fetchRefs = async () => {
-      const { data: profilsData } = await supabase.from("profiles").select("id, nom");
-      const { data: villesData } = await supabase.from("villes").select("id, ville");
-      const { data: regionsData } = await supabase.from("regions").select("id, region");
-      // Mapping id -> nom
-      const profilsMap = {};
-      (profilsData || []).forEach(p => { profilsMap[p.id] = p.nom; });
-      setProfiles(profilsMap);
-      const villesMap = {};
-      (villesData || []).forEach(v => { villesMap[v.id] = v.ville; });
-      setVilles(villesMap);
-      const regionsMap = {};
-      (regionsData || []).forEach(r => { regionsMap[r.id] = r.region; });
-      setRegions(regionsMap);
-    };
-    fetchRefs();
-  }, []);
-
-  // Recherche par catégorie avec messages de debug
+  // Recherche par catégorie
   const handleCategorieClick = async (categorieId) => {
     setSelectedCategory(categorieId);
     setLoading(true);
+    setStepMsg("");
     setSearchResults([]);
+
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("La requête a pris trop de temps. Vérifiez votre connexion.")), 8000)
+    );
+
     try {
-      const { data, error } = await supabase
-        .from("annonces")
-        .select("*")
-        .eq("actif", true)
-        .eq("prestation", categorieId);
+      const query = supabase
+        .from("profils_prestataire")
+        .select("id, nom_entreprise, portfolio_photos, tarif_horaire_min, categories, plan_actif, created_at")
+        .eq("plan_actif", true)
+        .contains("categories", [categorieId]);
+
+      const { data, error } = await Promise.race([query, timeout]);
 
       if (error) {
-        setStepMsg("Erreur Supabase : " + error.message);
-        setLoading(false);
-        return;
+        setStepMsg("Erreur : " + error.message);
+      } else {
+        setSearchResults(data || []);
       }
-      setSearchResults(data || []);
     } catch (err) {
-      setStepMsg("Erreur JS : " + err.message);
+      setStepMsg(err.message || "Une erreur est survenue.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -105,7 +83,7 @@ export default function Homepage() {
     return (
       <div
         style={{
-          background: prestation.actif === false ? '#f3f3f3' : '#fff',
+          background: prestation.plan_actif === false ? '#f3f3f3' : '#fff',
           borderRadius: 22,
           boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
           overflow: 'hidden',
@@ -116,7 +94,7 @@ export default function Homepage() {
           flexDirection: 'column',
           cursor: 'pointer',
           position: 'relative',
-          opacity: prestation.actif === false ? 0.6 : 1
+          opacity: prestation.plan_actif === false ? 0.6 : 1
         }}
       >
         <div style={{
@@ -128,10 +106,10 @@ export default function Homepage() {
           justifyContent: 'center',
           overflow: 'hidden'
         }}>
-          {prestation.photos && prestation.photos.length > 0 ? (
+          {prestation.portfolio_photos && prestation.portfolio_photos.length > 0 ? (
             <img
-              src={prestation.photos[0]}
-              alt={prestation.titre}
+              src={prestation.portfolio_photos[0]}
+              alt={prestation.nom_entreprise}
               style={{
                 width: '100%',
                 height: '100%',
@@ -160,25 +138,19 @@ export default function Homepage() {
           borderBottomRightRadius: 22
         }}>
           <div style={{fontSize:15, color:'#888', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Photographe :</b> {profiles[prestation.prestataire] || prestation.prestataire}
+            <b style={{color: COLORS.primary}}>Prestataire :</b> {prestation.nom_entreprise || '-'}
           </div>
           <div style={{fontSize:15, color:'#888', marginBottom:6}}>
             <b style={{color: COLORS.primary}}>Date :</b> {prestation.created_at ? new Date(prestation.created_at).toLocaleDateString('fr-FR') : ''}
           </div>
           <div style={{fontWeight:700, fontSize:22, marginBottom:6, lineHeight:1.2, color: COLORS.text}}>
-            {prestation.titre}
+            {prestation.nom_entreprise}
           </div>
           <div style={{fontSize:16, color:'#444', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Spécialité :</b> {getCategorieNom(prestation.prestation)}
+            <b style={{color: COLORS.primary}}>Spécialité :</b> {(prestation.categories || []).map(id => getCategorieNom(id)).join(', ')}
           </div>
           <div style={{fontSize:16, color:'#444', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Tarif :</b> {prestation.tarification}
-          </div>
-          <div style={{fontSize:16, color:'#444', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Ville :</b> {villes[prestation.ville] || "-"}
-          </div>
-          <div style={{fontSize:16, color:'#444', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Région :</b> {regions[prestation.region] || "-"}
+            <b style={{color: COLORS.primary}}>Tarif :</b> {prestation.tarif_horaire_min ? prestation.tarif_horaire_min + ' MAD/h' : '-'}
           </div>
         </div>
       </div>
@@ -202,7 +174,7 @@ export default function Homepage() {
             className="text-4xl md:text-5xl font-extrabold max-w-2xl mx-auto"
             style={{color: COLORS.text}}
           >
-            Réservez votre photographe idéal en quelques clics
+            Réservez votre prestataire idéal en quelques clics
           </h1>
           <p 
             initial={{ opacity: 0, y: 20 }} 
@@ -210,7 +182,7 @@ export default function Homepage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-6 text-lg text-gray-600 max-w-xl mx-auto"
           >
-            Trouvez des photographes talentueux, découvrez leurs portfolios, comparez les tarifs et réservez votre shooting facilement.
+            Trouvez des prestataires compétents, découvrez leurs portfolios, comparez les tarifs et réservez votre prestation facilement.
           </p>
           <div className="mt-10 flex space-x-4 justify-center">
             <button
@@ -221,7 +193,7 @@ export default function Homepage() {
               onMouseLeave={e => {e.target.style.backgroundColor = 'transparent'; e.target.style.color = COLORS.accent}}
               onClick={() => navigateWithSplash("/signup", "Redirection vers l'inscription...")}
             >
-              Rejoindre en tant que photographe
+              Rejoindre en tant que prestataire
             </button>
             <button
               className="text-white px-6 py-3 text-lg rounded-2xl shadow-lg transition font-semibold"
@@ -235,7 +207,7 @@ export default function Homepage() {
                 }
               }}
             >
-              Découvrir les photographes
+              Découvrir les prestataires
             </button>
           </div>
         </div>
@@ -245,13 +217,13 @@ export default function Homepage() {
       <div className="max-w-7xl mx-auto px-8 py-16 flex flex-col gap-16">
         {/* Catégories stylées */}
         <section id="categories">
-          <h2 className="text-2xl font-bold mb-6" style={{color: COLORS.text}}>Photographes disponibles</h2>
+          <h2 className="text-2xl font-bold mb-6" style={{color: COLORS.text}}>Prestataires disponibles</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {categories.map((cat, i) => (
               <div
                 key={cat.id}
                 onClick={() => handleCategorieClick(cat.id)}
-                className={`cursor-pointer transition-all duration-200 ${selectedCategory === cat.id ? "scale-105" : ""}`}
+                className={`categorie-btn cursor-pointer transition-all duration-200 ${selectedCategory === cat.id ? "scale-105" : ""}`}
               >
                 <div 
                   className="rounded-2xl shadow-md hover:shadow-lg border transition-all duration-200 p-6"
@@ -272,15 +244,18 @@ export default function Homepage() {
                   }}
                 >
                   <h2 className="text-xl font-semibold">{cat.nom}</h2>
-                  <p className="mt-2" style={{color: selectedCategory === cat.id ? '#E5E7EB' : '#6B7280'}}>
-                    Découvrez des photographes spécialisés en {cat.nom.toLowerCase()}.
+                  <p className="mt-2" style={{color: selectedCategory === cat.id ? '#6B7280' : '#6B7280'}}>
+                    Découvrez des prestataires spécialisés en {cat.nom.toLowerCase()}.
                   </p>
                 </div>
               </div>
             ))}
           </div>
+          {categoriesLoading && (
+            <div className="col-span-full text-center font-semibold py-4" style={{color: COLORS.secondary}}>Chargement des catégories...</div>
+          )}
           {loading && (
-            <div className="col-span-full text-center font-semibold py-8" style={{color: COLORS.primary}}>Chargement...</div>
+            <div className="col-span-full text-center font-semibold py-8" style={{color: COLORS.primary}}>Chargement des prestataires...</div>
           )}
           {stepMsg && (
             <div className="col-span-full text-center font-semibold py-4" style={{color: COLORS.accent}}>{stepMsg}</div>
@@ -288,7 +263,7 @@ export default function Homepage() {
           <div className="col-span-full flex flex-wrap">
             {selectedCategory && !loading && searchResults.length === 0 && (
               <div className="w-full text-center py-12 font-semibold text-lg" style={{color: COLORS.accent}}>
-                OUPS, aucun photographe n'est disponible dans cette catégorie pour le moment.
+                OUPS, aucun prestataire n'est disponible dans cette catégorie pour le moment.
               </div>
             )}
             {searchResults.map(prestation => (
@@ -307,9 +282,9 @@ export default function Homepage() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.accent}}>
                     <span className="text-white text-3xl font-bold">1</span>
                   </div>
-                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Inscription</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Créez votre compte</h2>
                   <p className="text-neutral-600">
-                    Créez un compte gratuitement en quelques étapes simples.
+                    Inscrivez-vous gratuitement en quelques minutes
                   </p>
                 </div>
               </div>
@@ -318,9 +293,9 @@ export default function Homepage() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.accent}}>
                     <span className="text-white text-3xl font-bold">2</span>
                   </div>
-                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Recherche</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Trouvez un prestataire</h2>
                   <p className="text-neutral-600">
-                    Trouvez le photographe idéal selon votre style et votre budget.
+                    Publiez votre demande ou choisissez directement un prestataire
                   </p>
                 </div>
               </div>
@@ -329,9 +304,9 @@ export default function Homepage() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.accent}}>
                     <span className="text-white text-3xl font-bold">3</span>
                   </div>
-                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Réservation</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Réservez en toute sécurité</h2>
                   <p className="text-neutral-600">
-                    Réservez votre shooting en ligne et sécurisez votre date facilement.
+                    Validez le devis et votre prestataire est réservé pour votre événement
                   </p>
                 </div>
               </div>
@@ -344,9 +319,9 @@ export default function Homepage() {
           <h2 className="text-2xl font-bold mb-6" style={{color: COLORS.text}}>Questions fréquentes</h2>
           <div className="space-y-4">
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
-              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Comment puis-je contacter un photographe ?</h2>
+              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Comment puis-je contacter un prestataire ?</h2>
               <p className="text-neutral-600">
-                R : Vous pouvez contacter un photographe directement via notre plateforme en cliquant sur le bouton "Contacter" sur son profil.
+                R : Vous pouvez contacter un prestataire directement via notre plateforme en cliquant sur le bouton "Contacter" sur son profil.
               </p>
             </div>
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
@@ -356,9 +331,9 @@ export default function Homepage() {
               </p>
             </div>
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
-              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Puis-je annuler mon shooting ?</h2>
+              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Puis-je annuler ma prestation ?</h2>
               <p className="text-neutral-600">
-                R : Oui, vous pouvez annuler votre shooting sous certaines conditions. Veuillez consulter notre politique d'annulation pour plus de détails.
+                R : Oui, vous pouvez annuler votre prestation sous certaines conditions. Veuillez consulter la politique d'annulation de votre prestataire pour plus de détails.
               </p>
             </div>
           </div>
@@ -376,7 +351,7 @@ export default function Homepage() {
                   <a href="#how" className="hover:underline" style={{color: '#E5E7EB'}}>Comment ça marche</a>
                 </li>
                 <li>
-                  <a href="#categories" className="hover:underline" style={{color: '#E5E7EB'}}>Photographes</a>
+                  <a href="#categories" className="hover:underline" style={{color: '#E5E7EB'}}>Prestataires</a>
                 </li>
                 <li>
                   <a href="#faq" className="hover:underline" style={{color: '#E5E7EB'}}>Aide</a>

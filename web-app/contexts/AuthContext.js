@@ -198,7 +198,7 @@ export const AuthProvider = ({ children }) => {
   const loadPhotographeProfile = async (userId) => {
     try {
       const { data, error } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select('*')
         .eq('id', userId)
         .single();
@@ -206,16 +206,8 @@ export const AuthProvider = ({ children }) => {
       if (!error && data) {
         setPhotographeProfile(data);
       } else {
-        // Essayer avec user_id si id ne fonctionne pas
-        const { data: dataByUserId, error: error2 } = await supabase
-          .from('profils_photographe')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-        
-        if (!error2 && dataByUserId) {
-          setPhotographeProfile(dataByUserId);
-        }
+        // profils_prestataire.id IS the user id — no fallback needed
+        console.warn('No prestataire profile found for user:', userId);
       }
     } catch (err) {
       console.error('Error loading photographe profile:', err);

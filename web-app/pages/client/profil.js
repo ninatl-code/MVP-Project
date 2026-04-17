@@ -28,11 +28,14 @@ function UserProfile() {
   const [favorites, setFavorites] = useState([]);
   const [villeNom, setVilleNom] = useState("");
   const [editMode, setEditMode] = useState(false);
+  const [nomEdit, setNomEdit] = useState("");
   const [bioEdit, setBioEdit] = useState("");
   const [emailEdit, setEmailEdit] = useState("");
   const [phoneEdit, setPhoneEdit] = useState("");
   const [villeEdit, setVilleEdit] = useState("");
   const [photoEdit, setPhotoEdit] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
   const [villesList, setVillesList] = useState([]);
   const [nbReservations, setNbReservations] = useState(0);
   const [nbCommandes, setNbCommandes] = useState(0);
@@ -56,10 +59,21 @@ function UserProfile() {
 
         const uid = authUser.id;
 
-        // PHASE 1 : profil uniquement — affichage immédiat
+        // Affichage immédiat depuis la session (zéro réseau)
+        const sessionName = authUser.user_metadata?.name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || '';
+        setUser({
+          name: sessionName,
+          avatar: authUser.user_metadata?.avatar_url || '',
+          city: '', cityId: null,
+          email: authUser.email || '',
+          phone: '', about: ''
+        });
+        setEmailEdit(authUser.email || '');
+
+        // PHASE 1 : profil uniquement — mise à jour depuis la DB
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('nom, avatar_url, photos, ville, email, telephone')
+          .select('nom, avatar_url, ville, email, telephone, description')
           .eq('id', uid)
           .maybeSingle();
 
@@ -80,7 +94,7 @@ function UserProfile() {
 
         const villeLabel = profile.ville || '';
         setVilleNom(villeLabel);
-        const av = profile.photos || profile.avatar_url || '';
+        const av = profile.avatar_url || '';
         const validAvatar = av.startsWith('http') || av.startsWith('data:image') ? av : '';
         setUser({
           name: profile.nom || '',
@@ -89,10 +103,11 @@ function UserProfile() {
           cityId: null,
           email: profile.email || authUser.email || '',
           phone: profile.telephone || '',
-          about: ''
+          about: profile.description || ''
         });
         setEmailEdit(profile.email || authUser.email || '');
-        setBioEdit('');
+        setNomEdit(profile.nom || '');
+        setBioEdit(profile.description || '');
         setPhoneEdit(profile.telephone || '');
         setVilleEdit(villeLabel);
         setPhotoEdit(validAvatar);
@@ -103,7 +118,7 @@ function UserProfile() {
           supabase.from('commandes').select('id', { count: 'exact', head: true }).eq('particulier_id', uid),
           supabase.from('devis').select('id', { count: 'exact', head: true }).eq('client_id', uid),
           supabase.from('avis').select('id', { count: 'exact', head: true }).eq('reviewer_id', uid),
-          supabase.from('reservations').select('id, created_at, statut, annonces(titre)').eq('client_id', uid).order('created_at', { ascending: false }).limit(3),
+          supabase.from('reservations').select('id, created_at, statut').eq('client_id', uid).order('created_at', { ascending: false }).limit(3),
           supabase.from('favoris').select('id, photographe_id').eq('client_id', uid)
         ]).then(async ([
           { count: reservationsCount },
@@ -119,7 +134,7 @@ function UserProfile() {
           setNbAvis(avisCount || 0);
           setRecentActivity((recentRes || []).map(r => ({
             id: r.id, type: 'reservation',
-            title: r.annonces?.titre || 'Réservation',
+            title: 'Réservation',
             status: r.statut, date: r.created_at
           })));
 
@@ -224,10 +239,14 @@ function UserProfile() {
 
   // Sauvegarde des modifications
   const handleSaveProfile = async () => {
+    setSaving(true);
+    setSaveMsg("");
+
     const { data: { session } } = await supabase.auth.getSession();
     const authUser = session?.user;
     if (!authUser) {
-      alert("Erreur d'authentification : session introuvable");
+      setSaveMsg("error:Session introuvable. Veuillez vous reconnecter.");
+      setSaving(false);
       return;
     }
 
@@ -235,32 +254,38 @@ function UserProfile() {
       const { error } = await supabase
         .from("profiles")
         .update({
+          nom: nomEdit,
           email: emailEdit,
           telephone: phoneEdit,
           ville: villeEdit,
-          photos: photoEdit,
           avatar_url: photoEdit,
+          description: bioEdit,
         })
         .eq("id", authUser.id);
 
       if (error) {
         console.error("Erreur Supabase:", error);
-        alert("Erreur lors de la sauvegarde : " + error.message);
+        setSaveMsg("error:" + error.message);
+        setSaving(false);
         return;
       }
 
-      // Mettre à jour l'état local sans reload
       setUser(prev => ({
         ...prev,
+        name: nomEdit,
         email: emailEdit,
         phone: phoneEdit,
         city: villeEdit,
         avatar: photoEdit,
+        about: bioEdit,
       }));
-      setEditMode(false);
+      setSaveMsg("success");
+      setTimeout(() => { setEditMode(false); setSaveMsg(""); }, 1500);
     } catch (err) {
       console.error("Exception handleSaveProfile:", err);
-      alert("Erreur inattendue : " + (err.message || err));
+      setSaveMsg("error:" + (err.message || "Erreur inattendue"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -290,21 +315,21 @@ function UserProfile() {
           <div className="max-w-6xl mx-auto px-6 py-12">
             <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
               {/* Photo de profil */}
-              <div className="relative group">
-                {user.avatar ? (
+              <div className="relative">
+                {(editMode ? photoEdit : user.avatar) ? (
                   <img
                     src={editMode ? photoEdit : user.avatar}
                     alt={user.name}
-                    className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl object-cover transition-transform group-hover:scale-105"
+                    className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl object-cover"
                   />
                 ) : (
-                  <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-bold transition-transform group-hover:scale-105" style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)` }}>
-                    {user.name ? user.name[0].toUpperCase() : "?"}
+                  <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-bold" style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)` }}>
+                    {user.name ? user.name[0].toUpperCase() : <User className="w-12 h-12" />}
                   </div>
                 )}
                 {editMode && (
-                  <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-2xl cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="w-8 h-8 text-white" />
+                  <label className="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center cursor-pointer shadow-lg border-2 border-white z-10" title="Changer la photo">
+                    <Camera className="w-5 h-5 text-white" />
                     <input
                       type="file"
                       accept="image/*"
@@ -341,23 +366,33 @@ function UserProfile() {
                       Modifier mon profil
                     </button>
                   ) : (
-                    <div className="flex gap-3">
-                      <button
-                        className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
-                        style={{ background: '#10B981' }}
-                        onMouseEnter={(e) => e.target.style.background = '#059669'}
-                        onMouseLeave={(e) => e.target.style.background = '#10B981'}
-                        onClick={handleSaveProfile}
-                      >
-                        <Save className="w-5 h-5" />
-                        Sauvegarder
-                      </button>
-                      <button
-                        className="px-6 py-3 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all duration-200 font-medium"
-                        onClick={() => setEditMode(false)}
-                      >
-                        Annuler
-                      </button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-3">
+                        <button
+                          disabled={saving}
+                          className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white transition-all duration-200 shadow-lg font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                          style={{ background: '#10B981' }}
+                          onClick={handleSaveProfile}
+                        >
+                          {saving ? (
+                            <><span className="animate-spin inline-block">&#8635;</span> Sauvegarde...</>
+                          ) : (
+                            <><Save className="w-5 h-5" /> Sauvegarder</>
+                          )}
+                        </button>
+                        <button
+                          className="px-6 py-3 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all duration-200 font-medium"
+                          onClick={() => { setEditMode(false); setSaveMsg(""); }}
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                      {saveMsg === "success" && (
+                        <p className="text-green-600 text-sm font-medium flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Profil sauvegardé avec succès !</p>
+                      )}
+                      {saveMsg.startsWith("error:") && (
+                        <p className="text-red-500 text-sm font-medium flex items-center gap-1"><AlertCircle className="w-4 h-4" /> {saveMsg.replace("error:", "")}</p>
+                      )}
                     </div>
                   )}
                   <button
@@ -462,6 +497,20 @@ function UserProfile() {
                   </>
                 ) : (
                   <>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <User className="w-4 h-4" style={{ color: COLORS.primary }} /> Nom
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
+                        onFocus={(e) => e.target.style.borderColor = COLORS.primary}
+                        onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+                        value={nomEdit}
+                        onChange={e => setNomEdit(e.target.value)}
+                        placeholder="Votre nom"
+                      />
+                    </div>
                     <div className="space-y-2">
                       <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                         <Mail className="w-4 h-4" style={{ color: COLORS.primary }} /> Email

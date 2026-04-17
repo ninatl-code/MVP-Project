@@ -60,11 +60,11 @@ export default function ClientDashboard() {
           .select('*', { count: 'exact', head: true })
           .eq('client_id', profileId)
           .eq('statut', 'confirmee')
-          .gte('date_prestation', new Date().toISOString().split('T')[0]),
+          .gte('date', new Date().toISOString().split('T')[0]),
         supabase
           .from('messages')
-          .select('*, conversation:conversations!inner(client_id, photographe_id)', { count: 'exact', head: true })
-          .or(`conversation.client_id.eq.${profileId},conversation.photographe_id.eq.${profileId}`)
+          .select('*, conversation:conversations!inner(client_id, prestataire_id)', { count: 'exact', head: true })
+          .or(`conversation.client_id.eq.${profileId},conversation.prestataire_id.eq.${profileId}`)
           .eq('lu', false)
           .neq('expediteur_id', profileId),
         supabase
@@ -87,9 +87,8 @@ export default function ClientDashboard() {
         .from('reservations')
         .select(`
           *,
-          photographe:profils_photographe(
+          photographe:profils_prestataire(
             nom_entreprise,
-            photo_profil,
             profile:profiles(nom, prenom)
           )
         `)
@@ -287,7 +286,7 @@ export default function ClientDashboard() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-gray-900">
-                            {formatDate(reservation.date_prestation)}
+                            {formatDate(reservation.date)}
                           </p>
                           <StatusBadge status={reservation.statut} />
                         </div>

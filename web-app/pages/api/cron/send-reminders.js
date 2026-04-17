@@ -29,18 +29,17 @@ export default async function handler(req, res) {
       .from('reservations')
       .select(`
         id,
-        numero_reservation,
-        date_prestation,
+        date,
         heure_debut,
         lieu,
         prestataire_id,
-        particulier_id,
+        client_id,
         profiles!reservations_prestataire_id_fkey(nom),
-        profiles!reservations_particulier_id_fkey(nom)
+        profiles!reservations_client_id_fkey(nom)
       `)
-      .in('status', ['confirmed', 'acompte_paye'])
-      .gte('date_prestation', tomorrowStart.toISOString())
-      .lte('date_prestation', tomorrowEnd.toISOString());
+      .in('statut', ['confirme', 'pending'])
+      .gte('date', tomorrowStart.toISOString())
+      .lte('date', tomorrowEnd.toISOString());
 
     if (fetchError) {
       throw fetchError;
@@ -57,7 +56,7 @@ export default async function handler(req, res) {
     for (const reservation of (reservations || [])) {
       results.processed++;
 
-      const dateFormatted = new Date(reservation.date_prestation).toLocaleDateString('fr-FR', {
+      const dateFormatted = new Date(reservation.date).toLocaleDateString('fr-FR', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
@@ -68,17 +67,12 @@ export default async function handler(req, res) {
         await supabase
           .from('notifications')
           .insert({
-            user_id: reservation.particulier_id,
+            user_id: reservation.client_id,
             type: 'reminder',
-            title: 'Rappel: Séance photo demain',
-            message: `Votre séance avec ${reservation.profiles?.nom || 'le photographe'} est prévue ${dateFormatted}${reservation.heure_debut ? ` à ${reservation.heure_debut}` : ''}.`,
-            data: { 
-              reservationId: reservation.id,
-              lieu: reservation.lieu,
-            },
-            action_url: `/client/reservations/${reservation.id}`,
-            is_read: false,
-            created_at: now.toISOString(),
+            titre: 'Rappel: Séance photo demain',
+            contenu: `Votre séance avec ${reservation.profiles?.nom || 'le photographe'} est prévue ${dateFormatted}${reservation.heure_debut ? ` à ${reservation.heure_debut}` : ''}.`,
+            reservation_id: reservation.id,
+            lu: false,
           });
 
         results.notificationsSent++;
@@ -89,19 +83,14 @@ export default async function handler(req, res) {
           .insert({
             user_id: reservation.prestataire_id,
             type: 'reminder',
-            title: 'Rappel: Séance photo demain',
-            message: `Vous avez une séance avec ${reservation.profiles?.nom || 'un client'} ${dateFormatted}${reservation.heure_debut ? ` à ${reservation.heure_debut}` : ''}.`,
-            data: { 
-              reservationId: reservation.id,
-              lieu: reservation.lieu,
-            },
-            action_url: `/photographe/reservations/${reservation.id}`,
-            is_read: false,
-            created_at: now.toISOString(),
+            titre: 'Rappel: Séance photo demain',
+            contenu: `Vous avez une séance avec ${reservation.profiles?.nom || 'un client'} ${dateFormatted}${reservation.heure_debut ? ` à ${reservation.heure_debut}` : ''}.`,
+            reservation_id: reservation.id,
+            lu: false,
           });
 
         results.notificationsSent++;
-        console.log(`✅ Reminders sent for: ${reservation.numero_reservation}`);
+        console.log(`✅ Reminders sent for reservation: ${reservation.id}`);
 
       } catch (err) {
         results.errors.push({

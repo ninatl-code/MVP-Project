@@ -55,10 +55,10 @@ export default function RecherchePage() {
       setLoading(true);
       
       let query = supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select(`
           *,
-          profile:profiles!profils_photographe_user_id_fkey(id, nom, avatar_url, ville)
+          profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url, ville)
         `)
         .eq('actif', true);
 
@@ -70,10 +70,10 @@ export default function RecherchePage() {
         query = query.ilike('profile.ville', `%${filters.ville}%`);
       }
       if (filters.prixMin) {
-        query = query.gte('tarif_horaire', parseInt(filters.prixMin));
+        query = query.gte('tarif_horaire_min', parseInt(filters.prixMin));
       }
       if (filters.prixMax) {
-        query = query.lte('tarif_horaire', parseInt(filters.prixMax));
+        query = query.lte('tarif_horaire_min', parseInt(filters.prixMax));
       }
       if (filters.noteMin) {
         query = query.gte('note_moyenne', parseFloat(filters.noteMin));
@@ -88,13 +88,13 @@ export default function RecherchePage() {
           query = query.order('note_moyenne', { ascending: false });
           break;
         case 'prix_asc':
-          query = query.order('tarif_horaire', { ascending: true });
+          query = query.order('tarif_horaire_min', { ascending: true });
           break;
         case 'prix_desc':
-          query = query.order('tarif_horaire', { ascending: false });
+          query = query.order('tarif_horaire_min', { ascending: false });
           break;
         case 'avis':
-          query = query.order('nombre_avis', { ascending: false });
+          query = query.order('nb_avis', { ascending: false });
           break;
         default:
           query = query.order('note_moyenne', { ascending: false });
@@ -428,7 +428,7 @@ export default function RecherchePage() {
                       {(photographe.note_moyenne || 0).toFixed(1)}
                     </span>
                     <span className="text-sm text-gray-500">
-                      ({photographe.nombre_avis || 0} avis)
+                      ({photographe.nb_avis || 0} avis)
                     </span>
                   </div>
 
@@ -456,7 +456,7 @@ export default function RecherchePage() {
                     <div className="flex items-center gap-1 text-indigo-600">
                       <Euro className="w-5 h-5" />
                       <span className="font-semibold">
-                        {photographe.tarif_horaire || '—'} DH
+                        {photographe.tarif_horaire_min || '—'} DH
                       </span>
                       <span className="text-sm text-gray-500">/heure</span>
                     </div>

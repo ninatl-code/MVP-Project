@@ -25,9 +25,9 @@ export default async function handler(req, res) {
     // 2. Have a service date more than 24 hours ago
     const { data: reservations, error: fetchError } = await supabase
       .from('reservations')
-      .select('id, numero_reservation, date_prestation, prestataire_id, particulier_id')
-      .in('status', ['acompte_paye', 'confirmed'])
-      .lt('date_prestation', oneDayAgo.toISOString());
+      .select('id, date, prestataire_id, client_id')
+      .in('statut', ['confirme', 'pending'])
+      .lt('date', oneDayAgo.toISOString());
 
     if (fetchError) {
       throw fetchError;
@@ -49,9 +49,7 @@ export default async function handler(req, res) {
         const { error: updateError } = await supabase
           .from('reservations')
           .update({
-            status: 'completed',
-            completed_at: now.toISOString(),
-            auto_completed: true,
+            statut: 'termine',
             updated_at: now.toISOString(),
           })
           .eq('id', reservation.id);
@@ -68,14 +66,12 @@ export default async function handler(req, res) {
         await supabase
           .from('notifications')
           .insert({
-            user_id: reservation.particulier_id,
+            user_id: reservation.client_id,
             type: 'avis',
-            title: 'Donnez votre avis',
-            message: 'Votre séance photo est terminée. Partagez votre expérience !',
-            data: { reservationId: reservation.id },
-            action_url: `/shared/avis/create?reservationId=${reservation.id}`,
-            is_read: false,
-            created_at: now.toISOString(),
+            titre: 'Donnez votre avis',
+            contenu: 'Votre seance photo est terminee. Partagez votre experience !',
+            reservation_id: reservation.id,
+            lu: false,
           });
 
         // Notify photographer
@@ -84,15 +80,14 @@ export default async function handler(req, res) {
           .insert({
             user_id: reservation.prestataire_id,
             type: 'reservation',
-            title: 'Réservation terminée',
-            message: `La réservation ${reservation.numero_reservation} a été marquée comme terminée.`,
-            data: { reservationId: reservation.id },
-            is_read: false,
-            created_at: now.toISOString(),
+            titre: 'Reservation terminee',
+            contenu: 'La reservation a ete marquee comme terminee.',
+            reservation_id: reservation.id,
+            lu: false,
           });
 
         results.completed++;
-        console.log(`✅ Completed reservation: ${reservation.numero_reservation}`);
+        console.log(`Completed reservation: ${reservation.id}`);
 
       } catch (err) {
         results.errors.push({

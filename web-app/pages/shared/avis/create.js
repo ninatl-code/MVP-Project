@@ -38,7 +38,7 @@ export default function CreateAvisPage() {
         .select(`
           *,
           client:profiles!reservations_client_id_fkey(id, nom, avatar_url),
-          photographe:profiles!reservations_photographe_id_fkey(id, nom, avatar_url)
+          photographe:profiles!reservations_prestataire_id_fkey(id, nom, avatar_url)
         `)
         .eq('id', reservationId)
         .single();
@@ -46,7 +46,7 @@ export default function CreateAvisPage() {
       if (error) throw error;
       
       // Verify user can review this reservation
-      if (data.client_id !== user.id && data.photographe_id !== user.id) {
+      if (data.client_id !== user.id && data.prestataire_id !== user.id) {
         setError("Vous n'êtes pas autorisé à laisser un avis pour cette réservation.");
         setLoading(false);
         return;
@@ -63,16 +63,16 @@ export default function CreateAvisPage() {
 
       // Check if already reviewed
       const { data: existingReview } = await supabase
-        .from('avis')
+        .from('reviews_photographe')
         .select('*')
-        .eq('reservation_id', reservationId)
-        .eq('auteur_id', user.id)
+        .eq('prestataire_id', isPhotographe ? user.id : reservation.prestataire_id)
+        .eq('client_id', isPhotographe ? reservation.client_id : user.id)
         .single();
 
       if (existingReview) {
         setExistingAvis(existingReview);
-        setNote(existingReview.note);
-        setCommentaire(existingReview.commentaire || '');
+        setNote(existingReview.rating);
+        setCommentaire(existingReview.comment || '');
       }
     } catch (error) {
       console.error('Error fetching reservation:', error);
@@ -96,25 +96,22 @@ export default function CreateAvisPage() {
     try {
       const destinataireId = isPhotographe 
         ? reservation.client_id 
-        : reservation.photographe_id;
+        : reservation.prestataire_id;
 
       const avisData = {
-        reservation_id: reservationId,
-        auteur_id: user.id,
-        destinataire_id: destinataireId,
-        note,
-        commentaire: commentaire.trim() || null,
-        type_auteur: isPhotographe ? 'photographe' : 'client',
-        created_at: new Date().toISOString(),
+        prestataire_id: reservation.prestataire_id,
+        client_id: reservation.client_id,
+        rating: note,
+        comment: commentaire.trim() || null,
       };
 
       if (existingAvis) {
         // Update existing review
         const { error } = await supabase
-          .from('avis')
+          .from('reviews_photographe')
           .update({
-            note,
-            commentaire: commentaire.trim() || null,
+            rating: note,
+            comment: commentaire.trim() || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingAvis.id);
@@ -123,30 +120,11 @@ export default function CreateAvisPage() {
       } else {
         // Create new review
         const { error } = await supabase
-          .from('avis')
+          .from('reviews_photographe')
           .insert(avisData);
 
         if (error) throw error;
-
-        // Update photographer's average rating if client is reviewing
-        if (!isPhotographe) {
-          const { data: allReviews } = await supabase
-            .from('avis')
-            .select('note')
-            .eq('destinataire_id', reservation.photographe_id);
-
-          if (allReviews && allReviews.length > 0) {
-            const moyenne = allReviews.reduce((sum, r) => sum + r.note, 0) / allReviews.length;
-            
-            await supabase
-              .from('profils_photographe')
-              .update({ 
-                note_moyenne: moyenne,
-                nombre_avis: allReviews.length 
-              })
-              .eq('user_id', reservation.photographe_id);
-          }
-        }
+        // note_moyenne and nb_avis are updated via DB trigger or statistiques_avis view
       }
 
       setSuccess(true);
@@ -274,7 +252,7 @@ export default function CreateAvisPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
-              <span>{formatDate(reservation.date_prestation)}</span>
+              <span>{formatDate(reservation.date)}</span>
             </div>
             {reservation.lieu && (
               <div className="flex items-center gap-2 text-sm text-gray-600">

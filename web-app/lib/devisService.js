@@ -7,35 +7,34 @@ export const createDevis = async ({
   photographeId,
   clientId,
   demandeId,
-  annonceId,
   tarif_base,
-  options = [],
+  options_supplementaires = [],
   frais_deplacement = 0,
-  message,
-  date_validite,
-  duree_prestation,
+  message_personnalise,
+  date_expiration,
+  duree_prestation_heures,
+  titre,
+  description,
 }) => {
   try {
-    // Calculate total: base + options + travel fees
-    const optionsTotal = options.reduce((sum, opt) => sum + (opt.prix || 0), 0);
-    const montant_total = tarif_base + optionsTotal + frais_deplacement;
+    const montant_total = tarif_base + frais_deplacement;
 
     const { data, error } = await supabase
       .from('devis')
       .insert({
-        photographe_id: photographeId,
+        prestataire_id: photographeId,
         client_id: clientId,
         demande_id: demandeId,
-        annonce_id: annonceId,
+        titre: titre || 'Devis',
+        description: description || '',
         tarif_base,
-        options,
         frais_deplacement,
+        options_supplementaires,
         montant_total,
-        message,
-        date_validite,
-        duree_prestation,
-        status: 'pending',
-        created_at: new Date().toISOString(),
+        message_personnalise,
+        date_expiration,
+        duree_prestation_heures,
+        statut: 'envoye',
       })
       .select()
       .single();
@@ -58,14 +57,13 @@ export const getPhotographeDevis = async (photographeId, status = null) => {
       .select(`
         *,
         profiles!devis_client_id_fkey(nom, email, avatar_url),
-        demandes_client(titre, categorie, lieu, date_souhaitee),
-        annonces(titre)
+        demandes_client(titre, categorie, lieu, date_souhaitee)
       `)
-      .eq('photographe_id', photographeId)
+      .eq('prestataire_id', photographeId)
       .order('created_at', { ascending: false });
 
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq('statut', status);
     }
 
     const { data, error } = await query;
@@ -87,15 +85,14 @@ export const getClientDevis = async (clientId, status = null) => {
       .from('devis')
       .select(`
         *,
-        profiles!devis_photographe_id_fkey(id, nom, email, avatar_url, photos),
-        demandes_client(titre, categorie),
-        annonces(titre)
+        profiles!devis_prestataire_id_fkey(id, nom, email, avatar_url),
+        demandes_client(titre, categorie)
       `)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false });
 
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq('statut', status);
     }
 
     const { data, error } = await query;
@@ -117,14 +114,14 @@ export const getDevisForDemande = async (demandeId) => {
       .from('devis')
       .select(`
         *,
-        profiles!devis_photographe_id_fkey(
+        profiles!devis_prestataire_id_fkey(
           id, 
           nom, 
           email, 
           avatar_url,
-          profils_photographe(
+          profils_prestataire(
             note_moyenne,
-            nombre_avis,
+            nb_avis,
             specialisations,
             portfolio_photos
           )
@@ -150,10 +147,9 @@ export const getDevisById = async (devisId) => {
       .from('devis')
       .select(`
         *,
-        profiles!devis_photographe_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!devis_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
         profiles!devis_client_id_fkey(id, nom, email, telephone, avatar_url),
-        demandes_client(*),
-        annonces(*)
+        demandes_client(*)
       `)
       .eq('id', devisId)
       .single();
@@ -184,8 +180,8 @@ export const acceptDevis = async (devisId) => {
     const { data, error } = await supabase
       .from('devis')
       .update({
-        status: 'accepted',
-        accepted_at: new Date().toISOString(),
+        statut: 'accepte',
+        accepte_at: new Date().toISOString(),
       })
       .eq('id', devisId)
       .select()
@@ -199,16 +195,16 @@ export const acceptDevis = async (devisId) => {
     const { data: reservation, error: resError } = await supabase
       .from('reservations')
       .insert({
-        numero_reservation: reservationNumber,
         client_id: devis.client_id,
-        photographe_id: devis.photographe_id,
-        annonce_id: devis.annonce_id,
+        prestataire_id: devis.prestataire_id,
         devis_id: devisId,
-        date_prestation: devis.date_prestation || new Date().toISOString(),
-        montant: devis.montant_total,
-        montant_acompte: devis.montant_total * 0.3,
-        status: 'en_attente_paiement',
-        created_at: new Date().toISOString(),
+        titre: devis.titre || 'Réservation',
+        categorie: 'photographie',
+        date: new Date().toISOString().split('T')[0],
+        lieu: 'À définir',
+        montant_total: devis.montant_total,
+        acompte_montant: devis.acompte_montant || Math.round(devis.montant_total * 0.3 * 100) / 100,
+        statut: 'pending',
       })
       .select()
       .single();
@@ -221,7 +217,7 @@ export const acceptDevis = async (devisId) => {
     if (devis.demande_id) {
       await supabase
         .from('demandes_client')
-        .update({ status: 'fulfilled' })
+        .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
         .eq('id', devis.demande_id);
     }
 
@@ -240,9 +236,9 @@ export const rejectDevis = async (devisId, reason = '') => {
     const { data, error } = await supabase
       .from('devis')
       .update({
-        status: 'rejected',
-        reject_reason: reason,
-        rejected_at: new Date().toISOString(),
+        statut: 'refuse',
+        raison_refus: reason,
+        refuse_at: new Date().toISOString(),
       })
       .eq('id', devisId)
       .select()
@@ -264,8 +260,8 @@ export const cancelDevis = async (devisId, reason = '') => {
     const { data, error } = await supabase
       .from('devis')
       .update({
-        status: 'cancelled',
-        cancel_reason: reason,
+        statut: 'expire',
+        raison_refus: reason,
         updated_at: new Date().toISOString(),
       })
       .eq('id', devisId)
@@ -302,7 +298,7 @@ export const updateDevis = async (devisId, updates) => {
         updated_at: new Date().toISOString(),
       })
       .eq('id', devisId)
-      .eq('status', 'pending') // Only update pending devis
+      .eq('statut', 'envoye') // Only update pending devis
       .select()
       .single();
 
@@ -321,20 +317,20 @@ export const getDevisStats = async (photographeId) => {
   try {
     const { data, error } = await supabase
       .from('devis')
-      .select('status, montant_total')
-      .eq('photographe_id', photographeId);
+      .select('statut, montant_total')
+      .eq('prestataire_id', photographeId);
 
     if (error) throw error;
 
     const stats = {
       total: data?.length || 0,
-      pending: data?.filter(d => d.status === 'pending').length || 0,
-      accepted: data?.filter(d => d.status === 'accepted').length || 0,
-      rejected: data?.filter(d => d.status === 'rejected').length || 0,
-      cancelled: data?.filter(d => d.status === 'cancelled').length || 0,
-      totalRevenue: data?.filter(d => d.status === 'accepted').reduce((sum, d) => sum + d.montant_total, 0) || 0,
+      pending: data?.filter(d => d.statut === 'envoye').length || 0,
+      accepted: data?.filter(d => d.statut === 'accepte').length || 0,
+      rejected: data?.filter(d => d.statut === 'refuse').length || 0,
+      cancelled: data?.filter(d => d.statut === 'expire').length || 0,
+      totalRevenue: data?.filter(d => d.statut === 'accepte').reduce((sum, d) => sum + d.montant_total, 0) || 0,
       conversionRate: data?.length > 0 
-        ? ((data.filter(d => d.status === 'accepted').length / data.length) * 100).toFixed(1) 
+        ? ((data.filter(d => d.statut === 'accepte').length / data.length) * 100).toFixed(1) 
         : 0,
     };
 

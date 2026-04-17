@@ -97,9 +97,26 @@ h3 {
   color: #820615 !important;
 }
 
-/* Animation pour les boutons */
-button {
-  transition: all 0.2s ease-in-out;
+/* Feedback instantané sur tous les boutons et liens cliquables */
+button,
+a[href],
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+button:active,
+a[href]:active,
+[role="button"]:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+  transition: transform 60ms ease-out, opacity 60ms ease-out;
+}
+
+button:not(:active),
+a[href]:not(:active),
+[role="button"]:not(:active) {
+  transition: transform 150ms ease-out, opacity 150ms ease-out;
 }
 
 /* Styles pour les badges */

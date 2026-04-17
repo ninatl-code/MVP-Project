@@ -31,7 +31,7 @@ async function handleGet(req, res) {
       .limit(parseInt(limit));
 
     if (unread_only === 'true') {
-      query = query.eq('is_read', false);
+      query = query.eq('lu', false);
     }
 
     const { data, error } = await query;
@@ -43,7 +43,7 @@ async function handleGet(req, res) {
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user_id)
-      .eq('is_read', false);
+      .eq('lu', false);
 
     res.status(200).json({ 
       notifications: data,
@@ -61,15 +61,16 @@ async function handlePost(req, res) {
     const { 
       user_id, 
       type, 
-      title, 
-      message, 
-      data = {},
-      action_url 
+      titre, 
+      contenu,
+      demande_id,
+      devis_id,
+      reservation_id,
     } = req.body;
 
-    if (!user_id || !type || !title) {
+    if (!user_id || !type || !titre) {
       return res.status(400).json({ 
-        error: 'user_id, type, et title requis' 
+        error: 'user_id, type, et titre requis' 
       });
     }
 
@@ -78,12 +79,12 @@ async function handlePost(req, res) {
       .insert({
         user_id,
         type,
-        title,
-        message,
-        data,
-        action_url,
-        is_read: false,
-        created_at: new Date().toISOString(),
+        titre,
+        contenu,
+        demande_id,
+        devis_id,
+        reservation_id,
+        lu: false,
       })
       .select()
       .single();
@@ -107,11 +108,11 @@ async function handlePut(req, res) {
       const { error } = await supabase
         .from('notifications')
         .update({ 
-          is_read: true,
-          read_at: new Date().toISOString(),
+          lu: true,
+          lu_at: new Date().toISOString(),
         })
         .eq('user_id', user_id)
-        .eq('is_read', false);
+        .eq('lu', false);
 
       if (error) throw error;
 
@@ -126,8 +127,8 @@ async function handlePut(req, res) {
     const { data: notification, error } = await supabase
       .from('notifications')
       .update({ 
-        is_read: true,
-        read_at: new Date().toISOString(),
+        lu: true,
+        lu_at: new Date().toISOString(),
       })
       .eq('id', notification_id)
       .select()

@@ -18,10 +18,10 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
-  active: { label: 'Active', color: 'green', icon: CheckCircle },
-  fulfilled: { label: 'Pourvue', color: 'blue', icon: CheckCircle },
-  cancelled: { label: 'Annulée', color: 'red', icon: XCircle },
-  expired: { label: 'Expirée', color: 'gray', icon: AlertCircle },
+  ouverte: { label: 'Active', color: 'green', icon: CheckCircle },
+  pourvue: { label: 'Pourvue', color: 'blue', icon: CheckCircle },
+  fermee: { label: 'Fermée', color: 'red', icon: XCircle },
+  expiree: { label: 'Expirée', color: 'gray', icon: AlertCircle },
 };
 
 export default function MesDemandesPage() {
@@ -56,15 +56,12 @@ export default function MesDemandesPage() {
     try {
       let query = supabase
         .from('demandes_client')
-        .select(`
-          *,
-          devis(count)
-        `)
+        .select('*')
         .eq('client_id', resolvedId)
         .order('created_at', { ascending: false });
 
       if (filter !== 'all') {
-        query = query.eq('status', filter);
+        query = query.eq('statut', filter);
       }
 
       const { data, error } = await query;
@@ -83,7 +80,7 @@ export default function MesDemandesPage() {
   );
 
   const getStatusBadge = (status) => {
-    const config = STATUS_CONFIG[status] || STATUS_CONFIG.active;
+    const config = STATUS_CONFIG[status] || STATUS_CONFIG.ouverte;
     const Icon = config.icon;
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-700`}>
@@ -143,7 +140,7 @@ export default function MesDemandesPage() {
 
             {/* Status filter */}
             <div className="flex gap-2 flex-wrap">
-              {['all', 'active', 'fulfilled', 'cancelled'].map((status) => (
+              {['all', 'ouverte', 'pourvue', 'fermee'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
@@ -196,10 +193,10 @@ export default function MesDemandesPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h2 className="text-lg font-semibold text-gray-900">
                         {demande.titre || 'Demande sans titre'}
-                      </h3>
-                      {getStatusBadge(demande.status)}
+                      </h2>
+                      {getStatusBadge(demande.statut)}
                     </div>
 
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">

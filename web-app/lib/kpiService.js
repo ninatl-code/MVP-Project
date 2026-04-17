@@ -30,8 +30,8 @@ export const getPhotographerKPIs = async (photographeId, period = 'month') => {
     // Get reservations
     const { data: reservations, error: resError } = await supabase
       .from('reservations')
-      .select('id, montant, status, created_at, client_id')
-      .eq('photographe_id', photographeId)
+      .select('id, montant_total, statut, created_at, client_id')
+      .eq('prestataire_id', photographeId)
       .gte('created_at', startDateStr);
 
     if (resError) throw resError;
@@ -39,21 +39,21 @@ export const getPhotographerKPIs = async (photographeId, period = 'month') => {
     // Get devis
     const { data: devis, error: devisError } = await supabase
       .from('devis')
-      .select('id, montant_total, status, created_at')
-      .eq('photographe_id', photographeId)
+      .select('id, montant_total, statut, created_at')
+      .eq('prestataire_id', photographeId)
       .gte('created_at', startDateStr);
 
     if (devisError) throw devisError;
 
     // Calculate KPIs
-    const completedReservations = reservations?.filter(r => r.status === 'completed') || [];
-    const acceptedDevis = devis?.filter(d => d.status === 'accepted') || [];
+    const completedReservations = reservations?.filter(r => r.statut === 'termine') || [];
+    const acceptedDevis = devis?.filter(d => d.statut === 'accepte') || [];
     const uniqueClients = new Set(reservations?.map(r => r.client_id)).size;
 
     const kpis = {
       // Revenue
-      chiffreAffaires: completedReservations.reduce((sum, r) => sum + (r.montant || 0), 0),
-      reservationsEnCours: reservations?.filter(r => ['confirmed', 'acompte_paye'].includes(r.status)).length || 0,
+      chiffreAffaires: completedReservations.reduce((sum, r) => sum + (r.montant_total || 0), 0),
+      reservationsEnCours: reservations?.filter(r => r.statut === 'confirme').length || 0,
       
       // Devis
       devisEnvoyes: devis?.length || 0,
@@ -65,12 +65,12 @@ export const getPhotographerKPIs = async (photographeId, period = 'month') => {
       // Reservations
       totalReservations: reservations?.length || 0,
       reservationsCompleted: completedReservations.length,
-      reservationsCancelled: reservations?.filter(r => r.status === 'cancelled').length || 0,
+      reservationsCancelled: reservations?.filter(r => r.statut === 'annule').length || 0,
 
       // Clients
       nombreClients: uniqueClients,
       panierMoyen: completedReservations.length > 0
-        ? Math.round(completedReservations.reduce((sum, r) => sum + (r.montant || 0), 0) / completedReservations.length)
+        ? Math.round(completedReservations.reduce((sum, r) => sum + (r.montant_total || 0), 0) / completedReservations.length)
         : 0,
     };
 
@@ -110,9 +110,9 @@ export const getRevenueChartData = async (photographeId, period = 'month', group
 
     const { data: reservations, error } = await supabase
       .from('reservations')
-      .select('montant, created_at, status')
-      .eq('photographe_id', photographeId)
-      .eq('status', 'completed')
+      .select('montant_total, created_at, statut')
+      .eq('prestataire_id', photographeId)
+      .eq('statut', 'termine')
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: true });
 
@@ -133,7 +133,7 @@ export const getRevenueChartData = async (photographeId, period = 'month', group
       if (!groupedData[key]) {
         groupedData[key] = { date: key, revenue: 0, count: 0 };
       }
-      groupedData[key].revenue += r.montant || 0;
+      groupedData[key].revenue += r.montant_total || 0;
       groupedData[key].count += 1;
     });
 
@@ -153,19 +153,16 @@ export const getPopularServices = async (photographeId) => {
   try {
     const { data: reservations, error } = await supabase
       .from('reservations')
-      .select(`
-        id,
-        annonces(categorie)
-      `)
-      .eq('photographe_id', photographeId)
-      .eq('status', 'completed');
+      .select('id, categorie')
+      .eq('prestataire_id', photographeId)
+      .eq('statut', 'termine');
 
     if (error) throw error;
 
     // Count by category
     const categoryCounts = {};
     reservations?.forEach(r => {
-      const cat = r.annonces?.categorie || 'Autre';
+      const cat = r.categorie || 'Autre';
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     });
 
@@ -187,14 +184,14 @@ export const getReservationStatusDistribution = async (photographeId) => {
   try {
     const { data: reservations, error } = await supabase
       .from('reservations')
-      .select('status')
-      .eq('photographe_id', photographeId);
+      .select('statut')
+      .eq('prestataire_id', photographeId);
 
     if (error) throw error;
 
     const statusCounts = {};
     reservations?.forEach(r => {
-      statusCounts[r.status] = (statusCounts[r.status] || 0) + 1;
+      statusCounts[r.statut] = (statusCounts[r.statut] || 0) + 1;
     });
 
     const distribution = Object.entries(statusCounts)
@@ -215,8 +212,8 @@ export const getClientStats = async (photographeId) => {
     const { data: reservations, error } = await supabase
       .from('reservations')
       .select('client_id, created_at')
-      .eq('photographe_id', photographeId)
-      .eq('status', 'completed');
+      .eq('prestataire_id', photographeId)
+      .eq('statut', 'termine');
 
     if (error) throw error;
 
@@ -288,22 +285,22 @@ export const getPeriodComparison = async (photographeId, period = 'month') => {
     // Current period
     const { data: currentReservations } = await supabase
       .from('reservations')
-      .select('montant')
-      .eq('photographe_id', photographeId)
-      .eq('status', 'completed')
+      .select('montant_total')
+      .eq('prestataire_id', photographeId)
+      .eq('statut', 'termine')
       .gte('created_at', currentStart.toISOString());
 
     // Previous period
     const { data: previousReservations } = await supabase
       .from('reservations')
-      .select('montant')
-      .eq('photographe_id', photographeId)
-      .eq('status', 'completed')
+      .select('montant_total')
+      .eq('prestataire_id', photographeId)
+      .eq('statut', 'termine')
       .gte('created_at', previousStart.toISOString())
       .lt('created_at', previousEnd.toISOString());
 
-    const currentRevenue = currentReservations?.reduce((sum, r) => sum + (r.montant || 0), 0) || 0;
-    const previousRevenue = previousReservations?.reduce((sum, r) => sum + (r.montant || 0), 0) || 0;
+    const currentRevenue = currentReservations?.reduce((sum, r) => sum + (r.montant_total || 0), 0) || 0;
+    const previousRevenue = previousReservations?.reduce((sum, r) => sum + (r.montant_total || 0), 0) || 0;
 
     const change = previousRevenue > 0 
       ? (((currentRevenue - previousRevenue) / previousRevenue) * 100).toFixed(1)

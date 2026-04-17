@@ -16,10 +16,10 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
-  active: { label: 'Active', color: 'bg-green-100 text-green-700', description: 'Votre demande est visible par les photographes' },
-  fulfilled: { label: 'Pourvue', color: 'bg-blue-100 text-blue-700', description: 'Vous avez accepté un devis' },
-  cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-700', description: 'Cette demande a été annulée' },
-  expired: { label: 'Expirée', color: 'bg-gray-100 text-gray-700', description: 'Cette demande a expiré' },
+  ouverte: { label: 'Active', color: 'bg-green-100 text-green-700', description: 'Votre demande est visible par les prestataires' },
+  pourvue: { label: 'Pourvue', color: 'bg-blue-100 text-blue-700', description: 'Vous avez accepté un devis' },
+  fermee: { label: 'Fermée', color: 'bg-red-100 text-red-700', description: 'Cette demande a été fermée' },
+  expiree: { label: 'Expirée', color: 'bg-gray-100 text-gray-700', description: 'Cette demande a expiré' },
 };
 
 export default function DemandeDetailPage() {
@@ -59,24 +59,22 @@ export default function DemandeDetailPage() {
       const { data: devisData, error: devisError } = await supabase
         .from('devis')
         .select(`
-          *,
-          photographe:profils_photographe(
-            id,
-            nom_entreprise,
-            note_moyenne,
-            nombre_avis,
-            photo_profil,
-            ville,
-            specialites,
-            verifie,
-            profile:profiles(nom, prenom)
+          id, prestataire_id, montant_total, duree_validite_jours, statut, created_at,
+          message_personnalise, titre,
+          photographe:profils_prestataire(
+            id, nom_entreprise, note_moyenne, nb_avis, ville, identite_verifiee
           )
         `)
         .eq('demande_id', id)
         .order('created_at', { ascending: false });
 
-      if (devisError) throw devisError;
-      setDevis(devisData || []);
+      if (devisError) {
+        console.error('Devis error:', devisError);
+        // Ne pas bloquer l'affichage si les devis échouent
+        setDevis([]);
+      } else {
+        setDevis(devisData || []);
+      }
     } catch (error) {
       console.error('Error fetching demande:', error);
     } finally {
@@ -89,12 +87,12 @@ export default function DemandeDetailPage() {
     try {
       const { error } = await supabase
         .from('demandes_client')
-        .update({ status: 'cancelled' })
+          .update({ statut: 'fermee' })
         .eq('id', id);
 
       if (error) throw error;
       
-      setDemande(prev => ({ ...prev, status: 'cancelled' }));
+      setDemande(prev => ({ ...prev, statut: 'fermee' }));
       setShowCancelModal(false);
     } catch (error) {
       console.error('Error cancelling demande:', error);
@@ -116,7 +114,7 @@ export default function DemandeDetailPage() {
       // Update demande status
       const { error: demandeError } = await supabase
         .from('demandes_client')
-        .update({ status: 'fulfilled' })
+        .update({ statut: 'pourvue' })
         .eq('id', id);
 
       if (demandeError) throw demandeError;
@@ -176,7 +174,7 @@ export default function DemandeDetailPage() {
     );
   }
 
-  const statusConfig = STATUS_CONFIG[demande.status] || STATUS_CONFIG.active;
+  const statusConfig = STATUS_CONFIG[demande.statut] || STATUS_CONFIG.ouverte;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -221,10 +219,10 @@ export default function DemandeDetailPage() {
                   </div>
                 </div>
 
-                {demande.status === 'active' && (
+                {demande.statut === 'ouverte' && (
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => router.push(`/client/demandes/${id}/edit`)}
+                      onClick={() => router.push(`/client/demandes/edit?id=${id}`)}
                       className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
                     >
                       <Edit className="w-5 h-5" />
@@ -253,32 +251,30 @@ export default function DemandeDetailPage() {
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">
                   <MapPin className="w-4 h-4 text-indigo-600" />
-                  <span>{demande.lieu}</span>
+                  <span>{demande.ville}{demande.lieu ? ` — ${demande.lieu}` : ''}</span>
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">
                   <Clock className="w-4 h-4 text-indigo-600" />
-                  <span>{demande.duree_estimee}h estimées</span>
+                  <span>{demande.duree_estimee_heures ? `${demande.duree_estimee_heures}h estimées` : 'Durée non définie'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Users className="w-4 h-4 text-indigo-600" />
-                  <span>{demande.nombre_personnes} personne(s)</span>
-                </div>
+                {demande.nb_personnes && (
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Users className="w-4 h-4 text-indigo-600" />
+                    <span>{demande.nb_personnes} personne(s)</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-gray-600 sm:col-span-2">
                   <Euro className="w-4 h-4 text-indigo-600" />
                   <span className="font-medium">
-                    Budget: {demande.budget_min && demande.budget_max 
-                      ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                      : demande.budget_max 
-                      ? `Max ${demande.budget_max} DH`
-                      : 'Non défini'}
+                    Budget: {demande.budget_max ? `Max ${demande.budget_max} DH` : 'Non défini'}
                   </span>
                 </div>
               </div>
 
-              {demande.exigences_specifiques && (
+              {demande.instructions_speciales && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-                  <p className="text-sm font-medium text-gray-700 mb-1">Exigences spécifiques</p>
-                  <p className="text-sm text-gray-600">{demande.exigences_specifiques}</p>
+                  <p className="text-sm font-medium text-gray-700 mb-1">Instructions spécifiques</p>
+                  <p className="text-sm text-gray-600">{demande.instructions_speciales}</p>
                 </div>
               )}
             </div>
@@ -349,7 +345,7 @@ export default function DemandeDetailPage() {
           <div className="space-y-6">
             {/* Stats */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Statistiques</h3>
+              <h2 className="font-semibold text-gray-900 mb-4">Statistiques</h2>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Devis reçus</span>
@@ -376,7 +372,7 @@ export default function DemandeDetailPage() {
             </div>
 
             {/* Actions */}
-            {demande.status === 'active' && devis.length > 0 && (
+            {demande.statut === 'ouverte' && devis.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Actions rapides</h3>
                 <button
@@ -465,7 +461,7 @@ function DevisCard({ devis, onAccept, onView, onContact, demandeStatus }) {
               <h4 className="font-semibold text-gray-900">
                 {photographe?.nom_entreprise || `${profile?.prenom} ${profile?.nom}`}
               </h4>
-              {photographe?.verifie && (
+              {photographe?.identite_verifiee && (
                 <Check className="w-4 h-4 text-blue-600" />
               )}
             </div>
@@ -477,7 +473,7 @@ function DevisCard({ devis, onAccept, onView, onContact, demandeStatus }) {
               <span className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                 {photographe.note_moyenne.toFixed(1)}
-                {photographe.nombre_avis > 0 && ` (${photographe.nombre_avis})`}
+                {photographe.nb_avis > 0 && ` (${photographe.nb_avis})`}
               </span>
             )}
             {photographe?.ville && (
@@ -491,9 +487,9 @@ function DevisCard({ devis, onAccept, onView, onContact, demandeStatus }) {
           {/* Price */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-indigo-600">{devis.montant} DH</p>
+              <p className="text-2xl font-bold text-indigo-600">{devis.montant_total ? `${devis.montant_total} DH` : 'Sur devis'}</p>
               <p className="text-xs text-gray-500">
-                Validité: {devis.validite_jours || 30} jours
+                Validité: {devis.duree_validite_jours || 30} jours
               </p>
             </div>
 
@@ -511,7 +507,7 @@ function DevisCard({ devis, onAccept, onView, onContact, demandeStatus }) {
               >
                 Voir détails
               </button>
-              {demandeStatus === 'active' && devis.statut === 'en_attente' && (
+              {demandeStatus === 'ouverte' && devis.statut === 'en_attente' && (
                 <button
                   onClick={onAccept}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 flex items-center gap-1"

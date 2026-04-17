@@ -59,23 +59,23 @@ export default function PhotographerDashboard() {
         supabase
           .from('devis')
           .select('*', { count: 'exact', head: true })
-          .eq('photographe_id', photographeId)
+          .eq('prestataire_id', photographeId)
           .eq('statut', 'en_attente'),
         supabase
           .from('reservations')
           .select('*', { count: 'exact', head: true })
-          .eq('photographe_id', photographeId)
+          .eq('prestataire_id', photographeId)
           .in('statut', ['confirmee', 'en_cours']),
         supabase
           .from('reservations')
           .select('montant_total')
-          .eq('photographe_id', photographeId)
+          .eq('prestataire_id', photographeId)
           .eq('statut', 'terminee')
-          .gte('date_prestation', startOfMonth.toISOString()),
+          .gte('date', startOfMonth.toISOString()),
         supabase
           .from('messages')
-          .select('*, conversation:conversations!inner(client_id, photographe_id)', { count: 'exact', head: true })
-          .or(`conversation.client_id.eq.${profileId},conversation.photographe_id.eq.${profileId}`)
+          .select('*, conversation:conversations!inner(client_id, prestataire_id)', { count: 'exact', head: true })
+          .or(`conversation.client_id.eq.${profileId},conversation.prestataire_id.eq.${profileId}`)
           .eq('lu', false)
           .neq('expediteur_id', profileId),
         supabase
@@ -86,7 +86,7 @@ export default function PhotographerDashboard() {
         supabase
           .from('demandes_client')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'active')
+          .eq('statut', 'ouverte')
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
       ]);
 

@@ -4,8 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
 import { 
-  Package, Plus, Edit, Trash2, Clock, Camera, Euro,
-  Check, X, Eye, EyeOff, GripVertical, Star
+  Package, Plus, Edit, Trash2, Clock, Briefcase, Euro,
+  Check, X, Eye, EyeOff, GripVertical, Star, ArrowLeft
 } from 'lucide-react';
 
 export default function PackagesPage() {
@@ -16,20 +16,30 @@ export default function PackagesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [userId, setUserId] = useState(photographeProfile?.id || null);
 
   useEffect(() => {
-    if (photographeProfile?.id) {
-      fetchPackages();
-    }
+    const init = async () => {
+      let uid = photographeProfile?.id;
+      if (!uid) {
+        const { data: { user } } = await supabase.auth.getUser();
+        uid = user?.id;
+        if (uid) setUserId(uid);
+      }
+      if (uid) fetchPackages(uid);
+    };
+    init();
   }, [photographeProfile]);
 
-  const fetchPackages = async () => {
+  const fetchPackages = async (uid) => {
+    const id = uid || userId || photographeProfile?.id;
+    if (!id) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('packages_types')
         .select('*')
-        .eq('photographe_id', photographeProfile.id)
+        .eq('photographe_id', id)
         .order('ordre', { ascending: true });
 
       if (error) throw error;
@@ -94,6 +104,15 @@ export default function PackagesPage() {
       <Header />
       
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Retour au profil */}
+        <button
+          onClick={() => router.push('/photographe/profil')}
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retour au profil
+        </button>
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Mes forfaits</h1>
@@ -171,10 +190,12 @@ export default function PackagesPage() {
                         <Clock className="w-4 h-4" />
                         {pkg.duree_heures}h
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Camera className="w-4 h-4" />
-                        {pkg.nombre_photos_incluses} photos
-                      </span>
+                      {pkg.nombre_photos_incluses > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Briefcase className="w-4 h-4" />
+                          {pkg.nombre_photos_incluses} livrables
+                        </span>
+                      )}
                       {pkg.categorie && (
                         <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-xs">
                           {pkg.categorie}
@@ -228,7 +249,7 @@ export default function PackagesPage() {
       {/* Form Modal */}
       {showForm && (
         <PackageFormModal
-          photographeId={photographeProfile.id}
+          photographeId={userId || photographeProfile?.id}
           package={editingPackage}
           onClose={handleFormClose}
           onSuccess={handleFormSuccess}
@@ -240,17 +261,29 @@ export default function PackagesPage() {
 
 function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     nom: pkg?.nom || '',
     description: pkg?.description || '',
     prix: pkg?.prix?.toString() || '',
     prix_barre: pkg?.prix_barre?.toString() || '',
-    duree_heures: pkg?.duree_heures?.toString() || '2',
-    nombre_photos_incluses: pkg?.nombre_photos_incluses?.toString() || '50',
+    duree_heures: pkg?.duree_heures?.toString() || '1',
+    nombre_photos_incluses: pkg?.nombre_photos_incluses?.toString() || '',
     categorie: pkg?.categorie || '',
     actif: pkg?.actif ?? true,
     populaire: pkg?.populaire ?? false,
   });
+
+  useEffect(() => {
+    supabase
+      .from('prestations')
+      .select('id, nom')
+      .eq('actif', true)
+      .order('ordre')
+      .then(({ data }) => {
+        if (data) setCategories(data.map(d => d.nom));
+      });
+  }, []);
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -295,13 +328,8 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
     }
   };
 
-  const categories = [
-    'Portrait', 'Mariage', 'Événement', 'Corporate', 'Produit',
-    'Immobilier', 'Famille', 'Grossesse', 'Nouveau-né', 'Autre'
-  ];
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-900">
@@ -319,7 +347,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
               required
               value={formData.nom}
               onChange={(e) => updateFormData('nom', e.target.value)}
-              placeholder="Ex: Séance Portrait Essentielle"
+              placeholder="Ex: Forfait Essentiel, Pack Standard..."
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -331,7 +359,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             <textarea
               value={formData.description}
               onChange={(e) => updateFormData('description', e.target.value)}
-              placeholder="Décrivez ce qui est inclus..."
+              placeholder="Décrivez ce qui est inclus dans ce forfait..."
               rows={3}
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
             />
@@ -368,7 +396,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Durée (heures) *
+                Durée estimée *
               </label>
               <select
                 value={formData.duree_heures}
@@ -382,14 +410,14 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Photos incluses *
+                Livrables inclus
               </label>
               <input
                 type="number"
-                required
+                min="0"
                 value={formData.nombre_photos_incluses}
                 onChange={(e) => updateFormData('nombre_photos_incluses', e.target.value)}
-                placeholder="50"
+                placeholder="Ex: 3 rapports, 5 livrables..."
                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -406,8 +434,9 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             >
               <option value="">Sélectionner...</option>
               {categories.map(cat => (
-                <option key={cat} value={cat.toLowerCase()}>{cat}</option>
+                <option key={cat} value={cat}>{cat}</option>
               ))}
+              <option value="Autre">Autre</option>
             </select>
           </div>
 

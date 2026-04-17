@@ -15,15 +15,6 @@ const COLORS = {
   text: '#1C1C1E',
 };
 
-const CATEGORY_ICONS = {
-  'services-domicile': '🔧',
-  'beaute-bien-etre': '💆',
-  'evenementiel': '🎉',
-  'transport': '🚗',
-  'digital': '💻',
-  'education': '📚',
-};
-
 const STEPS = [
   { id: 'category', title: 'Catégorie', subtitle: 'Type de prestation' },
   { id: 'details', title: 'Détails', subtitle: 'Informations essentielles' },
@@ -36,7 +27,14 @@ export default function CreateDemandePage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const categories = [
+    { id: 'services-domicile', label: 'Services à domicile', icon: '🔧', description: 'Plomberie, électricité, ménage, jardinage...' },
+    { id: 'beaute-bien-etre', label: 'Beauté & Bien-être', icon: '💆', description: 'Coiffure, maquillage, massage, soins...' },
+    { id: 'evenementiel', label: 'Événementiel', icon: '🎉', description: 'Organisation de mariages, anniversaires, séminaires...' },
+    { id: 'transport', label: 'Transport', icon: '🚗', description: 'Déménagement, livraison, chauffeur...' },
+    { id: 'digital', label: 'Digital', icon: '💻', description: 'Développement web, design, marketing digital...' },
+    { id: 'education', label: 'Éducation', icon: '📚', description: 'Cours particuliers, formation, coaching...' },
+  ];
 
   const [formData, setFormData] = useState({
     titre: '',
@@ -44,6 +42,7 @@ export default function CreateDemandePage() {
     description: '',
     date_souhaitee: '',
     date_flexible: false,
+    ville: '',
     lieu: '',
     duree_estimee: '2',
     nombre_personnes: '1',
@@ -61,25 +60,6 @@ export default function CreateDemandePage() {
     });
   }, [router]);
 
-  // Fetch categories from Supabase
-  useEffect(() => {
-    supabase
-      .from('prestations')
-      .select('id, nom, slug, description')
-      .eq('actif', true)
-      .order('ordre', { ascending: true })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setCategories(data.map(c => ({
-            id: c.slug,
-            label: c.nom,
-            icon: CATEGORY_ICONS[c.slug] || '📋',
-            description: c.description,
-          })));
-        }
-      });
-  }, []);
-
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -89,7 +69,7 @@ export default function CreateDemandePage() {
       case 0:
         return formData.categorie !== '';
       case 1:
-        return formData.titre.trim() !== '' && formData.lieu.trim() !== '';
+        return formData.titre.trim() !== '' && formData.ville.trim() !== '';
       case 2:
         return formData.budget_max !== '';
       case 3:
@@ -114,37 +94,35 @@ export default function CreateDemandePage() {
   };
 
   const handleSubmit = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const profileId = session?.user?.id;
-
-    if (!profileId) {
-      setError('Vous devez être connecté pour créer une demande.');
-      return;
-    }
-
     setSubmitting(true);
     setError(null);
-
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const profileId = session?.user?.id;
+
+      if (!profileId) {
+        setError('Vous devez être connecté pour créer une demande.');
+        return;
+      }
+
       const { error: insertError } = await supabase
         .from('demandes_client')
         .insert({
           client_id: profileId,
           titre: formData.titre,
           categorie: formData.categorie,
-          description: formData.description,
+          description: formData.description || null,
           date_souhaitee: formData.date_souhaitee || null,
-          lieu: formData.lieu,
-          duree_estimee: parseInt(formData.duree_estimee) || null,
-          budget_min: parseFloat(formData.budget_min) || null,
+          ville: formData.ville,
+          lieu: formData.lieu || null,
+          duree_estimee_heures: parseInt(formData.duree_estimee) || null,
           budget_max: parseFloat(formData.budget_max) || null,
-          status: 'active',
-          created_at: new Date().toISOString(),
+          statut: 'ouverte',
         });
 
       if (insertError) throw insertError;
 
-      router.push(`/client/demandes`);
+      router.push('/client/demandes');
     } catch (err) {
       console.error('Error creating demande:', err);
       setError('Erreur : ' + (err.message || 'Une erreur est survenue lors de la création de votre demande.'));
@@ -275,13 +253,26 @@ export default function CreateDemandePage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <MapPin className="w-4 h-4 inline mr-1" />
-            Lieu de la prestation *
+            Ville de la prestation *
+          </label>
+          <input
+            type="text"
+            value={formData.ville}
+            onChange={(e) => updateFormData('ville', e.target.value)}
+            placeholder="Ex: Casablanca, Rabat, Marrakech..."
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <MapPin className="w-4 h-4 inline mr-1" />
+            Lieu exact (optionnel)
           </label>
           <input
             type="text"
             value={formData.lieu}
             onChange={(e) => updateFormData('lieu', e.target.value)}
-            placeholder="Ex: Casablanca, Rabat, Marrakech..."
+            placeholder="Ex: Salle des fêtes Al Amal, 12 rue Hassan II..."
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
@@ -654,6 +645,14 @@ export default function CreateDemandePage() {
             </button>
           )}
         </div>
+
+        {/* Erreur globale — toujours visible sous les boutons */}
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-2 text-red-700">
+            <X className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
       </main>
     </div>
   );

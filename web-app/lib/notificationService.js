@@ -26,8 +26,6 @@ export const createNotification = async ({
   type,
   title,
   message,
-  data = {},
-  actionUrl = null,
 }) => {
   try {
     const { data: notification, error } = await supabase
@@ -35,12 +33,9 @@ export const createNotification = async ({
       .insert({
         user_id: userId,
         type,
-        title,
-        message,
-        data,
-        action_url: actionUrl,
-        is_read: false,
-        created_at: new Date().toISOString(),
+        titre: title,
+        contenu: message,
+        lu: false,
       })
       .select()
       .single();
@@ -66,7 +61,7 @@ export const getUserNotifications = async (userId, limit = 50, unreadOnly = fals
       .limit(limit);
 
     if (unreadOnly) {
-      query = query.eq('is_read', false);
+      query = query.eq('lu', false);
     }
 
     const { data, error } = await query;
@@ -87,8 +82,8 @@ export const markAsRead = async (notificationId) => {
     const { data, error } = await supabase
       .from('notifications')
       .update({
-        is_read: true,
-        read_at: new Date().toISOString(),
+        lu: true,
+        lu_at: new Date().toISOString(),
       })
       .eq('id', notificationId)
       .select()
@@ -110,11 +105,11 @@ export const markAllAsRead = async (userId) => {
     const { error } = await supabase
       .from('notifications')
       .update({
-        is_read: true,
-        read_at: new Date().toISOString(),
+        lu: true,
+        lu_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
-      .eq('is_read', false);
+      .eq('lu', false);
 
     if (error) throw error;
     return { success: true, error: null };
@@ -151,7 +146,7 @@ export const getUnreadCount = async (userId) => {
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('is_read', false);
+      .eq('lu', false);
 
     if (error) throw error;
     return { count: count || 0, error: null };

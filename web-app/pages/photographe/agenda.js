@@ -43,9 +43,9 @@ export default function AgendaPage() {
           *,
           client:client_id (prenom, nom, photo_profil)
         `)
-        .eq('photographe_id', photographeProfile.id)
-        .gte('date_prestation', monthStart.toISOString())
-        .lte('date_prestation', monthEnd.toISOString())
+        .eq('prestataire_id', photographeProfile.id)
+        .gte('date', monthStart.toISOString())
+        .lte('date', monthEnd.toISOString())
         .in('statut', ['confirme', 'en_attente', 'en_cours']);
 
       if (resError) throw resError;
@@ -55,7 +55,7 @@ export default function AgendaPage() {
       const { data: indisData, error: indisError } = await supabase
         .from('blocked_slots')
         .select('*')
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .gte('end_datetime', monthStart.toISOString())
         .lte('start_datetime', monthEnd.toISOString());
 
@@ -81,7 +81,7 @@ export default function AgendaPage() {
     const dateStr = format(date, 'yyyy-MM-dd');
     
     const dayReservations = reservations.filter(r => 
-      format(parseISO(r.date_prestation), 'yyyy-MM-dd') === dateStr
+      format(parseISO(r.date), 'yyyy-MM-dd') === dateStr
     );
 
     const dayIndisponibilites = indisponibilites.filter(i => {
@@ -381,7 +381,7 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
       const { error } = await supabase
         .from('blocked_slots')
         .insert({
-          photographe_id: photographeId,
+          prestataire_id: photographeId,
           start_datetime: formData.start_datetime,
           end_datetime: formData.end_datetime,
           reason: formData.reason || null,

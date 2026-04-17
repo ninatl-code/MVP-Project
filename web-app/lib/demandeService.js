@@ -10,11 +10,11 @@ export const createDemande = async ({
   categorie,
   date_souhaitee,
   lieu,
-  budget_min,
+  ville,
   budget_max,
-  duree_estimee,
-  nombre_photos,
-  options = [],
+  duree_estimee_heures,
+  type_prestation = [],
+  services_souhaites = {},
 }) => {
   try {
     const { data, error } = await supabase
@@ -26,13 +26,12 @@ export const createDemande = async ({
         categorie,
         date_souhaitee,
         lieu,
-        budget_min,
+        ville: ville || lieu,
         budget_max,
-        duree_estimee,
-        nombre_photos,
-        options,
-        status: 'active',
-        created_at: new Date().toISOString(),
+        duree_estimee_heures,
+        type_prestation,
+        services_souhaites,
+        statut: 'ouverte',
       })
       .select()
       .single();
@@ -80,10 +79,10 @@ export const getDemandeById = async (demandeId) => {
         devis(
           id,
           montant_total,
-          status,
-          message,
+          statut,
+          message_personnalise,
           created_at,
-          profiles!devis_photographe_id_fkey(id, nom, avatar_url)
+          profiles!devis_prestataire_id_fkey(id, nom, avatar_url)
         )
       `)
       .eq('id', demandeId)
@@ -128,8 +127,8 @@ export const fulfillDemande = async (demandeId) => {
     const { data, error } = await supabase
       .from('demandes_client')
       .update({
-        status: 'fulfilled',
-        updated_at: new Date().toISOString(),
+        statut: 'pourvue',
+        pourvue_at: new Date().toISOString(),
       })
       .eq('id', demandeId)
       .select()
@@ -151,9 +150,8 @@ export const cancelDemande = async (demandeId, reason = '') => {
     const { data, error } = await supabase
       .from('demandes_client')
       .update({
-        status: 'cancelled',
-        cancel_reason: reason,
-        updated_at: new Date().toISOString(),
+        statut: 'fermee',
+        fermee_at: new Date().toISOString(),
       })
       .eq('id', demandeId)
       .select()
@@ -174,9 +172,9 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
   try {
     // First get service provider's profile for matching
     const { data: photographe, error: profError } = await supabase
-      .from('profils_photographe')
-      .select('specialisations, rayon_deplacement_km, tarif_horaire, localisation')
-      .eq('user_id', photographeId)
+      .from('profils_prestataire')
+      .select('specialisations, rayon_deplacement_km, tarif_horaire_min')
+      .eq('id', photographeId)
       .single();
 
     if (profError) {
@@ -189,7 +187,7 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
         *,
         profiles!demandes_client_client_id_fkey(nom, avatar_url)
       `)
-      .eq('status', 'active')
+      .eq('statut', 'ouverte')
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -197,7 +195,7 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
       query = query.eq('categorie', filters.categorie);
     }
     if (filters.budget_max) {
-      query = query.lte('budget_min', filters.budget_max);
+      query = query.lte('budget_max', filters.budget_max);
     }
     if (filters.date_from) {
       query = query.gte('date_souhaitee', filters.date_from);
@@ -223,16 +221,16 @@ export const getDemandeStats = async (clientId) => {
   try {
     const { data, error } = await supabase
       .from('demandes_client')
-      .select('status')
+      .select('statut')
       .eq('client_id', clientId);
 
     if (error) throw error;
 
     const stats = {
       total: data?.length || 0,
-      active: data?.filter(d => d.status === 'active').length || 0,
-      fulfilled: data?.filter(d => d.status === 'fulfilled').length || 0,
-      cancelled: data?.filter(d => d.status === 'cancelled').length || 0,
+      active: data?.filter(d => d.statut === 'ouverte').length || 0,
+      fulfilled: data?.filter(d => d.statut === 'pourvue').length || 0,
+      cancelled: data?.filter(d => d.statut === 'fermee').length || 0,
     };
 
     return { stats, error: null };

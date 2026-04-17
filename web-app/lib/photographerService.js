@@ -6,9 +6,9 @@ import { supabase } from './supabaseClient';
 export const getPhotographerProfile = async (userId) => {
   try {
     const { data, error } = await supabase
-      .from('profils_photographe')
+      .from('profils_prestataire')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (error && error.code !== 'PGRST116') throw error;
@@ -25,13 +25,13 @@ export const getPhotographerProfile = async (userId) => {
 export const upsertPhotographerProfile = async (userId, profileData) => {
   try {
     const { data, error } = await supabase
-      .from('profils_photographe')
+      .from('profils_prestataire')
       .upsert({
-        user_id: userId,
+        id: userId,
         ...profileData,
         updated_at: new Date().toISOString(),
       }, {
-        onConflict: 'user_id',
+        onConflict: 'id',
       })
       .select()
       .single();
@@ -54,19 +54,15 @@ export const updateSpecializations = async (userId, specialisations) => {
 /**
  * Update service radius
  */
-export const updateServiceRadius = async (userId, rayonKm, localisation = null) => {
-  const updates = { rayon_deplacement_km: rayonKm };
-  if (localisation) {
-    updates.localisation = localisation;
-  }
-  return upsertPhotographerProfile(userId, updates);
+export const updateServiceRadius = async (userId, rayonKm) => {
+  return upsertPhotographerProfile(userId, { rayon_deplacement_km: rayonKm });
 };
 
 /**
  * Update hourly rate
  */
 export const updateHourlyRate = async (userId, tarifHoraire) => {
-  return upsertPhotographerProfile(userId, { tarif_horaire: tarifHoraire });
+  return upsertPhotographerProfile(userId, { tarif_horaire_min: tarifHoraire });
 };
 
 /**
@@ -162,7 +158,7 @@ export const getProfileCompletion = async (userId) => {
       { name: 'Photo de profil', value: profile?.avatar_url, weight: 10 },
       { name: 'Bio', value: photographeProfile?.bio, weight: 15 },
       { name: 'Spécialisations', value: photographeProfile?.specialisations?.length > 0, weight: 15 },
-      { name: 'Tarif horaire', value: photographeProfile?.tarif_horaire, weight: 10 },
+      { name: 'Tarif horaire', value: photographeProfile?.tarif_horaire_min, weight: 10 },
       { name: 'Zone de déplacement', value: photographeProfile?.rayon_deplacement_km, weight: 10 },
       { name: 'Portfolio', value: photographeProfile?.portfolio_photos?.length > 0, weight: 10 },
     ];
@@ -196,15 +192,15 @@ export const getProfileCompletion = async (userId) => {
 export const getBlockedSlots = async (photographeId, startDate, endDate) => {
   try {
     let query = supabase
-      .from('indisponibilites')
+      .from('blocked_slots')
       .select('*')
-      .eq('photographe_id', photographeId);
+      .eq('prestataire_id', photographeId);
 
     if (startDate) {
-      query = query.gte('date_fin', startDate);
+      query = query.gte('end_datetime', startDate);
     }
     if (endDate) {
-      query = query.lte('date_debut', endDate);
+      query = query.lte('start_datetime', endDate);
     }
 
     const { data, error } = await query;
@@ -223,13 +219,12 @@ export const getBlockedSlots = async (photographeId, startDate, endDate) => {
 export const addBlockedSlot = async (photographeId, dateDebut, dateFin, motif = '') => {
   try {
     const { data, error } = await supabase
-      .from('indisponibilites')
+      .from('blocked_slots')
       .insert({
-        photographe_id: photographeId,
-        date_debut: dateDebut,
-        date_fin: dateFin,
-        motif,
-        created_at: new Date().toISOString(),
+        prestataire_id: photographeId,
+        start_datetime: dateDebut,
+        end_datetime: dateFin,
+        reason: motif,
       })
       .select()
       .single();
@@ -248,7 +243,7 @@ export const addBlockedSlot = async (photographeId, dateDebut, dateFin, motif = 
 export const removeBlockedSlot = async (slotId) => {
   try {
     const { error } = await supabase
-      .from('indisponibilites')
+      .from('blocked_slots')
       .delete()
       .eq('id', slotId);
 
@@ -261,16 +256,17 @@ export const removeBlockedSlot = async (slotId) => {
 };
 
 /**
- * Get availability settings
+ * Get availability settings (stored in profils_prestataire)
  */
 export const getAvailabilitySettings = async (photographeId) => {
   try {
     const { data, error } = await supabase
-      .from('provider_availability')
-      .select('*')
-      .eq('provider_id', photographeId);
+      .from('profils_prestataire')
+      .select('jours_travailles, horaires_preference, calendrier_disponibilite')
+      .eq('id', photographeId)
+      .single();
 
-    if (error) throw error;
+    if (error && error.code !== 'PGRST116') throw error;
     return { data, error: null };
   } catch (error) {
     console.error('Error fetching availability settings:', error);
@@ -279,29 +275,10 @@ export const getAvailabilitySettings = async (photographeId) => {
 };
 
 /**
- * Update availability settings
+ * Update availability settings (stored in profils_prestataire)
  */
-export const updateAvailabilitySettings = async (photographeId, dayOfWeek, settings) => {
-  try {
-    const { data, error } = await supabase
-      .from('provider_availability')
-      .upsert({
-        provider_id: photographeId,
-        day_of_week: dayOfWeek,
-        ...settings,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'provider_id,day_of_week',
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error updating availability settings:', error);
-    return { data: null, error };
-  }
+export const updateAvailabilitySettings = async (photographeId, settings) => {
+  return upsertPhotographerProfile(photographeId, settings);
 };
 
 /**
@@ -345,3 +322,4 @@ export default {
   updateAvailabilitySettings,
   SPECIALIZATIONS,
 };
+

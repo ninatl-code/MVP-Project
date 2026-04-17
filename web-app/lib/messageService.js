@@ -10,7 +10,7 @@ export const createConversation = async (clientId, photographeId, reservationId 
       .from('conversations')
       .select('id')
       .eq('client_id', clientId)
-      .eq('photographe_id', photographeId)
+      .eq('prestataire_id', photographeId)
       .single();
 
     if (existing) {
@@ -21,9 +21,8 @@ export const createConversation = async (clientId, photographeId, reservationId 
       .from('conversations')
       .insert({
         client_id: clientId,
-        photographe_id: photographeId,
+        prestataire_id: photographeId,
         reservation_id: reservationId,
-        created_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -41,17 +40,16 @@ export const createConversation = async (clientId, photographeId, reservationId 
  */
 export const getUserConversations = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'client' ? 'client_id' : 'photographe_id';
-    const otherColumn = role === 'client' ? 'photographe_id' : 'client_id';
+    const column = role === 'client' ? 'client_id' : 'prestataire_id';
 
     const { data, error } = await supabase
       .from('conversations')
       .select(`
         *,
         client:profiles!conversations_client_id_fkey(id, nom, avatar_url),
-        photographe:profiles!conversations_photographe_id_fkey(id, nom, avatar_url),
+        prestataire:profiles!conversations_prestataire_id_fkey(id, nom, avatar_url),
         messages(
-          content,
+          contenu,
           created_at,
           sender_id
         )
@@ -65,7 +63,7 @@ export const getUserConversations = async (userId, role = 'particulier') => {
     const conversationsWithLastMessage = data?.map(conv => ({
       ...conv,
       lastMessage: conv.messages?.[conv.messages.length - 1] || null,
-      otherParticipant: role === 'client' ? conv.photographe : conv.client,
+      otherParticipant: role === 'client' ? conv.prestataire : conv.client,
     })) || [];
 
     return { data: conversationsWithLastMessage, error: null };
@@ -104,9 +102,9 @@ export const getConversationMessages = async (conversationId, limit = 50, offset
 export const sendMessage = async ({
   conversationId,
   senderId,
+  receiverId,
   content,
   attachments = [],
-  messageType = 'text',
 }) => {
   try {
     const { data: message, error } = await supabase
@@ -114,10 +112,10 @@ export const sendMessage = async ({
       .insert({
         conversation_id: conversationId,
         sender_id: senderId,
-        content,
+        receiver_id: receiverId,
+        contenu: content,
         attachments,
-        message_type: messageType,
-        created_at: new Date().toISOString(),
+        lu: false,
       })
       .select(`
         *,
@@ -131,8 +129,9 @@ export const sendMessage = async ({
     await supabase
       .from('conversations')
       .update({
-        updated_at: new Date().toISOString(),
         last_message_at: new Date().toISOString(),
+        last_message_text: content,
+        last_message_sender_id: senderId,
       })
       .eq('id', conversationId);
 
@@ -151,12 +150,12 @@ export const markMessagesAsRead = async (conversationId, userId) => {
     const { error } = await supabase
       .from('messages')
       .update({
-        is_read: true,
-        read_at: new Date().toISOString(),
+        lu: true,
+        lu_at: new Date().toISOString(),
       })
       .eq('conversation_id', conversationId)
       .neq('sender_id', userId)
-      .eq('is_read', false);
+      .eq('lu', false);
 
     if (error) throw error;
     return { success: true, error: null };
@@ -175,7 +174,7 @@ export const getUnreadMessageCount = async (userId) => {
       .from('messages')
       .select('id, conversation_id')
       .neq('sender_id', userId)
-      .eq('is_read', false);
+      .eq('lu', false);
 
     if (error) throw error;
 
@@ -203,8 +202,8 @@ export const getConversationById = async (conversationId) => {
       .select(`
         *,
         client:profiles!conversations_client_id_fkey(id, nom, email, avatar_url, telephone),
-        photographe:profiles!conversations_photographe_id_fkey(id, nom, email, avatar_url, telephone),
-        reservations(id, date_prestation, status, montant)
+        prestataire:profiles!conversations_prestataire_id_fkey(id, nom, email, avatar_url, telephone),
+        reservations(id, date, statut, montant_total)
       `)
       .eq('id', conversationId)
       .single();
@@ -226,8 +225,7 @@ export const deleteMessage = async (messageId, userId) => {
     const { data, error } = await supabase
       .from('messages')
       .update({
-        is_deleted: true,
-        deleted_at: new Date().toISOString(),
+        deleted_by_sender: true,
       })
       .eq('id', messageId)
       .eq('sender_id', userId)

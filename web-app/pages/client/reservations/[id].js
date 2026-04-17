@@ -49,26 +49,22 @@ export default function ReservationDetailPage() {
         .from('reservations')
         .select(`
           *,
-          photographe:profils_photographe(
+          photographe:profils_prestataire(
             id,
             nom_entreprise,
-            photo_profil,
             note_moyenne,
-            nombre_avis,
+            nb_avis,
             ville,
-            telephone,
-            email_pro,
-            verifie,
+            identite_verifiee,
             stripe_account_id,
             profile:profiles(nom, prenom, email)
           ),
-          package:packages(
+          package:packages_types(
             id,
-            nom,
+            titre,
             description,
-            duree_heures,
-            nombre_photos_incluses,
-            prix
+            duree_minutes,
+            prix_fixe
           ),
           paiement:paiements(
             id,
@@ -77,10 +73,10 @@ export default function ReservationDetailPage() {
             type_paiement,
             created_at
           ),
-          avis:avis(
+          avis:reviews_photographe(
             id,
-            note,
-            commentaire,
+            rating,
+            comment,
             created_at
           )
         `)

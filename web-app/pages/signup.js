@@ -73,11 +73,9 @@ export default function Signup() {
       // Créer le profil photographe étendu si nécessaire
       if (finalRole === 'photographe') {
         const { error: photoProfileError } = await supabase
-          .from('profils_photographe')
+          .from('profils_prestataire')
           .insert({
-            user_id: data.user.id,
-            nom,
-            email
+            id: data.user.id,
           })
 
         if (photoProfileError) {

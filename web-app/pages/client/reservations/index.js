@@ -59,23 +59,22 @@ export default function MesReservationsPage() {
         .from('reservations')
         .select(`
           *,
-          photographe:profils_photographe(
+          photographe:profils_prestataire(
             id,
             nom_entreprise,
-            photo_profil,
             note_moyenne,
-            nombre_avis,
-            verifie,
+            nb_avis,
+            identite_verifiee,
             profile:profiles(nom, prenom)
           ),
-          package:packages(
+          package:packages_types(
             id,
-            nom,
+            titre,
             description
           )
         `)
         .eq('client_id', resolvedId)
-        .order('date_prestation', { ascending: timeFilter === 'upcoming' });
+        .order('date', { ascending: timeFilter === 'upcoming' });
 
       // Status filter
       if (filter !== 'all') {
@@ -85,9 +84,9 @@ export default function MesReservationsPage() {
       // Time filter
       const today = new Date().toISOString().split('T')[0];
       if (timeFilter === 'upcoming') {
-        query = query.gte('date_prestation', today);
+        query = query.gte('date', today);
       } else if (timeFilter === 'past') {
-        query = query.lt('date_prestation', today);
+        query = query.lt('date', today);
       }
 
       const { data, error } = await query;
