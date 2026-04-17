@@ -1,11 +1,11 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Create a new devis (quote) from photographer
+ * Create a new devis (quote) from service provider
  */
 export const createDevis = async ({
   photographeId,
-  particulierId,
+  clientId,
   demandeId,
   annonceId,
   tarif_base,
@@ -24,7 +24,7 @@ export const createDevis = async ({
       .from('devis')
       .insert({
         photographe_id: photographeId,
-        particulier_id: particulierId,
+        client_id: clientId,
         demande_id: demandeId,
         annonce_id: annonceId,
         tarif_base,
@@ -49,7 +49,7 @@ export const createDevis = async ({
 };
 
 /**
- * Get all devis sent by a photographer
+ * Get all devis sent by a service provider
  */
 export const getPhotographeDevis = async (photographeId, status = null) => {
   try {
@@ -57,7 +57,7 @@ export const getPhotographeDevis = async (photographeId, status = null) => {
       .from('devis')
       .select(`
         *,
-        profiles!devis_particulier_id_fkey(nom, email, avatar_url),
+        profiles!devis_client_id_fkey(nom, email, avatar_url),
         demandes_client(titre, categorie, lieu, date_souhaitee),
         annonces(titre)
       `)
@@ -73,7 +73,7 @@ export const getPhotographeDevis = async (photographeId, status = null) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching photographer devis:', error);
+    console.error('Error fetching service provider devis:', error);
     return { data: null, error };
   }
 };
@@ -81,7 +81,7 @@ export const getPhotographeDevis = async (photographeId, status = null) => {
 /**
  * Get all devis received by a client
  */
-export const getClientDevis = async (particulierId, status = null) => {
+export const getClientDevis = async (clientId, status = null) => {
   try {
     let query = supabase
       .from('devis')
@@ -91,7 +91,7 @@ export const getClientDevis = async (particulierId, status = null) => {
         demandes_client(titre, categorie),
         annonces(titre)
       `)
-      .eq('particulier_id', particulierId)
+      .eq('client_id', clientId)
       .order('created_at', { ascending: false });
 
     if (status) {
@@ -151,7 +151,7 @@ export const getDevisById = async (devisId) => {
       .select(`
         *,
         profiles!devis_photographe_id_fkey(id, nom, email, telephone, avatar_url),
-        profiles!devis_particulier_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!devis_client_id_fkey(id, nom, email, telephone, avatar_url),
         demandes_client(*),
         annonces(*)
       `)
@@ -200,8 +200,8 @@ export const acceptDevis = async (devisId) => {
       .from('reservations')
       .insert({
         numero_reservation: reservationNumber,
-        particulier_id: devis.particulier_id,
-        prestataire_id: devis.photographe_id,
+        client_id: devis.client_id,
+        photographe_id: devis.photographe_id,
         annonce_id: devis.annonce_id,
         devis_id: devisId,
         date_prestation: devis.date_prestation || new Date().toISOString(),
@@ -257,7 +257,7 @@ export const rejectDevis = async (devisId, reason = '') => {
 };
 
 /**
- * Cancel a devis (photographer action)
+ * Cancel a devis (service provider action)
  */
 export const cancelDevis = async (devisId, reason = '') => {
   try {
@@ -315,7 +315,7 @@ export const updateDevis = async (devisId, updates) => {
 };
 
 /**
- * Get devis statistics for photographer
+ * Get devis statistics for service provider
  */
 export const getDevisStats = async (photographeId) => {
   try {

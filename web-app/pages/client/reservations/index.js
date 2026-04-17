@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -26,18 +26,31 @@ const STATUS_CONFIG = {
 
 export default function MesReservationsPage() {
   const router = useRouter();
-  const { user, profileId } = useAuth();
+  const { profileId } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('upcoming');
+  const [resolvedId, setResolvedId] = useState(null);
+
+  // Résoudre l'ID sans attendre l'AuthContext
+  useEffect(() => {
+    const resolveId = async () => {
+      if (profileId) {
+        setResolvedId(profileId);
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setResolvedId(user.id);
+      else router.push('/login');
+    };
+    resolveId();
+  }, [profileId]);
 
   useEffect(() => {
-    if (profileId) {
-      fetchReservations();
-    }
-  }, [profileId, filter, timeFilter]);
+    if (resolvedId) fetchReservations();
+  }, [resolvedId, filter, timeFilter]);
 
   const fetchReservations = async () => {
     setLoading(true);
@@ -61,7 +74,7 @@ export default function MesReservationsPage() {
             description
           )
         `)
-        .eq('client_id', profileId)
+        .eq('client_id', resolvedId)
         .order('date_prestation', { ascending: timeFilter === 'upcoming' });
 
       // Status filter
@@ -372,7 +385,7 @@ function ReservationCard({ reservation, onClick, onMessage }) {
         {/* Price & Actions */}
         <div className="flex flex-col items-end gap-2">
           <p className="text-lg font-bold text-gray-900">
-            {reservation.montant_total}€
+            {reservation.montant_total} DH
           </p>
           
           <div className="flex items-center gap-2">

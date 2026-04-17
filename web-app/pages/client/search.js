@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
 import { Search, MapPin, Star, User, Mail, FileText } from "lucide-react";
@@ -120,20 +120,21 @@ function SearchProviders() {
         return;
       }
 
-      // 3. Enrichir chaque annonce avec ses zones d'intervention
-      const annoncesAvecZones = await Promise.all(
-        annoncesData.map(async (annonce) => {
-          const { data: zones } = await supabase
-            .from("zones_intervention")
-            .select("ville_centre, rayon_km")
-            .eq("annonce_id", annonce.id)
-            .eq("active", true);
-          return {
-            ...annonce,
-            zones_intervention: zones || []
-          };
-        })
-      );
+      // 3. Fetch all zones for found annonces in one query (instead of N separate queries)
+      let allZones = zonesData;
+      if (!selectedVille || selectedVille === "all") {
+        const { data: batchZones } = await supabase
+          .from("zones_intervention")
+          .select("annonce_id, ville_centre, rayon_km")
+          .in("annonce_id", annoncesData.map(a => a.id))
+          .eq("active", true);
+        allZones = batchZones || [];
+      }
+
+      const annoncesAvecZones = annoncesData.map(annonce => ({
+        ...annonce,
+        zones_intervention: allZones.filter(z => z.annonce_id === annonce.id)
+      }));
 
       setResults(annoncesAvecZones);
       setTotalResults(annoncesAvecZones.length);
@@ -428,7 +429,7 @@ function SearchProviders() {
                         <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100">
                           <div className="text-xl font-bold text-gray-600 group-hover:text-blue-700 transition-colors">
                             {annonce.tarif_unit > 0 ? (
-                              <span>{annonce.tarif_unit}€ <span className="text-sm font-normal text-gray-500">/{annonce.unit_tarif || 'unité'}</span></span>
+                              <span>{annonce.tarif_unit} DH <span className="text-sm font-normal text-gray-500">/{annonce.unit_tarif || 'unité'}</span></span>
                             ) : (
                               <span className="text-base text-gray-600">💎 Sur devis</span>
                             )}

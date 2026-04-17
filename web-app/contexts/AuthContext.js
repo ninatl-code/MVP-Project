@@ -21,12 +21,22 @@ export const AuthProvider = ({ children }) => {
   const [photographeProfile, setPhotographeProfile] = useState(null);
 
   useEffect(() => {
+    // Skip auth initialization on server
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
+          // Don't throw on retryable errors, just log them
+          if (error.name !== 'AuthRetryableFetchError') {
+            throw error;
+          }
         }
         
         if (session) {
@@ -68,6 +78,7 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
+        // Set loading to false even on error to prevent infinite loading state
       } finally {
         setLoading(false);
       }

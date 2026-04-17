@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
@@ -159,7 +159,7 @@ export default function PhotographeDevisPage() {
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-100">
             <p className="text-sm text-gray-500">CA généré</p>
-            <p className="text-2xl font-bold text-indigo-600">{stats.revenue}€</p>
+            <p className="text-2xl font-bold text-indigo-600">{stats.revenue} DH</p>
           </div>
         </div>
 
@@ -301,11 +301,11 @@ function DevisCard({ devis }) {
           {/* Price */}
           <div className="text-right">
             <p className="text-2xl font-bold text-indigo-600">
-              {devis.montant_total}€
+              {devis.montant_total} DH
             </p>
             {devis.acompte && (
               <p className="text-sm text-gray-500">
-                Acompte: {devis.acompte}€
+                Acompte: {devis.acompte} DH
               </p>
             )}
           </div>

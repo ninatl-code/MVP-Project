@@ -1,10 +1,10 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Create a new photo request (demande)
+ * Create a new service request (demande)
  */
 export const createDemande = async ({
-  particulierId,
+  clientId,
   titre,
   description,
   categorie,
@@ -20,7 +20,7 @@ export const createDemande = async ({
     const { data, error } = await supabase
       .from('demandes_client')
       .insert({
-        particulier_id: particulierId,
+        client_id: clientId,
         titre,
         description,
         categorie,
@@ -48,7 +48,7 @@ export const createDemande = async ({
 /**
  * Get all demandes for a client
  */
-export const getClientDemandes = async (particulierId) => {
+export const getClientDemandes = async (clientId) => {
   try {
     const { data, error } = await supabase
       .from('demandes_client')
@@ -56,7 +56,7 @@ export const getClientDemandes = async (particulierId) => {
         *,
         devis(count)
       `)
-      .eq('particulier_id', particulierId)
+      .eq('client_id', clientId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -76,7 +76,7 @@ export const getDemandeById = async (demandeId) => {
       .from('demandes_client')
       .select(`
         *,
-        profiles!demandes_client_particulier_id_fkey(nom, email, telephone, avatar_url),
+        profiles!demandes_client_client_id_fkey(nom, email, telephone, avatar_url),
         devis(
           id,
           montant_total,
@@ -168,11 +168,11 @@ export const cancelDemande = async (demandeId, reason = '') => {
 };
 
 /**
- * Get active demandes for photographers (matching)
+ * Get active demandes for service providers (matching)
  */
 export const getActiveDemandesForPhotographer = async (photographeId, filters = {}) => {
   try {
-    // First get photographer's profile for matching
+    // First get service provider's profile for matching
     const { data: photographe, error: profError } = await supabase
       .from('profils_photographe')
       .select('specialisations, rayon_deplacement_km, tarif_horaire, localisation')
@@ -180,14 +180,14 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
       .single();
 
     if (profError) {
-      console.warn('No photographer profile found, fetching all active demandes');
+      console.warn('No service provider profile found, fetching all active demandes');
     }
 
     let query = supabase
       .from('demandes_client')
       .select(`
         *,
-        profiles!demandes_client_particulier_id_fkey(nom, avatar_url)
+        profiles!demandes_client_client_id_fkey(nom, avatar_url)
       `)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
@@ -219,12 +219,12 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
 /**
  * Get demande statistics for a client
  */
-export const getDemandeStats = async (particulierId) => {
+export const getDemandeStats = async (clientId) => {
   try {
     const { data, error } = await supabase
       .from('demandes_client')
       .select('status')
-      .eq('particulier_id', particulierId);
+      .eq('client_id', clientId);
 
     if (error) throw error;
 
@@ -243,21 +243,69 @@ export const getDemandeStats = async (particulierId) => {
 };
 
 /**
- * Categories for photo requests
+ * Categories for service requests (Morocco marketplace)
  */
 export const DEMANDE_CATEGORIES = [
+  // Événements & Célébrations
   { id: 'mariage', label: 'Mariage', icon: '💒' },
+  { id: 'evenement', label: 'Événement professionnel', icon: '🎉' },
+  { id: 'fete-privee', label: 'Fête privée', icon: '🎊' },
+  { id: 'traiteur', label: 'Traiteur', icon: '🍽️' },
+  { id: 'dj-musique', label: 'DJ & Musique', icon: '🎵' },
+  { id: 'decoration-evenement', label: 'Décoration événement', icon: '🎀' },
+  
+  // Photographie & Vidéo
+  { id: 'photographie', label: 'Photographie', icon: '📷' },
+  { id: 'videographie', label: 'Vidéographie', icon: '🎥' },
   { id: 'portrait', label: 'Portrait', icon: '👤' },
-  { id: 'evenement', label: 'Événement', icon: '🎉' },
-  { id: 'corporate', label: 'Corporate', icon: '🏢' },
-  { id: 'produit', label: 'Produit', icon: '📦' },
-  { id: 'immobilier', label: 'Immobilier', icon: '🏠' },
-  { id: 'famille', label: 'Famille', icon: '👨‍👩‍👧‍👦' },
-  { id: 'grossesse', label: 'Grossesse', icon: '🤰' },
-  { id: 'nouveau-ne', label: 'Nouveau-né', icon: '👶' },
-  { id: 'animalier', label: 'Animalier', icon: '🐕' },
-  { id: 'culinaire', label: 'Culinaire', icon: '🍽️' },
-  { id: 'autre', label: 'Autre', icon: '📷' },
+  { id: 'produit', label: 'Photo produit', icon: '📦' },
+  { id: 'immobilier', label: 'Photo immobilier', icon: '🏠' },
+  
+  // Services à domicile
+  { id: 'menage', label: 'Ménage', icon: '🧹' },
+  { id: 'plomberie', label: 'Plomberie', icon: '🔧' },
+  { id: 'electricite', label: 'Électricité', icon: '💡' },
+  { id: 'climatisation', label: 'Climatisation', icon: '❄️' },
+  { id: 'jardinage', label: 'Jardinage', icon: '🌱' },
+  { id: 'peinture', label: 'Peinture', icon: '🎨' },
+  { id: 'reparations', label: 'Réparations diverses', icon: '🔨' },
+  
+  // Construction & Rénovation
+  { id: 'maconnerie', label: 'Maçonnerie', icon: '🧱' },
+  { id: 'carrelage', label: 'Carrelage', icon: '⬜' },
+  { id: 'menuiserie', label: 'Menuiserie', icon: '🪚' },
+  { id: 'renovation', label: 'Rénovation', icon: '🏗️' },
+  
+  // Beauté & Bien-être
+  { id: 'coiffure', label: 'Coiffure', icon: '💇' },
+  { id: 'maquillage', label: 'Maquillage', icon: '💄' },
+  { id: 'massage', label: 'Massage', icon: '💆' },
+  { id: 'esthetique', label: 'Esthétique', icon: '✨' },
+  
+  // Services professionnels
+  { id: 'corporate', label: 'Services corporate', icon: '🏢' },
+  { id: 'developpement-web', label: 'Développement web', icon: '💻' },
+  { id: 'design-graphique', label: 'Design graphique', icon: '🎨' },
+  { id: 'marketing-digital', label: 'Marketing digital', icon: '📱' },
+  { id: 'redaction', label: 'Rédaction', icon: '✍️' },
+  { id: 'traduction', label: 'Traduction', icon: '🌐' },
+  { id: 'comptabilite', label: 'Comptabilité', icon: '📊' },
+  
+  // Transport & Logistique
+  { id: 'demenagement', label: 'Déménagement', icon: '📦' },
+  { id: 'transport', label: 'Transport', icon: '🚗' },
+  { id: 'livraison', label: 'Livraison', icon: '🚚' },
+  
+  // Éducation & Formation
+  { id: 'cours-particuliers', label: 'Cours particuliers', icon: '📚' },
+  { id: 'formation', label: 'Formation professionnelle', icon: '🎓' },
+  { id: 'coaching', label: 'Coaching', icon: '🎯' },
+  
+  // Autres services
+  { id: 'securite', label: 'Sécurité', icon: '🛡️' },
+  { id: 'nettoyage-auto', label: 'Nettoyage auto', icon: '🚙' },
+  { id: 'garde-enfants', label: 'Garde d\'enfants', icon: '👶' },
+  { id: 'autre', label: 'Autre', icon: '⚙️' },
 ];
 
 export default {

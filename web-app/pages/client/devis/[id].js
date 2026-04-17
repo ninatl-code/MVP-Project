@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -221,7 +221,7 @@ export default function DevisDetailPage() {
                   </h1>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-indigo-600">{devis.montant}€</p>
+                  <p className="text-3xl font-bold text-indigo-600">{devis.montant} DH</p>
                   {devis.statut === 'en_attente' && (
                     <p className={`text-sm ${expirationDays <= 3 ? 'text-red-500' : 'text-gray-500'}`}>
                       {expirationDays > 0 
@@ -263,20 +263,20 @@ export default function DevisDetailPage() {
                     JSON.parse(devis.details_prix).map((item, i) => (
                       <div key={i} className="flex justify-between text-sm">
                         <span className="text-gray-600">{item.label}</span>
-                        <span className="font-medium">{item.montant}€</span>
+                        <span className="font-medium">{item.montant} DH</span>
                       </div>
                     ))
                   ) : (
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Prestation photo</span>
-                        <span className="font-medium">{devis.montant}€</span>
+                        <span className="font-medium">{devis.montant} DH</span>
                       </div>
                     </>
                   )}
                   <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between">
                     <span className="font-medium text-gray-900">Total</span>
-                    <span className="font-bold text-lg">{devis.montant}€</span>
+                    <span className="font-bold text-lg">{devis.montant} DH</span>
                   </div>
                 </div>
               </div>
@@ -288,8 +288,8 @@ export default function DevisDetailPage() {
                   Conditions de paiement
                 </h4>
                 <ul className="text-sm text-indigo-700 space-y-1">
-                  <li>• Acompte de 30% à la réservation : <strong>{Math.round(devis.montant * 0.3)}€</strong></li>
-                  <li>• Solde de 70% après la prestation : <strong>{Math.round(devis.montant * 0.7)}€</strong></li>
+                  <li>• Acompte de 30% à la réservation : <strong>{Math.round(devis.montant * 0.3)} DH</strong></li>
+                  <li>• Solde de 70% après la prestation : <strong>{Math.round(devis.montant * 0.7)} DH</strong></li>
                   <li>• Annulation gratuite jusqu'à 48h avant</li>
                 </ul>
               </div>
@@ -321,8 +321,8 @@ export default function DevisDetailPage() {
                       <span className="flex items-center gap-1">
                         <Euro className="w-4 h-4" />
                         {demande.budget_min && demande.budget_max 
-                          ? `${demande.budget_min}€ - ${demande.budget_max}€`
-                          : `Max ${demande.budget_max}€`}
+                          ? `${demande.budget_min} DH - ${demande.budget_max} DH`
+                          : `Max ${demande.budget_max} DH`}
                       </span>
                     )}
                   </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../lib/supabaseClient';
@@ -291,7 +291,7 @@ export default function RecherchePage() {
               {/* Prix */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Budget (€/heure)
+                  Budget (MAD/heure)
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -456,7 +456,7 @@ export default function RecherchePage() {
                     <div className="flex items-center gap-1 text-indigo-600">
                       <Euro className="w-5 h-5" />
                       <span className="font-semibold">
-                        {photographe.tarif_horaire || '—'}€
+                        {photographe.tarif_horaire || '—'} DH
                       </span>
                       <span className="text-sm text-gray-500">/heure</span>
                     </div>

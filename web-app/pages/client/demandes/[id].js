@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -267,9 +267,9 @@ export default function DemandeDetailPage() {
                   <Euro className="w-4 h-4 text-indigo-600" />
                   <span className="font-medium">
                     Budget: {demande.budget_min && demande.budget_max 
-                      ? `${demande.budget_min}€ - ${demande.budget_max}€`
+                      ? `${demande.budget_min} DH - ${demande.budget_max} DH`
                       : demande.budget_max 
-                      ? `Max ${demande.budget_max}€`
+                      ? `Max ${demande.budget_max} DH`
                       : 'Non défini'}
                   </span>
                 </div>
@@ -491,7 +491,7 @@ function DevisCard({ devis, onAccept, onView, onContact, demandeStatus }) {
           {/* Price */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-indigo-600">{devis.montant}€</p>
+              <p className="text-2xl font-bold text-indigo-600">{devis.montant} DH</p>
               <p className="text-xs text-gray-500">
                 Validité: {devis.validite_jours || 30} jours
               </p>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import HeaderPresta from '../../components/HeaderPresta';
@@ -361,7 +361,7 @@ export default function ProfilPage() {
                             </p>
                             <div className="flex items-center justify-between">
                               <span className="text-lg font-bold text-gray-900">
-                                {annonce.tarif_unit ? `${annonce.tarif_unit}€/${annonce.unit_tarif}` : 'Sur devis'}
+                                {annonce.tarif_unit ? `${annonce.tarif_unit} DH/${annonce.unit_tarif}` : 'Sur devis'}
                               </span>
                               <div className="flex items-center gap-1">
                                 <Star className="w-4 h-4 text-yellow-400 fill-current" />

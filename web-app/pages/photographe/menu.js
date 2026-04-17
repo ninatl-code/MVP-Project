@@ -1120,7 +1120,7 @@ export default function ProviderHomeMenu() {
       const missing = [];
 
       if (!profilPhoto) {
-        missing.push('Créer votre profil photographe');
+        missing.push('Créer votre profil prestataire');
       } else {
         if (!profilPhoto.bio || profilPhoto.bio.length < 50) {
           missing.push('Compléter votre biographie (min. 50 caractères)');

@@ -45,10 +45,48 @@ export default function Signup() {
     })
 
     if (error) {
-      alert(error.message)
-    } else {
-      alert('Inscription réussie ! Vérifiez votre mail pour confirmer votre compte.')
+      if (error.message?.toLowerCase().includes('email rate') || error.status === 429) {
+        alert("Trop de tentatives d'inscription. Veuillez réessayer dans quelques minutes.")
+      } else {
+        alert(error.message)
+      }
+      return
     }
+
+    if (data?.user) {
+      const finalRole = role || 'particulier'
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          email,
+          nom,
+          telephone,
+          role: finalRole
+        })
+
+      if (profileError) {
+        console.error('Erreur création profil:', profileError)
+      }
+
+      // Créer le profil photographe étendu si nécessaire
+      if (finalRole === 'photographe') {
+        const { error: photoProfileError } = await supabase
+          .from('profils_photographe')
+          .insert({
+            user_id: data.user.id,
+            nom,
+            email
+          })
+
+        if (photoProfileError) {
+          console.error('Erreur création profil photographe:', photoProfileError)
+        }
+      }
+    }
+
+    alert('Inscription réussie ! Vérifiez votre mail pour confirmer votre compte.')
   }
 
   return (
@@ -72,7 +110,7 @@ export default function Signup() {
             color: COLORS.text + 'AA', 
             marginBottom: 32 
           }}>
-            Créez votre espace Shooty
+            Créez votre espace Wedoria
       </p>
       <input
         type="email"
@@ -115,7 +153,7 @@ export default function Signup() {
           required
         >
           <option value="">Sélectionner...</option>
-          <option value="prestataire">Prestataire</option>
+          <option value="photographe">Prestataire</option>
           <option value="particulier">Particulier</option>
         </select>
       </div>

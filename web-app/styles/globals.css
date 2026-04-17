@@ -64,8 +64,15 @@ body {
   background: var(--accent) !important;
 }
 /* Styles pour les titres avec la nouvelle palette Shooty */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h3,
+h4,
+h5,
+h6 {
   color: var(--foreground) !important;
+}
+h2 {
+  color: var(--accent) !important;
 }
 h3 {
   color: var(--primary) !important;

@@ -14,18 +14,25 @@ const COLORS = {
   text: '#1C1C1E',        // Noir - Utilisé pour les titres Devis, Réservations, Mes annonces, Planning
 };
 
-function IconButton({ children, onClick, className = "" }) {
+function IconButton({ children, onClick, className = "", tooltip }) {
   return (
-    <button
-      className={`cursor-pointer w-10 h-10 flex items-center justify-center rounded-full text-white transition-colors shadow ${className}`}
-      style={{backgroundColor: COLORS.accent}}
-      onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
-      onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </button>
+    <div className="relative inline-flex group">
+      <button
+        className={`cursor-pointer w-10 h-10 flex items-center justify-center rounded-full text-white transition-colors shadow ${className}`}
+        style={{backgroundColor: COLORS.accent}}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = COLORS.primary}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = COLORS.accent}
+        onClick={onClick}
+        type="button"
+      >
+        {children}
+      </button>
+      {tooltip && (
+        <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+          {tooltip}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -38,7 +45,7 @@ export default function Header() {
   const { availableProfiles, switchProfile } = useAuth();
   const hasMultipleProfiles = availableProfiles?.length > 1;
   
-  // Fonction pour basculer vers le profil photographe
+  // Fonction pour basculer vers le profil prestataire
   const handleSwitchToPhotographe = async () => {
     const photographeProfile = availableProfiles?.find(p => p.role === 'photographe' || p.role === 'prestataire');
     if (photographeProfile) {
@@ -55,14 +62,15 @@ export default function Header() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         router.replace("/login");
         return;
       }
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("nom, photos")
+        .select("nom, photos, avatar_url")
         .eq("id", user.id)
         .single();
       setProfile(profileData);
@@ -100,7 +108,7 @@ export default function Header() {
         </div>
         {/* Actions */}
         <div className="flex items-center gap-2">
-          {/* Bouton Switch vers Photographe */}
+          {/* Bouton Switch vers Prestataire */}
           {hasMultipleProfiles && (
             <button
               onClick={handleSwitchToPhotographe}
@@ -118,17 +126,18 @@ export default function Header() {
                 e.target.style.backgroundColor = COLORS.secondary + '20';
                 e.target.style.color = COLORS.accent;
               }}
-              title="Passer en mode Photographe"
+              title="Passer en mode Prestataire"
             >
               <RefreshCcw className="w-4 h-4" />
-              <span className="hidden md:inline">Mode Photographe</span>
+              <span className="hidden md:inline">Mode Prestataire</span>
             </button>
           )}
           <IconButton onClick={() => router.push("/client/menu")}
             className="text-white"
             style={{backgroundColor: COLORS.accent}}
             onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
-            onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}>
+            onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}
+            tooltip="Menu">
             <Menu className="w-5 h-5" />
           </IconButton>
           <NotificationsPopup router={router} />
@@ -137,7 +146,8 @@ export default function Header() {
                         className="text-white"
                         style={{backgroundColor: COLORS.accent}}
                         onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
-                        onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}>
+                        onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}
+                        tooltip="Messages">
                         <MessageCircle className="w-5 h-5" />
                       </IconButton>
                       {nbUnread > 0 && (
@@ -146,24 +156,29 @@ export default function Header() {
                         </span>
                       )}
           </div>
-          <IconButton onClick={handleLogout} className="bg-slate-700 hover:bg-slate-800 text-white">
+          <IconButton onClick={handleLogout} className="bg-slate-700 hover:bg-slate-800 text-white" tooltip="Déconnexion">
             <LogOut className="w-5 h-5" />
           </IconButton>
-          <button
-            className="cursor-pointer ml-2 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-blue-700 overflow-hidden hover:border-slate-800 transition-colors"
-            onClick={() => router.push("/client/profil")}
-            type="button"
-          >
-            {profile?.photos ? (
-              <img
-                src={profile.photos}
-                alt={profile.nom}
-                className="w-full h-full object-cover rounded-full"
-              />
-            ) : (
-              <span>{profile?.nom ? profile.nom[0].toUpperCase() : "?"}</span>
-            )}
-          </button>
+          <div className="relative inline-flex group ml-2">
+            <button
+              className="cursor-pointer w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-blue-700 overflow-hidden hover:border-slate-800 transition-colors"
+              onClick={() => router.push("/client/profil")}
+              type="button"
+            >
+              {(profile?.photos || profile?.avatar_url) ? (
+                <img
+                  src={profile.photos || profile.avatar_url}
+                  alt={profile?.nom}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span>{profile?.nom ? profile.nom[0].toUpperCase() : "?"}</span>
+              )}
+            </button>
+            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              Mon profil
+            </span>
+          </div>
         </div>
       </div>
     </header>
@@ -224,7 +239,7 @@ function NotificationsPopup({ router }) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative inline-flex group">
       <button
         style={{backgroundColor: COLORS.accent}}
         onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
@@ -242,6 +257,9 @@ function NotificationsPopup({ router }) {
           </span>
         )}
       </button>
+      <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+        Notifications
+      </span>
       {open && (
         <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
           <div className="p-4 border-b border-slate-100">

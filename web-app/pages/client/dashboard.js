@@ -108,7 +108,7 @@ export default function ClientDashboard() {
   const quickActions = [
     {
       icon: Search,
-      label: 'Trouver un photographe',
+      label: 'Trouver un prestataire',
       description: 'Rechercher par spécialité, lieu...',
       href: '/client/search',
       color: 'bg-indigo-100 text-indigo-600',
@@ -252,7 +252,7 @@ export default function ClientDashboard() {
                     onClick={() => router.push('/client/search')}
                     className="mt-4 text-sm text-indigo-600 font-medium hover:text-indigo-700"
                   >
-                    Trouver un photographe →
+                    Trouver un prestataire →
                   </button>
                 </div>
               ) : (

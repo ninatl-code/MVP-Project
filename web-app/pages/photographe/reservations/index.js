@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -311,7 +311,7 @@ function ReservationCard({ reservation, onClick, onConfirm, onComplete, onMessag
 
         {/* Price & Actions */}
         <div className="flex flex-col items-end gap-2">
-          <p className="text-lg font-bold text-gray-900">{reservation.montant_total}€</p>
+          <p className="text-lg font-bold text-gray-900">{reservation.montant_total} DH</p>
           
           <div className="flex items-center gap-2">
             {reservation.statut === 'en_attente' && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -186,11 +186,11 @@ export default function PaymentSuccessPage() {
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">Acompte payé</span>
-                <span className="font-semibold text-green-600">{depositAmount}€</span>
+                <span className="font-semibold text-green-600">{depositAmount} DH</span>
               </div>
               <div className="flex justify-between items-center text-sm text-gray-500">
                 <span>Solde restant</span>
-                <span>{(booking?.montant_total || booking?.montant || 0) - depositAmount}€</span>
+                <span>{(booking?.montant_total || booking?.montant || 0) - depositAmount} DH</span>
               </div>
             </div>
           </div>

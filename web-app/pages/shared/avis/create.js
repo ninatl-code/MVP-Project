@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
@@ -284,7 +284,7 @@ export default function CreateAvisPage() {
             )}
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4" />
-              <span>{reservation.montant_total || reservation.prix}€</span>
+              <span>{reservation.montant_total || reservation.prix} DH</span>
             </div>
           </div>
         </div>

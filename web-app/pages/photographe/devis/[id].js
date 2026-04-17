@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
@@ -249,7 +249,7 @@ export default function PhotographeDevisDetailPage() {
                           </p>
                         )}
                       </div>
-                      <p className="font-semibold text-gray-900">{detail.montant}€</p>
+                      <p className="font-semibold text-gray-900">{detail.montant} DH</p>
                     </div>
                   ))}
                 </div>
@@ -262,13 +262,13 @@ export default function PhotographeDevisDetailPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-gray-900">Total</span>
                   <span className="text-2xl font-bold text-indigo-600">
-                    {devis.montant_total}€
+                    {devis.montant_total} DH
                   </span>
                 </div>
                 {devis.acompte && (
                   <div className="flex justify-between items-center mt-2 text-sm">
                     <span className="text-gray-500">Acompte demandé (30%)</span>
-                    <span className="font-medium text-gray-700">{devis.acompte}€</span>
+                    <span className="font-medium text-gray-700">{devis.acompte} DH</span>
                   </div>
                 )}
               </div>
@@ -310,7 +310,7 @@ export default function PhotographeDevisDetailPage() {
                     <div>
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Budget client</h3>
                       <p className="text-gray-900">
-                        {devis.demande.budget_min}€ - {devis.demande.budget_max}€
+                        {devis.demande.budget_min} DH - {devis.demande.budget_max} DH
                       </p>
                     </div>
                   )}

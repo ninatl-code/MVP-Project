@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Get KPIs for a photographer
+ * Get KPIs for a service provider
  */
 export const getPhotographerKPIs = async (photographeId, period = 'month') => {
   try {
@@ -30,8 +30,8 @@ export const getPhotographerKPIs = async (photographeId, period = 'month') => {
     // Get reservations
     const { data: reservations, error: resError } = await supabase
       .from('reservations')
-      .select('id, montant, status, created_at, particulier_id')
-      .eq('prestataire_id', photographeId)
+      .select('id, montant, status, created_at, client_id')
+      .eq('photographe_id', photographeId)
       .gte('created_at', startDateStr);
 
     if (resError) throw resError;
@@ -48,7 +48,7 @@ export const getPhotographerKPIs = async (photographeId, period = 'month') => {
     // Calculate KPIs
     const completedReservations = reservations?.filter(r => r.status === 'completed') || [];
     const acceptedDevis = devis?.filter(d => d.status === 'accepted') || [];
-    const uniqueClients = new Set(reservations?.map(r => r.particulier_id)).size;
+    const uniqueClients = new Set(reservations?.map(r => r.client_id)).size;
 
     const kpis = {
       // Revenue
@@ -111,7 +111,7 @@ export const getRevenueChartData = async (photographeId, period = 'month', group
     const { data: reservations, error } = await supabase
       .from('reservations')
       .select('montant, created_at, status')
-      .eq('prestataire_id', photographeId)
+      .eq('photographe_id', photographeId)
       .eq('status', 'completed')
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: true });
@@ -157,7 +157,7 @@ export const getPopularServices = async (photographeId) => {
         id,
         annonces(categorie)
       `)
-      .eq('prestataire_id', photographeId)
+      .eq('photographe_id', photographeId)
       .eq('status', 'completed');
 
     if (error) throw error;
@@ -188,7 +188,7 @@ export const getReservationStatusDistribution = async (photographeId) => {
     const { data: reservations, error } = await supabase
       .from('reservations')
       .select('status')
-      .eq('prestataire_id', photographeId);
+      .eq('photographe_id', photographeId);
 
     if (error) throw error;
 
@@ -214,8 +214,8 @@ export const getClientStats = async (photographeId) => {
   try {
     const { data: reservations, error } = await supabase
       .from('reservations')
-      .select('particulier_id, created_at')
-      .eq('prestataire_id', photographeId)
+      .select('client_id, created_at')
+      .eq('photographe_id', photographeId)
       .eq('status', 'completed');
 
     if (error) throw error;
@@ -223,9 +223,9 @@ export const getClientStats = async (photographeId) => {
     // Track first reservation date per client
     const clientFirstReservation = {};
     reservations?.forEach(r => {
-      if (!clientFirstReservation[r.particulier_id] || 
-          new Date(r.created_at) < new Date(clientFirstReservation[r.particulier_id])) {
-        clientFirstReservation[r.particulier_id] = r.created_at;
+      if (!clientFirstReservation[r.client_id] || 
+          new Date(r.created_at) < new Date(clientFirstReservation[r.client_id])) {
+        clientFirstReservation[r.client_id] = r.created_at;
       }
     });
 
@@ -240,7 +240,7 @@ export const getClientStats = async (photographeId) => {
     // Calculate client retention
     const clientReservationCount = {};
     reservations?.forEach(r => {
-      clientReservationCount[r.particulier_id] = (clientReservationCount[r.particulier_id] || 0) + 1;
+      clientReservationCount[r.client_id] = (clientReservationCount[r.client_id] || 0) + 1;
     });
     const repeatClients = Object.values(clientReservationCount).filter(count => count > 1).length;
 
@@ -289,7 +289,7 @@ export const getPeriodComparison = async (photographeId, period = 'month') => {
     const { data: currentReservations } = await supabase
       .from('reservations')
       .select('montant')
-      .eq('prestataire_id', photographeId)
+      .eq('photographe_id', photographeId)
       .eq('status', 'completed')
       .gte('created_at', currentStart.toISOString());
 
@@ -297,7 +297,7 @@ export const getPeriodComparison = async (photographeId, period = 'month') => {
     const { data: previousReservations } = await supabase
       .from('reservations')
       .select('montant')
-      .eq('prestataire_id', photographeId)
+      .eq('photographe_id', photographeId)
       .eq('status', 'completed')
       .gte('created_at', previousStart.toISOString())
       .lt('created_at', previousEnd.toISOString());

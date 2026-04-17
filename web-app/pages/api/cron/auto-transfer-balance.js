@@ -1,4 +1,4 @@
-import Stripe from "stripe";
+﻿import Stripe from "stripe";
 import { supabase } from '../../../lib/supabaseClient';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
           continue;
         }
 
-        console.log(`💰 Transfert de ${balanceAmount}€ vers ${reservation.profiles.stripe_account_id}`);
+        console.log(`💰 Transfert de ${balanceAmount} DH vers ${reservation.profiles.stripe_account_id}`);
 
         // Transférer le solde
         const transfer = await stripe.transfers.create({

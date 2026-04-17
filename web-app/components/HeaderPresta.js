@@ -14,19 +14,25 @@ const COLORS = {
   text: '#1C1C1E',        // Noir - Utilisé pour les titres Devis, Réservations, Mes annonces, Planning
 };
 
-function IconButton({ children, onClick, className = "" }) {
+function IconButton({ children, onClick, className = "", tooltip }) {
   return (
-    <button
-      className={`cursor-pointer w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 hover:bg-yellow-400 text-white hover:text-slate-900 transition-colors shadow ${className}`}
-      style={{backgroundColor: COLORS.accent}}
-      onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
-      onMouseLeave={e => e.target.style.backgroundColor = COLORS.accent}
-      onClick={onClick}
-      type="button"
-
-    >
-      {children}
-    </button>
+    <div className="relative inline-flex group">
+      <button
+        className={`cursor-pointer w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 hover:bg-yellow-400 text-white hover:text-slate-900 transition-colors shadow ${className}`}
+        style={{backgroundColor: COLORS.accent}}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = COLORS.primary}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = COLORS.accent}
+        onClick={onClick}
+        type="button"
+      >
+        {children}
+      </button>
+      {tooltip && (
+        <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+          {tooltip}
+        </span>
+      )}
+    </div>
   );
 }
 export default function Header() {
@@ -128,7 +134,8 @@ export default function Header() {
             className="text-white"
             style={{backgroundColor: COLORS.primary}}
             onMouseEnter={e => e.target.style.backgroundColor = COLORS.accent}
-            onMouseLeave={e => e.target.style.backgroundColor = COLORS.primary}>
+            onMouseLeave={e => e.target.style.backgroundColor = COLORS.primary}
+            tooltip="Menu">
             <Menu className="w-5 h-5" />
           </IconButton>
           <IconButton onClick={() => router.push("/photographe/kpi/kpis")}
@@ -136,13 +143,14 @@ export default function Header() {
             style={{backgroundColor: COLORS.primary}}
             onMouseEnter={e => e.target.style.backgroundColor = COLORS.accent}
             onMouseLeave={e => e.target.style.backgroundColor = COLORS.primary}
-            title="Statistiques et KPIs">
+            tooltip="Statistiques">
             <BarChart3 className="w-5 h-5" />
           </IconButton>
           <NotificationsPopup router={router} />
           <div className="relative">
             <IconButton onClick={() => router.push("/photographe/messages")}
-              className="bg-slate-700 hover:bg-slate-800 text-white">
+              className="bg-slate-700 hover:bg-slate-800 text-white"
+              tooltip="Messages">
               <MessageCircle className="w-5 h-5" />
             </IconButton>
             {nbUnread > 0 && (
@@ -151,24 +159,29 @@ export default function Header() {
               </span>
             )}
           </div>
-          <IconButton onClick={handleLogout} className="bg-slate-700 hover:bg-slate-800 text-white">
+          <IconButton onClick={handleLogout} className="bg-slate-700 hover:bg-slate-800 text-white" tooltip="Déconnexion">
             <LogOut className="w-5 h-5" />
           </IconButton>
-          <button
-            className="cursor-pointer ml-2 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-blue-700 overflow-hidden hover:border-slate-800 transition-colors"
-            onClick={() => router.push("/photographe/profil")}
-            type="button"
-          >
-            {profile?.photos ? (
-              <img
-                src={profile.photos}
-                alt={profile.nom}
-                className="w-full h-full object-cover rounded-full"
-              />
-            ) : (
-              <span>{profile?.nom ? profile.nom[0].toUpperCase() : "?"}</span>
-            )}
-          </button>
+          <div className="relative inline-flex group ml-2">
+            <button
+              className="cursor-pointer w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-lg font-bold text-white border-2 border-blue-700 overflow-hidden hover:border-slate-800 transition-colors"
+              onClick={() => router.push("/photographe/profil")}
+              type="button"
+            >
+              {profile?.photos ? (
+                <img
+                  src={profile.photos}
+                  alt={profile.nom}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span>{profile?.nom ? profile.nom[0].toUpperCase() : "?"}</span>
+              )}
+            </button>
+            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              Mon profil
+            </span>
+          </div>
         </div>
       </div>
     </header>
@@ -227,7 +240,7 @@ function NotificationsPopup({ router }) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative inline-flex group">
       <button
         style={{backgroundColor: COLORS.accent}}
         onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
@@ -245,6 +258,9 @@ function NotificationsPopup({ router }) {
           </span>
         )}
       </button>
+      <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+        Notifications
+      </span>
       {open && (
         <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
           <div className="p-4 border-b border-slate-100">

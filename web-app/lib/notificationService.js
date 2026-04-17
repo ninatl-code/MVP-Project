@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+﻿import { supabase } from './supabaseClient';
 
 /**
  * Notification types
@@ -185,7 +185,7 @@ export const notifyNewDevis = async (particulierId, devis, photographeNom) => {
     userId: particulierId,
     type: NOTIFICATION_TYPES.NEW_DEVIS,
     title: 'Nouveau devis reçu',
-    message: `${photographeNom} vous a envoyé un devis de ${devis.montant_total}€.`,
+    message: `${photographeNom} vous a envoyé un devis de ${devis.montant_total} DH.`,
     data: { devisId: devis.id },
     actionUrl: `/client/devis/${devis.id}`,
   });
@@ -199,7 +199,7 @@ export const notifyDevisAccepted = async (photographeId, devis, clientNom) => {
     userId: photographeId,
     type: NOTIFICATION_TYPES.DEVIS_ACCEPTED,
     title: 'Devis accepté !',
-    message: `${clientNom} a accepté votre devis de ${devis.montant_total}€.`,
+    message: `${clientNom} a accepté votre devis de ${devis.montant_total} DH.`,
     data: { devisId: devis.id },
     actionUrl: `/photographe/devis/${devis.id}`,
   });
@@ -228,7 +228,7 @@ export const notifyPaymentReceived = async (reservation, clientId, photographeId
     userId: clientId,
     type: NOTIFICATION_TYPES.PAYMENT,
     title: 'Paiement confirmé',
-    message: `Votre acompte de ${reservation.montant_acompte}€ a été reçu.`,
+    message: `Votre acompte de ${reservation.montant_acompte} DH a été reçu.`,
     data: { reservationId: reservation.id },
     actionUrl: `/client/reservations/${reservation.id}`,
   });
@@ -238,7 +238,7 @@ export const notifyPaymentReceived = async (reservation, clientId, photographeId
     userId: photographeId,
     type: NOTIFICATION_TYPES.PAYMENT,
     title: 'Acompte reçu',
-    message: `Acompte de ${reservation.montant_acompte}€ reçu pour la réservation du ${new Date(reservation.date_prestation).toLocaleDateString('fr-FR')}.`,
+    message: `Acompte de ${reservation.montant_acompte} DH reçu pour la réservation du ${new Date(reservation.date_prestation).toLocaleDateString('fr-FR')}.`,
     data: { reservationId: reservation.id },
     actionUrl: `/photographe/reservations/${reservation.id}`,
   });

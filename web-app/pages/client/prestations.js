@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import PrestataireHeader from '../../components/HeaderPresta'
 
@@ -218,7 +218,7 @@ export default function PrestationsPrestataire() {
         </div>
         {modelesInfo.minPrice !== null && (
           <div style={{fontSize:15, color:'#444', marginBottom:6}}>
-            <b>À partir de :</b> {modelesInfo.minPrice}€
+            <b>À partir de :</b> {modelesInfo.minPrice} DH
           </div>
         )}
       </>

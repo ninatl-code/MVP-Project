@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import PrestataireHeader from '../../components/HeaderPresta'
 import { 
@@ -306,7 +306,7 @@ function CreateEventModal({ isOpen, onClose, onCreateEvent, selectedDate, select
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {formData.type === 'reservation' && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Prix (€)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Prix (MAD)</label>
                     <input
                       type="number"
                       min="0"
@@ -544,7 +544,7 @@ function EventDetailModal({ isOpen, event, onClose, onUpdate, onDelete, annonces
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Prix (€)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Prix (MAD)</label>
                     <input
                       type="number"
                       min="0"
@@ -633,7 +633,7 @@ function EventDetailModal({ isOpen, event, onClose, onUpdate, onDelete, annonces
                     {event.price > 0 && (
                       <div className="flex justify-between">
                         <span className="text-slate-600">Prix :</span>
-                        <span className="font-medium text-emerald-600">{event.price}€</span>
+                        <span className="font-medium text-emerald-600">{event.price} DH</span>
                       </div>
                     )}
                     <div className="flex justify-between">
@@ -940,7 +940,7 @@ function QuickReservationModal({ isOpen, onClose, onConfirm, annonces }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Montant total (€)
+                  Montant total (MAD)
                 </label>
                 <input
                   type="number"
@@ -953,7 +953,7 @@ function QuickReservationModal({ isOpen, onClose, onConfirm, annonces }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Acompte versé (€)
+                  Acompte versé (MAD)
                 </label>
                 <input
                   type="number"
@@ -994,7 +994,7 @@ function QuickReservationModal({ isOpen, onClose, onConfirm, annonces }) {
             </p>
             {formData.montant && (
               <p className="text-sm text-slate-600 mt-1">
-                Montant: {formData.montant}€ {formData.montantAcompte && formData.montantAcompte !== '0' && `(acompte: ${formData.montantAcompte}€)`}
+                Montant: {formData.montant} DH {formData.montantAcompte && formData.montantAcompte !== '0' && `(acompte: ${formData.montantAcompte} DH)`}
               </p>
             )}
           </div>
@@ -1169,7 +1169,7 @@ function QuickBlockModal({ isOpen, onClose, onConfirm, annonces }) {
                     />
                     <span className="text-sm font-medium text-slate-700">{annonce.titre}</span>
                     {annonce.tarif_unit && (
-                      <span className="text-xs text-slate-500 ml-auto">{annonce.tarif_unit}€</span>
+                      <span className="text-xs text-slate-500 ml-auto">{annonce.tarif_unit} DH</span>
                     )}
                   </label>
                 ))}
@@ -1462,7 +1462,7 @@ function ReservationModal({ open, slots, onConfirm, onCancel, annonces, defaultA
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Montant total (€)
+                    Montant total (MAD)
                   </label>
                   <input
                     type="number"
@@ -1475,7 +1475,7 @@ function ReservationModal({ open, slots, onConfirm, onCancel, annonces, defaultA
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Acompte versé (€)
+                    Acompte versé (MAD)
                   </label>
                   <input
                     type="number"
@@ -2605,7 +2605,7 @@ function PrestataireCalendar() {
                             {event.price > 0 && (
                               <span className="flex items-center gap-1">
                                 <Star className="w-4 h-4" />
-                                {event.price}€
+                                {event.price} DH
                               </span>
                             )}
                           </div>

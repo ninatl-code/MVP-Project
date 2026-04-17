@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Calculate match score between a demande and a photographer
+ * Calculate match score between a demande and a service provider
  * Score is 0-100 based on:
  * - Specialization match (40 pts)
  * - Location/radius (30 pts)
@@ -57,7 +57,7 @@ export const calculateMatchScore = (demande, photographe) => {
   // 4. Verification status (10 points)
   if (photographe.is_verified) {
     score += 10;
-    matchReasons.push('Photographe vérifié');
+    matchReasons.push('Prestataire vérifié');
   }
 
   // Bonus: High rating
@@ -73,7 +73,7 @@ export const calculateMatchScore = (demande, photographe) => {
 };
 
 /**
- * Find matching photographers for a demande
+ * Find matching service providers for a demande
  */
 export const findMatchingPhotographers = async (demandeId, limit = 10) => {
   try {
@@ -86,7 +86,7 @@ export const findMatchingPhotographers = async (demandeId, limit = 10) => {
 
     if (demandeError) throw demandeError;
 
-    // Get all available photographers
+    // Get all available service providers
     const { data: photographers, error: photoError } = await supabase
       .from('profiles')
       .select(`
@@ -130,17 +130,17 @@ export const findMatchingPhotographers = async (demandeId, limit = 10) => {
 
     return { matches: matchedPhotographers, demande, error: null };
   } catch (error) {
-    console.error('Error finding matching photographers:', error);
+    console.error('Error finding matching service providers:', error);
     return { matches: [], demande: null, error };
   }
 };
 
 /**
- * Get matching demandes for a photographer
+ * Get matching demandes for a service provider
  */
 export const findMatchingDemandes = async (photographeId, limit = 20) => {
   try {
-    // Get photographer profile
+    // Get service provider profile
     const { data: photographe, error: profError } = await supabase
       .from('profils_photographe')
       .select('*')
@@ -148,7 +148,7 @@ export const findMatchingDemandes = async (photographeId, limit = 20) => {
       .single();
 
     if (profError) {
-      console.warn('No photographer profile found');
+      console.warn('No service provider profile found');
     }
 
     // Get active demandes
@@ -156,7 +156,7 @@ export const findMatchingDemandes = async (photographeId, limit = 20) => {
       .from('demandes_client')
       .select(`
         *,
-        profiles!demandes_client_particulier_id_fkey(nom, avatar_url)
+        profiles!demandes_client_client_id_fkey(nom, avatar_url)
       `)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
@@ -194,7 +194,6 @@ export const findMatchingDemandes = async (photographeId, limit = 20) => {
 export const saveMatch = async ({
   demandeId,
   photographeId,
-  particulierId,
   matchScore,
   matchReasons,
 }) => {
@@ -204,7 +203,6 @@ export const saveMatch = async ({
       .upsert({
         demande_id: demandeId,
         photographe_id: photographeId,
-        particulier_id: particulierId,
         match_score: matchScore,
         match_reasons: matchReasons,
         status: 'pending',
@@ -224,7 +222,7 @@ export const saveMatch = async ({
 };
 
 /**
- * Get photographer's matches
+ * Get service provider's matches
  */
 export const getPhotographerMatches = async (photographeId, status = null) => {
   try {
@@ -232,8 +230,7 @@ export const getPhotographerMatches = async (photographeId, status = null) => {
       .from('matchings')
       .select(`
         *,
-        demandes_client(*),
-        profiles!matchings_particulier_id_fkey(nom, avatar_url)
+        demandes_client(*)
       `)
       .eq('photographe_id', photographeId)
       .order('match_score', { ascending: false });
@@ -247,7 +244,7 @@ export const getPhotographerMatches = async (photographeId, status = null) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching photographer matches:', error);
+    console.error('Error fetching service provider matches:', error);
     return { data: null, error };
   }
 };
@@ -276,7 +273,7 @@ export const updateMatchStatus = async (matchId, status) => {
 };
 
 /**
- * Check photographer availability for a date
+ * Check service provider availability for a date
  */
 export const checkPhotographerAvailability = async (photographeId, date) => {
   try {
@@ -294,7 +291,7 @@ export const checkPhotographerAvailability = async (photographeId, date) => {
     const { data: reservations, error: resError } = await supabase
       .from('reservations')
       .select('*')
-      .eq('prestataire_id', photographeId)
+      .eq('photographe_id', photographeId)
       .eq('date_prestation', date)
       .in('status', ['confirmed', 'acompte_paye', 'en_attente_paiement']);
 

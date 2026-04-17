@@ -1,15 +1,15 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Create a new conversation between client and photographer
+ * Create a new conversation between client and service provider
  */
-export const createConversation = async (particulierId, photographeId, reservationId = null) => {
+export const createConversation = async (clientId, photographeId, reservationId = null) => {
   try {
     // Check if conversation already exists
     const { data: existing } = await supabase
       .from('conversations')
       .select('id')
-      .eq('particulier_id', particulierId)
+      .eq('client_id', clientId)
       .eq('photographe_id', photographeId)
       .single();
 
@@ -20,7 +20,7 @@ export const createConversation = async (particulierId, photographeId, reservati
     const { data, error } = await supabase
       .from('conversations')
       .insert({
-        particulier_id: particulierId,
+        client_id: clientId,
         photographe_id: photographeId,
         reservation_id: reservationId,
         created_at: new Date().toISOString(),
@@ -41,14 +41,14 @@ export const createConversation = async (particulierId, photographeId, reservati
  */
 export const getUserConversations = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'particulier' ? 'particulier_id' : 'photographe_id';
-    const otherColumn = role === 'particulier' ? 'photographe_id' : 'particulier_id';
+    const column = role === 'client' ? 'client_id' : 'photographe_id';
+    const otherColumn = role === 'client' ? 'photographe_id' : 'client_id';
 
     const { data, error } = await supabase
       .from('conversations')
       .select(`
         *,
-        particulier:profiles!conversations_particulier_id_fkey(id, nom, avatar_url),
+        client:profiles!conversations_client_id_fkey(id, nom, avatar_url),
         photographe:profiles!conversations_photographe_id_fkey(id, nom, avatar_url),
         messages(
           content,
@@ -65,7 +65,7 @@ export const getUserConversations = async (userId, role = 'particulier') => {
     const conversationsWithLastMessage = data?.map(conv => ({
       ...conv,
       lastMessage: conv.messages?.[conv.messages.length - 1] || null,
-      otherParticipant: role === 'particulier' ? conv.photographe : conv.particulier,
+      otherParticipant: role === 'client' ? conv.photographe : conv.client,
     })) || [];
 
     return { data: conversationsWithLastMessage, error: null };
@@ -202,7 +202,7 @@ export const getConversationById = async (conversationId) => {
       .from('conversations')
       .select(`
         *,
-        particulier:profiles!conversations_particulier_id_fkey(id, nom, email, avatar_url, telephone),
+        client:profiles!conversations_client_id_fkey(id, nom, email, avatar_url, telephone),
         photographe:profiles!conversations_photographe_id_fkey(id, nom, email, avatar_url, telephone),
         reservations(id, date_prestation, status, montant)
       `)

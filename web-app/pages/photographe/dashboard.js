@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -155,7 +155,7 @@ export default function PhotographerDashboard() {
     {
       icon: Euro,
       label: 'CA du mois',
-      value: `${stats.revenueThisMonth}€`,
+      value: `${stats.revenueThisMonth} DH`,
       color: 'bg-indigo-100 text-indigo-600',
       href: '/photographe/revenus',
     },
@@ -326,7 +326,7 @@ export default function PhotographerDashboard() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900">{booking.montant_total}€</p>
+                        <p className="font-semibold text-gray-900">{booking.montant_total} DH</p>
                       </div>
                     </div>
                   ))}
@@ -367,7 +367,7 @@ export default function PhotographerDashboard() {
                           {demande.titre}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {demande.lieu} • Budget: {demande.budget_max}€
+                          {demande.lieu} • Budget: {demande.budget_max} DH
                         </p>
                       </div>
                       <button

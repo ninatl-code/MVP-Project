@@ -4,8 +4,8 @@ import React from 'react';
 export function ShootyLogoSimple({ width = 140, height = 45, className = '' }) {
   return (
     <img 
-      src="/shooty-logo.svg" 
-      alt="Shooty"
+      src="/wedoria-logo.svg" 
+      alt="Wedoria"
       width={width}
       height={height}
       className={className}
@@ -22,8 +22,8 @@ export function ShootyLogoSimple({ width = 140, height = 45, className = '' }) {
 export function ShootyLogoCompact({ width = 120, height = 40 }) {
   return (
     <img 
-      src="/shooty-logo.svg" 
-      alt="Shooty"
+      src="/wedoria-logo.svg" 
+      alt="Wedoria"
       width={width}
       height={height}
       style={{ 

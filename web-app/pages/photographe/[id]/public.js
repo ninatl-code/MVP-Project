@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
@@ -403,7 +403,7 @@ export default function PhotographeProfilePage() {
                             </div>
                             <div className="text-right">
                               <div className="text-xl font-bold text-indigo-600">
-                                {pkg.prix}€
+                                {pkg.prix} DH
                               </div>
                               {pkg.duree && (
                                 <div className="text-sm text-gray-500">
@@ -488,7 +488,7 @@ export default function PhotographeProfilePage() {
             <div className="bg-white rounded-xl shadow-sm p-6 sticky top-4">
               <div className="flex items-baseline gap-2 mb-4">
                 <span className="text-3xl font-bold text-gray-900">
-                  {photographe.tarif_horaire || '—'}€
+                  {photographe.tarif_horaire || '—'} DH
                 </span>
                 <span className="text-gray-500">/heure</span>
               </div>

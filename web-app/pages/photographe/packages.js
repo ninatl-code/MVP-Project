@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -185,9 +185,9 @@ export default function PackagesPage() {
 
                   {/* Price */}
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-indigo-600">{pkg.prix}€</p>
+                    <p className="text-2xl font-bold text-indigo-600">{pkg.prix} DH</p>
                     {pkg.prix_barre && (
-                      <p className="text-sm text-gray-400 line-through">{pkg.prix_barre}€</p>
+                      <p className="text-sm text-gray-400 line-through">{pkg.prix_barre} DH</p>
                     )}
                   </div>
 
@@ -340,7 +340,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Prix (€) *
+                Prix (MAD) *
               </label>
               <input
                 type="number"
@@ -353,7 +353,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Prix barré (€)
+                Prix barré (MAD)
               </label>
               <input
                 type="number"

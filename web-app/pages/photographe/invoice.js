@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { useRouter } from 'next/router'
 import jsPDF from 'jspdf'
@@ -780,7 +780,7 @@ export default function InvoicePage() {
                 <option value="">-- Sélectionner --</option>
                 {reservations.map(resa => (
                   <option key={resa.id} value={resa.id}>
-                    {resa.prestations_photographe?.titre} - {new Date(resa.start_datetime).toLocaleDateString('fr-FR')} - {resa.montant_total}€
+                    {resa.prestations_photographe?.titre} - {new Date(resa.start_datetime).toLocaleDateString('fr-FR')} - {resa.montant_total} DH
                   </option>
                 ))}
               </select>
@@ -1279,13 +1279,13 @@ export default function InvoicePage() {
                             {presta.quantite}
                           </td>
                           <td style={{ padding: '12px 8px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
-                            {presta.prixUnitaire.toFixed(2)} €
+                            {presta.prixUnitaire.toFixed(2)}  DH
                           </td>
                           <td style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '1px solid #eee' }}>
                             {presta.tva}%
                           </td>
                           <td style={{ padding: '12px 8px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
-                            {(presta.quantite * presta.prixUnitaire).toFixed(2)} €
+                            {(presta.quantite * presta.prixUnitaire).toFixed(2)}  DH
                           </td>
                         </tr>
                       ))}
@@ -1309,7 +1309,7 @@ export default function InvoicePage() {
                     fontSize: 14
                   }}>
                     <span>Total HT :</span>
-                    <span style={{ fontWeight: 600 }}>{totals.totalHT} €</span>
+                    <span style={{ fontWeight: 600 }}>{totals.totalHT}  DH</span>
                   </div>
                   <div style={{ 
                     display: 'flex', 
@@ -1320,7 +1320,7 @@ export default function InvoicePage() {
                     borderBottom: '1px solid #ddd'
                   }}>
                     <span>TVA :</span>
-                    <span style={{ fontWeight: 600 }}>{totals.totalTVA} €</span>
+                    <span style={{ fontWeight: 600 }}>{totals.totalTVA}  DH</span>
                   </div>
                   <div style={{ 
                     display: 'flex', 
@@ -1330,7 +1330,7 @@ export default function InvoicePage() {
                     color: '#635BFF'
                   }}>
                     <span>Total TTC :</span>
-                    <span>{totals.totalTTC} €</span>
+                    <span>{totals.totalTTC}  DH</span>
                   </div>
                 </div>
 

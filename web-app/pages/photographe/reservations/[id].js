@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
@@ -334,7 +334,7 @@ export default function PhotographeReservationDetailPage() {
                     {reservation.devis.details.map((detail, index) => (
                       <div key={index} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
                         <span className="text-gray-600">{detail.description}</span>
-                        <span className="font-medium">{detail.montant}€</span>
+                        <span className="font-medium">{detail.montant} DH</span>
                       </div>
                     ))}
                   </div>
@@ -343,7 +343,7 @@ export default function PhotographeReservationDetailPage() {
                 <div className="flex justify-between items-center pt-4 border-t border-gray-200">
                   <span className="text-lg font-semibold text-gray-900">Total</span>
                   <span className="text-2xl font-bold text-indigo-600">
-                    {reservation.montant_total || reservation.devis.montant_total}€
+                    {reservation.montant_total || reservation.devis.montant_total} DH
                   </span>
                 </div>
 
@@ -352,7 +352,7 @@ export default function PhotographeReservationDetailPage() {
                     <span className="text-gray-500">Acompte reçu</span>
                     <span className="text-green-600 font-medium flex items-center gap-1">
                       <CheckCircle className="w-4 h-4" />
-                      {reservation.montant_paye}€
+                      {reservation.montant_paye} DH
                     </span>
                   </div>
                 )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../../lib/supabaseClient';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -281,7 +281,7 @@ export default function CreateDevisPage() {
                           type="number"
                           value={detail.montant}
                           onChange={(e) => updateDetailLine(index, 'montant', e.target.value)}
-                          placeholder="€"
+                          placeholder=" DH"
                           className="w-24 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
                         {formData.details.length > 1 && (
@@ -307,7 +307,7 @@ export default function CreateDevisPage() {
                 {/* Total price */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Montant total (€) *
+                    Montant total (MAD) *
                   </label>
                   <div className="relative">
                     <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -401,9 +401,9 @@ export default function CreateDevisPage() {
                   <Euro className="w-4 h-4 text-indigo-600" />
                   <span className="font-medium">
                     Budget: {demande.budget_min && demande.budget_max 
-                      ? `${demande.budget_min}€ - ${demande.budget_max}€`
+                      ? `${demande.budget_min} DH - ${demande.budget_max} DH`
                       : demande.budget_max 
-                      ? `Max ${demande.budget_max}€`
+                      ? `Max ${demande.budget_max} DH`
                       : 'Non défini'}
                   </span>
                 </div>
@@ -435,11 +435,11 @@ export default function CreateDevisPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="text-sm text-gray-500 mb-1">Montant du devis</p>
               <p className="text-3xl font-bold text-indigo-600">
-                {formData.montant ? `${formData.montant}€` : '---'}
+                {formData.montant ? `${formData.montant} DH` : '---'}
               </p>
               {formData.montant && (
                 <p className="text-xs text-gray-500 mt-2">
-                  Acompte client: {Math.round(parseFloat(formData.montant) * 0.3)}€ (30%)
+                  Acompte client: {Math.round(parseFloat(formData.montant) * 0.3)} DH (30%)
                 </p>
               )}
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -363,9 +363,9 @@ function DemandeCard({ demande, hasSubmitted, onClick, onSubmit }) {
             <p className="text-sm text-gray-500">Budget</p>
             <p className="font-bold text-lg text-indigo-600">
               {demande.budget_min && demande.budget_max 
-                ? `${demande.budget_min}€ - ${demande.budget_max}€`
+                ? `${demande.budget_min} DH - ${demande.budget_max} DH`
                 : demande.budget_max 
-                ? `Max ${demande.budget_max}€`
+                ? `Max ${demande.budget_max} DH`
                 : 'Non défini'}
             </p>
           </div>

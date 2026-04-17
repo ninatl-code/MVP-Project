@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -248,7 +248,7 @@ export default function ReservationDetailPage() {
                   <Euro className="w-5 h-5 text-indigo-600" />
                   <div>
                     <p className="text-sm text-gray-500">Montant total</p>
-                    <p className="font-medium text-lg">{reservation.montant_total}€</p>
+                    <p className="font-medium text-lg">{reservation.montant_total} DH</p>
                   </div>
                 </div>
               </div>
@@ -288,15 +288,15 @@ export default function ReservationDetailPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Acompte versé (30%)</span>
-                  <span className="font-medium">{Math.round(reservation.montant_total * 0.3)}€</span>
+                  <span className="font-medium">{Math.round(reservation.montant_total * 0.3)} DH</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Solde à régler</span>
-                  <span className="font-medium">{Math.round(reservation.montant_total * 0.7)}€</span>
+                  <span className="font-medium">{Math.round(reservation.montant_total * 0.7)} DH</span>
                 </div>
                 <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
                   <span className="font-medium text-gray-900">Total</span>
-                  <span className="font-bold text-lg">{reservation.montant_total}€</span>
+                  <span className="font-bold text-lg">{reservation.montant_total} DH</span>
                 </div>
               </div>
 
@@ -313,7 +313,7 @@ export default function ReservationDetailPage() {
                         </span>
                         <span className="ml-2 text-gray-600">{p.type_paiement}</span>
                       </div>
-                      <span className="font-medium">{p.montant}€</span>
+                      <span className="font-medium">{p.montant} DH</span>
                     </div>
                   ))}
                 </div>

@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+﻿import { supabase } from './supabaseClient';
 
 /**
  * Search photographers with filters
@@ -282,10 +282,10 @@ export const SEARCH_CATEGORIES = [
  * Price ranges for filtering
  */
 export const PRICE_RANGES = [
-  { id: 'budget', label: 'Économique', min: 0, max: 100, description: '< 100€/h' },
-  { id: 'mid', label: 'Intermédiaire', min: 100, max: 200, description: '100€ - 200€/h' },
-  { id: 'premium', label: 'Premium', min: 200, max: 500, description: '200€ - 500€/h' },
-  { id: 'luxury', label: 'Luxe', min: 500, max: null, description: '> 500€/h' },
+  { id: 'budget', label: 'Économique', min: 0, max: 100, description: '< 100 DH/h' },
+  { id: 'mid', label: 'Intermédiaire', min: 100, max: 200, description: '100 DH - 200 DH/h' },
+  { id: 'premium', label: 'Premium', min: 200, max: 500, description: '200 DH - 500 DH/h' },
+  { id: 'luxury', label: 'Luxe', min: 500, max: null, description: '> 500 DH/h' },
 ];
 
 export default {

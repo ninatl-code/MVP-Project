@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
 import Header from '../../components/HeaderParti'
@@ -64,7 +64,7 @@ function ParticularHomeMenu() {
   const { availableProfiles, switchProfile, profileId } = useAuth();
   const hasMultipleProfiles = availableProfiles?.length > 1;
 
-  // Fonction pour basculer vers le profil photographe
+  // Fonction pour basculer vers le profil prestataire
   const handleSwitchToPhotographe = async () => {
     const photographeProfile = availableProfiles?.find(p => p.role === 'photographe' || p.role === 'prestataire');
     if (photographeProfile) {
@@ -1929,9 +1929,9 @@ function ParticularHomeMenu() {
                 <div className="flex items-center gap-4 mb-2">
                   <div>
                     <p className="text-white opacity-90 text-lg">Bonjour 👋</p>
-                    <h1 className="text-2xl lg:text-3xl font-bold text-white">
-                      Mon espace Client
-                    </h1>
+                    <h3 className="text-2xl lg:text-3xl font-bold text-white">
+                      {profile?.nom ? `${profile.nom.split(' ')[0]}` : ' '}
+                    </h3>
                   </div>
                 </div>
               </div>
@@ -1948,7 +1948,7 @@ function ParticularHomeMenu() {
                   }}
                 >
                   <RefreshCcw className="w-5 h-5" />
-                  <span className="font-semibold text-sm">Mode Photographe</span>
+                  <span className="font-semibold text-sm">Mode Prestataire</span>
                 </button>
               )}
             </div>
@@ -1971,11 +1971,11 @@ function ParticularHomeMenu() {
           </div>
         </div>
 
-        {/* Section "Comment trouver un photographe" (aligné sur mobile) */}
+        {/* Section "Comment trouver un prestataire" (aligné sur mobile) */}
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="mb-8">
             <h2 className="text-xl font-bold mb-2" style={{ color: COLORS.text }}>
-              💡 Comment trouver un photographe ?
+              💡 Comment trouver un prestataire ?
             </h2>
             <p className="text-sm" style={{ color: COLORS.text + 'AA' }}>
               Choisissez la méthode qui vous convient
@@ -2014,7 +2014,7 @@ function ParticularHomeMenu() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-sm text-white/90">Les photographes viennent à vous</span>
+                  <span className="text-sm text-white/90">Les prestataires viennent à vous</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-400" />
@@ -2034,7 +2034,7 @@ function ParticularHomeMenu() {
                   <Search className="w-7 h-7" style={{ color: COLORS.accent }} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold" style={{ color: COLORS.text }}>Rechercher activement</h3>
+                  <h2 className="text-lg font-bold" style={{ color: COLORS.accent }}>Rechercher activement</h2>
                   <p className="text-sm" style={{ color: COLORS.text + '99' }}>Parcourez les profils</p>
                 </div>
                 <ArrowRight className="w-8 h-8" style={{ color: COLORS.accent }} />
@@ -2066,7 +2066,7 @@ function ParticularHomeMenu() {
               {/* Demandes */}
               <div 
                 className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
-                onClick={() => router.push('/client/demandes/mes-demandes')}
+                onClick={() => router.push('/client/demandes')}
               >
                 <div className="relative inline-flex">
                   <FileText className="w-7 h-7" style={{ color: COLORS.accent }} />
@@ -2098,7 +2098,7 @@ function ParticularHomeMenu() {
               {/* Réservations */}
               <div 
                 className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
-                onClick={() => router.push('/client/reservations/reservations-list')}
+                onClick={() => router.push('/client/reservations')}
               >
                 <div className="relative inline-flex">
                   <Calendar className="w-7 h-7" style={{ color: COLORS.accent }} />
@@ -2488,16 +2488,9 @@ function ParticularHomeMenu() {
                 <FileText className="w-12 h-12 text-blue-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucun devis pour le moment</h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Recherchez des prestataires et demandez des devis personnalisés pour vos besoins.
+              <p className="text-gray-600 max-w-md mx-auto">
+                Postez une demande ou recherchez des prestataires pour recevoir des devis.
               </p>
-              <button
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => navigateWithSplash("/client/search", "Recherche de prestataires...")}
-              >
-                <Search className="w-5 h-5 inline mr-2" />
-                Trouver des prestataires
-              </button>
             </div>
           )}
 
@@ -2507,42 +2500,13 @@ function ParticularHomeMenu() {
                 <Calendar className="w-12 h-12 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucune réservation active</h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Réservez des prestations pour votre événement et organisez votre planning.
+              <p className="text-gray-600 max-w-md mx-auto">
+                Vos réservations confirmées apparaîtront ici.
               </p>
-              <button
-                className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => navigateWithSplash("/client/search", "Recherche de services...")}
-              >
-                <Search className="w-5 h-5 inline mr-2" />
-                Rechercher des services
-              </button>
             </div>
           )}
 
 
-
-          {/* Section vide globale */}
-          {activeTab === 'overview' && devisSorted.length === 0 && reservationsSorted.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Search className="w-12 h-12 text-gray-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Commencez votre recherche !
-              </h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Découvrez des prestataires exceptionnels pour votre mariage et commencez à créer des souvenirs inoubliables.
-              </p>
-              <button
-                className="bg-gradient-to-r from-blue-600 to-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
-                onClick={() => router.push("/client/search")}
-              >
-                <Search className="w-5 h-5 inline mr-2" />
-                Découvrir les prestataires
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -2627,7 +2591,7 @@ function ParticularHomeMenu() {
                   {selectedCancelReservation?.prix && (
                     <>
                       <strong style={{ color: '#475569' }}>Montant payé :</strong>
-                      <span style={{ color: '#64748b', fontWeight: 600 }}>{selectedCancelReservation.prix}€</span>
+                      <span style={{ color: '#64748b', fontWeight: 600 }}>{selectedCancelReservation.prix} DH</span>
                     </>
                   )}
                 </div>
@@ -2698,7 +2662,7 @@ function ParticularHomeMenu() {
                           {cancellationConditions.refundPercentage}% du montant payé
                           {selectedCancelReservation?.prix && (
                             <span style={{ marginLeft: 8, fontSize: 13, color: '#64748b' }}>
-                              (soit {Math.round((selectedCancelReservation.prix * cancellationConditions.refundPercentage) / 100)}€)
+                              (soit {Math.round((selectedCancelReservation.prix * cancellationConditions.refundPercentage) / 100)} DH)
                             </span>
                           )}
                         </span>
@@ -2895,7 +2859,7 @@ function ParticularHomeMenu() {
                 Changer de profil
               </h2>
               <p style={{ fontSize: '14px', color: '#1C1C1EAA' }}>
-                Voulez-vous passer en mode Photographe ?
+                Voulez-vous passer en mode Prestataire ?
               </p>
               <p style={{ fontSize: '13px', color: '#1C1C1E80', marginTop: '8px' }}>
                 Vous pourrez accéder aux demandes, créer des devis et gérer vos réservations.

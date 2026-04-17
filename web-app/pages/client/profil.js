@@ -46,250 +46,121 @@ function UserProfile() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError) {
-          console.error('Erreur d\'authentification:', authError);
-          alert('Erreur d\'authentification. Veuillez vous reconnecter.');
-          router.push('/login');
-          return;
-        }
+        const { data: { session } } = await supabase.auth.getSession();
+        const authUser = session?.user;
 
         if (!authUser) {
-          console.log('Pas d\'utilisateur authentifié');
-          alert('Vous devez être connecté pour accéder à cette page.');
           router.push('/login');
           return;
         }
 
-        console.log('✅ User ID:', authUser.id);
-        console.log('✅ User Email:', authUser.email);
+        const uid = authUser.id;
 
-        // Récupération du profil
+        // PHASE 1 : profil uniquement — affichage immédiat
         const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("nom, avatar_url, ville, email, telephone, description")
-          .eq("id", authUser.id)
-          .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
-
-        console.log('📊 Profile query result:');
-        console.log('  - Data:', profile);
-        console.log('  - Error:', profileError);
+          .from('profiles')
+          .select('nom, avatar_url, photos, ville, email, telephone')
+          .eq('id', uid)
+          .maybeSingle();
 
         if (profileError) {
-          console.error('❌ Erreur lors de la récupération du profil:', profileError);
           alert('Erreur lors du chargement du profil: ' + profileError.message);
           return;
         }
 
         if (!profile) {
-          console.log('⚠️ Aucun profil trouvé, création d\'un profil par défaut');
-          // Afficher un profil vide que l'utilisateur pourra remplir
           setUser({
-            name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || "",
-            avatar: "",
-            city: "",
-            cityId: null,
-            email: authUser.email || "",
-            phone: "",
-            about: ""
+            name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || '',
+            avatar: '', city: '', cityId: null,
+            email: authUser.email || '', phone: '', about: ''
           });
-          setEmailEdit(authUser.email || "");
-          setBioEdit("");
-          setPhoneEdit("");
-          setVilleEdit("");
-          setPhotoEdit("");
-          
-          // Charger la liste des villes quand même
-          const { data: villesData } = await supabase
-            .from("villes")
-            .select("id, ville")
-            .order("ville", { ascending: true });
-          setVillesList(villesData || []);
-          
+          setEmailEdit(authUser.email || '');
           return;
         }
 
-        console.log('✅ Profil trouvé:', {
-          nom: profile.nom,
-          email: profile.email,
-          telephone: profile.telephone,
-          ville: profile.ville
-        });
-
-        // Récupération de la ville
-        let villeLabel = profile?.ville || "";
+        const villeLabel = profile.ville || '';
         setVilleNom(villeLabel);
-
-        // Filtrer avatar_url: ignorer les chemins locaux (file://)
-        const avatarUrl = profile?.avatar_url || "";
-        const validAvatar = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') ? avatarUrl : "";
-
-        // Construction de l'objet utilisateur
-        const userData = {
-          name: profile?.nom || "",
+        const av = profile.photos || profile.avatar_url || '';
+        const validAvatar = av.startsWith('http') || av.startsWith('data:image') ? av : '';
+        setUser({
+          name: profile.nom || '',
           avatar: validAvatar,
           city: villeLabel,
           cityId: null,
-          email: profile?.email || authUser.email || "",
-          phone: profile?.telephone || "",
-          about: "" // bio n'existe pas dans profiles
-        };
-
-        console.log('✅ User data final:', userData);
-        setUser(userData);
-
-        // Initialisation des champs d'édition
-        setBioEdit(""); // bio n'existe pas dans profiles
-        setEmailEdit(profile?.email || authUser.email || "");
-        setPhoneEdit(profile?.telephone || "");
+          email: profile.email || authUser.email || '',
+          phone: profile.telephone || '',
+          about: ''
+        });
+        setEmailEdit(profile.email || authUser.email || '');
+        setBioEdit('');
+        setPhoneEdit(profile.telephone || '');
         setVilleEdit(villeLabel);
         setPhotoEdit(validAvatar);
 
-        // Récupération de la liste des villes
-        console.log('🏙️ Chargement de la liste des villes...');
-        const { data: villesData, error: villesError } = await supabase
-          .from("villes")
-          .select("id, ville")
-          .order("ville", { ascending: true });
-        
-        if (villesError) {
-          console.error('❌ Erreur chargement villes:', villesError);
-        } else {
-          console.log('✅ Villes chargées:', villesData?.length, 'villes');
-          setVillesList(villesData || []);
-        }
+        // PHASE 2 : stats + favoris en arrière-plan (sans bloquer l'affichage)
+        Promise.all([
+          supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('client_id', uid),
+          supabase.from('commandes').select('id', { count: 'exact', head: true }).eq('particulier_id', uid),
+          supabase.from('devis').select('id', { count: 'exact', head: true }).eq('client_id', uid),
+          supabase.from('avis').select('id', { count: 'exact', head: true }).eq('reviewer_id', uid),
+          supabase.from('reservations').select('id, created_at, statut, annonces(titre)').eq('client_id', uid).order('created_at', { ascending: false }).limit(3),
+          supabase.from('favoris').select('id, photographe_id').eq('client_id', uid)
+        ]).then(async ([
+          { count: reservationsCount },
+          { count: commandesCount },
+          { count: devisCount },
+          { count: avisCount },
+          { data: recentRes },
+          { data: favAnnonceData }
+        ]) => {
+          setNbReservations(reservationsCount || 0);
+          setNbCommandes(commandesCount || 0);
+          setNbDevis(devisCount || 0);
+          setNbAvis(avisCount || 0);
+          setRecentActivity((recentRes || []).map(r => ({
+            id: r.id, type: 'reservation',
+            title: r.annonces?.titre || 'Réservation',
+            status: r.statut, date: r.created_at
+          })));
 
-        // Récupère le nombre de réservations
-        console.log('📊 Chargement des statistiques...');
-        const { count: reservationsCount, error: resError } = await supabase
-          .from('reservations')
-          .select('id', { count: 'exact', head: true })
-          .eq('client_id', authUser.id);
-        
-        if (resError) console.error('❌ Erreur réservations:', resError);
-        else console.log('✅ Réservations:', reservationsCount);
-        setNbReservations(reservationsCount || 0);
+          if (favAnnonceData && favAnnonceData.length > 0) {
+            const annonceIds = favAnnonceData.map(f => f.photographe_id).filter(Boolean);
+            if (annonceIds.length > 0) {
+              const { data: annoncesData } = await supabase
+                .from('prestations_photographe')
+                .select('id, titre, photos')
+                .in('id', annonceIds);
 
-        // Récupère le nombre de commandes
-        const { count: commandesCount, error: cmdError } = await supabase
-          .from('commandes')
-          .select('id', { count: 'exact', head: true })
-          .eq('particulier_id', authUser.id);
-        
-        if (cmdError) console.error('❌ Erreur commandes:', cmdError);
-        else console.log('✅ Commandes:', commandesCount);
-        setNbCommandes(commandesCount || 0);
-
-        // Récupère le nombre de devis
-        const { count: devisCount, error: devisError } = await supabase
-          .from('devis')
-          .select('id', { count: 'exact', head: true })
-          .eq('client_id', authUser.id);
-        
-        if (devisError) console.error('❌ Erreur devis:', devisError);
-        else console.log('✅ Devis:', devisCount);
-        setNbDevis(devisCount || 0);
-
-        // Récupère le nombre d'avis donnés
-        const { count: avisCount, error: avisError } = await supabase
-          .from('avis')
-          .select('id', { count: 'exact', head: true })
-          .eq('reviewer_id', authUser.id);
-        
-        if (avisError) console.error('❌ Erreur avis:', avisError);
-        else console.log('✅ Avis:', avisCount);
-        setNbAvis(avisCount || 0);
-
-        // Récupère l'activité récente (dernières réservations/devis)
-        const { data: recentRes } = await supabase
-          .from('reservations')
-          .select('id, created_at, statut, annonces(titre)')
-          .eq('client_id', authUser.id)
-          .order('created_at', { ascending: false })
-          .limit(3);
-
-        const activity = (recentRes || []).map(r => ({
-          id: r.id,
-          type: 'reservation',
-          title: r.annonces?.titre || 'Réservation',
-          status: r.statut,
-          date: r.created_at
-        }));
-        setRecentActivity(activity);
-
-        // Récupère les annonces favorites du particulier
-        console.log('❤️ Chargement des favoris...');
-        const { data: favAnnonceData, error: favError } = await supabase
-          .from("favoris")
-          .select("id, photographe_id")
-          .eq("client_id", authUser.id);
-
-        if (favError) {
-          console.error('❌ Erreur favoris:', favError);
-        } else {
-          console.log('✅ Favoris trouvés:', favAnnonceData?.length);
-        }
-
-        let annoncesList = [];
-        if (favAnnonceData && favAnnonceData.length > 0) {
-          const annonceIds = favAnnonceData.map(f => f.photographe_id).filter(Boolean);
-          if (annonceIds.length > 0) {
-            const { data: annoncesData, error: annoncesError } = await supabase
-              .from("prestations_photographe")
-              .select("id, titre, photos")
-              .in("id", annonceIds);
-            
-            if (annoncesError) {
-              console.error('❌ Erreur annonces favorites:', annoncesError);
-            } else {
-              console.log('✅ Annonces favorites chargées:', annoncesData?.length);
-              annoncesList = (annoncesData || []).map(a => {
-                // Gérer les photos (text array en base64 ou URLs)
-                let photosArray = [];
-                if (a.photos && Array.isArray(a.photos)) {
-                  photosArray = a.photos;
-                }
-                
-                // Récupérer la première photo et la formater correctement
+              setFavoriteAnnonces((annoncesData || []).map(a => {
+                const photosArray = Array.isArray(a.photos) ? a.photos : [];
                 let firstPhoto = DEFAULT_ANNONCE_IMG;
                 if (photosArray.length > 0) {
                   const photoData = photosArray[0];
-                  // Si la photo commence déjà par data:image, l'utiliser directement
-                  if (photoData && photoData.startsWith('data:image')) {
-                    firstPhoto = photoData;
-                  } 
-                  // Si c'est du base64 pur, ajouter le préfixe data URL
-                  else if (photoData && photoData.length > 100) {
-                    firstPhoto = `data:image/jpeg;base64,${photoData}`;
-                  }
-                  // Sinon, si c'est une URL normale
-                  else if (photoData && (photoData.startsWith('http') || photoData.startsWith('/'))) {
-                    firstPhoto = photoData;
-                  }
+                  if (photoData?.startsWith('data:image')) firstPhoto = photoData;
+                  else if (photoData?.length > 100) firstPhoto = `data:image/jpeg;base64,${photoData}`;
+                  else if (photoData?.startsWith('http') || photoData?.startsWith('/')) firstPhoto = photoData;
                 }
-                
-                return {
-                  id: a.id,
-                  titre: a.titre,
-                  photo: firstPhoto
-                };
-              });
+                return { id: a.id, titre: a.titre, photo: firstPhoto };
+              }));
             }
           }
-        }
-        setFavoriteAnnonces(annoncesList);
-
-        console.log('✅ Chargement terminé avec succès!');
+        });
 
       } catch (error) {
-        console.error('❌ ERREUR FATALE:', error);
-        alert('Une erreur est survenue lors du chargement de votre profil: ' + error.message);
+        console.error('Erreur chargement profil:', error);
       }
     };
 
     fetchUserData();
   }, [router]);
+
+  // Charger les villes seulement à l'ouverture du mode édition
+  useEffect(() => {
+    if (editMode && villesList.length === 0) {
+      supabase.from('villes').select('id, ville').order('ville', { ascending: true })
+        .then(({ data }) => setVillesList(data || []));
+    }
+  }, [editMode]);
 
   // Gérer le scroll vers la section favoris si le hash est présent
   useEffect(() => {
@@ -314,88 +185,82 @@ function UserProfile() {
     });
   }
 
-  // Gestion upload photo
+  // Gestion upload photo (base64, sans Supabase Storage)
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    // Validation du type de fichier
+
     if (!file.type.startsWith('image/')) {
       alert('Veuillez sélectionner une image');
       return;
     }
-    
-    // Validation de la taille (5 Mo max)
     if (file.size > 5 * 1024 * 1024) {
-      alert('L\'image ne doit pas dépasser 5 Mo');
-      return;
-    }
-    
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) {
-      alert('Vous devez être connecté');
+      alert("L'image ne doit pas dépasser 5 Mo");
       return;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${authUser.id}-avatar-${Date.now()}.${fileExt}`;
-    const filePath = `avatar/${fileName}`;
-
-    try {
-      // Upload vers Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(filePath, file, {
-          contentType: file.type,
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Récupérer l'URL publique
-      const { data: { publicUrl } } = supabase.storage
-        .from('photos')
-        .getPublicUrl(filePath);
-
-      setPhotoEdit(publicUrl);
-      alert('Photo téléchargée ! Cliquez sur Sauvegarder pour appliquer.');
-    } catch (error) {
-      console.error('Erreur upload:', error);
-      alert('Erreur lors du téléchargement: ' + (error.message || 'Erreur inconnue'));
-    }
+    // Redimensionner à 200x200 via canvas et encoder en base64
+    const img = new window.Image();
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      img.onload = () => {
+        const SIZE = 200;
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        // Centrer/rogner en carré
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, SIZE, SIZE);
+        const base64 = canvas.toDataURL('image/jpeg', 0.85);
+        setPhotoEdit(base64);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   // Sauvegarde des modifications
   const handleSaveProfile = async () => {
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authUser) {
-      alert("Erreur d'authentification : " + (authError?.message || "Utilisateur non trouvé"));
+    const { data: { session } } = await supabase.auth.getSession();
+    const authUser = session?.user;
+    if (!authUser) {
+      alert("Erreur d'authentification : session introuvable");
       return;
     }
-    
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        email: emailEdit,
-        telephone: phoneEdit,
-        ville: villeEdit,
-        avatar_url: photoEdit
-      })
-      .eq("id", authUser.id);
 
-    if (error) {
-      console.error("Erreur Supabase:", error);
-      alert(
-        "Erreur lors de la sauvegarde du profil !\n" +
-        "Message : " + error.message + "\n" +
-        "Code : " + error.code + "\n" +
-        "Détails : " + (error.details || "Aucun détail")
-      );
-    } else {
-      alert('Profil mis à jour avec succès !');
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          email: emailEdit,
+          telephone: phoneEdit,
+          ville: villeEdit,
+          photos: photoEdit,
+          avatar_url: photoEdit,
+        })
+        .eq("id", authUser.id);
+
+      if (error) {
+        console.error("Erreur Supabase:", error);
+        alert("Erreur lors de la sauvegarde : " + error.message);
+        return;
+      }
+
+      // Mettre à jour l'état local sans reload
+      setUser(prev => ({
+        ...prev,
+        email: emailEdit,
+        phone: phoneEdit,
+        city: villeEdit,
+        avatar: photoEdit,
+      }));
       setEditMode(false);
-      window.location.reload();
+    } catch (err) {
+      console.error("Exception handleSaveProfile:", err);
+      alert("Erreur inattendue : " + (err.message || err));
     }
   };
 
@@ -542,7 +407,7 @@ function UserProfile() {
                   value={bioEdit}
                   onChange={e => setBioEdit(e.target.value)}
                   rows={5}
-                  placeholder="Parlez-nous de vous, vos goûts photographiques, vos inspirations, le style de shooting que vous recherchez..."
+                  placeholder="Parlez-nous de vous, vos goûts, vos inspirations, le style de prestations que vous recherchez..."
                   maxLength={500}
                 />
                 <div className="text-right text-sm text-gray-400">
@@ -661,7 +526,7 @@ function UserProfile() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 rounded-xl" style={{ background: `${COLORS.primary}15` }}>
                   <div className="text-2xl font-bold" style={{ color: COLORS.primary }}>{nbReservations}</div>
-                  <div className="text-sm text-gray-600 mt-1">Shooting{nbReservations > 1 ? 's' : ''} réservé{nbReservations > 1 ? 's' : ''}</div>
+                  <div className="text-sm text-gray-600 mt-1">Prestation {nbReservations > 1 ? 's' : ''} réservée{nbReservations > 1 ? 's' : ''}</div>
                 </div>
                 <div className="text-center p-4 rounded-xl" style={{ background: `${COLORS.secondary}30` }}>
                   <div className="text-2xl font-bold" style={{ color: '#F59E0B' }}>{nbDevis}</div>
@@ -873,12 +738,12 @@ function UserProfile() {
                 </div>
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
-                    Mes photographes favoris
+                    Mes prestataires favoris
                   </h2>
-                  <p className="text-gray-500">Vos photographes préférés pour vos shootings</p>
+                  <p className="text-gray-500">Vos prestataires préférés pour vos projets</p>
                 </div>
                 <div className="px-3 py-1 rounded-full text-sm font-semibold" style={{ background: `${COLORS.accent}30`, color: COLORS.accent }}>
-                  {favoriteAnnonces.length} photographe{favoriteAnnonces.length > 1 ? 's' : ''}
+                  {favoriteAnnonces.length} prestataire{favoriteAnnonces.length > 1 ? 's' : ''}
                 </div>
               </div>
               
@@ -936,10 +801,10 @@ function UserProfile() {
                 <Heart className="w-8 h-8 text-gray-400" />
               </div>
               <h2 className="text-xl font-bold mb-2" style={{ color: COLORS.text }}>
-                Aucun photographe favori pour le moment
+                Aucun prestataire favori pour le moment
               </h2>
               <p className="text-gray-500 mb-6">
-                Découvrez nos photographes talentueux et ajoutez-les à vos favoris en cliquant sur le cœur.
+                Découvrez nos prestataires talentueux et ajoutez-les à vos favoris en cliquant sur le cœur.
               </p>
               <a
                 href="/annonces"
@@ -948,7 +813,7 @@ function UserProfile() {
                 onMouseEnter={(e) => e.target.style.background = '#5048E5'}
                 onMouseLeave={(e) => e.target.style.background = COLORS.primary}
               >
-                Découvrir nos photographes
+                Découvrir nos prestataires
                 <span>→</span>
               </a>
             </section>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -273,7 +273,7 @@ export default function StatistiquesPage() {
                 icon={Euro} 
                 label="Chiffre d'affaires" 
                 value={stats.totalRevenue}
-                suffix="€"
+                suffix=" DH"
                 comparison={comparison.revenue}
                 color="emerald"
               />
@@ -371,7 +371,7 @@ export default function StatistiquesPage() {
                   <p className="text-3xl font-bold">
                     {stats.reservationsCompleted > 0 
                       ? Math.round(stats.totalRevenue / stats.reservationsCompleted)
-                      : 0}€
+                      : 0} DH
                   </p>
                 </div>
                 <div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1523,7 +1523,7 @@ export default function PhotographeProfilPage() {
               {profile?.mode_mobile && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frais de déplacement (€/km)
+                    Frais de déplacement (MAD/km)
                   </label>
                   <div className="relative">
                     <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -1657,7 +1657,7 @@ export default function PhotographeProfilPage() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tarif horaire de base (€)
+                  Tarif horaire de base (MAD)
                 </label>
                 <input
                   type="number"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -26,17 +26,30 @@ const STATUS_CONFIG = {
 
 export default function MesDemandesPage() {
   const router = useRouter();
-  const { user, profileId } = useAuth();
+  const { profileId } = useAuth();
   const [demandes, setDemandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [resolvedId, setResolvedId] = useState(null);
+
+  // Résoudre l'ID sans attendre l'AuthContext (évite les chargements longs)
+  useEffect(() => {
+    const resolveId = async () => {
+      if (profileId) {
+        setResolvedId(profileId);
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setResolvedId(user.id);
+      else router.push('/login');
+    };
+    resolveId();
+  }, [profileId]);
 
   useEffect(() => {
-    if (profileId) {
-      fetchDemandes();
-    }
-  }, [profileId, filter]);
+    if (resolvedId) fetchDemandes();
+  }, [resolvedId, filter]);
 
   const fetchDemandes = async () => {
     setLoading(true);
@@ -47,7 +60,7 @@ export default function MesDemandesPage() {
           *,
           devis(count)
         `)
-        .eq('client_id', profileId)
+        .eq('client_id', resolvedId)
         .order('created_at', { ascending: false });
 
       if (filter !== 'all') {
@@ -216,8 +229,8 @@ export default function MesDemandesPage() {
                         <span className="inline-flex items-center gap-1">
                           <Euro className="w-4 h-4" />
                           {demande.budget_min && demande.budget_max 
-                            ? `${demande.budget_min}€ - ${demande.budget_max}€`
-                            : demande.budget_max ? `Max ${demande.budget_max}€` : `Min ${demande.budget_min}€`
+                            ? `${demande.budget_min} DH - ${demande.budget_max} DH`
+                            : demande.budget_max ? `Max ${demande.budget_max} DH` : `Min ${demande.budget_min} DH`
                           }
                         </span>
                       )}

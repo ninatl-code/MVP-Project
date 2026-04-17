@@ -31,7 +31,7 @@ export const createReview = async ({
 
     if (error) throw error;
 
-    // Update photographer's average rating
+    // Update service provider's average rating
     await updatePhotographerRating(revieweeId);
 
     return { data, error: null };
@@ -42,7 +42,7 @@ export const createReview = async ({
 };
 
 /**
- * Get reviews for a photographer
+ * Get reviews for a service provider
  */
 export const getPhotographerReviews = async (photographeId, limit = 20) => {
   try {
@@ -59,7 +59,7 @@ export const getPhotographerReviews = async (photographeId, limit = 20) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching photographer reviews:', error);
+    console.error('Error fetching service provider reviews:', error);
     return { data: null, error };
   }
 };
@@ -130,7 +130,7 @@ export const getReservationReview = async (reservationId) => {
 };
 
 /**
- * Update photographer's average rating
+ * Update service provider's average rating
  */
 export const updatePhotographerRating = async (photographeId) => {
   try {
@@ -150,7 +150,7 @@ export const updatePhotographerRating = async (photographeId) => {
     const avgCommunication = reviews.filter(r => r.communication).reduce((sum, r) => sum + r.communication, 0) / reviews.filter(r => r.communication).length || 0;
     const avgRapportQualitePrix = reviews.filter(r => r.rapport_qualite_prix).reduce((sum, r) => sum + r.rapport_qualite_prix, 0) / reviews.filter(r => r.rapport_qualite_prix).length || 0;
 
-    // Update photographer profile
+    // Update service provider profile
     const { error: updateError } = await supabase
       .from('profils_photographe')
       .update({
@@ -164,18 +164,18 @@ export const updatePhotographerRating = async (photographeId) => {
       .eq('user_id', photographeId);
 
     if (updateError) {
-      console.error('Error updating photographer rating:', updateError);
+      console.error('Error updating service provider rating:', updateError);
     }
 
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error updating photographer rating:', error);
+    console.error('Error updating service provider rating:', error);
     return { success: false, error };
   }
 };
 
 /**
- * Get rating statistics for a photographer
+ * Get rating statistics for a service provider
  */
 export const getPhotographerRatingStats = async (photographeId) => {
   try {
@@ -216,7 +216,7 @@ export const getPhotographerRatingStats = async (photographeId) => {
 };
 
 /**
- * Reply to a review (photographer)
+ * Reply to a review (service provider)
  */
 export const replyToReview = async (reviewId, photographeId, reply) => {
   try {
@@ -250,10 +250,10 @@ export const getPendingReviews = async (clientId) => {
       .select(`
         id,
         date_prestation,
-        prestataire_id,
-        profiles!reservations_prestataire_id_fkey(nom, avatar_url)
+        photographe_id,
+        profiles!reservations_photographe_id_fkey(nom, avatar_url)
       `)
-      .eq('particulier_id', clientId)
+      .eq('client_id', clientId)
       .eq('status', 'completed');
 
     if (resError) throw resError;

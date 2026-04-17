@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
-import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
   ArrowLeft, Camera, Calendar, MapPin, Euro, 
@@ -16,20 +15,14 @@ const COLORS = {
   text: '#1C1C1E',
 };
 
-const CATEGORIES = [
-  { id: 'mariage', label: 'Mariage', icon: '💒', description: 'Photographe pour votre mariage' },
-  { id: 'portrait', label: 'Portrait', icon: '👤', description: 'Séance photo portrait' },
-  { id: 'evenement', label: 'Événement', icon: '🎉', description: 'Anniversaires, fêtes, soirées' },
-  { id: 'corporate', label: 'Corporate', icon: '🏢', description: 'Photos professionnelles' },
-  { id: 'produit', label: 'Produit', icon: '📦', description: 'Photos de produits' },
-  { id: 'immobilier', label: 'Immobilier', icon: '🏠', description: 'Photos immobilières' },
-  { id: 'famille', label: 'Famille', icon: '👨‍👩‍👧‍👦', description: 'Séance photo famille' },
-  { id: 'grossesse', label: 'Grossesse', icon: '🤰', description: 'Photos de grossesse' },
-  { id: 'nouveau-ne', label: 'Nouveau-né', icon: '👶', description: 'Photos de naissance' },
-  { id: 'animalier', label: 'Animalier', icon: '🐕', description: 'Photos d\'animaux' },
-  { id: 'culinaire', label: 'Culinaire', icon: '🍽️', description: 'Photos culinaires' },
-  { id: 'autre', label: 'Autre', icon: '📷', description: 'Autre type de prestation' },
-];
+const CATEGORY_ICONS = {
+  'services-domicile': '🔧',
+  'beaute-bien-etre': '💆',
+  'evenementiel': '🎉',
+  'transport': '🚗',
+  'digital': '💻',
+  'education': '📚',
+};
 
 const STEPS = [
   { id: 'category', title: 'Catégorie', subtitle: 'Type de prestation' },
@@ -40,11 +33,11 @@ const STEPS = [
 
 export default function CreateDemandePage() {
   const router = useRouter();
-  const { user, profileId } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  
+  const [categories, setCategories] = useState([]);
+
   const [formData, setFormData] = useState({
     titre: '',
     categorie: '',
@@ -59,12 +52,33 @@ export default function CreateDemandePage() {
     exigences_specifiques: '',
   });
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (instant — reads from local storage)
   useEffect(() => {
-    if (!user) {
-      router.push('/login?redirect=/client/demandes/create');
-    }
-  }, [user, router]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.push('/login?redirect=/client/demandes/create');
+      }
+    });
+  }, [router]);
+
+  // Fetch categories from Supabase
+  useEffect(() => {
+    supabase
+      .from('prestations')
+      .select('id, nom, slug, description')
+      .eq('actif', true)
+      .order('ordre', { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setCategories(data.map(c => ({
+            id: c.slug,
+            label: c.nom,
+            icon: CATEGORY_ICONS[c.slug] || '📋',
+            description: c.description,
+          })));
+        }
+      });
+  }, []);
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -100,6 +114,9 @@ export default function CreateDemandePage() {
   };
 
   const handleSubmit = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const profileId = session?.user?.id;
+
     if (!profileId) {
       setError('Vous devez être connecté pour créer une demande.');
       return;
@@ -109,7 +126,7 @@ export default function CreateDemandePage() {
     setError(null);
 
     try {
-      const { data, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from('demandes_client')
         .insert({
           client_id: profileId,
@@ -117,25 +134,20 @@ export default function CreateDemandePage() {
           categorie: formData.categorie,
           description: formData.description,
           date_souhaitee: formData.date_souhaitee || null,
-          date_flexible: formData.date_flexible,
           lieu: formData.lieu,
           duree_estimee: parseInt(formData.duree_estimee) || null,
-          nombre_personnes: parseInt(formData.nombre_personnes) || null,
           budget_min: parseFloat(formData.budget_min) || null,
           budget_max: parseFloat(formData.budget_max) || null,
-          exigences_specifiques: formData.exigences_specifiques || null,
           status: 'active',
-        })
-        .select()
-        .single();
+          created_at: new Date().toISOString(),
+        });
 
       if (insertError) throw insertError;
 
-      // Redirect to the created demande
-      router.push(`/client/demandes/${data.id}?new=true`);
+      router.push(`/client/demandes`);
     } catch (err) {
       console.error('Error creating demande:', err);
-      setError('Une erreur est survenue lors de la création de votre demande.');
+      setError('Erreur : ' + (err.message || 'Une erreur est survenue lors de la création de votre demande.'));
     } finally {
       setSubmitting(false);
     }
@@ -171,29 +183,33 @@ export default function CreateDemandePage() {
   const renderCategoryStep = () => (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">
-        Quel type de prestation recherchez-vous ?
+        Quel type de service recherchez-vous ?
       </h2>
       <p className="text-gray-600 mb-6">
         Sélectionnez la catégorie qui correspond le mieux à votre besoin.
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => updateFormData('categorie', cat.id)}
-            className={`p-4 rounded-xl border-2 text-left transition-all ${
-              formData.categorie === cat.id
-                ? 'border-indigo-600 bg-indigo-50'
-                : 'border-gray-200 hover:border-gray-300 bg-white'
-            }`}
-          >
-            <span className="text-3xl mb-2 block">{cat.icon}</span>
-            <h3 className="font-medium text-gray-900">{cat.label}</h3>
-            <p className="text-xs text-gray-500 mt-1">{cat.description}</p>
-          </button>
-        ))}
-      </div>
+      {categories.length === 0 ? (
+        <div className="text-center text-gray-400 py-8">Chargement des catégories...</div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => updateFormData('categorie', cat.id)}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                formData.categorie === cat.id
+                  ? 'border-indigo-600 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              }`}
+            >
+              <span className="text-3xl mb-2 block">{cat.icon}</span>
+              <h4 className="font-medium text-gray-900">{cat.label}</h4>
+              <p className="text-xs text-gray-500 mt-1">{cat.description}</p>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -203,7 +219,7 @@ export default function CreateDemandePage() {
         Parlez-nous de votre projet
       </h2>
       <p className="text-gray-600 mb-6">
-        Ces informations aideront les photographes à comprendre vos besoins.
+        Ces informations aideront les prestataires à comprendre vos besoins.
       </p>
 
       <div>
@@ -265,7 +281,7 @@ export default function CreateDemandePage() {
             type="text"
             value={formData.lieu}
             onChange={(e) => updateFormData('lieu', e.target.value)}
-            placeholder="Ex: Paris 75001, Lyon, Bordeaux..."
+            placeholder="Ex: Casablanca, Rabat, Marrakech..."
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
@@ -288,22 +304,24 @@ export default function CreateDemandePage() {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Users className="w-4 h-4 inline mr-1" />
-            Nombre de personnes
-          </label>
-          <select
-            value={formData.nombre_personnes}
-            onChange={(e) => updateFormData('nombre_personnes', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          >
-            {[1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 30, 50, 100].map((n) => (
-              <option key={n} value={n}>{n} personne{n > 1 ? 's' : ''}</option>
-            ))}
-            <option value="100+">Plus de 100</option>
-          </select>
-        </div>
+        {formData.categorie === 'evenementiel' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Users className="w-4 h-4 inline mr-1" />
+              Nombre de personnes
+            </label>
+            <select
+              value={formData.nombre_personnes}
+              onChange={(e) => updateFormData('nombre_personnes', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 30, 50, 100].map((n) => (
+                <option key={n} value={n}>{n} personne{n > 1 ? 's' : ''}</option>
+              ))}
+              <option value="100+">Plus de 100</option>
+            </select>
+          </div>
+        )}
       </div>
 
       <div>
@@ -327,7 +345,7 @@ export default function CreateDemandePage() {
         Quel est votre budget ?
       </h2>
       <p className="text-gray-600 mb-6">
-        Indiquez une fourchette de budget pour que les photographes puissent vous proposer des offres adaptées.
+        Indiquez une fourchette de budget pour que les prestataires puissent vous proposer des offres adaptées.
       </p>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
@@ -336,9 +354,9 @@ export default function CreateDemandePage() {
           <div className="text-sm text-blue-800">
             <p className="font-medium mb-1">Conseil</p>
             <p>
-              Pour une prestation de type "{CATEGORIES.find(c => c.id === formData.categorie)?.label || 'Photo'}", 
-              les prix varient généralement entre 150€ et 500€ pour une séance courte, 
-              et peuvent aller jusqu'à 2000€+ pour des événements comme les mariages.
+              Pour une prestation de type "{categories.find(c => c.id === formData.categorie)?.label || 'service'}", 
+              les prix varient selon la nature et la durée de la prestation.
+              N'hésitez pas à indiquer une fourchette large pour recevoir plus d'offres.
             </p>
           </div>
         </div>
@@ -347,10 +365,12 @@ export default function CreateDemandePage() {
       <div className="grid md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Budget minimum (€)
+            Budget minimum (MAD)
           </label>
           <div className="relative">
-            <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              DH
+            </span>
             <input
               type="number"
               value={formData.budget_min}
@@ -364,11 +384,13 @@ export default function CreateDemandePage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Budget maximum (€) *
+            Budget maximum (MAD) *
           </label>
           <div className="relative">
-            <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+             DH
+            </span>
+          <input
               type="number"
               value={formData.budget_max}
               onChange={(e) => updateFormData('budget_max', e.target.value)}
@@ -385,12 +407,12 @@ export default function CreateDemandePage() {
         <p className="text-sm text-gray-600 mb-3">Ou sélectionnez une fourchette :</p>
         <div className="flex flex-wrap gap-2">
           {[
-            { min: 50, max: 150, label: '50€ - 150€' },
-            { min: 150, max: 300, label: '150€ - 300€' },
-            { min: 300, max: 500, label: '300€ - 500€' },
-            { min: 500, max: 1000, label: '500€ - 1000€' },
-            { min: 1000, max: 2000, label: '1000€ - 2000€' },
-            { min: 2000, max: 5000, label: '2000€+' },
+            { min: 50, max: 150, label: '50 DH - 150 DH' },
+            { min: 150, max: 300, label: '150 DH - 300 DH' },
+            { min: 300, max: 500, label: '300 DH - 500 DH' },
+            { min: 500, max: 1000, label: '500 DH - 1000 DH' },
+            { min: 1000, max: 2000, label: '1000 DH - 2000 DH' },
+            { min: 2000, max: 5000, label: '2000 DH+' },
           ].map((range) => (
             <button
               key={range.label}
@@ -413,7 +435,7 @@ export default function CreateDemandePage() {
   );
 
   const renderReviewStep = () => {
-    const selectedCategory = CATEGORIES.find(c => c.id === formData.categorie);
+    const selectedCategory = categories.find(c => c.id === formData.categorie);
     
     return (
       <div className="space-y-6">
@@ -512,9 +534,9 @@ export default function CreateDemandePage() {
             </div>
             <p className="font-medium text-lg">
               {formData.budget_min && formData.budget_max 
-                ? `${formData.budget_min}€ - ${formData.budget_max}€`
+                ? `${formData.budget_min} DH - ${formData.budget_max} DH`
                 : formData.budget_max 
-                ? `Maximum ${formData.budget_max}€`
+                ? `Maximum ${formData.budget_max} DH`
                 : 'Non défini'}
             </p>
           </div>
@@ -527,7 +549,7 @@ export default function CreateDemandePage() {
             <div className="text-sm text-green-800">
               <p className="font-medium mb-1">Prêt à publier !</p>
               <p>
-                Une fois publiée, votre demande sera visible par les photographes qui correspondent à vos critères.
+                Une fois publiée, votre demande sera visible par les prestataires qui correspondent à vos critères.
                 Vous recevrez des devis directement sur votre espace.
               </p>
             </div>

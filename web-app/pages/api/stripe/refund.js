@@ -1,4 +1,4 @@
-import { stripe } from "./init";
+﻿import { stripe } from "./init";
 import { supabase } from "../../../lib/supabaseClient";
 
 export default async function handler(req, res) {
@@ -283,10 +283,10 @@ export default async function handler(req, res) {
     // 9. Réponse selon le type de remboursement
     console.log('🎯 Préparation de la réponse finale...');
     const responseMessage = {
-      'stripe_automatic': `Remboursement automatique de ${montantRembourse}€ effectué via Stripe`,
+      'stripe_automatic': `Remboursement automatique de ${montantRembourse} DH effectué via Stripe`,
       'already_refunded': `Cette réservation a déjà été remboursée`,
-      'stripe_failed': `Échec du remboursement automatique. Remboursement manuel de ${montantRembourse}€ requis`,
-      'manual_required': `Remboursement manuel de ${montantRembourse}€ requis (paiement non-Stripe)`,
+      'stripe_failed': `Échec du remboursement automatique. Remboursement manuel de ${montantRembourse} DH requis`,
+      'manual_required': `Remboursement manuel de ${montantRembourse} DH requis (paiement non-Stripe)`,
       'no_refund': 'Annulation confirmée. Aucun remboursement selon les conditions d\'annulation'
     };
 

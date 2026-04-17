@@ -4,8 +4,8 @@ import { supabase } from './supabaseClient';
  * Create a new reservation
  */
 export const createReservation = async ({
-  particulierId,
-  prestataire_id,
+  clientId,
+  photographe_id,
   annonceId,
   devisId,
   datePrestation,
@@ -24,8 +24,8 @@ export const createReservation = async ({
       .from('reservations')
       .insert({
         numero_reservation: numeroReservation,
-        particulier_id: particulierId,
-        prestataire_id,
+        client_id: clientId,
+        photographe_id,
         annonce_id: annonceId,
         devis_id: devisId,
         date_prestation: datePrestation,
@@ -52,17 +52,17 @@ export const createReservation = async ({
 /**
  * Get reservations for a client
  */
-export const getClientReservations = async (particulierId, status = null) => {
+export const getClientReservations = async (clientId, status = null) => {
   try {
     let query = supabase
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!reservations_photographe_id_fkey(id, nom, email, telephone, avatar_url),
         annonces(titre, photos, conditions_annulation),
         devis(options, message)
       `)
-      .eq('particulier_id', particulierId)
+      .eq('client_id', clientId)
       .order('date_prestation', { ascending: true });
 
     if (status) {
@@ -84,7 +84,7 @@ export const getClientReservations = async (particulierId, status = null) => {
 };
 
 /**
- * Get reservations for a photographer
+ * Get reservations for a service provider
  */
 export const getPhotographerReservations = async (photographeId, status = null) => {
   try {
@@ -92,11 +92,11 @@ export const getPhotographerReservations = async (photographeId, status = null) 
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_particulier_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!reservations_client_id_fkey(id, nom, email, telephone, avatar_url),
         annonces(titre, photos, conditions_annulation),
         devis(options, message)
       `)
-      .eq('prestataire_id', photographeId)
+      .eq('photographe_id', photographeId)
       .order('date_prestation', { ascending: true });
 
     if (status) {
@@ -112,7 +112,7 @@ export const getPhotographerReservations = async (photographeId, status = null) 
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching photographer reservations:', error);
+    console.error('Error fetching service provider reservations:', error);
     return { data: null, error };
   }
 };
@@ -126,8 +126,8 @@ export const getReservationById = async (reservationId) => {
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_particulier_id_fkey(id, nom, email, telephone, avatar_url),
-        profiles!reservations_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!reservations_client_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!reservations_photographe_id_fkey(id, nom, email, telephone, avatar_url),
         annonces(*),
         devis(*),
         paiements(*)
@@ -168,7 +168,7 @@ export const updateReservationStatus = async (reservationId, status, additionalD
 };
 
 /**
- * Confirm reservation (photographer accepts)
+ * Confirm reservation (service provider accepts)
  */
 export const confirmReservation = async (reservationId) => {
   return updateReservationStatus(reservationId, 'confirmed', {
@@ -216,7 +216,7 @@ export const cancelReservation = async (reservationId, reason, cancelledBy) => {
  */
 export const getUpcomingReservations = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'particulier' ? 'particulier_id' : 'prestataire_id';
+    const column = role === 'client' ? 'client_id' : 'photographe_id';
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -224,7 +224,7 @@ export const getUpcomingReservations = async (userId, role = 'particulier') => {
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_${role === 'particulier' ? 'prestataire' : 'particulier'}_id_fkey(nom, avatar_url)
+        profiles!reservations_${role === 'client' ? 'photographe' : 'client'}_id_fkey(nom, avatar_url)
       `)
       .eq(column, userId)
       .gte('date_prestation', today)
@@ -245,7 +245,7 @@ export const getUpcomingReservations = async (userId, role = 'particulier') => {
  */
 export const getReservationStats = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'particulier' ? 'particulier_id' : 'prestataire_id';
+    const column = role === 'client' ? 'client_id' : 'photographe_id';
 
     const { data, error } = await supabase
       .from('reservations')
@@ -288,7 +288,7 @@ export const RESERVATION_STATUS = {
 };
 
 /**
- * Get calendar events for photographer
+ * Get calendar events for service provider
  */
 export const getCalendarEvents = async (photographeId, startDate, endDate) => {
   try {
@@ -301,9 +301,9 @@ export const getCalendarEvents = async (photographeId, startDate, endDate) => {
         heure_fin,
         status,
         montant,
-        profiles!reservations_particulier_id_fkey(nom)
+        profiles!reservations_client_id_fkey(nom)
       `)
-      .eq('prestataire_id', photographeId)
+      .eq('photographe_id', photographeId)
       .gte('date_prestation', startDate)
       .lte('date_prestation', endDate)
       .not('status', 'eq', 'cancelled');

@@ -24,9 +24,6 @@ function Login() {
   const router = useRouter()
   const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
 
-  // Timeout de sécurité pour le chargement
-  const timeoutRef = useState(null)
-
   const handleLogin = async (e) => {
     e.preventDefault()
     console.log('=== DÉBUT DE LA CONNEXION ===')
@@ -34,12 +31,15 @@ function Login() {
     setLoading(true)
     setErrorMsg('')
 
-    // Timeout de sécurité (10 secondes)
+    let timedOut = false
+
+    // Timeout de sécurité (30 secondes)
     const timeout = setTimeout(() => {
+      timedOut = true
       console.error('TIMEOUT: La connexion prend trop de temps')
       setErrorMsg('La connexion prend trop de temps. Veuillez vérifier votre connexion internet.')
       setLoading(false)
-    }, 10000)
+    }, 30000)
 
     try {
       // Tentative de connexion directement
@@ -77,7 +77,7 @@ function Login() {
 
       console.log('3. Utilisateur connecté, ID:', data.user.id)
 
-      // Vérifier le rôle
+      // Récupération du profil et animation en parallèle
       console.log('4. Récupération du profil...')
       let { data: profiles, error: profileError } = await supabase
         .from('profiles')
@@ -94,43 +94,22 @@ function Login() {
         return
       }
 
-      // Si aucun profil trouvé, créer automatiquement à partir des métadonnées
+      // Si aucun profil trouvé, erreur claire
       if (!profiles || profiles.length === 0) {
-        console.log('6. Aucun profil trouvé, création automatique...')
-        
-        const { data: newProfile, error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
-            nom: data.user.user_metadata?.nom || '',
-            telephone: data.user.user_metadata?.telephone || '',
-            role: data.user.user_metadata?.role || 'particulier'
-          })
-          .select('role, id')
-          .single()
-
-        if (insertError) {
-          clearTimeout(timeout)
-          console.error('Erreur création profil:', insertError)
-          setErrorMsg('Impossible de créer votre profil. Contactez le support.')
-          setLoading(false)
-          return
-        }
-
-        profiles = [newProfile]
-        console.log('7. Profil créé avec succès:', newProfile)
+        clearTimeout(timeout)
+        setErrorMsg('Aucun profil trouvé. Veuillez vous inscrire.')
+        setLoading(false)
+        return
       }
 
       const profile = profiles[0]
 
-      // Redirection selon le rôle avec animation
+      // Redirection directe sans animation splash (évite les 2s de délai inutiles)
       const targetPath = profile?.role === 'prestataire' || profile?.role === 'photographe' ? '/photographe/menu' : '/client/menu'
-      const message = profile?.role === 'prestataire' || profile?.role === 'photographe' ? 'Accès à votre espace professionnel...' : 'Accès à votre espace...'
       console.log('6. Redirection vers:', targetPath)
       
       clearTimeout(timeout)
-      navigateWithSplash(targetPath, message)
+      if (!timedOut) router.push(targetPath)
       
       // Le loading sera arrêté après la redirection
 

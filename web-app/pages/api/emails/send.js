@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabaseClient';
+﻿import { supabase } from '../../lib/supabaseClient';
 
 /**
  * Send email notifications
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
           <p>Votre séance photo avec <strong>${data.photographeName || 'le photographe'}</strong> est confirmée.</p>
           <p><strong>Date:</strong> ${data.date || 'À définir'}</p>
           <p><strong>Lieu:</strong> ${data.lieu || 'À définir'}</p>
-          <p><strong>Montant:</strong> ${data.montant || '0'}€</p>
+          <p><strong>Montant:</strong> ${data.montant || '0'} DH</p>
           <br>
           <p>Vous pouvez accéder aux détails de votre réservation dans votre espace client.</p>
           <p>L'équipe Shooty</p>
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
           <h1>Vous avez reçu un nouveau devis !</h1>
           <p>Bonjour ${data.clientName || ''},</p>
           <p><strong>${data.photographeName || 'Un photographe'}</strong> vous a envoyé un devis.</p>
-          <p><strong>Montant:</strong> ${data.montant || '0'}€</p>
+          <p><strong>Montant:</strong> ${data.montant || '0'} DH</p>
           <p><strong>Message:</strong> ${data.message || ''}</p>
           <br>
           <p>Connectez-vous pour accepter ou refuser ce devis.</p>
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
         html: `
           <h1>Paiement confirmé</h1>
           <p>Bonjour ${data.name || ''},</p>
-          <p>Nous avons bien reçu votre paiement de <strong>${data.montant || '0'}€</strong>.</p>
+          <p>Nous avons bien reçu votre paiement de <strong>${data.montant || '0'} DH</strong>.</p>
           <p>Numéro de réservation: ${data.reservationNumber || 'N/A'}</p>
           <br>
           <p>Merci de votre confiance !</p>

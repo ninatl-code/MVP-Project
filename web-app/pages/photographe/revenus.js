@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -242,7 +242,7 @@ export default function RevenusPage() {
               <span className="text-sm text-gray-500">Revenus nets</span>
               <Euro className="w-5 h-5 text-green-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{stats.totalRevenu}€</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.totalRevenu} DH</p>
             {stats.growth !== 0 && (
               <div className={`flex items-center gap-1 mt-2 text-sm ${
                 stats.growth > 0 ? 'text-green-600' : 'text-red-600'
@@ -262,7 +262,7 @@ export default function RevenusPage() {
               <span className="text-sm text-gray-500">En attente</span>
               <Clock className="w-5 h-5 text-yellow-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{stats.pendingPayout}€</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.pendingPayout} DH</p>
             <p className="text-sm text-gray-500 mt-2">Paiements en cours</p>
           </div>
 
@@ -280,7 +280,7 @@ export default function RevenusPage() {
               <span className="text-sm text-gray-500">Panier moyen</span>
               <TrendingUp className="w-5 h-5 text-purple-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{stats.averageTransaction}€</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.averageTransaction} DH</p>
             <p className="text-sm text-gray-500 mt-2">Par prestation</p>
           </div>
         </div>
@@ -361,9 +361,9 @@ function TransactionRow({ transaction }) {
               {status.label}
             </span>
             <div>
-              <p className="font-bold text-gray-900">{netAmount}€</p>
+              <p className="font-bold text-gray-900">{netAmount} DH</p>
               <p className="text-xs text-gray-400">
-                {transaction.montant}€ - {PLATFORM_FEE * 100}%
+                {transaction.montant} DH - {PLATFORM_FEE * 100}%
               </p>
             </div>
           </div>
