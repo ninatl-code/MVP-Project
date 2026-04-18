@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../lib/supabaseClient';
@@ -30,6 +30,19 @@ export default function RecherchePage() {
     instantBooking: false,
   });
   const [sortBy, setSortBy] = useState('pertinence');
+  const debounceRef = useRef(null);
+
+  // Relance la recherche quand les filtres ou le tri changent (sans délai)
+  useEffect(() => {
+    fetchPhotographes();
+  }, [filters, sortBy]);
+
+  // Relance avec délai de 350ms quand la recherche texte change
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchPhotographes(), 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
 
   const specialites = [
     'Mariage',
@@ -46,10 +59,6 @@ export default function RecherchePage() {
     'Nature',
   ];
 
-  useEffect(() => {
-    fetchPhotographes();
-  }, [filters, sortBy]);
-
   const fetchPhotographes = async () => {
     try {
       setLoading(true);
@@ -57,7 +66,8 @@ export default function RecherchePage() {
       let query = supabase
         .from('profils_prestataire')
         .select(`
-          *,
+          id, bio, tarif_horaire_min, note_moyenne, nb_avis, specialites,
+          categories, actif, reservation_instantanee, ville,
           profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url, ville)
         `)
         .eq('actif', true);

@@ -63,87 +63,83 @@ export default function StatistiquesPage() {
         prevEndDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
       }
 
-      // Fetch profile views
-      const { count: viewsCount } = await supabase
-        .from('profile_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('photographe_id', photographeProfile.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-      // Fetch previous period views
-      const { count: prevViewsCount } = await supabase
-        .from('profile_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('photographe_id', photographeProfile.id)
-        .gte('created_at', prevStartDate.toISOString())
-        .lte('created_at', prevEndDate.toISOString());
-
-      // Fetch devis
-      const { data: devisData } = await supabase
-        .from('devis')
-        .select('id, statut, created_at')
-        .eq('photographe_id', photographeProfile.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
+      // Toutes les requ\u00eates en parall\u00e8le
+      const [
+        { count: viewsCount },
+        { count: prevViewsCount },
+        { data: devisData },
+        { data: prevDevisData },
+        { data: reservationsData },
+        { data: prevReservationsData },
+        { data: reviewsData },
+        { data: dailyViews },
+      ] = await Promise.all([
+        supabase
+          .from('profile_views')
+          .select('*', { count: 'exact', head: true })
+          .eq('photographe_id', photographeProfile.id)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString()),
+        supabase
+          .from('profile_views')
+          .select('*', { count: 'exact', head: true })
+          .eq('photographe_id', photographeProfile.id)
+          .gte('created_at', prevStartDate.toISOString())
+          .lte('created_at', prevEndDate.toISOString()),
+        supabase
+          .from('devis')
+          .select('id, statut, created_at')
+          .eq('photographe_id', photographeProfile.id)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString()),
+        supabase
+          .from('devis')
+          .select('id, statut')
+          .eq('photographe_id', photographeProfile.id)
+          .gte('created_at', prevStartDate.toISOString())
+          .lte('created_at', prevEndDate.toISOString()),
+        supabase
+          .from('reservations')
+          .select('id, statut, montant_total, created_at')
+          .eq('photographe_id', photographeProfile.id)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString()),
+        supabase
+          .from('reservations')
+          .select('montant_total, statut')
+          .eq('photographe_id', photographeProfile.id)
+          .eq('statut', 'termine')
+          .gte('created_at', prevStartDate.toISOString())
+          .lte('created_at', prevEndDate.toISOString()),
+        supabase
+          .from('avis')
+          .select('note, created_at')
+          .eq('photographe_id', photographeProfile.id)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString()),
+        supabase
+          .from('profile_views')
+          .select('created_at')
+          .eq('photographe_id', photographeProfile.id)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString()),
+      ]);
 
       const devisList = devisData || [];
       const devisAccepted = devisList.filter(d => d.statut === 'accepte').length;
 
-      // Previous devis
-      const { data: prevDevisData } = await supabase
-        .from('devis')
-        .select('id, statut')
-        .eq('photographe_id', photographeProfile.id)
-        .gte('created_at', prevStartDate.toISOString())
-        .lte('created_at', prevEndDate.toISOString());
-
-      // Fetch reservations
-      const { data: reservationsData } = await supabase
-        .from('reservations')
-        .select('id, statut, montant_total, created_at')
-        .eq('photographe_id', photographeProfile.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
       const reservations = reservationsData || [];
       const completedReservations = reservations.filter(r => r.statut === 'termine');
       const totalRevenue = completedReservations.reduce((sum, r) => sum + (r.montant_total || 0), 0);
-
-      // Previous reservations
-      const { data: prevReservationsData } = await supabase
-        .from('reservations')
-        .select('montant_total, statut')
-        .eq('photographe_id', photographeProfile.id)
-        .eq('statut', 'termine')
-        .gte('created_at', prevStartDate.toISOString())
-        .lte('created_at', prevEndDate.toISOString());
-
       const prevRevenue = (prevReservationsData || []).reduce((sum, r) => sum + (r.montant_total || 0), 0);
 
-      // Fetch reviews
-      const { data: reviewsData } = await supabase
-        .from('avis')
-        .select('note, created_at')
-        .eq('photographe_id', photographeProfile.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
       const reviews = reviewsData || [];
-      const avgRating = reviews.length > 0 
-        ? reviews.reduce((sum, r) => sum + r.note, 0) / reviews.length 
+      const avgRating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.note, 0) / reviews.length
         : 0;
 
-      // Calculate chart data (daily views for the period)
-      const days = eachDayOfInterval({ start: startDate, end: endDate });
-      const { data: dailyViews } = await supabase
-        .from('profile_views')
-        .select('created_at')
-        .eq('photographe_id', photographeProfile.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
       const viewsByDay = {};
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
       (dailyViews || []).forEach(v => {
         const day = format(parseISO(v.created_at), 'yyyy-MM-dd');
         viewsByDay[day] = (viewsByDay[day] || 0) + 1;

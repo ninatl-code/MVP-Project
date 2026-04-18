@@ -27,48 +27,43 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
+    const loadProfile = async (userId) => {
+      const t = performance.now();
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, role, nom, email, telephone, avatar_url')
+        .eq('id', userId)
+        .limit(1);
+      console.log(`[Auth] loadProfile — ${(performance.now() - t).toFixed(0)}ms`, error ? `ERREUR: ${error.message}` : `${profiles?.length ?? 0} profil(s)`);
+      if (!profiles || profiles.length === 0) return;
+      setAvailableProfiles(profiles);
+      const savedProfileId = localStorage.getItem('activeProfileId');
+      const profile = (savedProfileId && profiles.find(p => p.id === savedProfileId))
+        ? profiles.find(p => p.id === savedProfileId)
+        : profiles.find(p => p.role === 'photographe' || p.role === 'prestataire') || profiles[0];
+      setProfileId(profile.id);
+      setActiveRole(profile.role || null);
+      localStorage.setItem('activeProfileId', profile.id);
+    };
+
     const getInitialSession = async () => {
+      const t0 = performance.now();
+      console.log('[Auth] getInitialSession — début');
       try {
+        console.log('[Auth] getSession — appel...');
+        const t1 = performance.now();
         const { data: { session }, error } = await supabase.auth.getSession();
+        console.log(`[Auth] getSession — réponse en ${(performance.now() - t1).toFixed(0)}ms`, error ? `ERREUR: ${error.message}` : session ? `session OK (${session.user?.email})` : 'pas de session');
         
         if (error) {
-          console.error('Error getting session:', error);
-          // Don't throw on retryable errors, just log them
-          if (error.name !== 'AuthRetryableFetchError') {
-            throw error;
-          }
+          console.error('[Auth] Erreur getSession:', error);
+          if (error.name !== 'AuthRetryableFetchError') throw error;
         }
         
         if (session) {
           setSession(session);
           setUser(session.user);
-          
-          console.log('Session restored for:', session.user?.email);
-          
-          // Get available profiles
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, role, nom, email, telephone, avatar_url')
-            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
-          
-          if (profiles && profiles.length > 0) {
-            setAvailableProfiles(profiles);
-            
-            // Restore active profile from localStorage
-            const savedProfileId = localStorage.getItem('activeProfileId');
-            
-            if (savedProfileId && profiles.find(p => p.id === savedProfileId)) {
-              const profile = profiles.find(p => p.id === savedProfileId);
-              setProfileId(savedProfileId);
-              setActiveRole(profile?.role || null);
-            } else {
-              // Default: photographe if available, otherwise first profile
-              const defaultProfile = profiles.find(p => p.role === 'photographe' || p.role === 'prestataire') || profiles[0];
-              setProfileId(defaultProfile.id);
-              setActiveRole(defaultProfile.role);
-              localStorage.setItem('activeProfileId', defaultProfile.id);
-            }
-          }
+          await loadProfile(session.user.id);
         } else {
           setSession(null);
           setUser(null);
@@ -77,45 +72,27 @@ export const AuthProvider = ({ children }) => {
           setAvailableProfiles([]);
         }
       } catch (error) {
-        console.error('Error in getInitialSession:', error);
-        // Set loading to false even on error to prevent infinite loading state
+        console.error('[Auth] Erreur dans getInitialSession:', error);
       } finally {
+        console.log(`[Auth] getInitialSession terminé en ${(performance.now() - t0).toFixed(0)}ms total — loading = false`);
         setLoading(false);
       }
     };
 
     getInitialSession();
 
-    // Listen to auth state changes
+    // Listen to auth state changes — skip INITIAL_SESSION (already handled above)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+        console.log(`[Auth] onAuthStateChange: ${event}`, session?.user?.email ?? 'no user');
+
+        if (event === 'INITIAL_SESSION') return; // géré par getInitialSession
         
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, role, nom, email, telephone, avatar_url')
-            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
-          
-          if (profiles && profiles.length > 0) {
-            setAvailableProfiles(profiles);
-            
-            const savedProfileId = localStorage.getItem('activeProfileId');
-            
-            if (savedProfileId && profiles.find(p => p.id === savedProfileId)) {
-              const profile = profiles.find(p => p.id === savedProfileId);
-              setProfileId(savedProfileId);
-              setActiveRole(profile?.role || null);
-            } else {
-              const defaultProfile = profiles.find(p => p.role === 'photographe' || p.role === 'prestataire') || profiles[0];
-              setProfileId(defaultProfile.id);
-              setActiveRole(defaultProfile.role);
-              localStorage.setItem('activeProfileId', defaultProfile.id);
-            }
-          }
+          await loadProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           localStorage.removeItem('activeProfileId');
           setProfileId(null);

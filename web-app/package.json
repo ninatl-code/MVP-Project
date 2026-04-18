@@ -25,7 +25,8 @@
     "react": "19.1.0",
     "react-calendar": "^6.0.0",
     "react-dom": "19.1.0",
-    "stripe": "^18.5.0"
+    "stripe": "^18.5.0",
+    "twilio": "^5.13.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

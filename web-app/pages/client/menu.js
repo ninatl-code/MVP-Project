@@ -2027,7 +2027,7 @@ function ParticularHomeMenu() {
             <div 
               className="rounded-2xl p-6 cursor-pointer transition-all hover:shadow-lg border-2"
               style={{ background: 'white', borderColor: '#E5E7EB' }}
-              onClick={() => router.push('/client/search')}
+              onClick={() => router.push('/recherche')}
             >
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: COLORS.primary }}>

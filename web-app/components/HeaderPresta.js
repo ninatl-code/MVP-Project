@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, BarChart3, RefreshCcw, User } from "lucide-react";
-import { ShootyLogoSimple } from "./ShootyLogo";
 
 // Palette Shooty
 const COLORS = {
@@ -101,7 +100,7 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo & Titre */}
         <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/photographe/menu")}>
-          <ShootyLogoSimple width={120} height={40} />
+          <img src="/ServiDaba-logo.png" alt="ServiDaba" width={120} height={40} style={{ objectFit: 'contain' }} />
           <span className="ml-4 text-base hidden sm:block" style={{color: 'var(--foreground)', opacity: 0.6}}>Espace artiste</span>
         </div>
         {/* Actions */}

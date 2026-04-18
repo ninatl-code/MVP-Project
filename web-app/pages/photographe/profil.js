@@ -9,7 +9,7 @@ import {
   Shield, FileText, CreditCard, Building, AlertCircle,
   CheckCircle, Clock, XCircle, Loader2, LogOut,
   Facebook, Linkedin, Briefcase, TrendingUp,
-  Layers, Home, Users, Sun, Moon, Car, Euro, Lock
+  Layers, Home, Users, Sun, Moon, Car, Euro, Lock, Video
 } from 'lucide-react';
 
 const COLORS = {
@@ -24,10 +24,11 @@ const COLORS = {
 };
 
 const DOCUMENT_TYPES = [
-  { type: 'identity_card', label: "Carte d'identité", icon: CreditCard, description: 'Recto et verso de votre CNI', required: true },
-  { type: 'siret', label: "Numéro SIRET", icon: Building, description: 'Justificatif SIRET ou Kbis', required: true },
-  { type: 'insurance', label: "Assurance professionnelle", icon: Shield, description: 'Attestation RC Pro en cours', required: false },
-  { type: 'rib', label: "RIB", icon: FileText, description: 'Coordonnées bancaires pour les paiements', required: true },
+  { type: 'identity_recto', profileColumn: 'document_identite_recto_url', label: "Carte d'identité (recto)", icon: CreditCard, description: "Recto de votre CNI ou passeport", required: true },
+  { type: 'identity_verso', profileColumn: 'document_identite_verso_url', label: "Carte d'identité (verso)", icon: CreditCard, description: "Verso de votre CNI", required: false },
+  { type: 'siret', profileColumn: 'documents_siret', label: "Justificatif SIRET", icon: Building, description: 'Justificatif SIRET ou extrait Kbis', required: true },
+  { type: 'kbis', profileColumn: 'documents_kbis', label: "Extrait Kbis", icon: FileText, description: 'Extrait Kbis de moins de 3 mois', required: false },
+  { type: 'assurance', profileColumn: 'documents_assurance', label: "Assurance professionnelle", icon: Shield, description: 'Attestation RC Pro en cours de validité', required: false },
 ];
 
 const EQUIPE = [
@@ -54,7 +55,7 @@ const TARIFS_CATEGORIES = [
 
 export default function PhotographeProfilPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
@@ -71,16 +72,14 @@ export default function PhotographeProfilPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [prestationsCategories, setPrestationsCategories] = useState([]);
   const [autreSpecInput, setAutreSpecInput] = useState('');
-  const [stats, setStats] = useState({
-    totalAnnonces: 0,
-    totalReservations: 0,
-    chiffreAffaires: 0,
-    noteMoyenne: 0,
-    totalVues: 0
-  });
+
   
   // États pour la modification du mot de passe
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null); // { label, data }
+  const [phoneVerifyStep, setPhoneVerifyStep] = useState(null); // null | 'sent' | 'success'
+  const [phoneOtpCode, setPhoneOtpCode] = useState('');
+  const [phoneVerifying, setPhoneVerifying] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -91,28 +90,20 @@ export default function PhotographeProfilPage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
-    const initProfile = async () => {      try {
-        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-        console.log('User check:', currentUser?.email, error);
-        
-        if (currentUser) {
-          // Charger le profil et les stats en parallèle
-          await Promise.all([
-            fetchFullProfile(currentUser.id),
-            loadStats(currentUser.id),
-          ]);
-        } else {
-          console.log('No user found, redirecting to login');
-          setLoading(false);
-          router.push('/login');
-        }
-      } catch (err) {
+    if (authLoading) return; // Attendre que Supabase ait restauré la session
+    if (user) {
+      Promise.all([
+        fetchFullProfile(user.id),
+      ]).catch(err => {
         console.error('Init error:', err);
         setLoading(false);
-      }
-    };
-    initProfile();
-  }, []);
+      });
+    } else {
+      // authLoading === false ET user === null : pas de session, rediriger
+      setLoading(false);
+      router.push('/login');
+    }
+  }, [user, authLoading]);
 
   useEffect(() => {
     supabase
@@ -129,40 +120,7 @@ export default function PhotographeProfilPage() {
     // Statut de vérification inclus dans fetchFullProfile via profils_prestataire
   };
 
-  const loadStats = async (userId) => {
-    if (!userId) return;
-    try {
-      // Annonces et réservations en parallèle
-      const [{ data: annonces }, { data: reservations }] = await Promise.all([
-        supabase.from('prestations_photographe').select('id, rate, vues').eq('prestataire', userId),
-        supabase.from('reservations').select('id, montant, status').eq('prestataire_id', userId),
-      ]);
 
-      const totalAnnonces = annonces?.length || 0;
-      const totalReservations = reservations?.length || 0;
-      const totalVues = annonces?.reduce((sum, a) => sum + (a.vues || 0), 0) || 0;
-
-      const reservationsPayees = reservations?.filter(r => 
-        r.status === 'paid' || r.status === 'confirmed'
-      ) || [];
-      
-      const chiffreAffaires = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
-      
-      const annonceAvecRate = annonces?.filter(a => a.rate && a.rate > 0) || [];
-      const noteMoyenne = annonceAvecRate.length > 0 ? 
-        annonceAvecRate.reduce((sum, a) => sum + a.rate, 0) / annonceAvecRate.length : 0;
-
-      setStats({
-        totalAnnonces,
-        totalReservations,
-        chiffreAffaires,
-        noteMoyenne: Math.round(noteMoyenne * 10) / 10,
-        totalVues
-      });
-    } catch (error) {
-      console.error('Erreur chargement stats:', error);
-    }
-  };
 
   const handleDocumentUpload = async (e, docType) => {
     const file = e.target.files?.[0];
@@ -170,36 +128,107 @@ export default function PhotographeProfilPage() {
 
     setUploading(docType);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const currentUser = user;
+      if (!currentUser) return;
 
-      // Encoder en base64 — pas de Storage
+      // Compresser les images avant stockage (les PDF sont encodés directement)
       const base64 = await new Promise((resolve, reject) => {
+        if (!file.type.startsWith('image/')) {
+          // PDF : encodage direct sans modification
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+          return;
+        }
+        // Image : redimensionnement + compression
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
+        reader.onload = (ev) => {
+          const img = new window.Image();
+          img.onload = () => {
+            const MAX = 1200; // px max (documents lisibles mais pas trop lourds)
+            const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * ratio);
+            canvas.height = Math.round(img.height * ratio);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
 
-      const columnMap = { siret: 'documents_siret', kbis: 'documents_kbis', assurance: 'documents_assurance' };
+      const columnMap = { identity_recto: 'document_identite_recto_url', identity_verso: 'document_identite_verso_url', siret: 'documents_siret', kbis: 'documents_kbis', assurance: 'documents_assurance' };
       const column = columnMap[docType];
       if (!column) throw new Error('Type de document inconnu');
 
       const { error } = await supabase
         .from('profils_prestataire')
         .update({ [column]: base64, statut_validation: 'pending' })
-        .eq('id', user.id);
+        .eq('id', currentUser.id);
 
       if (error) throw error;
 
+      const labelMap = { identity_recto: "Carte d'identité (recto)", identity_verso: "Carte d'identité (verso)", siret: 'Justificatif SIRET', kbis: 'Extrait Kbis', assurance: 'Assurance professionnelle' };
       handleProfileChange(column, base64);
       handleProfileChange('statut_validation', 'pending');
-      alert(`Document ${docType.toUpperCase()} chargé avec succès !`);
+      alert(`${labelMap[docType] || docType} chargé avec succès !`);
     } catch (error) {
       console.error('Error uploading document:', error);
       alert('Erreur lors du chargement du document : ' + error.message);
     } finally {
       setUploading(null);
+    }
+  };
+
+  const handleSendPhoneOtp = async () => {
+    const phone = profile?.telephone;
+    if (!phone) {
+      alert("Renseignez d'abord votre numéro de téléphone dans l'onglet Général.");
+      return;
+    }
+    setPhoneVerifying(true);
+    try {
+      const res = await fetch('/api/phone/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, userId: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur envoi');
+      setPhoneVerifyStep('sent');
+    } catch (err) {
+      alert('Erreur envoi du code WhatsApp : ' + err.message);
+    } finally {
+      setPhoneVerifying(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtpCode) return;
+    setPhoneVerifying(true);
+    try {
+      const res = await fetch('/api/phone/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp: phoneOtpCode, userId: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur vérification');
+      setPhoneVerifyStep('success');
+      setPhoneOtpCode('');
+      setVerificationStatus(prev => ({
+        ...prev,
+        phone_verified: true,
+        trust_score: Math.min((prev?.trust_score || 0) + 15, 100),
+      }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setPhoneVerifying(false);
     }
   };
 
@@ -221,8 +250,7 @@ export default function PhotographeProfilPage() {
     setLoading(true);
     try {
       if (!userId) {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        userId = currentUser?.id;
+        userId = user?.id;
       }
       if (!userId) {
         setLoading(false);
@@ -258,6 +286,22 @@ export default function PhotographeProfilPage() {
           agence_adresse: photoProfile?.agence_adresse || '',
           rayon_deplacement: photoProfile?.rayon_deplacement_km || 50,
           frais_deplacement: photoProfile?.frais_deplacement_base || '',
+          accepte_weekend: photoProfile?.preferences?.accepte_weekend ?? true,
+          accepte_soiree: photoProfile?.preferences?.accepte_soiree ?? true,
+          preferences: photoProfile?.preferences || {},
+          tarif_horaire_max: photoProfile?.tarif_horaire_max || '',
+          acompte_percent: photoProfile?.acompte_percent ?? 30,
+          conditions_annulation: photoProfile?.conditions_annulation || '',
+          delai_annulation_jours: photoProfile?.delai_annulation_jours ?? 7,
+          modalites_paiement: photoProfile?.modalites_paiement || [],
+          services_additionnels: photoProfile?.services_additionnels || { drone: false, video: false, stylisme: false, maquillage: false, retouche_pro: true, retouche_beaute: false, impression_album: false, livraison_express: false },
+          jours_travailles: photoProfile?.jours_travailles || [],
+          video_presentation_url: photoProfile?.video_presentation_url || '',
+          siret: photoProfile?.siret || '',
+          numero_tva: photoProfile?.numero_tva || '',
+          statut_pro: photoProfile?.statut_pro ?? false,
+          document_identite_recto_url: photoProfile?.document_identite_recto_url || null,
+          document_identite_verso_url: photoProfile?.document_identite_verso_url || null,
           documents_siret: photoProfile?.documents_siret || null,
           documents_kbis: photoProfile?.documents_kbis || null,
           documents_assurance: photoProfile?.documents_assurance || null,
@@ -268,17 +312,54 @@ export default function PhotographeProfilPage() {
         console.log('✅ Profil fusionné:', mergedProfile);
         setProfile(mergedProfile);
 
+        // Calculer le statut de vérification depuis les données du profil
+        const val = photoProfile?.statut_validation || null;
+        const hasIdentityDoc = !!(photoProfile?.document_identite_recto_url);
+        const hasBusinessDoc = !!(photoProfile?.documents_siret || photoProfile?.documents_kbis);
+        const emailVerified = true; // Supabase impose la confirmation email à l'inscription
+        const phoneVerified = !!(baseProfile?.phone_verified);
+        const identityVerified = hasIdentityDoc && val === 'verified';
+        const identityPending = hasIdentityDoc && !identityVerified;
+        const businessVerified = hasBusinessDoc && val === 'verified';
+        const businessPending = hasBusinessDoc && !businessVerified;
+        let score = 20;
+        if (emailVerified) score += 20;
+        if (phoneVerified) score += 15;
+        if (identityPending) score += 10;
+        if (identityVerified) score += 20;
+        if (businessPending) score += 5;
+        if (businessVerified) score += 15;
+        score = Math.min(score, 100);
+        const level = score < 40 ? 'débutant' : score < 60 ? 'confirmé' : score < 80 ? 'avancé' : 'certifié';
+        setVerificationStatus({
+          email_verified: emailVerified,
+          phone_verified: phoneVerified,
+          identity_verified: identityVerified,
+          identity_pending: identityPending,
+          business_verified: businessVerified,
+          business_pending: businessPending,
+          trust_score: score,
+          trust_level: level,
+          badges: [
+            emailVerified ? '✉️ Email vérifié' : null,
+            phoneVerified ? '📱 Téléphone vérifié' : null,
+            identityPending ? '⏳ Identité en cours' : null,
+            identityVerified ? '🪪 Identité vérifiée' : null,
+            businessPending ? '⏳ Entreprise en cours' : null,
+            businessVerified ? '🏢 Entreprise vérifiée' : null,
+          ].filter(Boolean),
+        });
+
         // Récupérer le nom de la ville si ville existe
         if (baseProfile.ville) {
           setVilleNom(baseProfile.ville);
         }
       } else {
         console.log('⚠️ Profil non trouvé');
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
         setProfile({ 
           id: userId, 
-          email: currentUser?.email || '', 
-          nom: currentUser?.user_metadata?.nom || ''
+          email: user?.email || '', 
+          nom: user?.user_metadata?.nom || ''
         });
       }
 
@@ -288,12 +369,11 @@ export default function PhotographeProfilPage() {
     } catch (error) {
       console.error('Error fetching profile:', error);
       // En cas d'erreur, on affiche quand même le formulaire
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
+      if (user) {
         setProfile({ 
-          id: currentUser.id, 
-          email: currentUser.email || '', 
-          nom: currentUser.user_metadata?.nom || ''
+          id: user.id, 
+          email: user.email || '', 
+          nom: user.user_metadata?.nom || ''
         });
       }
     } finally {
@@ -308,7 +388,7 @@ export default function PhotographeProfilPage() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const currentUser = user;
       if (!currentUser) return;
 
       // 1. Sauvegarder dans profiles (données de base)
@@ -345,6 +425,23 @@ export default function PhotographeProfilPage() {
           agence_adresse: profile.agence_adresse || null,
           rayon_deplacement_km: parseInt(profile.rayon_deplacement) || 50,
           frais_deplacement_base: parseFloat(profile.frais_deplacement) || null,
+          preferences: {
+            ...(profile.preferences || {}),
+            accepte_weekend: profile.accepte_weekend ?? true,
+            accepte_soiree: profile.accepte_soiree ?? true,
+          },
+          tarif_horaire_max: parseFloat(profile.tarif_horaire_max) || null,
+          acompte_percent: parseInt(profile.acompte_percent) || 30,
+          conditions_annulation: profile.conditions_annulation || null,
+          delai_annulation_jours: parseInt(profile.delai_annulation_jours) || 7,
+          modalites_paiement: profile.modalites_paiement || [],
+          services_additionnels: profile.services_additionnels || {},
+          jours_travailles: profile.jours_travailles || [],
+          video_presentation_url: profile.video_presentation_url || null,
+          siret: profile.siret || null,
+          numero_tva: profile.numero_tva || null,
+          statut_pro: profile.statut_pro ?? false,
+          portfolio_photos: portfolioImages.map(i => i.url),
         });
 
       if (photoError) console.error('Erreur profils_prestataire:', photoError);
@@ -379,7 +476,7 @@ export default function PhotographeProfilPage() {
     setUploadingPhoto(true);
 
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const currentUser = user;
       if (!currentUser) { alert('Vous devez être connecté'); return; }
 
       // Redimensionner via canvas et encoder en base64 (pas de Storage)
@@ -438,57 +535,55 @@ export default function PhotographeProfilPage() {
   };
 
   const handlePortfolioUpload = async (e) => {
-    const files = e.target.files;
-    if (!files?.length) return;
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
 
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const currentUser = user;
     if (!currentUser) return;
 
-    for (const file of files) {
-      if (!file.type.startsWith('image/')) continue;
-      try {
-        // Redimensionner et encoder en base64
-        const base64 = await new Promise((resolve, reject) => {
-          const img = new window.Image();
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            img.onload = () => {
-              const MAX = 800;
-              const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
-              const canvas = document.createElement('canvas');
-              canvas.width = Math.round(img.width * ratio);
-              canvas.height = Math.round(img.height * ratio);
-              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-              resolve(canvas.toDataURL('image/jpeg', 0.82));
-            };
-            img.onerror = reject;
-            img.src = ev.target.result;
+    try {
+      // Convertir toutes les images en base64 en parallèle
+      const newBase64s = await Promise.all(files.map(file => new Promise((resolve, reject) => {
+        const img = new window.Image();
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          img.onload = () => {
+            const MAX = 800;
+            const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * ratio);
+            canvas.height = Math.round(img.height * ratio);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
           };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      })));
 
-        const currentUrls = portfolioImages.map(i => i.url);
-        const newPhotos = [...currentUrls, base64];
+      // Fusionner avec les photos existantes en une seule opération
+      const newPhotos = [...portfolioImages.map(i => i.url), ...newBase64s];
 
-        const { error } = await supabase
-          .from('profils_prestataire')
-          .update({ portfolio_photos: newPhotos })
-          .eq('id', currentUser.id);
+      const { error } = await supabase
+        .from('profils_prestataire')
+        .update({ portfolio_photos: newPhotos })
+        .eq('id', currentUser.id);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        handleProfileChange('portfolio_photos', newPhotos);
-        setPortfolioImages(newPhotos.map((url, i) => ({ id: i, url, ordre: i })));
-      } catch (error) {
-        console.error('Error uploading portfolio image:', error);
-      }
+      handleProfileChange('portfolio_photos', newPhotos);
+      setPortfolioImages(newPhotos.map((url, i) => ({ id: i, url, ordre: i })));
+    } catch (error) {
+      console.error('Error uploading portfolio images:', error);
+      alert('Erreur lors du chargement des photos');
     }
   };
 
   const handleDeletePortfolioImage = async (imageId, imageUrl) => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const currentUser = user;
       if (!currentUser) return;
 
       const newPhotos = portfolioImages.filter(img => img.id !== imageId).map(img => img.url);
@@ -642,19 +737,13 @@ export default function PhotographeProfilPage() {
                     {villeNom || profile.localisation}
                   </span>
                 )}
-                {stats.noteMoyenne > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                    {stats.noteMoyenne}/5
-                  </span>
-                )}
+
               </div>
             </div>
 
             <button
-              onClick={async () => {
-                const { data: { user: currentUser } } = await supabase.auth.getUser();
-                if (currentUser) router.push(`/photographes/${currentUser.id}`);
+              onClick={() => {
+                if (user) router.push(`/photographes/${user.id}`);
               }}
               className="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 flex items-center gap-2"
             >
@@ -663,44 +752,7 @@ export default function PhotographeProfilPage() {
             </button>
           </div>
 
-          {/* Stats compactes (aligné sur mobile) */}
-          <div className="grid grid-cols-5 gap-4 mt-6 pt-6 border-t border-gray-100">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Briefcase className="w-5 h-5" style={{ color: COLORS.accent }} />
-              </div>
-              <p className="text-2xl font-bold" style={{ color: COLORS.text }}>{stats.totalAnnonces}</p>
-              <p className="text-xs text-gray-500">Annonces</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <TrendingUp className="w-5 h-5" style={{ color: COLORS.success }} />
-              </div>
-              <p className="text-2xl font-bold" style={{ color: COLORS.text }}>{formatCurrency(stats.chiffreAffaires)}</p>
-              <p className="text-xs text-gray-500">CA Total</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <FileText className="w-5 h-5 text-indigo-500" />
-              </div>
-              <p className="text-2xl font-bold" style={{ color: COLORS.text }}>{stats.totalReservations}</p>
-              <p className="text-xs text-gray-500">Réservations</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Star className="w-5 h-5 text-yellow-500" />
-              </div>
-              <p className="text-2xl font-bold" style={{ color: COLORS.text }}>{stats.noteMoyenne}/5</p>
-              <p className="text-xs text-gray-500">Note</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Eye className="w-5 h-5 text-gray-400" />
-              </div>
-              <p className="text-2xl font-bold" style={{ color: COLORS.text }}>{stats.totalVues}</p>
-              <p className="text-xs text-gray-500">Vues</p>
-            </div>
-          </div>
+
         </div>
 
         {/* Tabs */}
@@ -766,60 +818,102 @@ export default function PhotographeProfilPage() {
 
               {/* Statuts rapides */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className={`p-4 rounded-xl border-2 ${verificationStatus?.email_verified ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+
+                {/* Email — toujours vérifié (confirmé à l'inscription Supabase) */}
+                <div className="p-4 rounded-xl border-2 border-green-500 bg-green-50">
                   <div className="flex items-center gap-2 mb-2">
-                    {verificationStatus?.email_verified ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <AlertCircle className="w-5 h-5 text-gray-400" />
-                    )}
+                    <CheckCircle className="w-5 h-5 text-green-500" />
                     <span className="font-medium text-sm">Email</span>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {verificationStatus?.email_verified ? 'Vérifié' : 'Non vérifié'}
-                  </p>
+                  <p className="text-xs text-green-700 font-medium">Vérifié</p>
                 </div>
 
-                <div className={`p-4 rounded-xl border-2 ${verificationStatus?.phone_verified ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {verificationStatus?.phone_verified ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <AlertCircle className="w-5 h-5 text-gray-400" />
-                    )}
-                    <span className="font-medium text-sm">Téléphone</span>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {verificationStatus?.phone_verified ? 'Vérifié' : 'Non vérifié'}
-                  </p>
-                </div>
-
-                <div className={`p-4 rounded-xl border-2 ${verificationStatus?.identity_verified ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                {/* Identité — vérification par document CNI */}
+                <div className={`p-4 rounded-xl border-2 ${
+                  verificationStatus?.identity_verified ? 'border-green-500 bg-green-50'
+                  : verificationStatus?.identity_pending ? 'border-yellow-400 bg-yellow-50'
+                  : 'border-gray-200'
+                }`}>
                   <div className="flex items-center gap-2 mb-2">
                     {verificationStatus?.identity_verified ? (
                       <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : verificationStatus?.identity_pending ? (
+                      <Clock className="w-5 h-5 text-yellow-500" />
                     ) : (
                       <AlertCircle className="w-5 h-5 text-gray-400" />
                     )}
                     <span className="font-medium text-sm">Identité</span>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {verificationStatus?.identity_verified ? 'Vérifiée' : 'Non vérifiée'}
-                  </p>
+                  {verificationStatus?.identity_verified ? (
+                    <p className="text-xs text-green-700 font-medium">Vérifiée</p>
+                  ) : verificationStatus?.identity_pending ? (
+                    <p className="text-xs text-yellow-700 font-medium">En cours de vérification</p>
+                  ) : (
+                    <p className="text-xs text-gray-500">Déposez votre CNI ci-dessous</p>
+                  )}
                 </div>
 
-                <div className={`p-4 rounded-xl border-2 ${verificationStatus?.business_verified ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                {/* Entreprise — vérification par document SIRET/Kbis */}
+                <div className={`p-4 rounded-xl border-2 ${
+                  verificationStatus?.business_verified ? 'border-green-500 bg-green-50'
+                  : verificationStatus?.business_pending ? 'border-yellow-400 bg-yellow-50'
+                  : 'border-gray-200'
+                }`}>
                   <div className="flex items-center gap-2 mb-2">
                     {verificationStatus?.business_verified ? (
                       <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : verificationStatus?.business_pending ? (
+                      <Clock className="w-5 h-5 text-yellow-500" />
                     ) : (
                       <AlertCircle className="w-5 h-5 text-gray-400" />
                     )}
                     <span className="font-medium text-sm">Entreprise</span>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {verificationStatus?.business_verified ? 'Vérifiée' : 'Non vérifiée'}
-                  </p>
+                  {verificationStatus?.business_verified ? (
+                    <p className="text-xs text-green-700 font-medium">Vérifiée</p>
+                  ) : verificationStatus?.business_pending ? (
+                    <p className="text-xs text-yellow-700 font-medium">En cours de vérification</p>
+                  ) : (
+                    <p className="text-xs text-gray-500">Déposez votre SIRET ci-dessous</p>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Informations légales */}
+              <div>
+                <h2 className="font-semibold text-gray-900 mb-4">Informations légales</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Numéro SIRET
+                    </label>
+                    <div className="relative">
+                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={profile?.siret || ''}
+                        onChange={(e) => handleProfileChange('siret', e.target.value)}
+                        placeholder="123 456 789 00012"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Numéro de TVA intracommunautaire
+                    </label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={profile?.numero_tva || ''}
+                        onChange={(e) => handleProfileChange('numero_tva', e.target.value)}
+                        placeholder="FR12 123456789"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -828,24 +922,26 @@ export default function PhotographeProfilPage() {
                 <h2 className="font-semibold text-gray-900 mb-4">Documents à soumettre</h2>
                 <div className="space-y-4">
                   {DOCUMENT_TYPES.map(docType => {
-                    const existingDoc = documents.find(d => d.document_type === docType.type);
+                    const docData = profile?.[docType.profileColumn];
+                    const hasDoc = !!docData;
+                    const isImage = hasDoc && docData.startsWith('data:image');
                     const IconComponent = docType.icon;
-                    
+
                     return (
-                      <div key={docType.type} className="p-4 rounded-xl border border-gray-200 hover:border-gray-300 transition-all">
+                      <div key={docType.type} className={`p-4 rounded-xl border-2 transition-all ${
+                        hasDoc ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                              existingDoc?.verification_status === 'approved' ? 'bg-green-100' :
-                              existingDoc?.verification_status === 'pending' ? 'bg-yellow-100' :
-                              existingDoc?.verification_status === 'rejected' ? 'bg-red-100' : 'bg-gray-100'
-                            }`}>
-                              <IconComponent className={`w-6 h-6 ${
-                                existingDoc?.verification_status === 'approved' ? 'text-green-600' :
-                                existingDoc?.verification_status === 'pending' ? 'text-yellow-600' :
-                                existingDoc?.verification_status === 'rejected' ? 'text-red-600' : 'text-gray-500'
-                              }`} />
-                            </div>
+                            {isImage ? (
+                              <img src={docData} alt={docType.label} className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
+                            ) : (
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                                hasDoc ? 'bg-green-100' : 'bg-gray-100'
+                              }`}>
+                                <IconComponent className={`w-6 h-6 ${hasDoc ? 'text-green-600' : 'text-gray-500'}`} />
+                              </div>
+                            )}
                             <div>
                               <div className="flex items-center gap-2">
                                 <h4 className="font-medium text-gray-900">{docType.label}</h4>
@@ -854,62 +950,49 @@ export default function PhotographeProfilPage() {
                                 )}
                               </div>
                               <p className="text-sm text-gray-500">{docType.description}</p>
+                              {hasDoc && (
+                                <span className="flex items-center gap-1 text-green-700 text-xs mt-1">
+                                  <CheckCircle className="w-3.5 h-3.5" /> Document chargé
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            {existingDoc ? (
-                              <div className="flex items-center gap-2">
-                                {existingDoc.verification_status === 'approved' && (
-                                  <span className="flex items-center gap-1 text-green-600 text-sm">
-                                    <CheckCircle className="w-4 h-4" /> Approuvé
-                                  </span>
-                                )}
-                                {existingDoc.verification_status === 'pending' && (
-                                  <span className="flex items-center gap-1 text-yellow-600 text-sm">
-                                    <Clock className="w-4 h-4" /> En attente
-                                  </span>
-                                )}
-                                {existingDoc.verification_status === 'rejected' && (
-                                  <span className="flex items-center gap-1 text-red-600 text-sm">
-                                    <XCircle className="w-4 h-4" /> Refusé
-                                  </span>
-                                )}
-                              </div>
-                            ) : null}
-
-                            <label className={`px-4 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 ${
-                              uploading === docType.type ? 'opacity-50 cursor-wait' : ''
-                            }`} style={{ 
-                              background: existingDoc ? '#F3F4F6' : COLORS.accent,
-                              color: existingDoc ? COLORS.text : 'white'
-                            }}>
-                              {uploading === docType.type ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Upload className="w-4 h-4" />
-                              )}
-                              <span className="text-sm font-medium">
-                                {existingDoc ? 'Remplacer' : 'Ajouter'}
-                              </span>
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                onChange={(e) => handleDocumentUpload(e, docType.type)}
-                                disabled={uploading === docType.type}
-                                className="hidden"
-                              />
-                            </label>
+                          <div className="flex items-center gap-2">
+                            {hasDoc && (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewDoc({ label: docType.label, data: docData })}
+                                className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium text-gray-700"
+                              >
+                                <Eye className="w-4 h-4" />
+                                Voir
+                              </button>
+                            )}
+                          <label className={`px-4 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 ${
+                            uploading === docType.type ? 'opacity-50 cursor-wait' : ''
+                          }`} style={{
+                            background: hasDoc ? '#F3F4F6' : COLORS.accent,
+                            color: hasDoc ? COLORS.text : 'white'
+                          }}>
+                            {uploading === docType.type ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4" />
+                            )}
+                            <span className="text-sm font-medium">
+                              {hasDoc ? 'Remplacer' : 'Ajouter'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              onChange={(e) => handleDocumentUpload(e, docType.type)}
+                              disabled={uploading === docType.type}
+                              className="hidden"
+                            />
+                          </label>
                           </div>
                         </div>
-
-                        {existingDoc?.verification_status === 'rejected' && existingDoc.rejection_reason && (
-                          <div className="mt-3 p-3 bg-red-50 rounded-lg">
-                            <p className="text-sm text-red-700">
-                              <strong>Raison du refus :</strong> {existingDoc.rejection_reason}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -938,6 +1021,21 @@ export default function PhotographeProfilPage() {
                   <span className="text-gray-400 group-hover:text-indigo-500 transition-colors">→</span>
                 </button>
               </div>
+
+              <button
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Enregistrer
+                  </>
+                )}
+              </button>
             </div>
           )}
 
@@ -954,6 +1052,22 @@ export default function PhotographeProfilPage() {
                   placeholder="Jean Dupont"
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom d'entreprise
+                </label>
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={profile?.nom_entreprise || ''}
+                    onChange={(e) => handleProfileChange('nom_entreprise', e.target.value)}
+                    placeholder="Mon Studio Photo"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1082,6 +1196,41 @@ export default function PhotographeProfilPage() {
                       className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vidéo de présentation (URL)
+                </label>
+                <div className="relative">
+                  <Video className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="url"
+                    value={profile?.video_presentation_url || ''}
+                    onChange={(e) => handleProfileChange('video_presentation_url', e.target.value)}
+                    placeholder="https://youtube.com/..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Lien YouTube, Vimeo ou autre plateforme vidéo</p>
+              </div>
+
+              <div
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  profile?.statut_pro ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
+                }`}
+                onClick={() => handleProfileChange('statut_pro', !profile?.statut_pro)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Shield className={`w-6 h-6 ${profile?.statut_pro ? 'text-indigo-600' : 'text-gray-400'}`} />
+                    <div>
+                      <h4 className="font-medium text-gray-900">Professionnel</h4>
+                      <p className="text-xs text-gray-500">Je suis photographe professionnel (auto-entrepreneur, société…)</p>
+                    </div>
+                  </div>
+                  {profile?.statut_pro && <Check className="w-5 h-5 text-indigo-600" />}
                 </div>
               </div>
 
@@ -1291,6 +1440,43 @@ export default function PhotographeProfilPage() {
                 />
               </div>
 
+              {/* Services additionnels */}
+              <div>
+                <h2 className="font-semibold text-gray-900 mb-2">Services additionnels</h2>
+                <p className="text-sm text-gray-500 mb-4">Sélectionnez les services supplémentaires que vous proposez</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { key: 'drone', label: 'Drone' },
+                    { key: 'video', label: 'Vidéo' },
+                    { key: 'stylisme', label: 'Stylisme' },
+                    { key: 'maquillage', label: 'Maquillage' },
+                    { key: 'retouche_pro', label: 'Retouche pro' },
+                    { key: 'retouche_beaute', label: 'Retouche beauté' },
+                    { key: 'impression_album', label: 'Album photo' },
+                    { key: 'livraison_express', label: 'Livraison express' },
+                  ].map(({ key, label }) => {
+                    const isOn = profile?.services_additionnels?.[key] ?? false;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleProfileChange('services_additionnels', {
+                          ...(profile?.services_additionnels || {}),
+                          [key]: !isOn,
+                        })}
+                        className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                          isOn
+                            ? 'border-purple-500 bg-purple-50 text-purple-900'
+                            : 'border-gray-200 text-gray-600 hover:border-purple-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <button
                 onClick={handleSaveProfile}
                 disabled={saving}
@@ -1318,15 +1504,15 @@ export default function PhotographeProfilPage() {
                   {/* Mobile */}
                   <div 
                     className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                      profile?.mode_mobile ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
+                      profile?.mobile ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'
                     }`}
-                    onClick={() => handleProfileChange('mode_mobile', !profile?.mode_mobile)}
+                    onClick={() => handleProfileChange('mobile', !profile?.mobile)}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        profile?.mode_mobile ? 'bg-indigo-600' : 'bg-gray-100'
+                        profile?.mobile ? 'bg-indigo-600' : 'bg-gray-100'
                       }`}>
-                        <Car className={`w-6 h-6 ${profile?.mode_mobile ? 'text-white' : 'text-gray-500'}`} />
+                        <Car className={`w-6 h-6 ${profile?.mobile ? 'text-white' : 'text-gray-500'}`} />
                       </div>
                       <div>
                         <h4 className="font-semibold text-gray-900">Je me déplace</h4>
@@ -1334,10 +1520,10 @@ export default function PhotographeProfilPage() {
                       </div>
                     </div>
                     <div className={`w-12 h-6 rounded-full transition-all ${
-                      profile?.mode_mobile ? 'bg-indigo-600' : 'bg-gray-300'
+                      profile?.mobile ? 'bg-indigo-600' : 'bg-gray-300'
                     }`}>
                       <div className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-all mt-0.5 ${
-                        profile?.mode_mobile ? 'translate-x-6' : 'translate-x-0.5'
+                        profile?.mobile ? 'translate-x-6' : 'translate-x-0.5'
                       }`}></div>
                     </div>
                   </div>
@@ -1345,15 +1531,15 @@ export default function PhotographeProfilPage() {
                   {/* Studio */}
                   <div 
                     className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                      profile?.mode_studio ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-purple-300'
+                      profile?.agence ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-purple-300'
                     }`}
-                    onClick={() => handleProfileChange('mode_studio', !profile?.mode_studio)}
+                    onClick={() => handleProfileChange('agence', !profile?.agence)}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        profile?.mode_studio ? 'bg-purple-600' : 'bg-gray-100'
+                        profile?.agence ? 'bg-purple-600' : 'bg-gray-100'
                       }`}>
-                        <Home className={`w-6 h-6 ${profile?.mode_studio ? 'text-white' : 'text-gray-500'}`} />
+                        <Home className={`w-6 h-6 ${profile?.agence ? 'text-white' : 'text-gray-500'}`} />
                       </div>
                       <div>
                         <h4 className="font-semibold text-gray-900">J'ai un bureau</h4>
@@ -1361,10 +1547,10 @@ export default function PhotographeProfilPage() {
                       </div>
                     </div>
                     <div className={`w-12 h-6 rounded-full transition-all ${
-                      profile?.mode_studio ? 'bg-purple-600' : 'bg-gray-300'
+                      profile?.agence ? 'bg-purple-600' : 'bg-gray-300'
                     }`}>
                       <div className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-all mt-0.5 ${
-                        profile?.mode_studio ? 'translate-x-6' : 'translate-x-0.5'
+                        profile?.agence ? 'translate-x-6' : 'translate-x-0.5'
                       }`}></div>
                     </div>
                   </div>
@@ -1372,7 +1558,7 @@ export default function PhotographeProfilPage() {
               </div>
 
               {/* Adresse studio (si mode studio activé) */}
-              {profile?.mode_studio && (
+              {profile?.agence && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Adresse du studio
@@ -1381,8 +1567,8 @@ export default function PhotographeProfilPage() {
                     <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
-                      value={profile?.adresse_studio || ''}
-                      onChange={(e) => handleProfileChange('adresse_studio', e.target.value)}
+                      value={profile?.agence_adresse || ''}
+                      onChange={(e) => handleProfileChange('agence_adresse', e.target.value)}
                       placeholder="123 Rue de la Photo, 75001 Paris"
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500"
                     />
@@ -1391,7 +1577,7 @@ export default function PhotographeProfilPage() {
               )}
 
               {/* Rayon de déplacement */}
-              {profile?.mode_mobile && (
+              {profile?.mobile && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Rayon de déplacement (km)
@@ -1414,7 +1600,7 @@ export default function PhotographeProfilPage() {
               )}
 
               {/* Frais de déplacement */}
-              {profile?.mode_mobile && (
+              {profile?.mobile && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Frais de déplacement (MAD/km)
@@ -1476,6 +1662,37 @@ export default function PhotographeProfilPage() {
                       {profile?.accepte_soiree && <Check className="w-5 h-5 text-blue-600" />}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Jours travaillés */}
+              <div>
+                <h2 className="font-semibold text-gray-900 mb-2">Jours travaillés</h2>
+                <p className="text-sm text-gray-500 mb-4">Sélectionnez vos jours de disponibilité habituels</p>
+                <div className="flex flex-wrap gap-2">
+                  {['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].map((jour) => {
+                    const isActive = (profile?.jours_travailles || []).includes(jour);
+                    return (
+                      <button
+                        key={jour}
+                        type="button"
+                        onClick={() => {
+                          const current = profile?.jours_travailles || [];
+                          handleProfileChange(
+                            'jours_travailles',
+                            isActive ? current.filter(d => d !== jour) : [...current, jour]
+                          );
+                        }}
+                        className={`px-4 py-2 rounded-xl border-2 text-sm font-medium capitalize transition-all ${
+                          isActive
+                            ? 'border-teal-500 bg-teal-50 text-teal-900'
+                            : 'border-gray-200 text-gray-600 hover:border-teal-300'
+                        }`}
+                      >
+                        {jour.charAt(0).toUpperCase() + jour.slice(1)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1544,6 +1761,23 @@ export default function PhotographeProfilPage() {
                   ))}
                 </div>
               )}
+
+              {portfolioImages.length > 0 && (
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="mt-6 w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      Enregistrer le portfolio
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
@@ -1563,6 +1797,95 @@ export default function PhotographeProfilPage() {
                 <p className="text-sm text-gray-500 mt-1">
                   Ce tarif sera affiché sur votre profil public
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tarif horaire maximum (MAD)
+                </label>
+                <input
+                  type="number"
+                  value={profile?.tarif_horaire_max || ''}
+                  onChange={(e) => handleProfileChange('tarif_horaire_max', parseFloat(e.target.value))}
+                  placeholder="200"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-sm text-gray-500 mt-1">Fourchette haute de votre tarif horaire</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Acompte à la réservation (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={profile?.acompte_percent ?? 30}
+                  onChange={(e) => handleProfileChange('acompte_percent', parseInt(e.target.value))}
+                  placeholder="30"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-sm text-gray-500 mt-1">Pourcentage demandé à la réservation (défaut : 30 %)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Délai d'annulation sans frais (jours)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={profile?.delai_annulation_jours ?? 7}
+                  onChange={(e) => handleProfileChange('delai_annulation_jours', parseInt(e.target.value))}
+                  placeholder="7"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-sm text-gray-500 mt-1">Nombre de jours avant la prestation pour annuler sans pénalité</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Conditions d'annulation
+                </label>
+                <textarea
+                  value={profile?.conditions_annulation || ''}
+                  onChange={(e) => handleProfileChange('conditions_annulation', e.target.value)}
+                  placeholder="Ex : Annulation gratuite jusqu'à 7 jours avant. 50 % retenus entre 3 et 7 jours. Aucun remboursement sous 48h."
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Modalités de paiement acceptées
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['Virement bancaire', 'Carte bancaire', 'Espèces', 'Chèque'].map((mode) => {
+                    const isOn = (profile?.modalites_paiement || []).includes(mode);
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          const current = profile?.modalites_paiement || [];
+                          handleProfileChange(
+                            'modalites_paiement',
+                            isOn ? current.filter(m => m !== mode) : [...current, mode]
+                          );
+                        }}
+                        className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
+                          isOn
+                            ? 'border-green-500 bg-green-50 text-green-900'
+                            : 'border-gray-200 text-gray-600 hover:border-green-300'
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="bg-indigo-50 rounded-xl p-4">
@@ -1596,6 +1919,41 @@ export default function PhotographeProfilPage() {
           )}
         </div>
       </main>
+
+      {/* Modal de prévisualisation document */}
+      {previewDoc && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">{previewDoc.label}</h2>
+              <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            {previewDoc.data.startsWith('data:image') ? (
+              <img src={previewDoc.data} alt={previewDoc.label} className="w-full max-h-[70vh] object-contain rounded-xl" />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-500 gap-3">
+                <FileText className="w-16 h-16 text-gray-300" />
+                <p className="text-sm">Aperçu non disponible pour les PDF</p>
+                <a
+                  href={previewDoc.data}
+                  download={previewDoc.label}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700"
+                >
+                  Télécharger le document
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal de changement de mot de passe */}
       {showPasswordModal && (

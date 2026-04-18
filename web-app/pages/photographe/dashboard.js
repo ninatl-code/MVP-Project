@@ -18,7 +18,7 @@ const COLORS = {
 
 export default function PhotographerDashboard() {
   const router = useRouter();
-  const { user, profile, profileId, photographeProfile } = useAuth();
+  const { user, profileId, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     pendingDevis: 0,
     activeReservations: 0,
@@ -34,15 +34,18 @@ export default function PhotographerDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (photographeProfile?.id) {
-      fetchDashboardData();
+    if (authLoading) return;
+    if (!user) {
+      router.push('/login');
+      return;
     }
-  }, [photographeProfile]);
+    fetchDashboardData();
+  }, [user, authLoading]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const photographeId = photographeProfile.id;
+      const photographeId = user.id;
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -99,7 +102,7 @@ export default function PhotographerDashboard() {
         revenueThisMonth,
         unreadMessages: unreadMessages || 0,
         unreadNotifications: unreadNotifications || 0,
-        profileViews: photographeProfile?.vues_profil || 0,
+        profileViews: 0,
         newDemandes: newDemandes || 0,
       });
 

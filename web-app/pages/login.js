@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
 import { Mail, Lock, AlertCircle, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
+import { useAuth } from '../contexts/AuthContext';
 
-// Palette Shooty
+// Palette ServiDaba
 const COLORS = {
   primary: '#E8EAF6',     // Violet
   secondary: '#5C6BC0',   // Jaune doré
@@ -23,11 +24,22 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
   const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
+  const { activeRole, user, loading: authLoading } = useAuth()
+
+  // Dès qu'AuthContext a chargé le profil, redirige
+  useEffect(() => {
+    if (!loading) return; // on n'est pas en train de se connecter
+    if (authLoading) return; // AuthContext pas encore prêt
+    if (!user) return;
+    const targetPath = activeRole === 'prestataire' || activeRole === 'photographe' ? '/photographe/menu' : '/client/menu';
+    console.log(`[Login] ✅ AuthContext prêt (role=${activeRole}) — redirection vers ${targetPath}`);
+    router.push(targetPath);
+  }, [user, activeRole, authLoading, loading]);
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    console.log('=== DÉBUT DE LA CONNEXION ===')
-    console.log('Email:', form.email)
+    const t0 = performance.now()
+    console.log('[Login] ▶ handleLogin — début')
     setLoading(true)
     setErrorMsg('')
 
@@ -36,25 +48,22 @@ function Login() {
     // Timeout de sécurité (30 secondes)
     const timeout = setTimeout(() => {
       timedOut = true
-      console.error('TIMEOUT: La connexion prend trop de temps')
+      console.error('[Login] ⏰ TIMEOUT après 30s')
       setErrorMsg('La connexion prend trop de temps. Veuillez vérifier votre connexion internet.')
       setLoading(false)
     }, 30000)
 
     try {
-      // Tentative de connexion directement
-      console.log('1. Tentative de connexion Supabase...')
+      console.log('[Login] 1. signInWithPassword...')
+      const t1 = performance.now()
       const { data, error } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
       })
-
-      console.log('2. Résultat connexion:', { data: data?.user?.id, error: error?.message })
+      console.log(`[Login] 2. signInWithPassword — ${(performance.now() - t1).toFixed(0)}ms`, error ? `ERREUR: ${error.message}` : `OK (${data?.user?.id})`)
 
       if (error) {
         clearTimeout(timeout)
-        console.error('Erreur de connexion:', error.message)
-        // Gérer les différents types d'erreurs
         if (error.message === 'Invalid login credentials') {
           setErrorMsg('Email ou mot de passe incorrect. Veuillez réessayer.')
         } else if (error.message === 'Email not confirmed') {
@@ -75,43 +84,9 @@ function Login() {
         return
       }
 
-      console.log('3. Utilisateur connecté, ID:', data.user.id)
-
-      // Récupération du profil et animation en parallèle
-      console.log('4. Récupération du profil...')
-      let { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('role, id')
-        .eq('id', data.user.id)
-
-      console.log('5. Profils récupérés:', { count: profiles?.length, error: profileError?.message })
-      
-      if (profileError) {
-        clearTimeout(timeout)
-        console.error('Erreur profil:', profileError)
-        setErrorMsg('Erreur lors de la récupération du profil.')
-        setLoading(false)
-        return
-      }
-
-      // Si aucun profil trouvé, erreur claire
-      if (!profiles || profiles.length === 0) {
-        clearTimeout(timeout)
-        setErrorMsg('Aucun profil trouvé. Veuillez vous inscrire.')
-        setLoading(false)
-        return
-      }
-
-      const profile = profiles[0]
-
-      // Redirection directe sans animation splash (évite les 2s de délai inutiles)
-      const targetPath = profile?.role === 'prestataire' || profile?.role === 'photographe' ? '/photographe/menu' : '/client/menu'
-      console.log('6. Redirection vers:', targetPath)
-      
+      console.log(`[Login] 3. ✅ Auth OK en ${(performance.now() - t0).toFixed(0)}ms — en attente AuthContext pour la redirection...`)
       clearTimeout(timeout)
-      if (!timedOut) router.push(targetPath)
-      
-      // Le loading sera arrêté après la redirection
+      // La redirection est gérée par le useEffect qui surveille activeRole dans AuthContext
 
     } catch (err) {
       clearTimeout(timeout)
@@ -173,7 +148,7 @@ function Login() {
             color: COLORS.text + 'AA', 
             marginBottom: 32 
           }}>
-            Accédez à votre espace Shooty
+            Accédez à votre espace ServiDaba
           </p>
 
           {errorMsg && (

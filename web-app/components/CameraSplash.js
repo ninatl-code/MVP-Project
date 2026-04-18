@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -36,6 +36,13 @@ export default function CameraSplash({
   const [flashCount, setFlashCount] = useState(0);
   const [showMessage, setShowMessage] = useState(false);
 
+  // Stocker onComplete dans une ref pour éviter que le timer se réinitialise
+  // à chaque re-render du composant parent (causé par les chargements de données)
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
   useEffect(() => {
     if (!isVisible) return;
 
@@ -55,9 +62,10 @@ export default function CameraSplash({
       });
     }, duration / 4);
 
-    // Callback de fin d'animation
+    // Callback de fin d'animation — utilise la ref pour ne pas dépendre
+    // de la référence instable de onComplete
     const completeTimer = setTimeout(() => {
-      onComplete();
+      onCompleteRef.current();
       setFlashCount(0);
       setShowMessage(false);
     }, duration);
@@ -67,7 +75,7 @@ export default function CameraSplash({
       clearTimeout(completeTimer);
       clearInterval(flashInterval);
     };
-  }, [isVisible, duration, onComplete]);
+  }, [isVisible, duration]); // onComplete retiré des dépendances — géré via ref
 
   return (
     <AnimatePresence>

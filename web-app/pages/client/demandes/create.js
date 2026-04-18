@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
+import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
   ArrowLeft, Camera, Calendar, MapPin, Euro, 
@@ -15,6 +16,13 @@ const COLORS = {
   text: '#1C1C1E',
 };
 
+const SPECIALITES_MAP = {
+  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
+  'transport': ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
+  'digital': ['Développement', 'Design', 'Marketing', 'Autre'],
+  'education': ['Cours particuliers', 'Coaching', 'Autre'],
+};
+
 const STEPS = [
   { id: 'category', title: 'Catégorie', subtitle: 'Type de prestation' },
   { id: 'details', title: 'Détails', subtitle: 'Informations essentielles' },
@@ -24,9 +32,12 @@ const STEPS = [
 
 export default function CreateDemandePage() {
   const router = useRouter();
+  const { profileId: authProfileId } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [userId, setUserId] = useState(null);
   const categories = [
     { id: 'services-domicile', label: 'Services à domicile', icon: '🔧', description: 'Plomberie, électricité, ménage, jardinage...' },
     { id: 'beaute-bien-etre', label: 'Beauté & Bien-être', icon: '💆', description: 'Coiffure, maquillage, massage, soins...' },
@@ -49,6 +60,8 @@ export default function CreateDemandePage() {
     budget_min: '',
     budget_max: '',
     exigences_specifiques: '',
+    specialite: '',
+    specialite_autre: '',
   });
 
   // Redirect if not authenticated (instant — reads from local storage)
@@ -56,6 +69,8 @@ export default function CreateDemandePage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         router.push('/login?redirect=/client/demandes/create');
+      } else {
+        setUserId(session.user.id);
       }
     });
   }, [router]);
@@ -68,8 +83,14 @@ export default function CreateDemandePage() {
     switch (currentStep) {
       case 0:
         return formData.categorie !== '';
-      case 1:
-        return formData.titre.trim() !== '' && formData.ville.trim() !== '';
+      case 1: {
+        const hasSpecs = !!SPECIALITES_MAP[formData.categorie];
+        const specValid = !hasSpecs || (
+          formData.specialite !== '' &&
+          (formData.specialite !== 'Autre' || formData.specialite_autre.trim() !== '')
+        );
+        return formData.titre.trim() !== '' && formData.ville.trim() !== '' && specValid;
+      }
       case 2:
         return formData.budget_max !== '';
       case 3:
@@ -94,38 +115,45 @@ export default function CreateDemandePage() {
   };
 
   const handleSubmit = async () => {
+    // Priorité : AuthContext → state local → getSession() en dernier recours
+    const resolvedId = authProfileId || userId || (await supabase.auth.getSession()).data.session?.user?.id;
+    if (!resolvedId) {
+      setError('Vous devez être connecté pour créer une demande.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const profileId = session?.user?.id;
-
-      if (!profileId) {
-        setError('Vous devez être connecté pour créer une demande.');
-        return;
-      }
+      const insertPayload = {
+        client_id: resolvedId,
+        titre: formData.titre,
+        categorie: formData.categorie,
+        description: formData.description || '',
+        date_souhaitee: formData.date_souhaitee || new Date().toISOString().split('T')[0],
+        ville: formData.ville,
+        lieu: formData.lieu || '',
+        duree_estimee_heures: parseInt(formData.duree_estimee) || null,
+        budget_max: parseFloat(formData.budget_max) || null,
+        type_prestation: formData.specialite === 'Autre'
+          ? [formData.specialite_autre?.trim() || 'Autre']
+          : [formData.specialite || ''],
+        statut: 'ouverte',
+      };
 
       const { error: insertError } = await supabase
         .from('demandes_client')
-        .insert({
-          client_id: profileId,
-          titre: formData.titre,
-          categorie: formData.categorie,
-          description: formData.description || null,
-          date_souhaitee: formData.date_souhaitee || null,
-          ville: formData.ville,
-          lieu: formData.lieu || null,
-          duree_estimee_heures: parseInt(formData.duree_estimee) || null,
-          budget_max: parseFloat(formData.budget_max) || null,
-          statut: 'ouverte',
-        });
+        .insert(insertPayload);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw insertError;
+      }
 
-      router.push('/client/demandes');
+      setSuccess(true);
+      setTimeout(() => router.push('/client/demandes'), 2000);
     } catch (err) {
       console.error('Error creating demande:', err);
-      setError('Erreur : ' + (err.message || 'Une erreur est survenue lors de la création de votre demande.'));
+      setError('Erreur : ' + (err.message || JSON.stringify(err) || 'Une erreur est survenue lors de la création de votre demande.'));
     } finally {
       setSubmitting(false);
     }
@@ -174,7 +202,11 @@ export default function CreateDemandePage() {
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => updateFormData('categorie', cat.id)}
+              onClick={() => {
+                updateFormData('categorie', cat.id);
+                updateFormData('specialite', '');
+                updateFormData('specialite_autre', '');
+              }}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 formData.categorie === cat.id
                   ? 'border-indigo-600 bg-indigo-50'
@@ -199,6 +231,42 @@ export default function CreateDemandePage() {
       <p className="text-gray-600 mb-6">
         Ces informations aideront les prestataires à comprendre vos besoins.
       </p>
+
+      {SPECIALITES_MAP[formData.categorie] && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Spécialité recherchée *
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {SPECIALITES_MAP[formData.categorie].map(spec => (
+              <button
+                key={spec}
+                type="button"
+                onClick={() => {
+                  updateFormData('specialite', spec);
+                  if (spec !== 'Autre') updateFormData('specialite_autre', '');
+                }}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                  formData.specialite === spec
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
+                }`}
+              >
+                {spec}
+              </button>
+            ))}
+          </div>
+          {formData.specialite === 'Autre' && (
+            <input
+              type="text"
+              value={formData.specialite_autre}
+              onChange={(e) => updateFormData('specialite_autre', e.target.value)}
+              placeholder="Précisez la spécialité recherchée..."
+              className="mt-3 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -467,6 +535,14 @@ export default function CreateDemandePage() {
               </button>
             </div>
             <p className="font-medium mb-3">{formData.titre}</p>
+            {formData.specialite && (
+              <>
+                <p className="text-sm text-gray-500 mb-1">Spécialité</p>
+                <p className="text-gray-700 text-sm font-medium mb-3">
+                  {formData.specialite === 'Autre' ? formData.specialite_autre : formData.specialite}
+                </p>
+              </>
+            )}
             {formData.description && (
               <>
                 <p className="text-sm text-gray-500 mb-1">Description</p>
@@ -600,7 +676,17 @@ export default function CreateDemandePage() {
 
         {/* Step content */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-          {renderCurrentStep()}
+          {success ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Demande publiée !</h2>
+              <p className="text-gray-500 text-sm">Votre demande est maintenant visible par les prestataires. Vous serez redirigé vers vos demandes...</p>
+            </div>
+          ) : (
+            renderCurrentStep()
+          )}
         </div>
 
         {/* Navigation */}

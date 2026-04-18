@@ -243,7 +243,7 @@ export default function MesReservationsPage() {
                 : 'Vous n\'avez pas encore de réservation.'}
             </p>
             <button
-              onClick={() => router.push('/client/search')}
+              onClick={() => router.push('/recherche')}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium"
               style={{ backgroundColor: COLORS.accent }}
             >

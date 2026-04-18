@@ -1234,17 +1234,42 @@ export default function ProviderHomeMenu() {
                   Mode Client
                 </Button>
               )}
-              <Button 
-                variant="accent" 
-                size="md"
-                onClick={() => router.push("/photographe/packages")}
-                className="hidden lg:flex"
-              >
-                <Plus className="w-4 h-4" />
-                Nouvelle annonce
-              </Button>
+
             </div>
           </div>
+
+          {/* Boutons d'accès aux demandes */}
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <button
+              onClick={() => router.push('/photographe/demandes?tab=clients')}
+              className="flex items-center gap-4 p-5 rounded-2xl text-white font-semibold text-left shadow-sm hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)' }}
+            >
+              <div className="p-3 bg-white/20 rounded-xl shrink-0">
+                <ClipboardList className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-lg font-bold">Demandes clients</p>
+                <p className="text-sm opacity-80">Voir toutes les demandes ouvertes</p>
+              </div>
+              <ChevronRight className="w-5 h-5 ml-auto shrink-0" />
+            </button>
+
+            <button
+              onClick={() => router.push('/photographe/demandes?tab=plateforme')}
+              className="flex items-center gap-4 p-5 rounded-2xl text-white font-semibold text-left shadow-sm hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(135deg, #130183, #3730A3)' }}
+            >
+              <div className="p-3 bg-white/20 rounded-xl shrink-0">
+                <Zap className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-lg font-bold">Demandes plateforme</p>
+                <p className="text-sm opacity-80">Missions proposées par ServiDaba</p>
+              </div>
+              <ChevronRight className="w-5 h-5 ml-auto shrink-0" />
+            </button>
+          </section>
 
           {/* Alerte Profil Incomplet (aligné sur mobile) */}
           {!profileComplete && missingSteps.length > 0 && (
@@ -1284,7 +1309,7 @@ export default function ProviderHomeMenu() {
           )}
 
           {/* Statistiques principales - cliquables */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             
             {/* Réservations - cliquable */}
             <Card 
@@ -1316,33 +1341,6 @@ export default function ProviderHomeMenu() {
               </CardContent>
             </Card>
 
-            {/* Demandes vues - cliquable */}
-            <Card 
-              hover={true}
-              className="cursor-pointer"
-              onClick={() => router.push("/photographe/demandes")}
-            >
-              <CardContent className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div 
-                      className="p-2 rounded-xl"
-                      style={{ backgroundColor: '#3B82F620' }}
-                    >
-                      <Mail className="w-5 h-5" style={{ color: '#3B82F6' }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Demandes vues
-                    </p>
-                  </div>
-                  <p className="text-3xl font-bold" style={{ color: '#3B82F6' }}>
-                    {demandesVues}
-                  </p>
-                </div>
-                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
-              </CardContent>
-            </Card>
-
             {/* Devis envoyés - cliquable */}
             <Card 
               hover={true}
@@ -1367,36 +1365,6 @@ export default function ProviderHomeMenu() {
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
                     Acceptés : <span className="font-semibold text-green-500">{nbDevisAccepted}</span>
-                  </p>
-                </div>
-                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
-              </CardContent>
-            </Card>
-
-            {/* Planning - cliquable */}
-            <Card 
-              hover={true}
-              className="cursor-pointer"
-              onClick={() => router.push("/photographe/calendar/calendrier")}
-            >
-              <CardContent className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div 
-                      className="p-2 rounded-xl"
-                      style={{ backgroundColor: '#10B98120' }}
-                    >
-                      <ClipboardList className="w-5 h-5" style={{ color: '#10B981' }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Planning
-                    </p>
-                  </div>
-                  <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
-                    {nbActivePrestations}
-                  </p>
-                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    Prestations actives
                   </p>
                 </div>
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
@@ -1441,19 +1409,22 @@ export default function ProviderHomeMenu() {
               Gestion
             </h2>
             <Card className="overflow-hidden">
-              {/* Médiathèque */}
+              {/* Demandes clients */}
               <div 
                 className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
                 style={{ borderColor: '#EBEBEB' }}
-                onClick={() => router.push("/photographe/mediatheque")}
+                onClick={() => router.push("/photographe/demandes")}
               >
-                <div className="p-3 rounded-xl" style={{ backgroundColor: '#FEE2E2' }}>
-                  <ImageIcon className="w-6 h-6" style={{ color: '#EF4444' }} />
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#EDE9FE' }}>
+                  <ClipboardList className="w-6 h-6" style={{ color: '#7C3AED' }} />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Médiathèque</h4>
-                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Gérer mes photos</p>
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Demandes clients</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Répondre aux demandes ouvertes</p>
                 </div>
+                {demandesVues > 0 && (
+                  <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full mr-2">{demandesVues}</span>
+                )}
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
 

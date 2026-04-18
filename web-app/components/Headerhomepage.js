@@ -1,12 +1,11 @@
 import { useRouter } from "next/router";
-import { ShootyLogoSimple } from "./ShootyLogo";
 
 export default function Headerhomepage() {
   const router = useRouter();
   return (
     <header className="flex items-center justify-between px-8 py-4 shadow-sm bg-white border-b border-gray-100">
       <div className="cursor-pointer" onClick={() => router.push("/")}>
-        <ShootyLogoSimple width={140} height={45} />
+        <img src="/ServiDaba-logo.png" alt="ServiDaba" width={140} height={45} style={{ objectFit: 'contain' }} />
       </div>
       <nav className="flex items-center space-x-6">
         <a 

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, RefreshCcw, User } from "lucide-react";
-import { ShootyLogoSimple } from "./ShootyLogo";
 
 // Palette Shooty
 const COLORS = {
@@ -70,7 +69,7 @@ export default function Header() {
       }
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("nom, photos, avatar_url")
+        .select("nom, avatar_url")
         .eq("id", user.id)
         .single();
       setProfile(profileData);
@@ -80,7 +79,7 @@ export default function Header() {
             .from("conversations")
             .select("id")
             .eq("client_id", user.id)
-            .eq("lu", false);
+            .gt("unread_count_client", 0);
           if (!unreadError && unreadConvs) {
             setNbUnread(unreadConvs.length);
           } else {
@@ -103,7 +102,7 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo & Titre */}
         <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/client/menu")}>
-          <ShootyLogoSimple width={120} height={40} />
+          <img src="/ServiDaba-logo.png" alt="ServiDaba" width={120} height={40} style={{ objectFit: 'contain' }} />
           <span className="ml-4 text-base hidden sm:block" style={{color: 'var(--foreground)', opacity: 0.6}}>Espace client</span>
         </div>
         {/* Actions */}
@@ -165,9 +164,9 @@ export default function Header() {
               onClick={() => router.push("/client/profil")}
               type="button"
             >
-              {(profile?.photos || profile?.avatar_url) ? (
+              {(profile?.avatar_url) ? (
                 <img
-                  src={profile.photos || profile.avatar_url}
+                  src={profile.avatar_url}
                   alt={profile?.nom}
                   className="w-full h-full object-cover rounded-full"
                 />

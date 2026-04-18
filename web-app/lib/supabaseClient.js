@@ -8,20 +8,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
+    flowType: 'implicit',
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     storageKey: 'supabase.auth.token',
   },
   global: {
     headers: {
       'Content-Type': 'application/json',
-    },
-    fetch: (url, options = {}) => {
-      return fetch(url, {
-        ...options,
-        cache: 'no-store',
-        next: { revalidate: 0 }
-      })
     },
   },
   db: {
