@@ -18,10 +18,10 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
-  ouverte: { label: 'Active', color: 'green', icon: CheckCircle },
-  pourvue: { label: 'Pourvue', color: 'blue', icon: CheckCircle },
-  fermee: { label: 'Fermée', color: 'red', icon: XCircle },
-  expiree: { label: 'Expirée', color: 'gray', icon: AlertCircle },
+  ouverte:  { label: 'Active',   color: 'green',  icon: CheckCircle },
+  pourvue:  { label: 'Pourvue',  color: 'blue',   icon: CheckCircle },
+  annulee:  { label: 'Annulée',  color: 'red',    icon: XCircle },
+  expiree:  { label: 'Expirée',  color: 'gray',   icon: AlertCircle },
 };
 
 export default function MesDemandesPage() {
@@ -80,7 +80,7 @@ export default function MesDemandesPage() {
   );
 
   const getStatusBadge = (status) => {
-    const config = STATUS_CONFIG[status] || STATUS_CONFIG.ouverte;
+    const config = STATUS_CONFIG[status] || { label: status, color: 'gray', icon: AlertCircle };
     const Icon = config.icon;
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-700`}>
@@ -140,7 +140,7 @@ export default function MesDemandesPage() {
 
             {/* Status filter */}
             <div className="flex gap-2 flex-wrap">
-              {['all', 'ouverte', 'pourvue', 'fermee'].map((status) => (
+              {['all', 'ouverte', 'pourvue', 'annulee', 'expiree'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}

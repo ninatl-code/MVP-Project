@@ -4,9 +4,10 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
-  ArrowLeft, Calendar, MapPin, Euro, Camera, 
+  ArrowLeft, Calendar, MapPin, Camera, 
   Star, MessageSquare, Check, X, Clock, Shield,
-  FileText, ChevronRight, AlertCircle, CheckCircle
+  FileText, AlertCircle, CheckCircle, Clock3,
+  Banknote, Tag, Users, Package, Info, ListChecks
 } from 'lucide-react';
 
 const COLORS = {
@@ -17,9 +18,10 @@ const COLORS = {
 
 const STATUS_CONFIG = {
   en_attente: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700' },
-  accepte: { label: 'Accepté', color: 'bg-green-100 text-green-700' },
-  refuse: { label: 'Refusé', color: 'bg-red-100 text-red-700' },
-  expire: { label: 'Expiré', color: 'bg-gray-100 text-gray-700' },
+  envoye:     { label: 'Reçu',       color: 'bg-blue-100 text-blue-700' },
+  accepte:    { label: 'Accepté',    color: 'bg-green-100 text-green-700' },
+  refuse:     { label: 'Refusé',     color: 'bg-red-100 text-red-700' },
+  expire:     { label: 'Expiré',     color: 'bg-gray-100 text-gray-700' },
 };
 
 export default function DevisDetailPage() {
@@ -43,35 +45,35 @@ export default function DevisDetailPage() {
   const fetchDevis = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Étape 1 : récupérer le devis + demande liée
+      const { data: devisData, error: devisError } = await supabase
         .from('devis')
         .select(`
           *,
-          photographe:profils_prestataire(
-            id,
-            nom_entreprise,
-            note_moyenne,
-            nb_avis,
-            ville,
-            specialisations,
-            identite_verifiee,
-            profile:profiles(nom, prenom)
-          ),
           demande:demandes_client(
-            id,
-            titre,
-            categorie,
-            date_souhaitee,
-            lieu,
-            budget_min,
-            budget_max
+            id, titre, categorie, date_souhaitee, lieu, budget_max
           )
         `)
         .eq('id', id)
         .single();
 
-      if (error) throw error;
-      setDevis(data);
+      if (devisError) {
+        console.error('Erreur devis:', devisError);
+        throw devisError;
+      }
+
+      // Étape 2 : récupérer le profil du prestataire séparément
+      let prestataire = null;
+      if (devisData.prestataire_id) {
+        const { data: prestData } = await supabase
+          .from('profiles')
+          .select('nom, avatar_url')
+          .eq('id', devisData.prestataire_id)
+          .single();
+        prestataire = prestData;
+      }
+
+      setDevis({ ...devisData, prestataire });
     } catch (error) {
       console.error('Error fetching devis:', error);
     } finally {
@@ -142,7 +144,7 @@ export default function DevisDetailPage() {
   const getExpirationDays = () => {
     if (!devis?.created_at) return 0;
     const created = new Date(devis.created_at);
-    const validityDays = devis.validite_jours || 30;
+    const validityDays = devis.duree_validite_jours || 30;
     const expiration = new Date(created.getTime() + validityDays * 24 * 60 * 60 * 1000);
     const today = new Date();
     const daysLeft = Math.ceil((expiration - today) / (1000 * 60 * 60 * 24));
@@ -179,12 +181,12 @@ export default function DevisDetailPage() {
     );
   }
 
-  const photographe = devis.photographe;
-  const profile = photographe?.profile;
+  const photographe = devis.prestataire;
+  const profile = devis.prestataire;
   const demande = devis.demande;
   const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG.en_attente;
   const expirationDays = getExpirationDays();
-  const canRespond = devis.statut === 'en_attente' && expirationDays > 0;
+  const canRespond = (devis.statut === 'en_attente' || devis.statut === 'envoye') && expirationDays > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -203,9 +205,10 @@ export default function DevisDetailPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Devis header */}
+
+            {/* ── En-tête du devis ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <FileText className="w-5 h-5 text-indigo-600" />
@@ -215,14 +218,15 @@ export default function DevisDetailPage() {
                     </span>
                   </div>
                   <h1 className="text-2xl font-bold text-gray-900">
-                    {devis.titre || demande?.titre || 'Devis photographe'}
+                    {devis.titre || demande?.titre || 'Devis prestataire'}
                   </h1>
+                  <p className="text-sm text-gray-400 mt-1">Reçu le {formatDate(devis.created_at)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-indigo-600">{devis.montant} DH</p>
-                  {devis.statut === 'en_attente' && (
+                  <p className="text-3xl font-bold text-indigo-600">{devis.montant_total ?? devis.tarif_base} DH</p>
+                  {(devis.statut === 'en_attente' || devis.statut === 'envoye') && (
                     <p className={`text-sm ${expirationDays <= 3 ? 'text-red-500' : 'text-gray-500'}`}>
-                      {expirationDays > 0 
+                      {expirationDays > 0
                         ? `Expire dans ${expirationDays} jour${expirationDays > 1 ? 's' : ''}`
                         : 'Expiré'}
                     </p>
@@ -230,78 +234,248 @@ export default function DevisDetailPage() {
                 </div>
               </div>
 
-              {/* Devis details */}
-              {devis.description && (
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-900 mb-2">Description</h3>
-                  <p className="text-gray-600 whitespace-pre-line">{devis.description}</p>
+              {/* Message personnalisé */}
+              {devis.message_personnalise && (
+                <div className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                  <p className="text-sm font-medium text-indigo-800 mb-1">Message du prestataire</p>
+                  <p className="text-sm text-indigo-700 whitespace-pre-line">{devis.message_personnalise}</p>
                 </div>
               )}
 
-              {/* What's included */}
-              {devis.prestations_incluses && (
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-900 mb-2">Ce qui est inclus</h3>
-                  <ul className="space-y-2">
-                    {devis.prestations_incluses.split('\n').map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-gray-600">
-                        <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
+              {/* Description */}
+              {devis.description && (
+                <div className="mb-4">
+                  <h2 className="font-medium text-gray-900 mb-1">Description de la prestation</h2>
+                  <p className="text-gray-600 text-sm whitespace-pre-line">{devis.description}</p>
+                </div>
+              )}
+
+              {/* Durée */}
+              {devis.duree_prestation_heures > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                  <Clock3 className="w-4 h-4 text-indigo-400" />
+                  <span>Durée de prestation : <strong>{devis.duree_prestation_heures} heure{devis.duree_prestation_heures > 1 ? 's' : ''}</strong></span>
+                </div>
+              )}
+            </div>
+
+            {/* ── Dates & Horaires proposés ── */}
+            {(devis.dates_disponibles?.length > 0 || devis.horaires_proposes) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-indigo-500" />
+                  Dates &amp; horaires proposés
+                </h2>
+
+                {devis.dates_disponibles?.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-500 mb-2">Dates disponibles</p>
+                    <div className="flex flex-wrap gap-2">
+                      {devis.dates_disponibles.map((d, i) => (
+                        <span key={i} className="px-3 py-1 bg-indigo-50 text-indigo-700 text-sm rounded-lg border border-indigo-100">
+                          {formatDate(d)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {devis.horaires_proposes && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-2">Horaires proposés</p>
+                    {(() => {
+                      const h = devis.horaires_proposes;
+                      // Format { detail: "..." } ou { note: "..." } → afficher la valeur directement
+                      const texte = typeof h === 'object' ? (h.detail || h.note || Object.values(h)[0]) : h;
+                      if (typeof texte === 'string') {
+                        return (
+                          <div className="flex items-start gap-2 text-sm text-gray-700">
+                            <Clock className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <span className="whitespace-pre-line">{texte}</span>
+                          </div>
+                        );
+                      }
+                      // Objet complexe → affichage clé/valeur
+                      return (
+                        <div className="space-y-1">
+                          {Object.entries(h).map(([k, v]) => (
+                            <div key={k} className="flex items-center gap-2 text-sm text-gray-700">
+                              <Clock className="w-4 h-4 text-gray-400" />
+                              <span className="capitalize font-medium">{k} :</span> <span>{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Services inclus ── */}
+            {devis.services_inclus && (Array.isArray(devis.services_inclus) ? devis.services_inclus.length > 0 : Object.keys(devis.services_inclus).length > 0) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <ListChecks className="w-5 h-5 text-green-500" />
+                  Services inclus
+                </h2>
+                <ul className="space-y-2">
+                  {Array.isArray(devis.services_inclus)
+                    ? devis.services_inclus.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))
+                    : Object.entries(devis.services_inclus).map(([k, v]) => (
+                        <li key={k} className="flex items-start gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span><span className="font-medium capitalize">{k}</span>{v && v !== true ? ` : ${v}` : ''}</span>
+                        </li>
+                      ))
+                  }
+                </ul>
+              </div>
+            )}
+
+            {/* ── Options supplémentaires ── */}
+            {devis.options_supplementaires && Object.keys(devis.options_supplementaires).length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Package className="w-5 h-5 text-purple-500" />
+                  Options supplémentaires
+                </h2>
+                <ul className="space-y-2">
+                  {Array.isArray(devis.options_supplementaires)
+                    ? devis.options_supplementaires.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))
+                    : Object.entries(devis.options_supplementaires).map(([k, v]) => (
+                        <li key={k} className="flex items-start gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                          <span><span className="font-medium capitalize">{k}</span>{v && v !== true ? ` : ${v}` : ''}</span>
+                        </li>
+                      ))
+                  }
+                </ul>
+              </div>
+            )}
+
+            {/* ── Détail du prix ── */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Banknote className="w-5 h-5 text-indigo-500" />
+                Détail du prix
+              </h2>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Tarif de base</span>
+                  <span className="font-medium">{devis.tarif_base} DH</span>
+                </div>
+                {devis.frais_deplacement > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Frais de déplacement</span>
+                    <span className="font-medium">{devis.frais_deplacement} DH</span>
+                  </div>
+                )}
+                {devis.frais_additionnels && Object.entries(devis.frais_additionnels).map(([k, v]) => (
+                  <div key={k} className="flex justify-between text-sm">
+                    <span className="text-gray-600 capitalize">{k}</span>
+                    <span className="font-medium">{v} DH</span>
+                  </div>
+                ))}
+                {(devis.remise_montant > 0 || devis.remise_percent > 0) && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-4 h-4" />
+                      Remise{devis.remise_percent > 0 ? ` (${devis.remise_percent}%)` : ''}
+                    </span>
+                    <span className="font-medium">- {devis.remise_montant} DH</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between">
+                  <span className="font-medium text-gray-900">Total</span>
+                  <span className="font-bold text-lg text-indigo-600">{devis.montant_total ?? devis.tarif_base} DH</span>
+                </div>
+              </div>
+
+              {/* Acompte */}
+              {devis.acompte_percent > 0 && (
+                <div className="mt-4 p-4 bg-indigo-50 rounded-xl">
+                  <h4 className="font-medium text-indigo-900 mb-2 flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    Conditions de paiement
+                  </h4>
+                  <ul className="text-sm text-indigo-700 space-y-1">
+                    <li>• Acompte de {devis.acompte_percent}% : <strong>{devis.acompte_montant} DH</strong></li>
+                    <li>• Solde : <strong>{(devis.montant_total ?? 0) - (devis.acompte_montant ?? 0)} DH</strong></li>
                   </ul>
                 </div>
               )}
 
-              {/* Breakdown */}
-              <div className="border-t border-gray-100 pt-4">
-                <h3 className="font-medium text-gray-900 mb-3">Détail du prix</h3>
-                <div className="space-y-2">
-                  {devis.details_prix ? (
-                    JSON.parse(devis.details_prix).map((item, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-gray-600">{item.label}</span>
-                        <span className="font-medium">{item.montant} DH</span>
-                      </div>
-                    ))
-                  ) : (
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Prestation photo</span>
-                        <span className="font-medium">{devis.montant} DH</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between">
-                    <span className="font-medium text-gray-900">Total</span>
-                    <span className="font-bold text-lg">{devis.montant} DH</span>
+              {/* Modalités de paiement */}
+              {devis.modalites_paiement?.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500 mb-2">Modes de paiement acceptés</p>
+                  <div className="flex flex-wrap gap-2">
+                    {devis.modalites_paiement.map((m, i) => (
+                      <span key={i} className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-lg">{m}</span>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Payment terms */}
-              <div className="mt-6 p-4 bg-indigo-50 rounded-xl">
-                <h4 className="font-medium text-indigo-900 mb-2 flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Conditions de paiement
-                </h4>
-                <ul className="text-sm text-indigo-700 space-y-1">
-                  <li>• Acompte de 30% à la réservation : <strong>{Math.round(devis.montant * 0.3)} DH</strong></li>
-                  <li>• Solde de 70% après la prestation : <strong>{Math.round(devis.montant * 0.7)} DH</strong></li>
-                  <li>• Annulation gratuite jusqu'à 48h avant</li>
-                </ul>
-              </div>
+              {/* Échéancier */}
+              {devis.echeancier_paiement && Object.keys(devis.echeancier_paiement).length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500 mb-2">Échéancier</p>
+                  <div className="space-y-1">
+                    {Object.entries(devis.echeancier_paiement).map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-sm text-gray-700">
+                        <span className="capitalize">{k}</span>
+                        <span>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Related demande */}
+            {/* ── Conditions d'annulation ── */}
+            {(devis.conditions_annulation || devis.penalites_annulation) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Info className="w-5 h-5 text-orange-400" />
+                  Conditions d'annulation
+                </h2>
+                {devis.conditions_annulation && (
+                  <p className="text-sm text-gray-600 mb-3 whitespace-pre-line">{devis.conditions_annulation}</p>
+                )}
+                {devis.penalites_annulation && Object.keys(devis.penalites_annulation).length > 0 && (
+                  <div className="space-y-1">
+                    {Object.entries(devis.penalites_annulation).map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-sm text-gray-700">
+                        <span className="capitalize">{k}</span>
+                        <span>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Demande associée ── */}
             {demande && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Demande associée</h3>
-                <div 
+                <h2 className="font-semibold text-gray-900 mb-4">Demande associée</h2>
+                <div
                   onClick={() => router.push(`/client/demandes/${demande.id}`)}
                   className="p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-all"
                 >
-                  <h4 className="font-medium text-gray-900 mb-2">{demande.titre}</h4>
+                  <h4 className="font-medium text-gray-900 mb-2">{demande.titre || demande.categorie}</h4>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                     {demande.date_souhaitee && (
                       <span className="flex items-center gap-1">
@@ -315,12 +489,10 @@ export default function DevisDetailPage() {
                         {demande.lieu}
                       </span>
                     )}
-                    {(demande.budget_min || demande.budget_max) && (
+                    {demande.budget_max && (
                       <span className="flex items-center gap-1">
-                        <Euro className="w-4 h-4" />
-                        {demande.budget_min && demande.budget_max 
-                          ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                          : `Max ${demande.budget_max} DH`}
+                        <Banknote className="w-4 h-4" />
+                        Budget max : {demande.budget_max} DH
                       </span>
                     )}
                   </div>
@@ -328,10 +500,10 @@ export default function DevisDetailPage() {
               </div>
             )}
 
-            {/* Actions */}
+            {/* ── Actions ── */}
             {canRespond && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Répondre au devis</h3>
+                <h2 className="font-semibold text-gray-900 mb-4">Répondre au devis</h2>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={handleAccept}
@@ -365,13 +537,13 @@ export default function DevisDetailPage() {
           {/* Sidebar - Photographer info */}
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Le photographe</h3>
+              <h2 className="font-semibold text-gray-900 mb-4">Le photographe</h2>
               
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 rounded-xl bg-indigo-100 flex items-center justify-center overflow-hidden">
-                  {photographe?.photo_profil ? (
+                  {photographe?.avatar_url ? (
                     <img
-                      src={photographe.photo_profil}
+                      src={photographe.avatar_url}
                       alt=""
                       className="w-full h-full object-cover"
                     />
@@ -380,25 +552,9 @@ export default function DevisDetailPage() {
                   )}
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                    {photographe?.nom_entreprise || `${profile?.prenom} ${profile?.nom}`}
-                    {photographe?.verifie && (
-                      <CheckCircle className="w-4 h-4 text-blue-600" />
-                    )}
+                  <h4 className="font-semibold text-gray-900">
+                    {photographe?.nom || 'Photographe'}
                   </h4>
-                  {photographe?.note_moyenne > 0 && (
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      {photographe.note_moyenne.toFixed(1)}
-                      {photographe.nb_avis > 0 && ` (${photographe.nb_avis} avis)`}
-                    </div>
-                  )}
-                  {photographe?.ville && (
-                    <p className="text-sm text-gray-500 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {photographe.ville}
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -430,7 +586,7 @@ export default function DevisDetailPage() {
                   Contacter
                 </button>
                 <button
-                  onClick={() => router.push(`/photographes/${devis.prestataire_id}`)}
+                  onClick={() => router.push(`/client/photographes/${devis.prestataire_id}`)}
                   className="w-full px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
                 >
                   Voir le profil complet
@@ -474,9 +630,9 @@ export default function DevisDetailPage() {
       {showRefuseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">
               Refuser ce devis ?
-            </h3>
+            </h2>
             <p className="text-gray-600 mb-4">
               Vous pouvez indiquer la raison de votre refus (optionnel). Le photographe sera notifié.
             </p>

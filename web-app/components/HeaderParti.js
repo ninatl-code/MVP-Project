@@ -285,7 +285,7 @@ function NotificationsPopup({ router }) {
                       router.push(`/client/menu?openAvis=${notif.id}`);
                     } else if (notif.type === 'message') {
                       setOpen(false);
-                      router.push('/client/messages');
+                      router.push('/shared/messages');
                     } else {
                       setOpen(false);
                       router.push('/client/notification');

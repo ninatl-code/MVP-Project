@@ -191,6 +191,14 @@ function NotificationsPopup({ userId }) {
                   className={`flex items-start gap-3 p-4 border-b border-gray-50 ${
                     notif.lu ? "bg-white" : "bg-pink-50"
                   } hover:bg-gray-50 cursor-pointer transition`}
+                  onClick={() => {
+                    setOpen(false);
+                    if (notif.type === 'nouveau_matching') {
+                      router.push('/photographe/demandes?tab=plateforme');
+                    } else if (notif.demande_id) {
+                      router.push('/photographe/demandes?tab=clients');
+                    }
+                  }}
                 >
                   <div>{getIcon(notif.type)}</div>
                   <div className="flex-1">
@@ -974,6 +982,7 @@ export default function ProviderHomeMenu() {
   // Nouvelles stats alignées sur mobile
   const [chiffreAffaires, setChiffreAffaires] = useState(0);
   const [demandesVues, setDemandesVues] = useState(0);
+  const [nbMatchingsPending, setNbMatchingsPending] = useState(0);
   const [messagesNonLus, setMessagesNonLus] = useState(0);
   const [tauxAcceptation, setTauxAcceptation] = useState(0);
   const [totalReservations, setTotalReservations] = useState(0);
@@ -1037,7 +1046,7 @@ export default function ProviderHomeMenu() {
       setProfile(profileData);
 
       // Charger toutes les stats en parallèle (aligné sur mobile)
-      const [reservationsRes, devisRes, demandesRes, messagesRes] = await Promise.all([
+      const [reservationsRes, devisRes, demandesRes, messagesRes, matchingsRes] = await Promise.all([
         supabase.from('reservations')
           .select('id, montant_total, statut')
           .eq('photographe_id', user.id),
@@ -1050,7 +1059,11 @@ export default function ProviderHomeMenu() {
         supabase.from('conversations')
           .select('id', { count: 'exact' })
           .eq('photographe_id', user.id)
-          .gt('unread_count_photographe', 0)
+          .gt('unread_count_photographe', 0),
+        supabase.from('matchings')
+          .select('id', { count: 'exact', head: true })
+          .eq('prestataire_id', user.id)
+          .eq('status', 'pending')
       ]);
 
       // Total réservations
@@ -1085,6 +1098,9 @@ export default function ProviderHomeMenu() {
 
       // Demandes vues
       setDemandesVues(demandesRes.data?.length || 0);
+
+      // Matchings en attente (proposés par la plateforme)
+      setNbMatchingsPending(matchingsRes.count || 0);
 
       // Messages non lus
       setMessagesNonLus(messagesRes.count || 0);
@@ -1257,9 +1273,16 @@ export default function ProviderHomeMenu() {
 
             <button
               onClick={() => router.push('/photographe/demandes?tab=plateforme')}
-              className="flex items-center gap-4 p-5 rounded-2xl text-white font-semibold text-left shadow-sm hover:opacity-90 transition-opacity"
+              className="relative flex items-center gap-4 p-5 rounded-2xl text-white font-semibold text-left shadow-sm hover:opacity-90 transition-opacity"
               style={{ background: 'linear-gradient(135deg, #130183, #3730A3)' }}
             >
+              {nbMatchingsPending > 0 && (
+                <span
+                  className="absolute -top-2 -right-2 flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-md"
+                >
+                  {nbMatchingsPending}
+                </span>
+              )}
               <div className="p-3 bg-white/20 rounded-xl shrink-0">
                 <Zap className="w-7 h-7" />
               </div>

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Bell, ArrowLeft, Check, CheckCheck, Calendar, MessageCircle,
-  FileText, Euro, Star, Camera, Clock, X, Trash2, Settings
+  FileText, Euro, Star, Camera, Clock, X, Trash2, Settings, Zap
 } from 'lucide-react';
 
 export default function NotificationsPage() {
@@ -108,6 +108,8 @@ export default function NotificationsPage() {
 
   const getNotificationIcon = (type) => {
     switch (type) {
+      case 'nouveau_matching':
+        return <Zap className="w-5 h-5 text-indigo-600" />;
       case 'nouvelle_demande':
         return <FileText className="w-5 h-5 text-blue-500" />;
       case 'nouveau_devis':
@@ -136,31 +138,36 @@ export default function NotificationsPage() {
   };
 
   const getNotificationLink = (notification) => {
-    const { type, data } = notification;
+    const { type } = notification;
+    const demande_id = notification.demande_id;
+    const devis_id = notification.devis_id;
+    const reservation_id = notification.reservation_id;
     switch (type) {
+      case 'nouveau_matching':
+        return '/photographe/demandes?tab=plateforme';
       case 'nouvelle_demande':
         return isPhotographe 
-          ? `/photographe/demandes/${data?.demande_id}` 
-          : `/client/demandes/${data?.demande_id}`;
+          ? `/photographe/demandes?tab=clients` 
+          : `/client/demandes/${demande_id}`;
       case 'nouveau_devis':
-        return `/client/devis/${data?.devis_id}`;
+        return `/client/devis/${devis_id}`;
       case 'devis_accepte':
       case 'devis_refuse':
-        return `/photographe/devis/${data?.devis_id}`;
+        return `/photographe/devis/${devis_id}`;
       case 'nouvelle_reservation':
       case 'reservation_confirmee':
       case 'reservation_annulee':
         return isPhotographe
-          ? `/photographe/reservations/${data?.reservation_id}`
-          : `/client/reservations/${data?.reservation_id}`;
+          ? `/photographe/reservations/${reservation_id}`
+          : `/client/reservations/${reservation_id}`;
       case 'nouveau_message':
-        return `/shared/messages?id=${data?.conversation_id}`;
+        return `/shared/messages`;
       case 'nouvel_avis':
         return `/shared/avis`;
       case 'rappel_prestation':
         return isPhotographe
-          ? `/photographe/reservations/${data?.reservation_id}`
-          : `/client/reservations/${data?.reservation_id}`;
+          ? `/photographe/reservations/${reservation_id}`
+          : `/client/reservations/${reservation_id}`;
       default:
         return '#';
     }
@@ -186,7 +193,7 @@ export default function NotificationsPage() {
     });
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+const unreadCount = notifications.filter(n => !n.lu).length;
 
   if (loading) {
     return (
@@ -307,7 +314,7 @@ export default function NotificationsPage() {
                 <div
                   key={notification.id}
                   className={`flex items-start gap-4 p-4 hover:bg-gray-50 transition ${
-                    !notification.read ? 'bg-indigo-50/50' : ''
+                    !notification.lu ? 'bg-indigo-50/50' : ''
                   }`}
                 >
                   {/* Checkbox */}
@@ -327,18 +334,18 @@ export default function NotificationsPage() {
                   <Link
                     href={getNotificationLink(notification)}
                     onClick={() => {
-                      if (!notification.read) {
+                      if (!notification.lu) {
                         markAsRead([notification.id]);
                       }
                     }}
                     className="flex-1 min-w-0"
                   >
-                    <p className={`text-sm ${!notification.read ? 'font-medium' : ''} text-gray-900`}>
+                    <p className={`text-sm ${!notification.lu ? 'font-medium' : ''} text-gray-900`}>
                       {notification.titre}
                     </p>
-                    {notification.message && (
+                    {notification.contenu && (
                       <p className="text-sm text-gray-500 mt-0.5">
-                        {notification.message}
+                        {notification.contenu}
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
@@ -347,7 +354,7 @@ export default function NotificationsPage() {
                   </Link>
 
                   {/* Unread indicator */}
-                  {!notification.read && (
+                  {!notification.lu && (
                     <div className="w-2 h-2 bg-indigo-600 rounded-full flex-shrink-0 mt-2"></div>
                   )}
 

@@ -4,9 +4,10 @@ import { supabase } from './supabaseClient';
  * Calculate match score between a demande and a service provider
  * Score is 0-100 based on:
  * - Specialization match (40 pts)
- * - Location/radius (30 pts)
+ * - City match (30 pts)
  * - Budget compatibility (20 pts)
  * - Verification status (10 pts)
+ * - Bonus: high rating (+5 pts)
  */
 export const calculateMatchScore = (demande, photographe) => {
   let score = 0;
@@ -14,10 +15,10 @@ export const calculateMatchScore = (demande, photographe) => {
 
   // 1. Specialization match (40 points)
   if (photographe.specialisations && demande.categorie) {
-    const specialisations = Array.isArray(photographe.specialisations) 
-      ? photographe.specialisations 
+    const specialisations = Array.isArray(photographe.specialisations)
+      ? photographe.specialisations
       : [photographe.specialisations];
-    
+
     if (specialisations.includes(demande.categorie)) {
       score += 40;
       matchReasons.push('Spécialité correspondante');
@@ -27,31 +28,41 @@ export const calculateMatchScore = (demande, photographe) => {
     }
   }
 
-  // 2. Location/radius match (30 points)
-  if (photographe.rayon_deplacement_km && demande.lieu) {
-    // Simplified location check - in production, use geocoding
-    if (photographe.rayon_deplacement_km >= 50) {
+  // 2. City match (30 points) — based on demande.ville only
+  if (demande.ville && photographe.ville) {
+    const villesDemande = demande.ville.toLowerCase().trim();
+    const villesPresta = photographe.ville.toLowerCase().trim();
+
+    if (villesDemande === villesPresta) {
       score += 30;
-      matchReasons.push('Dans la zone de déplacement');
-    } else if (photographe.rayon_deplacement_km >= 20) {
-      score += 20;
-      matchReasons.push('Zone de déplacement proche');
-    } else {
-      score += 10;
+      matchReasons.push(`Même ville (${demande.ville})`);
+    } else if (
+      villesPresta.includes(villesDemande) ||
+      villesDemande.includes(villesPresta)
+    ) {
+      // Partial match (e.g. "Grand Casablanca" vs "Casablanca")
+      score += 15;
+      matchReasons.push('Ville proche');
     }
+  } else if (!photographe.ville) {
+    // Prestataire sans ville renseignée — score neutre
+    score += 10;
   }
 
   // 3. Budget compatibility (20 points)
   if (photographe.tarif_horaire_min && demande.budget_max) {
     const estimatedCost = photographe.tarif_horaire_min * (demande.duree_estimee_heures || 2);
-    
+
     if (estimatedCost <= demande.budget_max) {
       score += 20;
       matchReasons.push('Budget compatible');
     } else if (estimatedCost <= demande.budget_max * 1.2) {
       score += 10;
-      matchReasons.push('Budget proche');
+      matchReasons.push('Budget légèrement au-dessus');
     }
+  } else if (!photographe.tarif_horaire_min) {
+    score += 15;
+    matchReasons.push('Tarif flexible');
   }
 
   // 4. Verification status (10 points)

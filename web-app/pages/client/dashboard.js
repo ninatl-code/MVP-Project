@@ -140,7 +140,7 @@ export default function ClientDashboard() {
     {
       icon: MessageSquare,
       label: 'Messages',
-      href: '/client/messages',
+      href: '/shared/messages',
       badge: stats.unreadMessages > 0 ? stats.unreadMessages : null,
     },
     {

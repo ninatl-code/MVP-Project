@@ -18,7 +18,7 @@ const COLORS = {
 const STATUS_CONFIG = {
   ouverte: { label: 'Active', color: 'bg-green-100 text-green-700', description: 'Votre demande est visible par les prestataires' },
   pourvue: { label: 'Pourvue', color: 'bg-blue-100 text-blue-700', description: 'Vous avez accepté un devis' },
-  fermee: { label: 'Fermée', color: 'bg-red-100 text-red-700', description: 'Cette demande a été fermée' },
+  annulee: { label: 'Annulée', color: 'bg-red-100 text-red-700', description: 'Cette demande a été annulée' },
   expiree: { label: 'Expirée', color: 'bg-gray-100 text-gray-700', description: 'Cette demande a expiré' },
 };
 
@@ -33,6 +33,7 @@ export default function DemandeDetailPage() {
   const [activeTab, setActiveTab] = useState('devis');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
   
   const isNew = router.query.new === 'true';
 
@@ -84,18 +85,25 @@ export default function DemandeDetailPage() {
 
   const handleCancelDemande = async () => {
     setCancelling(true);
+    setCancelError(null);
     try {
-      const { error } = await supabase
+      const resolvedClientId = profileId || (await supabase.auth.getSession()).data.session?.user?.id;
+
+      const { error, count } = await supabase
         .from('demandes_client')
-          .update({ statut: 'fermee' })
-        .eq('id', id);
+        .update({ statut: 'annulee' })
+        .eq('id', id)
+        .eq('client_id', resolvedClientId)
+        .select('id', { count: 'exact' });
 
       if (error) throw error;
-      
-      setDemande(prev => ({ ...prev, statut: 'fermee' }));
+      if (count === 0) throw new Error('Aucune ligne mise à jour. Vérifiez vos droits.');
+
+      setDemande(prev => ({ ...prev, statut: 'annulee' }));
       setShowCancelModal(false);
     } catch (error) {
       console.error('Error cancelling demande:', error);
+      setCancelError(error.message || 'Une erreur est survenue. Réessayez.');
     } finally {
       setCancelling(false);
     }
@@ -390,7 +398,7 @@ export default function DemandeDetailPage() {
 
       {/* Cancel modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
             <h3 className="text-lg font-bold text-gray-900 mb-2">
               Annuler cette demande ?
@@ -398,9 +406,14 @@ export default function DemandeDetailPage() {
             <p className="text-gray-600 mb-6">
               Cette action est irréversible. Les photographes ne pourront plus voir votre demande ni vous envoyer de devis.
             </p>
+            {cancelError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+                {cancelError}
+              </p>
+            )}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowCancelModal(false)}
+                onClick={() => { setShowCancelModal(false); setCancelError(null); }}
                 className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
               >
                 Annuler
@@ -410,7 +423,7 @@ export default function DemandeDetailPage() {
                 disabled={cancelling}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
               >
-                {cancelling ? 'Annulation...' : 'Confirmer'}
+                {cancelling ? 'Suppression...' : 'Confirmer'}
               </button>
             </div>
           </div>

@@ -1912,7 +1912,7 @@ function ParticularHomeMenu() {
         </div>
       )}
       
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex flex-col">
         {/* Hero Section avec gradient (aligné sur mobile) */}
         <div 
           className="shadow-sm"
@@ -1971,8 +1971,98 @@ function ParticularHomeMenu() {
           </div>
         </div>
 
+{/* Mes espaces */}
+        <div className="max-w-6xl mx-auto px-6 py-6" style={{ order: 0 }}>
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4" style={{ color: COLORS.text }}>Mes espaces</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+              {/* Demandes */}
+              <div
+                onClick={() => router.push('/client/demandes')}
+                className="group relative cursor-pointer rounded-2xl p-5 flex flex-col items-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)', border: '1px solid #C7D2FE' }}
+              >
+                {stats.demandes > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow">
+                    {stats.demandes}
+                  </span>
+                )}
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" style={{ background: COLORS.accent }}>
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm" style={{ color: COLORS.accent }}>Demandes</p>
+                  <p className="text-xs text-indigo-400 mt-0.5">Vos publications</p>
+                </div>
+              </div>
+
+              {/* Devis */}
+              <div
+                onClick={() => router.push('/client/devis/devis-list')}
+                className="group relative cursor-pointer rounded-2xl p-5 flex flex-col items-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                style={{ background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)', border: '1px solid #BFDBFE' }}
+              >
+                {stats.devis > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow">
+                    {stats.devis}
+                  </span>
+                )}
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" style={{ background: '#3B82F6' }}>
+                  <Package className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm text-blue-700">Devis</p>
+                  <p className="text-xs text-blue-400 mt-0.5">Propositions reçues</p>
+                </div>
+              </div>
+
+              {/* Réservations */}
+              <div
+                onClick={() => router.push('/client/reservations')}
+                className="group relative cursor-pointer rounded-2xl p-5 flex flex-col items-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)', border: '1px solid #BBF7D0' }}
+              >
+                {stats.reservations > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow">
+                    {stats.reservations}
+                  </span>
+                )}
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" style={{ background: '#10B981' }}>
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm text-green-700">Réservations</p>
+                  <p className="text-xs text-green-400 mt-0.5">Vos prestations</p>
+                </div>
+              </div>
+
+              {/* Avis */}
+              <div
+                onClick={() => router.push('/client/avis/avis-list')}
+                className="group relative cursor-pointer rounded-2xl p-5 flex flex-col items-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+                style={{ background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)', border: '1px solid #FDE68A' }}
+              >
+                {stats.avis > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow">
+                    {stats.avis}
+                  </span>
+                )}
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" style={{ background: '#F59E0B' }}>
+                  <Star className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm text-amber-700">Avis</p>
+                  <p className="text-xs text-amber-400 mt-0.5">Vos évaluations</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
         {/* Section "Comment trouver un prestataire" (aligné sur mobile) */}
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="max-w-6xl mx-auto px-6 py-8" style={{ order: 2 }}>
           <div className="mb-8">
             <h2 className="text-xl font-bold mb-2" style={{ color: COLORS.text }}>
               💡 Comment trouver un prestataire ?
@@ -2057,456 +2147,7 @@ function ParticularHomeMenu() {
             </div>
           </div>
 
-          {/* Menu rapide compact (aligné sur mobile) */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4" style={{ color: COLORS.text }}>
-              Mes espaces
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Demandes */}
-              <div 
-                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
-                onClick={() => router.push('/client/demandes')}
-              >
-                <div className="relative inline-flex">
-                  <FileText className="w-7 h-7" style={{ color: COLORS.accent }} />
-                  {stats.demandes > 0 && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                      {stats.demandes}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Demandes</p>
-              </div>
-
-              {/* Devis */}
-              <div 
-                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
-                onClick={() => router.push('/client/devis/devis-list')}
-              >
-                <div className="relative inline-flex">
-                  <Package className="w-7 h-7" style={{ color: COLORS.accent }} />
-                  {stats.devis > 0 && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                      {stats.devis}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Devis</p>
-              </div>
-
-              {/* Réservations */}
-              <div 
-                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
-                onClick={() => router.push('/client/reservations')}
-              >
-                <div className="relative inline-flex">
-                  <Calendar className="w-7 h-7" style={{ color: COLORS.accent }} />
-                  {stats.reservations > 0 && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                      {stats.reservations}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Réservations</p>
-              </div>
-
-              {/* Avis */}
-              <div 
-                className="relative bg-white rounded-xl p-4 cursor-pointer transition-all hover:shadow-md border border-gray-100 text-center"
-                onClick={() => router.push('/client/avis/avis-list')}
-              >
-                <div className="relative inline-flex">
-                  <Star className="w-7 h-7" style={{ color: COLORS.accent }} />
-                  {stats.avis > 0 && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                      {stats.avis}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 text-sm font-semibold" style={{ color: COLORS.text }}>Avis</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Contenu existant : Tabs et devis/réservations */}
-        <div className="max-w-6xl mx-auto px-6 pb-8">
-          {/* Navigation Tabs */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            {/* Onglet Vue d'ensemble */}
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
-                activeTab === 'overview'
-                  ? 'border-indigo-500 bg-indigo-50 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  activeTab === 'overview' ? 'bg-indigo-500' : 'bg-gray-100'
-                }`}>
-                  <Grid3X3 className={`w-5 h-5 ${
-                    activeTab === 'overview' ? 'text-white' : 'text-gray-600'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`font-semibold ${
-                    activeTab === 'overview' ? 'text-indigo-900' : 'text-gray-900'
-                  }`}>Vue d'ensemble</h2>
-                  <p className="text-sm text-gray-500">Tous vos éléments</p>
-                </div>
-              </div>
-            </button>
-
-            {/* Onglet Devis */}
-            <button
-              onClick={() => setActiveTab('devis')}
-              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
-                activeTab === 'devis'
-                  ? 'border-blue-500 bg-blue-50 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  activeTab === 'devis' ? 'bg-blue-500' : 'bg-blue-100'
-                }`}>
-                  <FileText className={`w-5 h-5 ${
-                    activeTab === 'devis' ? 'text-white' : 'text-blue-600'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`font-semibold ${
-                    activeTab === 'devis' ? 'text-blue-900' : 'text-gray-900'
-                  }`}>Mes devis</h2>
-                  <p className="text-sm text-gray-500">Réponses des prestataires</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`text-2xl font-bold ${
-                  activeTab === 'devis' ? 'text-blue-700' : 'text-blue-600'
-                }`}>
-                  {devis.length}
-                </div>
-              </div>
-            </button>
-
-            {/* Onglet Réservations */}
-            <button
-              onClick={() => setActiveTab('reservations')}
-              className={`p-6 rounded-xl border-2 transition-all text-left hover:shadow-md ${
-                activeTab === 'reservations'
-                  ? 'border-green-500 bg-green-50 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  activeTab === 'reservations' ? 'bg-green-500' : 'bg-green-100'
-                }`}>
-                  <Calendar className={`w-5 h-5 ${
-                    activeTab === 'reservations' ? 'text-white' : 'text-green-600'
-                  }`} />
-                </div>
-                <div>
-                  <h2 className={`font-semibold ${
-                    activeTab === 'reservations' ? 'text-green-900' : 'text-gray-900'
-                  }`}>Réservations</h2>
-                  <p className="text-sm text-gray-500">Prestations réservées</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`text-2xl font-bold ${
-                  activeTab === 'reservations' ? 'text-green-700' : 'text-green-600'
-                }`}>
-                  {reservations.length}
-                </div>
-                
-              </div>
-            </button>
-
-
-          </div>
-
-          {/* Vue d'ensemble - Affiche toutes les sections */}
-          {activeTab === 'overview' && (
-            <>
-              {/* Section Devis */}
-              {devisSorted.length > 0 && (
-                <section className="mb-8">
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <FileText className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <h2 className="text-xl font-bold text-gray-900">Mes devis</h2>
-                            <p className="text-sm text-gray-600">{devisSorted.length} devis au total</p>
-                          </div>
-                        </div>
-                        <button
-                          style={{
-                            background:'transparent',
-                            color:'#130183',
-                            border:'none',
-                            borderRadius:8,
-                            padding:'8px 18px',
-                            fontWeight:600,
-                            fontSize:15,
-                            cursor:'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
-                          onClick={() => setActiveTab('devis')}
-                          onMouseOver={(e) => e.target.style.color = '#3E27D6'}
-                          onMouseOut={(e) => e.target.style.color = '#130183'}
-                        >
-                          <span className="text-sm font-medium">Voir tout</span>
-                          <ArrowRight className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <div className="grid gap-4">
-                        {devisSorted.slice(0, 3).map((r) => (
-                          <DevisCard key={r.id} r={r} />
-                        ))}
-                        {devisSorted.length > 3 && (
-                          <div className="text-center py-4">
-                            <button
-                              onClick={() => setActiveTab('devis')}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                            >
-                              Voir {devisSorted.length - 3} autres devis...
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              )}
-            </>
-          )}
-
-          {/* Section Devis uniquement */}
-          {activeTab === 'devis' && devisSorted.length > 0 && (
-            <section className="mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setActiveTab('overview')}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </button>
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">Tous mes devis</h2>
-                        <p className="text-sm text-gray-600">{devisSorted.length} devis au total</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="grid gap-4">
-                    {devisSorted.map((r) => (
-                      <DevisCard key={r.id} r={r} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {/* Le modal DevisInfoModal a été déplacé en bas du composant pour être toujours accessible */}
-            </section>
-          )}
-
-          {/* Vue d'ensemble - Section Réservations */}
-          {activeTab === 'overview' && reservationsSorted.length > 0 && (
-            <section className="mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <Calendar className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">Mes réservations</h2>
-                        <p className="text-sm text-gray-600">{reservationsSorted.length} réservations au total</p>
-                      </div>
-                    </div>
-                    <button
-                      style={{
-                            background:'transparent',
-                            color:'#008727',
-                            border:'none',
-                            borderRadius:8,
-                            padding:'8px 18px',
-                            fontWeight:600,
-                            fontSize:15,
-                            cursor:'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                          className="flex items-center gap-2 text-green-600 hover:text-green-800 transition-colors"
-                          onClick={() => setActiveTab('reservations')}
-                          onMouseOver={(e) => e.target.style.color = '#14C446'}
-                          onMouseOut={(e) => e.target.style.color = '#008727'}
-                    >
-                      <span className="text-sm font-medium">Voir tout</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="grid gap-4">
-                    {reservationsSorted.slice(0, 3).map(r => (
-                      <ReservationCard key={r.id} r={r} />
-                    ))}
-                    {reservationsSorted.length > 3 && (
-                      <div className="text-center py-4">
-                        <button
-                          onClick={() => setActiveTab('reservations')}
-                          className="text-green-600 hover:text-green-800 font-medium text-sm"
-                        >
-                          Voir {reservationsSorted.length - 3} autres réservations...
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Section Réservations uniquement */}
-          {activeTab === 'reservations' && reservationsSorted.length > 0 && (
-            <section className="mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setActiveTab('overview')}
-                        className="text-green-600 hover:text-green-800 transition-colors"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </button>
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <Calendar className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">Toutes mes réservations</h2>
-                        <p className="text-sm text-gray-600">{reservationsSorted.length} réservations au total</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-6">
-                  {/* Filtres améliorés */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Filter className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-700">Filtres</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <select
-                        value={statusFilter}
-                        onChange={e => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      >
-                        <option value="all">Tous les statuts</option>
-                        <option value="confirmed">✅ Confirmé</option>
-                        <option value="cancelled">❌ Annulé</option>
-                        <option value="refused">🚫 Rejeté</option>
-                        <option value="pending">⏳ En attente</option>
-                      </select>
-                      <select
-                        value={prestationFilter}
-                        onChange={e => setPrestationFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      >
-                        <option value="all">Toutes les prestations</option>
-                        {prestations.map(p => (
-                          <option key={p.id} value={p.id}>{p.nom}</option>
-                        ))}
-                      </select>
-                      <div className="relative">
-                        <button
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-left focus:ring-2 focus:ring-green-500 focus:border-transparent hover:bg-gray-50"
-                          onClick={() => setShowCalendar(!showCalendar)}
-                        >
-                          <Calendar className="w-4 h-4 inline mr-2" />
-                          {dateFilter === 'all' ? 'Toutes les dates' : 'Date sélectionnée'}
-                        </button>
-                        {showCalendar && (
-                          <MiniCalendar onSelect={setDateFilter} />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {/* Liste des réservations */}
-                  <div className="grid gap-4">
-                    {reservationsSorted.map(r => (
-                      <ReservationCard key={r.id} r={r} />
-                    ))}
-                  </div>
-                  {/* Le modal ReservationInfoModal a été déplacé en bas du composant pour être toujours accessible */}
-                  {showConfirm && (
-                    <ConfirmCancelModal
-                      onConfirm={() => handleUpdate(pendingCancelId, 'cancelled')}
-                      onCancel={() => {
-                        setShowConfirm(false)
-                        setPendingCancelId(null)
-                      }}
-                    />
-                  )}
-                  
-                  {/* Le modal d'annulation a été déplacé en bas du composant pour être toujours accessible */}
-                </div>
-              </div>
-            </section>
-          )}
-
-
-
-
-
-
-
-          {/* Section vide selon l'onglet actif */}
-          {activeTab === 'devis' && devisSorted.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FileText className="w-12 h-12 text-blue-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucun devis pour le moment</h2>
-              <p className="text-gray-600 max-w-md mx-auto">
-                Postez une demande ou recherchez des prestataires pour recevoir des devis.
-              </p>
-            </div>
-          )}
-
-          {activeTab === 'reservations' && reservationsSorted.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Calendar className="w-12 h-12 text-green-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Aucune réservation active</h2>
-              <p className="text-gray-600 max-w-md mx-auto">
-                Vos réservations confirmées apparaîtront ici.
-              </p>
-            </div>
-          )}
-
-
+          
         </div>
       </div>
 
