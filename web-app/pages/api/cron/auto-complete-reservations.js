@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const { data: reservations, error: fetchError } = await supabase
       .from('reservations')
       .select('id, date, prestataire_id, client_id')
-      .in('statut', ['confirme', 'pending'])
+      .in('statut', ['confirmee', 'pending'])
       .lt('date', oneDayAgo.toISOString());
 
     if (fetchError) {
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
         const { error: updateError } = await supabase
           .from('reservations')
           .update({
-            statut: 'termine',
+            statut: 'terminee',
             updated_at: now.toISOString(),
           })
           .eq('id', reservation.id);

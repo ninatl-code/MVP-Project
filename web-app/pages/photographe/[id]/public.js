@@ -170,7 +170,7 @@ export default function PhotographeProfilePage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
             Photographe introuvable
           </h2>
-          <Link href="/recherche" className="text-indigo-600 hover:text-indigo-800">
+          <Link href="/client/recherche" className="text-indigo-600 hover:text-indigo-800">
             Retour à la recherche
           </Link>
         </div>

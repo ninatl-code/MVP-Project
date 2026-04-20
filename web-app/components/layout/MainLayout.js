@@ -93,7 +93,7 @@ export default function MainLayout({ children }) {
     { href: '/client/demandes', label: 'Mes demandes', icon: FileText },
     { href: '/client/reservations', label: 'Réservations', icon: Calendar },
     { href: '/client/devis', label: 'Devis reçus', icon: Euro },
-    { href: '/recherche', label: 'Rechercher', icon: Search },
+    { href: '/client/recherche', label: 'Rechercher', icon: Search },
   ];
 
   const commonNavItems = [
@@ -328,7 +328,7 @@ export default function MainLayout({ children }) {
           ] : [
             { href: '/client/dashboard', icon: Home, label: 'Accueil' },
             { href: '/client/demandes', icon: FileText, label: 'Demandes' },
-            { href: '/recherche', icon: Search, label: 'Rechercher' },
+            { href: '/client/recherche', icon: Search, label: 'Rechercher' },
             { href: '/client/reservations', icon: Calendar, label: 'Réservations' },
             { href: '/shared/profil/settings', icon: User, label: 'Profil' },
           ]).map((item) => {

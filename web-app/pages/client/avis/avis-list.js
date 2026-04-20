@@ -28,37 +28,27 @@ function StarRating({ note }) {
 
 export default function AvisListPage() {
   const router = useRouter();
-  const { profileId } = useAuth();
+  const { user, profileId, loading: authLoading } = useAuth();
   const [avis, setAvis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [resolvedId, setResolvedId] = useState(null);
-
-  // Résoudre l'ID sans attendre l'AuthContext
-  useEffect(() => {
-    const resolveId = async () => {
-      if (profileId) { setResolvedId(profileId); return; }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setResolvedId(user.id);
-      else router.push('/login');
-    };
-    resolveId();
-  }, [profileId]);
 
   useEffect(() => {
-    if (resolvedId) fetchAvis();
-  }, [resolvedId]);
+    if (authLoading) return;
+    if (!user) { router.push('/login'); return; }
+    if (profileId) fetchAvis();
+  }, [user, profileId, authLoading]);
 
   const fetchAvis = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('avis')
+        .from('reviews_photographe')
         .select(`
           *,
-          reviewee:profiles!avis_reviewee_id_fkey(id, nom, avatar_url)
+          prestataire:profiles!reviews_photographe_prestataire_id_fkey(id, nom, avatar_url)
         `)
-        .eq('reviewer_id', resolvedId)
+        .eq('client_id', profileId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -71,8 +61,8 @@ export default function AvisListPage() {
   };
 
   const filtered = avis.filter(a =>
-    a.reviewee?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.commentaire?.toLowerCase().includes(searchQuery.toLowerCase())
+    a.prestataire?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.comment?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -133,15 +123,15 @@ export default function AvisListPage() {
               >
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600 flex-shrink-0 text-lg">
-                    {a.reviewee?.nom?.charAt(0)?.toUpperCase() || '?'}
+                    {a.prestataire?.nom?.charAt(0)?.toUpperCase() || '?'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="font-semibold text-gray-900">{a.reviewee?.nom || 'Prestataire'}</p>
-                      <StarRating note={a.note || 0} />
+                      <p className="font-semibold text-gray-900">{a.prestataire?.nom || 'Prestataire'}</p>
+                      <StarRating note={a.rating || 0} />
                     </div>
-                    {a.commentaire && (
-                      <p className="text-gray-600 text-sm mt-1">{a.commentaire}</p>
+                    {a.comment && (
+                      <p className="text-gray-600 text-sm mt-1">{a.comment}</p>
                     )}
                     {a.created_at && (
                       <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">

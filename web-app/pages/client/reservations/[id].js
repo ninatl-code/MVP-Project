@@ -1,13 +1,14 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
+import { updatePhotographerRating } from '../../../lib/avisService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
-  ArrowLeft, Calendar, MapPin, Clock, Euro, Camera, 
-  Phone, Mail, MessageSquare, Star, Download, 
+  ArrowLeft, Calendar, MapPin, Clock, Camera, 
+  Phone, MessageSquare, Star, 
   CheckCircle, XCircle, AlertCircle, Clock3, Edit,
-  FileText, CreditCard, Shield, ExternalLink
+  FileText, Shield, ExternalLink
 } from 'lucide-react';
 
 const COLORS = {
@@ -17,6 +18,7 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
+  pending:    { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le photographe doit confirmer la réservation' },
   en_attente: { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le photographe doit confirmer la réservation' },
   confirmee: { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle, description: 'Votre réservation est confirmée' },
   terminee: { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle, description: 'La prestation a été effectuée' },
@@ -45,46 +47,40 @@ export default function ReservationDetailPage() {
   const fetchReservation = async () => {
     setLoading(true);
     try {
+      // Fetch reservation without FK-hint joins to avoid silent failures
       const { data, error } = await supabase
         .from('reservations')
-        .select(`
-          *,
-          photographe:profils_prestataire(
-            id,
-            nom_entreprise,
-            note_moyenne,
-            nb_avis,
-            ville,
-            identite_verifiee,
-            stripe_account_id,
-            profile:profiles(nom, prenom, email)
-          ),
-          package:packages_types(
-            id,
-            titre,
-            description,
-            duree_minutes,
-            prix_fixe
-          ),
-          paiement:paiements(
-            id,
-            montant,
-            statut,
-            type_paiement,
-            created_at
-          ),
-          avis:reviews_photographe(
-            id,
-            rating,
-            comment,
-            created_at
-          )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
       if (error) throw error;
-      setReservation(data);
+
+      // Fetch prestataire profile separately
+      let prestataire = null;
+      if (data.prestataire_id) {
+        const { data: profil } = await supabase
+          .from('profiles')
+          .select('id, nom, prenom, avatar_url')
+          .eq('id', data.prestataire_id)
+          .single();
+        prestataire = profil;
+      }
+
+      // Fetch existing review from reviews_photographe
+      let existingReview = null;
+      const clientId = profileId || user?.id;
+      if (clientId && data.prestataire_id) {
+        const { data: reviewData } = await supabase
+          .from('reviews_photographe')
+          .select('id, rating, comment, created_at')
+          .eq('client_id', clientId)
+          .eq('prestataire_id', data.prestataire_id)
+          .maybeSingle();
+        existingReview = reviewData;
+      }
+
+      setReservation({ ...data, prestataire, existingReview });
     } catch (error) {
       console.error('Error fetching reservation:', error);
     } finally {
@@ -97,7 +93,7 @@ export default function ReservationDetailPage() {
     try {
       const { error } = await supabase
         .from('reservations')
-        .update({ statut: 'annulee', annule_par: 'client', date_annulation: new Date().toISOString() })
+        .update({ statut: 'annulee', annule_par: profileId, date_annulation: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
@@ -128,10 +124,10 @@ export default function ReservationDetailPage() {
 
   const canCancel = () => {
     if (!reservation) return false;
-    if (!['en_attente', 'confirmee'].includes(reservation.statut)) return false;
+    if (!['pending', 'en_attente', 'confirmee'].includes(reservation.statut)) return false;
     
     // Check if prestation date is more than 48h away
-    const prestationDate = new Date(reservation.date_prestation);
+    const prestationDate = new Date(reservation.date);
     const now = new Date();
     const hoursUntil = (prestationDate - now) / (1000 * 60 * 60);
     return hoursUntil > 48;
@@ -140,7 +136,7 @@ export default function ReservationDetailPage() {
   const canReview = () => {
     if (!reservation) return false;
     if (reservation.statut !== 'terminee') return false;
-    if (reservation.avis?.length > 0) return false;
+    if (reservation.existingReview) return false;
     return true;
   };
 
@@ -174,11 +170,10 @@ export default function ReservationDetailPage() {
     );
   }
 
-  const photographe = reservation.photographe;
-  const profile = photographe?.profile;
-  const statusConfig = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG.en_attente;
+  const photographe = reservation.prestataire;
+  const statusConfig = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG.pending;
   const StatusIcon = statusConfig.icon;
-  const isUpcoming = new Date(reservation.date_prestation) > new Date();
+  const isUpcoming = new Date(reservation.date) > new Date();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -217,7 +212,7 @@ export default function ReservationDetailPage() {
                   <Calendar className="w-5 h-5 text-indigo-600" />
                   <div>
                     <p className="text-sm text-gray-500">Date</p>
-                    <p className="font-medium">{formatDate(reservation.date_prestation)}</p>
+                    <p className="font-medium">{formatDate(reservation.date)}</p>
                   </div>
                 </div>
 
@@ -241,7 +236,7 @@ export default function ReservationDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <Euro className="w-5 h-5 text-indigo-600" />
+                  <MapPin className="w-5 h-5 text-indigo-600" />
                   <div>
                     <p className="text-sm text-gray-500">Montant total</p>
                     <p className="font-medium text-lg">{reservation.montant_total} DH</p>
@@ -252,7 +247,7 @@ export default function ReservationDetailPage() {
               {/* Package details */}
               {reservation.package && (
                 <div className="border-t border-gray-100 pt-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Détails du forfait</h3>
+                  <h2 className="font-medium text-gray-900 mb-2">Détails du forfait</h2>
                   <p className="text-gray-600 text-sm mb-2">{reservation.package.description}</p>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                     {reservation.package.duree_heures && (
@@ -268,88 +263,37 @@ export default function ReservationDetailPage() {
               {/* Notes */}
               {reservation.notes && (
                 <div className="border-t border-gray-100 pt-4 mt-4">
-                  <h3 className="font-medium text-gray-900 mb-2">Notes</h3>
+                  <h2 className="font-medium text-gray-900 mb-2">Notes</h2>
                   <p className="text-gray-600 text-sm">{reservation.notes}</p>
                 </div>
-              )}
-            </div>
-
-            {/* Payment info */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-indigo-600" />
-                Paiement
-              </h3>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Acompte versé (30%)</span>
-                  <span className="font-medium">{Math.round(reservation.montant_total * 0.3)} DH</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Solde à régler</span>
-                  <span className="font-medium">{Math.round(reservation.montant_total * 0.7)} DH</span>
-                </div>
-                <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-                  <span className="font-medium text-gray-900">Total</span>
-                  <span className="font-bold text-lg">{reservation.montant_total} DH</span>
-                </div>
-              </div>
-
-              {reservation.paiement?.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <p className="text-sm text-gray-500 mb-2">Historique des paiements</p>
-                  {reservation.paiement.map((p) => (
-                    <div key={p.id} className="flex justify-between items-center text-sm py-2">
-                      <div>
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs ${
-                          p.statut === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {p.statut === 'completed' ? 'Payé' : 'En attente'}
-                        </span>
-                        <span className="ml-2 text-gray-600">{p.type_paiement}</span>
-                      </div>
-                      <span className="font-medium">{p.montant} DH</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {reservation.statut === 'confirmee' && (
-                <button
-                  onClick={() => router.push(`/client/reservations/${id}/payment`)}
-                  className="w-full mt-4 px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all"
-                >
-                  Régler le solde
-                </button>
               )}
             </div>
 
             {/* Review section */}
             {reservation.statut === 'terminee' && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
                   Avis
-                </h3>
+                </h2>
 
-                {reservation.avis?.length > 0 ? (
+                {reservation.existingReview ? (
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <div className="flex items-center gap-2 mb-2">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
                           className={`w-5 h-5 ${
-                            i < reservation.avis[0].note
+                            i < reservation.existingReview.rating
                               ? 'text-yellow-500 fill-yellow-500'
                               : 'text-gray-300'
                           }`}
                         />
                       ))}
                     </div>
-                    <p className="text-gray-700">{reservation.avis[0].commentaire}</p>
+                    <p className="text-gray-700">{reservation.existingReview.comment}</p>
                     <p className="text-sm text-gray-500 mt-2">
-                      Publié le {formatDate(reservation.avis[0].created_at)}
+                      Publié le {formatDate(reservation.existingReview.created_at)}
                     </p>
                   </div>
                 ) : (
@@ -371,13 +315,13 @@ export default function ReservationDetailPage() {
           <div className="space-y-6">
             {/* Photographer card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Votre photographe</h3>
+              <h2 className="font-semibold text-gray-900 mb-4">Votre photographe</h2>
               
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 rounded-xl bg-indigo-100 flex items-center justify-center overflow-hidden">
-                  {photographe?.photo_profil ? (
+                  {photographe?.avatar_url ? (
                     <img
-                      src={photographe.photo_profil}
+                      src={photographe.avatar_url}
                       alt=""
                       className="w-full h-full object-cover"
                     />
@@ -386,29 +330,16 @@ export default function ReservationDetailPage() {
                   )}
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                    {photographe?.nom_entreprise || `${profile?.prenom} ${profile?.nom}`}
-                    {photographe?.verifie && (
-                      <CheckCircle className="w-4 h-4 text-blue-600" />
-                    )}
+                  <h4 className="font-semibold text-gray-900">
+                    {photographe?.nom || photographe?.prenom ? `${photographe.prenom || ''} ${photographe.nom || ''}`.trim() : 'Prestataire'}
                   </h4>
-                  {photographe?.note_moyenne > 0 && (
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      {photographe.note_moyenne.toFixed(1)}
-                      {photographe.nombre_avis > 0 && ` (${photographe.nombre_avis} avis)`}
-                    </div>
-                  )}
-                  {photographe?.ville && (
-                    <p className="text-sm text-gray-500">{photographe.ville}</p>
-                  )}
                 </div>
               </div>
 
               {/* Contact buttons */}
               <div className="space-y-2">
                 <button
-                  onClick={() => router.push(`/messages?photographe=${reservation.photographe_id}`)}
+                  onClick={() => router.push(`/shared/messages?prestataire=${reservation.prestataire_id}`)}
                   className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-5 h-5" />
@@ -426,7 +357,7 @@ export default function ReservationDetailPage() {
                 )}
 
                 <button
-                  onClick={() => router.push(`/photographes/${reservation.photographe_id}`)}
+                  onClick={() => router.push(`/client/photographes/${reservation.prestataire_id}`)}
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                 >
                   <ExternalLink className="w-5 h-5" />
@@ -438,7 +369,7 @@ export default function ReservationDetailPage() {
             {/* Actions */}
             {canCancel() && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Actions</h3>
+                <h2 className="font-semibold text-gray-900 mb-4">Actions</h2>
                 <button
                   onClick={() => setShowCancelModal(true)}
                   className="w-full px-4 py-2 border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-all"
@@ -453,10 +384,10 @@ export default function ReservationDetailPage() {
 
             {/* Help */}
             <div className="bg-indigo-50 rounded-2xl p-6">
-              <h3 className="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+              <h2 className="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
                 <Shield className="w-5 h-5" />
                 Besoin d'aide ?
-              </h3>
+              </h2>
               <p className="text-sm text-indigo-700 mb-4">
                 Notre équipe est disponible pour répondre à vos questions.
               </p>
@@ -475,12 +406,12 @@ export default function ReservationDetailPage() {
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">
               Annuler cette réservation ?
-            </h3>
+            </h2>
             <p className="text-gray-600 mb-6">
               Vous pouvez annuler cette réservation gratuitement car elle est à plus de 48h.
-              Votre acompte sera remboursé dans un délai de 5 à 10 jours ouvrés.
+              Le prestataire sera notifié de votre annulation.
             </p>
             <div className="flex gap-3">
               <button
@@ -505,7 +436,7 @@ export default function ReservationDetailPage() {
       {showReviewModal && (
         <ReviewModal
           reservationId={id}
-          photographeId={reservation.photographe_id}
+          photographeId={reservation.prestataire_id}
           onClose={() => setShowReviewModal(false)}
           onSubmit={() => {
             setShowReviewModal(false);
@@ -530,20 +461,19 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
     setSubmitting(true);
     try {
       const { error } = await supabase
-        .from('avis')
+        .from('reviews_photographe')
         .insert({
-          reservation_id: reservationId,
-          photographe_id: photographeId,
+          prestataire_id: photographeId,
           client_id: profileId,
-          note: rating,
-          commentaire: comment,
+          rating: rating,
+          comment: comment,
         });
 
       if (error) throw error;
-      
-      // Update photographer rating
-      await supabase.rpc('update_photographer_rating', { p_photographe_id: photographeId });
-      
+
+      // Update photographer average rating
+      await updatePhotographerRating(photographeId);
+
       onSubmit();
     } catch (error) {
       console.error('Error submitting review:', error);
@@ -555,9 +485,9 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">
           Laisser un avis
-        </h3>
+        </h2>
 
         <div className="mb-6">
           <p className="text-sm text-gray-600 mb-3">Votre note</p>

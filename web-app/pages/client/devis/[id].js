@@ -17,11 +17,11 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
-  en_attente: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700' },
-  envoye:     { label: 'Reçu',       color: 'bg-blue-100 text-blue-700' },
-  accepte:    { label: 'Accepté',    color: 'bg-green-100 text-green-700' },
-  refuse:     { label: 'Refusé',     color: 'bg-red-100 text-red-700' },
-  expire:     { label: 'Expiré',     color: 'bg-gray-100 text-gray-700' },
+  envoye:  { label: 'En attente de réponse', color: 'bg-yellow-100 text-yellow-700' },
+  lu:      { label: 'Lu',                   color: 'bg-blue-100 text-blue-700' },
+  accepte: { label: 'Accepté',              color: 'bg-green-100 text-green-700' },
+  refuse:  { label: 'Refusé',              color: 'bg-red-100 text-red-700' },
+  expire:  { label: 'Expiré',              color: 'bg-gray-100 text-gray-700' },
 };
 
 export default function DevisDetailPage() {
@@ -35,12 +35,15 @@ export default function DevisDetailPage() {
   const [refusing, setRefusing] = useState(false);
   const [showRefuseModal, setShowRefuseModal] = useState(false);
   const [refuseReason, setRefuseReason] = useState('');
+  const [actionError, setActionError] = useState(null);
+  const [acceptSuccess, setAcceptSuccess] = useState(false);
+  const [createdReservationId, setCreatedReservationId] = useState(null);
 
   useEffect(() => {
-    if (id) {
+    if (router.isReady && id) {
       fetchDevis();
     }
-  }, [id]);
+  }, [id, router.isReady]);
 
   const fetchDevis = async () => {
     setLoading(true);
@@ -83,16 +86,20 @@ export default function DevisDetailPage() {
 
   const handleAccept = async () => {
     setAccepting(true);
+    setActionError(null);
     try {
-      // Update devis status
+      // 1. Update devis status
       const { error: devisError } = await supabase
         .from('devis')
-          .update({ statut: 'accepte', accepte_at: new Date().toISOString() })
+        .update({ statut: 'accepte', accepte_at: new Date().toISOString() })
         .eq('id', id);
 
       if (devisError) throw devisError;
 
-      // Update demande status
+      // Update local state immediately so UI reflects acceptance
+      setDevis(prev => ({ ...prev, statut: 'accepte' }));
+
+      // 2. Update demande status
       if (devis.demande_id) {
         await supabase
           .from('demandes_client')
@@ -100,10 +107,42 @@ export default function DevisDetailPage() {
           .eq('id', devis.demande_id);
       }
 
-      // Redirect to payment
-      router.push(`/client/devis/${id}/payment`);
+      // 3. Create reservation from devis data
+      const demande = devis.demande;
+      const { data: reservation, error: reservationError } = await supabase
+        .from('reservations')
+        .insert({
+          client_id: devis.client_id,
+          prestataire_id: devis.prestataire_id,
+          devis_id: id,
+          demande_id: devis.demande_id || null,
+          titre: devis.titre || demande?.titre || 'Prestation photo',
+          description: devis.description || null,
+          categorie: demande?.categorie || 'photo',
+          date: demande?.date_souhaitee || new Date().toISOString().split('T')[0],
+          lieu: demande?.lieu || 'À définir',
+          montant_total: devis.montant_total,
+          duree_heures: devis.duree_prestation_heures || null,
+          services_inclus: devis.services_inclus || null,
+          monnaie: devis.monnaie || 'MAD',
+          source: 'devis',
+          // statut defaults to 'pending' via DB default
+        })
+        .select('id')
+        .single();
+
+      if (reservationError) {
+        console.error('Reservation creation error:', reservationError);
+        setAcceptSuccess(true);
+        return;
+      }
+
+      // 4. Show success banner with link (no auto-redirect)
+      setCreatedReservationId(reservation.id);
+      setAcceptSuccess(true);
     } catch (error) {
       console.error('Error accepting devis:', error);
+      setActionError('Une erreur est survenue lors de l\'acceptation. Veuillez réessayer.');
     } finally {
       setAccepting(false);
     }
@@ -116,8 +155,8 @@ export default function DevisDetailPage() {
         .from('devis')
         .update({ 
           statut: 'refuse', 
-          date_refus: new Date().toISOString(),
-          motif_refus: refuseReason || null
+          refuse_at: new Date().toISOString(),
+          raison_refus: refuseReason || null
         })
         .eq('id', id);
 
@@ -184,9 +223,9 @@ export default function DevisDetailPage() {
   const photographe = devis.prestataire;
   const profile = devis.prestataire;
   const demande = devis.demande;
-  const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG.en_attente;
+  const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG.envoye;
   const expirationDays = getExpirationDays();
-  const canRespond = (devis.statut === 'en_attente' || devis.statut === 'envoye') && expirationDays > 0;
+  const canRespond = ['envoye', 'lu'].includes(devis.statut) && expirationDays > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -224,7 +263,7 @@ export default function DevisDetailPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-3xl font-bold text-indigo-600">{devis.montant_total ?? devis.tarif_base} DH</p>
-                  {(devis.statut === 'en_attente' || devis.statut === 'envoye') && (
+                  {['envoye', 'lu'].includes(devis.statut) && (
                     <p className={`text-sm ${expirationDays <= 3 ? 'text-red-500' : 'text-gray-500'}`}>
                       {expirationDays > 0
                         ? `Expire dans ${expirationDays} jour${expirationDays > 1 ? 's' : ''}`
@@ -500,6 +539,43 @@ export default function DevisDetailPage() {
               </div>
             )}
 
+            {/* ── Success banner (devis accepted but reservation failed) ── */}
+            {acceptSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-start gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-green-800">Devis accepté avec succès !</p>
+                  <p className="text-sm text-green-700 mt-1">
+                    Votre accord a été enregistré. Le prestataire va être notifié et vous contactera pour confirmer les détails.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2">
+                    {createdReservationId && (
+                      <button
+                        onClick={() => router.push(`/client/reservations/${createdReservationId}`)}
+                        className="text-sm text-green-700 font-medium underline hover:no-underline text-left"
+                      >
+                        Voir ma réservation →
+                      </button>
+                    )}
+                    <button
+                      onClick={() => router.push('/client/reservations')}
+                      className="text-sm text-green-600 hover:no-underline text-left"
+                    >
+                      Toutes mes réservations →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Error banner ── */}
+            {actionError && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-700">{actionError}</p>
+              </div>
+            )}
+
             {/* ── Actions ── */}
             {canRespond && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -518,7 +594,7 @@ export default function DevisDetailPage() {
                     ) : (
                       <>
                         <Check className="w-5 h-5" />
-                        Accepter et payer l'acompte
+                        Accepter le devis
                       </>
                     )}
                   </button>
@@ -579,7 +655,7 @@ export default function DevisDetailPage() {
 
               <div className="space-y-2">
                 <button
-                  onClick={() => router.push(`/messages?prestataire=${devis.prestataire_id}`)}
+                  onClick={() => router.push(`/shared/messages?prestataire=${devis.prestataire_id}&devis=${devis.id}`)}
                   className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-5 h-5" />
@@ -595,7 +671,7 @@ export default function DevisDetailPage() {
             </div>
 
             {/* Expiration warning */}
-            {devis.statut === 'en_attente' && expirationDays <= 5 && expirationDays > 0 && (
+            {['envoye', 'lu'].includes(devis.statut) && expirationDays <= 5 && expirationDays > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-yellow-600 mt-0.5" />

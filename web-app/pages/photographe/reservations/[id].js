@@ -13,12 +13,12 @@ import { format, parseISO, isPast, isFuture } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const STATUS_CONFIG = {
-  'en_attente': { 
+  'pending': { 
     label: 'En attente', 
     color: 'bg-yellow-100 text-yellow-700',
     description: 'En attente de confirmation'
   },
-  'confirme': { 
+  'confirmee': { 
     label: 'Confirmée', 
     color: 'bg-blue-100 text-blue-700',
     description: 'Prestation confirmée'
@@ -28,12 +28,12 @@ const STATUS_CONFIG = {
     color: 'bg-indigo-100 text-indigo-700',
     description: 'Prestation en cours'
   },
-  'termine': { 
+  'terminee': { 
     label: 'Terminée', 
     color: 'bg-green-100 text-green-700',
     description: 'Prestation terminée avec succès'
   },
-  'annule': { 
+  'annulee': { 
     label: 'Annulée', 
     color: 'bg-red-100 text-red-700',
     description: 'Cette réservation a été annulée'
@@ -92,7 +92,7 @@ export default function PhotographeReservationDetailPage() {
     try {
       const { error } = await supabase
         .from('reservations')
-        .update({ statut: 'confirme' })
+        .update({ statut: 'confirmee' })
         .eq('id', id);
 
       if (error) throw error;
@@ -102,7 +102,7 @@ export default function PhotographeReservationDetailPage() {
         user_id: reservation.client_id,
         type: 'reservation_confirmee',
         titre: 'Réservation confirmée',
-        message: `Votre réservation du ${format(parseISO(reservation.date_prestation), 'dd MMM yyyy', { locale: fr })} a été confirmée`,
+        contenu: `Votre réservation du ${format(parseISO(reservation.date), 'dd MMM yyyy', { locale: fr })} a été confirmée`,
         reservation_id: id
       });
 
@@ -119,17 +119,17 @@ export default function PhotographeReservationDetailPage() {
     try {
       const { error } = await supabase
         .from('reservations')
-        .update({ statut: 'termine' })
+        .update({ statut: 'terminee' })
         .eq('id', id);
 
       if (error) throw error;
 
-      // Create notification
+      // Notify client to leave a review
       await supabase.from('notifications').insert({
         user_id: reservation.client_id,
-        type: 'reservation_terminee',
-        titre: 'Prestation terminée',
-        message: `Votre prestation du ${format(parseISO(reservation.date_prestation), 'dd MMM yyyy', { locale: fr })} est terminée. N'hésitez pas à laisser un avis !`,
+        type: 'avis',
+        titre: 'Donnez votre avis',
+        contenu: `Votre prestation du ${format(parseISO(reservation.date), 'dd MMM yyyy', { locale: fr })} est terminée. N'hésitez pas à laisser un avis !`,
         reservation_id: id
       });
 
@@ -149,7 +149,7 @@ export default function PhotographeReservationDetailPage() {
       const { error } = await supabase
         .from('reservations')
         .update({ 
-          statut: 'annule',
+          statut: 'annulee',
           motif_annulation: cancelReason
         })
         .eq('id', id);
@@ -161,7 +161,7 @@ export default function PhotographeReservationDetailPage() {
         user_id: reservation.client_id,
         type: 'reservation_annulee',
         titre: 'Réservation annulée',
-        message: `La réservation du ${format(parseISO(reservation.date_prestation), 'dd MMM yyyy', { locale: fr })} a été annulée par le photographe`,
+        contenu: `La réservation du ${format(parseISO(reservation.date), 'dd MMM yyyy', { locale: fr })} a été annulée par le photographe`,
         reservation_id: id
       });
 
@@ -227,10 +227,10 @@ export default function PhotographeReservationDetailPage() {
   }
 
   const statusConfig = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG['en_attente'];
-  const isPastDate = isPast(parseISO(reservation.date_prestation));
-  const canConfirm = reservation.statut === 'en_attente';
-  const canComplete = reservation.statut === 'confirme' && isPastDate;
-  const canCancel = ['en_attente', 'confirme'].includes(reservation.statut);
+  const isPastDate = reservation.date ? isPast(parseISO(reservation.date)) : false;
+  const canConfirm = reservation.statut === 'pending';
+  const canComplete = reservation.statut === 'confirmee' && isPastDate;
+  const canCancel = ['pending', 'confirmee'].includes(reservation.statut);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -277,7 +277,7 @@ export default function PhotographeReservationDetailPage() {
                   <div>
                     <p className="text-sm text-gray-500">Date</p>
                     <p className="font-medium text-gray-900">
-                      {format(parseISO(reservation.date_prestation), 'EEEE d MMMM yyyy', { locale: fr })}
+                      {reservation.date ? format(parseISO(reservation.date), 'EEEE d MMMM yyyy', { locale: fr }) : 'Non définie'}
                     </p>
                   </div>
                 </div>

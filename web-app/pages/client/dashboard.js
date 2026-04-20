@@ -109,7 +109,7 @@ export default function ClientDashboard() {
       icon: Search,
       label: 'Trouver un prestataire',
       description: 'Rechercher par spécialité, lieu...',
-      href: '/recherche',
+      href: '/client/recherche',
       color: 'bg-indigo-100 text-indigo-600',
     },
     {
@@ -248,7 +248,7 @@ export default function ClientDashboard() {
                   <Camera className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500">Aucune activité récente</p>
                   <button
-                    onClick={() => router.push('/recherche')}
+                    onClick={() => router.push('/client/recherche')}
                     className="mt-4 text-sm text-indigo-600 font-medium hover:text-indigo-700"
                   >
                     Trouver un prestataire →

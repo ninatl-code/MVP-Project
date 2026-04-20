@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Search, MapPin, Calendar, Filter, Star, Camera, Euro,
   ChevronDown, ChevronUp, X, SlidersHorizontal, Heart,
@@ -66,18 +66,15 @@ export default function RecherchePage() {
       let query = supabase
         .from('profils_prestataire')
         .select(`
-          id, bio, tarif_horaire_min, note_moyenne, nb_avis, specialites,
-          categories, actif, reservation_instantanee, ville,
-          profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url, ville)
+          id, bio, nom_entreprise, tarif_horaire_min, note_moyenne, nb_avis, specialisations,
+          categories,
+          profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url)
         `)
-        .eq('actif', true);
+        .eq('statut_validation', 'approved');
 
       // Apply filters
       if (filters.specialite) {
-        query = query.contains('specialites', [filters.specialite]);
-      }
-      if (filters.ville) {
-        query = query.ilike('profile.ville', `%${filters.ville}%`);
+        query = query.contains('specialisations', [filters.specialite]);
       }
       if (filters.prixMin) {
         query = query.gte('tarif_horaire_min', parseInt(filters.prixMin));
@@ -87,9 +84,6 @@ export default function RecherchePage() {
       }
       if (filters.noteMin) {
         query = query.gte('note_moyenne', parseFloat(filters.noteMin));
-      }
-      if (filters.instantBooking) {
-        query = query.eq('reservation_instantanee', true);
       }
 
       // Apply sorting
@@ -120,8 +114,15 @@ export default function RecherchePage() {
         const searchLower = search.toLowerCase();
         results = results.filter(p => 
           p.profile?.nom?.toLowerCase().includes(searchLower) ||
+          p.nom_entreprise?.toLowerCase().includes(searchLower) ||
           p.bio?.toLowerCase().includes(searchLower) ||
-          p.specialites?.some(s => s.toLowerCase().includes(searchLower))
+          p.specialisations?.some(s => s.toLowerCase().includes(searchLower))
+        );
+      }
+      if (filters.ville) {
+        results = results.filter(p =>
+          p.nom_entreprise?.toLowerCase().includes(filters.ville.toLowerCase()) ||
+          p.profile?.nom?.toLowerCase().includes(filters.ville.toLowerCase())
         );
       }
 

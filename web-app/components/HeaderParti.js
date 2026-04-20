@@ -36,15 +36,43 @@ function IconButton({ children, onClick, className = "", tooltip }) {
 }
 
 export default function Header() {
-  const [profile, setProfile] = useState(null);
-  const [nbUnread, setNbUnread] = useState(0); // Ajout du state
+  const [nbUnread, setNbUnread] = useState(0);
   const router = useRouter();
   
-  // Hook pour le switch de profil
-  const { availableProfiles, switchProfile } = useAuth();
+  const { user, profileId, availableProfiles, switchProfile, loading: authLoading } = useAuth();
   const hasMultipleProfiles = availableProfiles?.length > 1;
-  
-  // Fonction pour basculer vers le profil prestataire
+  // Profile data already loaded by AuthContext — no extra DB call needed
+  const profile = availableProfiles?.find(p => p.id === profileId) || availableProfiles?.[0];
+
+  // Redirect if not authenticated (once auth is resolved)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
+
+  // Fetch unread conversations count using profileId
+  useEffect(() => {
+    if (!profileId) return;
+
+    const fetchUnread = async () => {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("client_id", profileId)
+        .gt("unread_count_client", 0);
+      setNbUnread(!error && data ? data.length : 0);
+    };
+    fetchUnread();
+
+    const channel = supabase
+      .channel(`header-parti-unread-${profileId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations', filter: `client_id=eq.${profileId}` }, fetchUnread)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [profileId]);
+
   const handleSwitchToPhotographe = async () => {
     const photographeProfile = availableProfiles?.find(p => p.role === 'photographe' || p.role === 'prestataire');
     if (photographeProfile) {
@@ -53,49 +81,10 @@ export default function Header() {
     }
   };
 
-  // Déconnexion
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/login");
   };
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("nom, avatar_url")
-        .eq("id", user.id)
-        .single();
-      setProfile(profileData);
-    
-    // Récupère le nombre de conversations non lues
-          const { data: unreadConvs, error: unreadError } = await supabase
-            .from("conversations")
-            .select("id")
-            .eq("client_id", user.id)
-            .gt("unread_count_client", 0);
-          if (!unreadError && unreadConvs) {
-            setNbUnread(unreadConvs.length);
-          } else {
-            setNbUnread(0);
-          }
-    };
-    checkAuth();
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT" || event === "USER_DELETED") {
-        router.replace("/login");
-      }
-    });
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
-  }, [router]);
 
   return (
     <header className="sticky top-0 z-20 bg-white shadow-sm border-b border-slate-200">
@@ -139,9 +128,9 @@ export default function Header() {
             tooltip="Menu">
             <Menu className="w-5 h-5" />
           </IconButton>
-          <NotificationsPopup router={router} />
+          <NotificationsPopup router={router} userId={user?.id} />
           <div className="relative">
-            <IconButton onClick={() => router.push("/client/messages")}
+            <IconButton onClick={() => router.push("/shared/messages")}
                         className="text-white"
                         style={{backgroundColor: COLORS.accent}}
                         onMouseEnter={e => e.target.style.backgroundColor = COLORS.primary}
@@ -189,29 +178,25 @@ export default function Header() {
 }
 
 // Pop-up notifications
-function NotificationsPopup({ router }) {
+function NotificationsPopup({ router, userId }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    const fetchUserAndNotifications = async () => {
+    if (!userId) return;
+    const fetchNotifications = async () => {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      const uid = session?.user?.id;
-      setUserId(uid);
-      if (!uid) return;
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', uid)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (!error && data) setNotifications(data);
       setLoading(false);
     };
-    fetchUserAndNotifications();
-  }, []);
+    fetchNotifications();
+  }, [userId]);
 
   // Marquer toutes les notifications comme lues
   const markAllAsRead = async () => {

@@ -4,9 +4,9 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
-  Calendar, MapPin, Clock, Euro, Camera, Search,
+  Calendar, MapPin, Clock, Camera, Search,
   ChevronRight, CheckCircle, XCircle, AlertCircle,
-  Clock3, Star, MessageSquare, Filter
+  Clock3, Star, MessageSquare
 } from 'lucide-react';
 
 const COLORS = {
@@ -16,43 +16,33 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
+  pending:    { label: 'En attente', color: 'bg-yellow-100 text-yellow-700', icon: Clock3 },
   en_attente: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700', icon: Clock3 },
-  confirmee: { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle },
-  terminee: { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
-  annulee: { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle },
-  en_cours: { label: 'En cours', color: 'bg-purple-100 text-purple-700', icon: Camera },
-  litige: { label: 'Litige', color: 'bg-orange-100 text-orange-700', icon: AlertCircle },
+  confirmee:  { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  terminee:   { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
+  annulee:    { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle },
+  en_cours:   { label: 'En cours', color: 'bg-purple-100 text-purple-700', icon: Camera },
+  litige:     { label: 'Litige', color: 'bg-orange-100 text-orange-700', icon: AlertCircle },
 };
 
 export default function MesReservationsPage() {
   const router = useRouter();
-  const { profileId } = useAuth();
+  const { user, profileId, loading: authLoading } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('upcoming');
-  const [resolvedId, setResolvedId] = useState(null);
-
-  // Résoudre l'ID sans attendre l'AuthContext
-  useEffect(() => {
-    const resolveId = async () => {
-      if (profileId) {
-        setResolvedId(profileId);
-        return;
-      }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setResolvedId(user.id);
-      else router.push('/login');
-    };
-    resolveId();
-  }, [profileId]);
 
   useEffect(() => {
-    if (resolvedId) fetchReservations();
-  }, [resolvedId, filter, timeFilter]);
+    if (authLoading) return;
+    if (!user) { router.push('/login'); return; }
+    fetchReservations();
+  }, [user, authLoading, filter, timeFilter]);
 
   const fetchReservations = async () => {
+    const clientId = profileId || user?.id;
+    if (!clientId) return;
     setLoading(true);
     try {
       let query = supabase
@@ -73,7 +63,7 @@ export default function MesReservationsPage() {
             description
           )
         `)
-        .eq('client_id', resolvedId)
+        .eq('client_id', clientId)
         .order('date', { ascending: timeFilter === 'upcoming' });
 
       // Status filter
@@ -137,9 +127,9 @@ export default function MesReservationsPage() {
 
   // Group reservations by month
   const groupedReservations = filteredReservations.reduce((groups, reservation) => {
-    const date = new Date(reservation.date_prestation);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const monthLabel = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const date = reservation.date ? new Date(reservation.date) : null;
+    const monthKey = date && !isNaN(date) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : 'unknown';
+    const monthLabel = date && !isNaN(date) ? date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'Date inconnue';
     
     if (!groups[monthKey]) {
       groups[monthKey] = { label: monthLabel, items: [] };
@@ -163,21 +153,21 @@ export default function MesReservationsPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Rechercher par photographe, lieu..."
+                placeholder="Rechercher par prestataire, lieu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:border-transparent"
               />
             </div>
 
             {/* Time filter */}
-            <div className="flex gap-2">
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               {[
                 { id: 'upcoming', label: 'À venir' },
                 { id: 'past', label: 'Passées' },
@@ -186,10 +176,10 @@ export default function MesReservationsPage() {
                 <button
                   key={t.id}
                   onClick={() => setTimeFilter(t.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                     timeFilter === t.id
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   {t.label}
@@ -197,32 +187,19 @@ export default function MesReservationsPage() {
               ))}
             </div>
 
-            {/* Status filter */}
-            <div className="flex gap-2 overflow-x-auto">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                  filter === 'all'
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Tous
-              </button>
-              {Object.entries(STATUS_CONFIG).slice(0, 4).map(([key, config]) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                    filter === key
-                      ? config.color.replace('100', '600').replace('text-', 'bg-').split(' ')[0] + ' text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {config.label}
-                </button>
-              ))}
-            </div>
+            {/* Status dropdown */}
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="pending">⏳ En attente</option>
+              <option value="confirmee">✅ Confirmée</option>
+              <option value="en_cours">📷 En cours</option>
+              <option value="terminee">🏁 Terminée</option>
+              <option value="annulee">❌ Annulée</option>
+            </select>
           </div>
         </div>
 
@@ -234,16 +211,16 @@ export default function MesReservationsPage() {
         ) : filteredReservations.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
             <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h2 className="text-lg font-medium text-gray-900 mb-2">
               Aucune réservation trouvée
-            </h3>
+            </h2>
             <p className="text-gray-500 mb-6">
               {filter !== 'all' || timeFilter !== 'all'
                 ? 'Aucune réservation ne correspond à ces filtres.'
                 : 'Vous n\'avez pas encore de réservation.'}
             </p>
             <button
-              onClick={() => router.push('/recherche')}
+              onClick={() => router.push('/client/recherche')}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium"
               style={{ backgroundColor: COLORS.accent }}
             >
@@ -266,7 +243,7 @@ export default function MesReservationsPage() {
                         key={reservation.id}
                         reservation={reservation}
                         onClick={() => router.push(`/client/reservations/${reservation.id}`)}
-                        onMessage={() => router.push(`/messages?photographe=${reservation.photographe_id}`)}
+                        onMessage={() => router.push(`/shared/messages?prestataire=${reservation.prestataire_id}`)}
                       />
                     ))}
                   </div>
@@ -297,8 +274,8 @@ function ReservationCard({ reservation, onClick, onMessage }) {
     return timeStr.substring(0, 5);
   };
 
-  const isUpcoming = new Date(reservation.date_prestation) >= new Date();
-  const config = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG.en_attente;
+  const isUpcoming = reservation.date ? new Date(reservation.date) >= new Date() : false;
+  const config = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG.pending;
   const Icon = config.icon;
 
   return (
@@ -312,13 +289,13 @@ function ReservationCard({ reservation, onClick, onMessage }) {
           isUpcoming ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
         }`}>
           <span className="text-xs font-medium uppercase">
-            {new Date(reservation.date_prestation).toLocaleDateString('fr-FR', { weekday: 'short' })}
+            {reservation.date ? new Date(reservation.date).toLocaleDateString('fr-FR', { weekday: 'short' }) : '—'}
           </span>
           <span className="text-2xl font-bold">
-            {new Date(reservation.date_prestation).getDate()}
+            {reservation.date ? new Date(reservation.date).getDate() : '?'}
           </span>
           <span className="text-xs">
-            {new Date(reservation.date_prestation).toLocaleDateString('fr-FR', { month: 'short' })}
+            {reservation.date ? new Date(reservation.date).toLocaleDateString('fr-FR', { month: 'short' }) : '—'}
           </span>
         </div>
 
@@ -337,9 +314,9 @@ function ReservationCard({ reservation, onClick, onMessage }) {
             )}
           </div>
 
-          <h3 className="font-semibold text-gray-900 mb-1 truncate">
+          <h2 className="font-semibold text-gray-900 mb-1 truncate">
             {reservation.titre || reservation.package?.nom || 'Prestation photo'}
-          </h3>
+          </h2>
 
           <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
             {/* Photographer info */}
