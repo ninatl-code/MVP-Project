@@ -5,7 +5,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import {
   Search, MapPin, Star, Camera, SlidersHorizontal,
-  Grid, List, X, CheckCircle
+  Grid, List, X, CheckCircle, ArrowLeft
 } from 'lucide-react';
 
 const COLORS = {
@@ -54,41 +54,42 @@ export default function RecherchePrestatairesPage() {
     try {
       setLoading(true);
 
-      let query = supabase
-        .from('profils_prestataire')
+      // Query FROM profiles, embed profils_prestataire via shared PK (profiles.id = profils_prestataire.id)
+      const { data, error } = await supabase
+        .from('profiles')
         .select(`
-          id, bio, nom_entreprise, tarif_horaire_min, note_moyenne, nb_avis,
-          specialisations, categories,
-          profile:profiles!profils_prestataire_id_fkey(id, nom, prenom, avatar_url)
+          id, nom, prenom, avatar_url,
+          profil:profils_prestataire!inner(
+            bio, nom_entreprise, tarif_horaire_min, note_moyenne, nb_avis,
+            specialisations, categories, identite_verifiee, statut_validation,
+            portfolio_photos
+          )
         `)
-        .neq('statut_validation', 'rejected');
+        .eq('role', 'photographe')
+        .limit(100);
 
-      if (filters.specialite) {
-        query = query.contains('specialisations', [filters.specialite]);
-      }
-      if (filters.prixMin) {
-        query = query.gte('tarif_horaire_min', parseInt(filters.prixMin));
-      }
-      if (filters.prixMax) {
-        query = query.lte('tarif_horaire_min', parseInt(filters.prixMax));
-      }
-      if (filters.noteMin) {
-        query = query.gte('note_moyenne', parseFloat(filters.noteMin));
-      }
-
-      switch (sortBy) {
-        case 'note':   query = query.order('note_moyenne', { ascending: false }); break;
-        case 'avis':   query = query.order('nb_avis', { ascending: false }); break;
-        case 'prix_asc':  query = query.order('tarif_horaire_min', { ascending: true }); break;
-        case 'prix_desc': query = query.order('tarif_horaire_min', { ascending: false }); break;
-        default: query = query.order('note_moyenne', { ascending: false });
-      }
-
-      const { data, error } = await query.limit(60);
       if (error) throw error;
 
-      let results = data || [];
+      // Flatten: merge profil fields + keep profile identity
+      let results = (data || []).map(p => ({
+        ...p.profil,
+        id: p.id,
+        profile: { id: p.id, nom: p.nom, prenom: p.prenom, avatar_url: p.avatar_url },
+      }));
 
+      // Client-side filters
+      if (filters.specialite) {
+        results = results.filter(p => p.specialisations?.includes(filters.specialite));
+      }
+      if (filters.prixMin) {
+        results = results.filter(p => p.tarif_horaire_min >= parseInt(filters.prixMin));
+      }
+      if (filters.prixMax) {
+        results = results.filter(p => !p.tarif_horaire_min || p.tarif_horaire_min <= parseInt(filters.prixMax));
+      }
+      if (filters.noteMin) {
+        results = results.filter(p => (p.note_moyenne || 0) >= parseFloat(filters.noteMin));
+      }
       if (search) {
         const q = search.toLowerCase();
         results = results.filter(p =>
@@ -105,6 +106,14 @@ export default function RecherchePrestatairesPage() {
           p.nom_entreprise?.toLowerCase().includes(v) ||
           p.profile?.nom?.toLowerCase().includes(v)
         );
+      }
+
+      // Sort client-side
+      switch (sortBy) {
+        case 'note':     results.sort((a, b) => (b.note_moyenne || 0) - (a.note_moyenne || 0)); break;
+        case 'avis':     results.sort((a, b) => (b.nb_avis || 0) - (a.nb_avis || 0)); break;
+        case 'prix_asc': results.sort((a, b) => (a.tarif_horaire_min || 9999) - (b.tarif_horaire_min || 9999)); break;
+        case 'prix_desc':results.sort((a, b) => (b.tarif_horaire_min || 0) - (a.tarif_horaire_min || 0)); break;
       }
 
       setPrestataires(results);
@@ -129,6 +138,13 @@ export default function RecherchePrestatairesPage() {
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Page header */}
         <div className="mb-8">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour
+          </button>
           <h1 className="text-2xl font-bold text-gray-900">Trouver un prestataire</h1>
           <p className="text-gray-600 mt-1">Recherchez parmi nos prestataires vérifiés</p>
         </div>
@@ -313,6 +329,33 @@ export default function RecherchePrestatairesPage() {
   );
 }
 
+function getVerificationPct(p) {
+  const checks = [
+    !!(p.nom_entreprise || p.profile?.nom),
+    !!p.bio,
+    !!p.profile?.avatar_url,
+    !!p.tarif_horaire_min,
+    p.specialisations?.length > 0,
+    p.portfolio_photos?.length > 0,
+    p.identite_verifiee === true,
+    p.statut_validation === 'approved',
+  ];
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+}
+
+function VerifBadge({ pct }) {
+  const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#6b7280';
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-400 whitespace-nowrap">Profil complété</span>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden" style={{ width: 48 }}>
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+      <span className="text-xs font-medium" style={{ color }}>{pct}%</span>
+    </div>
+  );
+}
+
 function StarRating({ note }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -328,10 +371,11 @@ function StarRating({ note }) {
 
 function PrestaireCard({ prestataire: p, router }) {
   const nom = p.nom_entreprise || `${p.profile?.prenom || ''} ${p.profile?.nom || ''}`.trim() || 'Prestataire';
+  const verifPct = getVerificationPct(p);
 
   return (
     <div
-      onClick={() => router.push(`/client/prestataires/${p.id}`)}
+      onClick={() => router.push(`/client/photographes/${p.id}`)}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all cursor-pointer"
     >
       {/* Avatar / cover */}
@@ -344,11 +388,15 @@ function PrestaireCard({ prestataire: p, router }) {
       </div>
 
       <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-start justify-between gap-2 mb-1">
           <h3 className="font-semibold text-gray-900 truncate">{nom}</h3>
           {p.identite_verifiee && (
             <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
           )}
+        </div>
+
+        <div className="mb-2">
+          <VerifBadge pct={verifPct} />
         </div>
 
         <div className="flex items-center gap-2 mb-3">
@@ -385,10 +433,11 @@ function PrestaireCard({ prestataire: p, router }) {
 
 function PrestaireRow({ prestataire: p, router }) {
   const nom = p.nom_entreprise || `${p.profile?.prenom || ''} ${p.profile?.nom || ''}`.trim() || 'Prestataire';
+  const verifPct = getVerificationPct(p);
 
   return (
     <div
-      onClick={() => router.push(`/client/prestataires/${p.id}`)}
+      onClick={() => router.push(`/client/photographes/${p.id}`)}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all cursor-pointer flex items-center gap-4"
     >
       <div className="w-16 h-16 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -403,6 +452,9 @@ function PrestaireRow({ prestataire: p, router }) {
         <div className="flex items-center gap-2 mb-1">
           <h3 className="font-semibold text-gray-900 truncate">{nom}</h3>
           {p.identite_verifiee && <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+        </div>
+        <div className="mb-1.5">
+          <VerifBadge pct={verifPct} />
         </div>
         <div className="flex items-center gap-2 mb-1.5">
           <StarRating note={p.note_moyenne || 0} />

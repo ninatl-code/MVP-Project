@@ -272,7 +272,7 @@ export default function RecherchePage() {
         {showFilters && (
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">Filtres</h3>
+              <h2 className="font-semibold text-gray-900">Filtres</h2>
               <button
                 onClick={clearFilters}
                 className="text-sm text-indigo-600 hover:text-indigo-800"
@@ -369,9 +369,9 @@ export default function RecherchePage() {
         ) : photographes.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
               Aucun photographe trouvé
-            </h3>
+            </h2>
             <p className="text-gray-500 mb-4">
               Essayez de modifier vos critères de recherche
             </p>
@@ -414,11 +414,11 @@ export default function RecherchePage() {
                 <div className="p-4 flex-1">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="font-semibold text-gray-900">
+                      <h2 className="font-semibold text-gray-900">
                         {photographe.profile?.nom || 'Photographe'}
-                      </h3>
+                      </h2>
                       {photographe.profile?.ville && (
-                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <p className="text-sm text-gray-900 flex items-center gap-1">
                           <MapPin className="w-4 h-4" />
                           {photographe.profile.ville}
                         </p>

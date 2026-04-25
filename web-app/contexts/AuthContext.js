@@ -63,7 +63,11 @@ export const AuthProvider = ({ children }) => {
         if (session) {
           setSession(session);
           setUser(session.user);
-          await loadProfile(session.user.id);
+          // Définir profileId IMMÉDIATEMENT depuis la session (pas besoin d'attendre la DB)
+          setProfileId(session.user.id);
+          localStorage.setItem('activeProfileId', session.user.id);
+          // Charger le profil complet (rôle, nom...) en arrière-plan
+          loadProfile(session.user.id);
         } else {
           setSession(null);
           setUser(null);
@@ -92,7 +96,10 @@ export const AuthProvider = ({ children }) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await loadProfile(session.user.id);
+          // Définir profileId IMMÉDIATEMENT sans attendre la DB
+          setProfileId(session.user.id);
+          localStorage.setItem('activeProfileId', session.user.id);
+          loadProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           localStorage.removeItem('activeProfileId');
           setProfileId(null);

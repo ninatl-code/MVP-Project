@@ -48,6 +48,8 @@ function ParticularHomeMenu() {
   const [existingAvis, setExistingAvis] = useState([]);
   // Stats alignées sur mobile
   const [stats, setStats] = useState({ demandes: 0, devis: 0, reservations: 0, avis: 0 });
+  // Compteurs non lus (badges)
+  const [unreadCounts, setUnreadCounts] = useState({ demandes: 0, devis: 0, reservations: 0 });
   const [showRatingForm, setShowRatingForm] = useState(null);
   const [triggerAvisNotification, setTriggerAvisNotification] = useState(null);
   const [ratingValue, setRatingValue] = useState(0);
@@ -103,9 +105,28 @@ function ParticularHomeMenu() {
 
       // Charger les stats alignées sur mobile
       await loadStats(user.id);
+      await loadUnreadCounts(user.id);
     };
     fetchData();
   }, []);
+
+  // Compteurs de notifications non lues pour les badges
+  const loadUnreadCounts = async (uid) => {
+    if (!uid) return;
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('type, devis_id, reservation_id, demande_id')
+        .eq('user_id', uid)
+        .eq('lu', false);
+      if (!data) return;
+      setUnreadCounts({
+        devis: data.filter(n => n.type === 'devis' || n.devis_id).length,
+        reservations: data.filter(n => n.type === 'reservation' || n.reservation_id).length,
+        demandes: data.filter(n => n.type === 'demande' || n.demande_id).length,
+      });
+    } catch {}
+  };
 
   // Fonction pour charger les stats (aligné sur mobile)
   const loadStats = async (profileId) => {
@@ -1983,9 +2004,9 @@ function ParticularHomeMenu() {
                 className="group relative cursor-pointer rounded-2xl p-5 flex flex-col items-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
                 style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)', border: '1px solid #C7D2FE' }}
               >
-                {stats.demandes > 0 && (
+                {unreadCounts.demandes > 0 && (
                   <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow">
-                    {stats.demandes}
+                    {unreadCounts.demandes}
                   </span>
                 )}
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" style={{ background: COLORS.accent }}>
@@ -2003,9 +2024,9 @@ function ParticularHomeMenu() {
                 className="group relative cursor-pointer rounded-2xl p-5 flex flex-col items-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
                 style={{ background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)', border: '1px solid #BFDBFE' }}
               >
-                {stats.devis > 0 && (
+                {unreadCounts.devis > 0 && (
                   <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow">
-                    {stats.devis}
+                    {unreadCounts.devis}
                   </span>
                 )}
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" style={{ background: '#3B82F6' }}>
@@ -2023,9 +2044,9 @@ function ParticularHomeMenu() {
                 className="group relative cursor-pointer rounded-2xl p-5 flex flex-col items-center gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
                 style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)', border: '1px solid #BBF7D0' }}
               >
-                {stats.reservations > 0 && (
+                {unreadCounts.reservations > 0 && (
                   <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow">
-                    {stats.reservations}
+                    {unreadCounts.reservations}
                   </span>
                 )}
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" style={{ background: '#10B981' }}>

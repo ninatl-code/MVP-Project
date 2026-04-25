@@ -115,6 +115,7 @@ export default function Signup() {
         placeholder="Email"
         value={email}
         onChange={e => setEmail(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSignup() }}
         style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
       /><br />
 
@@ -122,6 +123,7 @@ export default function Signup() {
         placeholder="Nom et Prénom"
         value={nom}
         onChange={e => setNom(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSignup() }}
         style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
       /><br />
 
@@ -130,6 +132,7 @@ export default function Signup() {
         placeholder="Mot de passe"
         value={password}
         onChange={e => setPassword(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSignup() }}
         style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
       /><br />
 
@@ -138,6 +141,7 @@ export default function Signup() {
         placeholder="Téléphone"
         value={telephone}
         onChange={e => setTelephone(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSignup() }}
         style={{ width: "100%", marginBottom: 14, padding: 10, borderRadius: 8, border: "1px solid #eee" }}
         required
       /><br />

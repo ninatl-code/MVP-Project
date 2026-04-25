@@ -81,8 +81,8 @@ export default function Header() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
     router.replace("/login");
+    supabase.auth.signOut();
   };
 
   return (

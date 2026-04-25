@@ -40,7 +40,7 @@ export default function CreateDevisPage() {
         .from('demandes_client')
         .select(`
           *,
-          client:profiles!demandes_client_particulier_id_fkey(nom, prenom)
+          client:profiles!demandes_client_client_id_fkey(nom, prenom)
         `)
         .eq('id', id)
         .single();
@@ -400,9 +400,7 @@ export default function CreateDevisPage() {
                 <div className="flex items-center gap-2 text-gray-600">
                   <Euro className="w-4 h-4 text-indigo-600" />
                   <span className="font-medium">
-                    Budget: {demande.budget_min && demande.budget_max 
-                      ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                      : demande.budget_max 
+                    Budget: {demande.budget_max 
                       ? `Max ${demande.budget_max} DH`
                       : 'Non défini'}
                   </span>

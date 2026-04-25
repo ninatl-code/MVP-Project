@@ -80,7 +80,18 @@ export default function ReservationDetailPage() {
         existingReview = reviewData;
       }
 
-      setReservation({ ...data, prestataire, existingReview });
+      // Fetch linked devis if exists
+      let devis = null;
+      if (data.devis_id) {
+        const { data: devisData } = await supabase
+          .from('devis')
+          .select('*')
+          .eq('id', data.devis_id)
+          .single();
+        devis = devisData;
+      }
+
+      setReservation({ ...data, prestataire, existingReview, devis });
     } catch (error) {
       console.error('Error fetching reservation:', error);
     } finally {
@@ -268,6 +279,165 @@ export default function ReservationDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Devis section */}
+            {reservation.devis && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-600" />
+                  Détails du devis
+                </h2>
+
+                {/* Titre / description */}
+                {reservation.devis.titre && (
+                  <div className="mb-4">
+                    <p className="font-semibold text-gray-800 text-lg">{reservation.devis.titre}</p>
+                    {reservation.devis.description && (
+                      <p className="text-gray-600 text-sm mt-1">{reservation.devis.description}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Message personnalisé */}
+                {reservation.devis.message_personnalise && (
+                  <div className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <p className="text-xs font-semibold text-indigo-500 uppercase mb-1">Message du prestataire</p>
+                    <p className="text-gray-700 text-sm italic">"{reservation.devis.message_personnalise}"</p>
+                  </div>
+                )}
+
+                {/* Durée + conditions annulation */}
+                <div className="grid md:grid-cols-2 gap-4 mb-5">
+                  {reservation.devis.duree_prestation_heures && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                      <Clock className="w-5 h-5 text-indigo-600" />
+                      <div>
+                        <p className="text-xs text-gray-500">Durée de la prestation</p>
+                        <p className="font-medium">{reservation.devis.duree_prestation_heures}h</p>
+                      </div>
+                    </div>
+                  )}
+                  {reservation.devis.conditions_annulation && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                      <Shield className="w-5 h-5 text-indigo-600" />
+                      <div>
+                        <p className="text-xs text-gray-500">Conditions d'annulation</p>
+                        <p className="font-medium">{reservation.devis.conditions_annulation}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Services inclus */}
+                {reservation.devis.services_inclus && reservation.devis.services_inclus.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Services inclus</p>
+                    <ul className="space-y-1">
+                      {reservation.devis.services_inclus.map((s, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          {typeof s === 'object' ? (s.nom || s.label || JSON.stringify(s)) : s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Options supplémentaires */}
+                {reservation.devis.options_supplementaires && reservation.devis.options_supplementaires.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Options supplémentaires</p>
+                    <ul className="space-y-1">
+                      {reservation.devis.options_supplementaires.map((o, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                          <span className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs flex-shrink-0">+</span>
+                          {typeof o === 'object' ? `${o.nom || o.label || ''} ${o.prix ? `— ${o.prix} ${reservation.devis.monnaie || 'MAD'}` : ''}`.trim() : o}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Tarification */}
+                <div className="bg-gray-50 rounded-xl p-4 mb-5 space-y-2">
+                  <p className="text-sm font-semibold text-gray-700 mb-3">Tarification</p>
+                  {reservation.devis.tarif_base != null && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Tarif de base</span>
+                      <span className="font-medium">{reservation.devis.tarif_base} {reservation.devis.monnaie || 'MAD'}</span>
+                    </div>
+                  )}
+                  {reservation.devis.frais_deplacement > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Frais de déplacement</span>
+                      <span className="font-medium">{reservation.devis.frais_deplacement} {reservation.devis.monnaie || 'MAD'}</span>
+                    </div>
+                  )}
+                  {reservation.devis.remise_montant > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Remise{reservation.devis.remise_percent ? ` (${reservation.devis.remise_percent}%)` : ''}</span>
+                      <span className="font-medium text-green-600">- {reservation.devis.remise_montant} {reservation.devis.monnaie || 'MAD'}</span>
+                    </div>
+                  )}
+                  {reservation.devis.frais_additionnels && Object.keys(reservation.devis.frais_additionnels).length > 0 && (
+                    Object.entries(reservation.devis.frais_additionnels).map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-sm">
+                        <span className="text-gray-500">{k}</span>
+                        <span className="font-medium">{v} {reservation.devis.monnaie || 'MAD'}</span>
+                      </div>
+                    ))
+                  )}
+                  <div className="border-t border-gray-200 pt-2 flex justify-between">
+                    <span className="font-semibold text-gray-800">Total</span>
+                    <span className="font-bold text-lg text-indigo-700">{reservation.devis.montant_total} {reservation.devis.monnaie || 'MAD'}</span>
+                  </div>
+                  {reservation.devis.acompte_montant > 0 && (
+                    <div className="flex justify-between text-sm pt-1">
+                      <span className="text-gray-500">Acompte demandé{reservation.devis.acompte_percent ? ` (${reservation.devis.acompte_percent}%)` : ''}</span>
+                      <span className="font-medium text-indigo-600">{reservation.devis.acompte_montant} {reservation.devis.monnaie || 'MAD'}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modalités de paiement */}
+                {reservation.devis.modalites_paiement && reservation.devis.modalites_paiement.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Modalités de paiement</p>
+                    <div className="flex flex-wrap gap-2">
+                      {reservation.devis.modalites_paiement.map((m, i) => (
+                        <span key={i} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">{m}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* PDF du devis */}
+                {reservation.devis.devis_pdf_url && (
+                  <a
+                    href={reservation.devis.devis_pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-indigo-600 font-medium hover:underline"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Télécharger le devis PDF
+                  </a>
+                )}
+
+                {/* Contrat */}
+                {reservation.devis.contrat_url && (
+                  <a
+                    href={reservation.devis.contrat_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-indigo-600 font-medium hover:underline mt-2"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Voir le contrat
+                  </a>
+                )}
+              </div>
+            )}
 
             {/* Review section */}
             {reservation.statut === 'terminee' && (

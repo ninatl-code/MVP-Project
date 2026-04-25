@@ -5,7 +5,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
   Plus, Search, Filter, Calendar, MapPin, 
-  Clock, Euro, ChevronRight, FileText, Eye,
+  Clock, ChevronRight, FileText, Eye,
   CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 
@@ -33,15 +33,15 @@ export default function MesDemandesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [resolvedId, setResolvedId] = useState(null);
 
-  // Résoudre l'ID sans attendre l'AuthContext (évite les chargements longs)
+  // Résoudre l'ID via getSession() (cache local, pas de requête réseau)
   useEffect(() => {
+    if (profileId) {
+      setResolvedId(profileId);
+      return;
+    }
     const resolveId = async () => {
-      if (profileId) {
-        setResolvedId(profileId);
-        return;
-      }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setResolvedId(user.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) setResolvedId(session.user.id);
       else router.push('/login');
     };
     resolveId();
@@ -49,22 +49,17 @@ export default function MesDemandesPage() {
 
   useEffect(() => {
     if (resolvedId) fetchDemandes();
-  }, [resolvedId, filter]);
+  }, [resolvedId]);
 
   const fetchDemandes = async () => {
     setLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('demandes_client')
-        .select('*')
+        .select('id, titre, description, categorie, statut, date_souhaitee, lieu, budget_max, created_at')
         .eq('client_id', resolvedId)
         .order('created_at', { ascending: false });
 
-      if (filter !== 'all') {
-        query = query.eq('statut', filter);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       setDemandes(data || []);
     } catch (error) {
@@ -74,10 +69,14 @@ export default function MesDemandesPage() {
     }
   };
 
-  const filteredDemandes = demandes.filter(d => 
-    d.titre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.categorie?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filtrage 100% client-side — pas de re-fetch réseau
+  const filteredDemandes = demandes.filter(d => {
+    const matchFilter = filter === 'all' || d.statut === filter;
+    const matchSearch = !searchQuery ||
+      d.titre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.categorie?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchFilter && matchSearch;
+  });
 
   const getStatusBadge = (status) => {
     const config = STATUS_CONFIG[status] || { label: status, color: 'gray', icon: AlertCircle };
@@ -222,13 +221,9 @@ export default function MesDemandesPage() {
                           {demande.lieu}
                         </span>
                       )}
-                      {(demande.budget_min || demande.budget_max) && (
+                      {demande.budget_max && (
                         <span className="inline-flex items-center gap-1">
-                          <Euro className="w-4 h-4" />
-                          {demande.budget_min && demande.budget_max 
-                            ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                            : demande.budget_max ? `Max ${demande.budget_max} DH` : `Min ${demande.budget_min} DH`
-                          }
+                          {`Max ${demande.budget_max} MAD`}
                         </span>
                       )}
                     </div>

@@ -238,6 +238,67 @@ export const formatStarRating = (rating) => {
   };
 };
 
+/**
+ * Report a review as inappropriate
+ */
+export const reportReview = async (reviewId, reporterId, reason = '') => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews_photographe')
+      .update({ reported: true, report_reason: reason, reported_by: reporterId, reported_at: new Date().toISOString() })
+      .eq('id', reviewId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error reporting review:', error);
+    return { data: null, error };
+  }
+};
+
+/**
+ * Reply to a review (prestataire response)
+ */
+export const replyToReview = async (reviewId, reply) => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews_photographe')
+      .update({ reply, reply_at: new Date().toISOString() })
+      .eq('id', reviewId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error replying to review:', error);
+    return { data: null, error };
+  }
+};
+
+/**
+ * Get review for a specific reservation
+ */
+export const getReservationReview = async (reservationId, clientId) => {
+  try {
+    let query = supabase
+      .from('reviews_photographe')
+      .select('id, rating, comment, created_at, prestataire_id');
+
+    if (reservationId) query = query.eq('reservation_id', reservationId);
+    if (clientId) query = query.eq('client_id', clientId);
+
+    const { data, error } = await query.maybeSingle();
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching reservation review:', error);
+    return { data: null, error };
+  }
+};
+
 export default {
   createReview,
   getPhotographerReviews,

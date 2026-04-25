@@ -22,54 +22,48 @@ function Login() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [shouldRedirect, setShouldRedirect] = useState(false)
   const router = useRouter()
   const { navigateWithSplash, CameraSplashComponent } = useCameraSplashNavigation(router, 2000)
   const { activeRole, user, loading: authLoading } = useAuth()
 
-  // Dès qu'AuthContext a chargé le profil, redirige
+  // Dès qu'AuthContext a chargé le profil, redirige (fallback si la redirection directe échoue)
   useEffect(() => {
-    if (!loading) return; // on n'est pas en train de se connecter
-    if (authLoading) return; // AuthContext pas encore prêt
+    if (!shouldRedirect) return;
+    if (authLoading) return;
     if (!user) return;
     const targetPath = activeRole === 'prestataire' || activeRole === 'photographe' ? '/photographe/menu' : '/client/menu';
-    console.log(`[Login] ✅ AuthContext prêt (role=${activeRole}) — redirection vers ${targetPath}`);
     router.push(targetPath);
-  }, [user, activeRole, authLoading, loading]);
+  }, [user, activeRole, authLoading, shouldRedirect]);
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    const t0 = performance.now()
-    console.log('[Login] ▶ handleLogin — début')
     setLoading(true)
     setErrorMsg('')
 
-    let timedOut = false
-
-    // Timeout de sécurité (30 secondes)
+    // AbortController pour annuler la requête si timeout
+    const controller = new AbortController()
     const timeout = setTimeout(() => {
-      timedOut = true
-      console.error('[Login] ⏰ TIMEOUT après 30s')
-      setErrorMsg('La connexion prend trop de temps. Veuillez vérifier votre connexion internet.')
-      setLoading(false)
-    }, 30000)
+      controller.abort()
+    }, 15000)
 
     try {
-      console.log('[Login] 1. signInWithPassword...')
-      const t1 = performance.now()
       const { data, error } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
       })
-      console.log(`[Login] 2. signInWithPassword — ${(performance.now() - t1).toFixed(0)}ms`, error ? `ERREUR: ${error.message}` : `OK (${data?.user?.id})`)
+
+      clearTimeout(timeout)
 
       if (error) {
-        clearTimeout(timeout)
-        if (error.message === 'Invalid login credentials') {
+        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+          setErrorMsg('La connexion est trop lente. Vérifiez votre connexion et réessayez.')
+        } else if (error.message === 'Invalid login credentials') {
           setErrorMsg('Email ou mot de passe incorrect. Veuillez réessayer.')
         } else if (error.message === 'Email not confirmed') {
           setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
         } else if (error.message.includes('Too many')) {
-          setErrorMsg('Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
+          setErrorMsg('Trop de tentatives. Veuillez patienter quelques minutes.')
         } else {
           setErrorMsg(`Erreur: ${error.message}`)
         }
@@ -77,21 +71,25 @@ function Login() {
         return
       }
 
-      if (!data.user) {
-        clearTimeout(timeout)
-        setErrorMsg('Erreur de connexion. Aucun utilisateur trouvé.')
+      if (!data?.user) {
+        setErrorMsg('Erreur de connexion. Veuillez réessayer.')
         setLoading(false)
         return
       }
 
-      console.log(`[Login] 3. ✅ Auth OK en ${(performance.now() - t0).toFixed(0)}ms — en attente AuthContext pour la redirection...`)
-      clearTimeout(timeout)
-      // La redirection est gérée par le useEffect qui surveille activeRole dans AuthContext
+      const role = data.user.user_metadata?.role
+      const targetPath = role === 'prestataire' || role === 'photographe' ? '/photographe/menu' : '/client/menu'
+      setShouldRedirect(true)
+      router.push(targetPath)
 
     } catch (err) {
       clearTimeout(timeout)
-      console.error('=== ERREUR INATTENDUE ===', err)
-      setErrorMsg('Une erreur inattendue s\'est produite. Veuillez réessayer.')
+      if (err.name === 'AbortError') {
+        setErrorMsg('La connexion est trop lente. Vérifiez votre connexion et réessayez.')
+      } else {
+        console.error('Erreur login:', err)
+        setErrorMsg('Une erreur inattendue s\'est produite. Veuillez réessayer.')
+      }
       setLoading(false)
     }
   }
@@ -198,6 +196,7 @@ function Login() {
                   placeholder="votre.email@exemple.com"
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e) }}
                   required
                   style={{ 
                     width: '100%', 
@@ -241,6 +240,7 @@ function Login() {
                   placeholder="••••••••"
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e) }}
                   required
                   style={{ 
                     width: '100%', 

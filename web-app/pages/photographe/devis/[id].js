@@ -69,7 +69,6 @@ export default function PhotographeDevisDetailPage() {
             categorie,
             date_souhaitee,
             lieu,
-            budget_min,
             budget_max,
             statut,
             client:client_id (
@@ -306,11 +305,11 @@ export default function PhotographeDevisDetailPage() {
                     )}
                   </div>
 
-                  {devis.demande.budget_min && (
+                  {devis.demande.budget_max && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Budget client</h3>
                       <p className="text-gray-900">
-                        {devis.demande.budget_min} DH - {devis.demande.budget_max} DH
+                        Max {devis.demande.budget_max} DH
                       </p>
                     </div>
                   )}
