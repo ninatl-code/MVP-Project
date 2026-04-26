@@ -91,7 +91,7 @@ export default function DemandeDetailPage() {
 
       const { error, count } = await supabase
         .from('demandes_client')
-        .update({ statut: 'annulee' })
+        .update({ statut: 'annulee', fermee_at: new Date().toISOString() })
         .eq('id', id)
         .eq('client_id', resolvedClientId)
         .select('id', { count: 'exact' });
@@ -122,7 +122,7 @@ export default function DemandeDetailPage() {
       // Update demande status
       const { error: demandeError } = await supabase
         .from('demandes_client')
-        .update({ statut: 'pourvue' })
+        .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
         .eq('id', id);
 
       if (demandeError) throw demandeError;

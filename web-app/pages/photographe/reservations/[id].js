@@ -74,7 +74,7 @@ export default function PhotographeReservationDetailPage() {
           )
         `)
         .eq('id', id)
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .single();
 
       if (error) throw error;
@@ -180,7 +180,7 @@ export default function PhotographeReservationDetailPage() {
         .from('conversations')
         .select('id')
         .eq('client_id', reservation.client_id)
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .single();
 
       if (existing) {
@@ -190,7 +190,7 @@ export default function PhotographeReservationDetailPage() {
           .from('conversations')
           .insert({
             client_id: reservation.client_id,
-            photographe_id: photographeProfile.id,
+            prestataire_id: photographeProfile.id,
             reservation_id: id,
           })
           .select()

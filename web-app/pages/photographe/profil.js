@@ -44,6 +44,191 @@ const SPECIALISATIONS_MAP = {
   'Éducation & coaching': ['Cours particuliers', 'Coaching'],
 };
 
+// Placeholders dynamiques pour "Équipement disponible"
+const EQUIPEMENT_PLACEHOLDERS = {
+  'Services à domicile': {
+    'Plomberie':    'Ex : clé à molette, serre-joint, chalumeau, déboucheur haute pression, testeur d\'étanchéité...',
+    'Électricité':  'Ex : multimètre, perceuse, tournevis isolants, testeur de tension, câbles, gaines...',
+    'Ménage':       'Ex : aspirateur industriel, monobrosse, nettoyeur vapeur, produits professionnels certifiés...',
+    'Bricolage':    'Ex : perceuse-visseuse, ponceuse orbitale, scie circulaire, niveau laser, outillage complet...',
+    _default:       'Ex : outillage professionnel, équipements de protection, véhicule utilitaire...',
+  },
+  'Transport & logistique': {
+    'Chauffeur':    'Ex : véhicule climatisé, GPS, chargeur de téléphone, siège bébé, bouteille d\'eau...',
+    'Livraison':    'Ex : camionnette, scooter, caisse isotherme, scanner de colis, sangles...',
+    'Déménagement': 'Ex : camion 20 m³, diable, sangles, housses de protection, monte-meubles...',
+    _default:       'Ex : véhicule adapté, matériel de manutention, GPS, équipements de sécurité...',
+  },
+  'Services digitaux': {
+    'Développement': 'Ex : ordinateur haute performance, double écran, licences IDE, hébergement de test...',
+    'Design':        'Ex : tablette graphique Wacom, écran colorimétrique, suite Adobe, stylet professionnel...',
+    'Marketing':     'Ex : logiciels SEO (SEMrush…), suite Adobe, outils de gestion réseaux sociaux...',
+    _default:        'Ex : ordinateur, logiciels professionnels, connexion fibre, abonnements SaaS...',
+  },
+  'Éducation & coaching': {
+    'Cours particuliers': 'Ex : tableau blanc, manuels, tablette, imprimante, fournitures pédagogiques...',
+    'Coaching':           'Ex : outils d\'évaluation, matériel audiovisuel, carnet de suivi, espace calme...',
+    _default:             'Ex : supports pédagogiques numériques, tableau interactif, outils de visioconférence...',
+  },
+  _default: 'Ex : matériel professionnel, outillage spécialisé, véhicule, équipements de travail...',
+};
+
+const getEquipementPlaceholder = (categories, specialisations) => {
+  const cat = (categories || [])[0];
+  const spec = (specialisations || [])[0];
+  if (!cat) return EQUIPEMENT_PLACEHOLDERS._default;
+  const catMap = EQUIPEMENT_PLACEHOLDERS[cat];
+  if (!catMap) return EQUIPEMENT_PLACEHOLDERS._default;
+  return (spec && catMap[spec]) || catMap._default || EQUIPEMENT_PLACEHOLDERS._default;
+};
+
+// Services additionnels dynamiques par catégorie / spécialisation
+const SERVICES_ADDITIONNELS_MAP = {
+  'Services à domicile': {
+    'Plomberie':    [
+      { key: 'urgence_24h',        label: 'Intervention 24h/24' },
+      { key: 'devis_gratuit',      label: 'Devis gratuit' },
+      { key: 'garantie_travaux',   label: 'Garantie travaux' },
+      { key: 'fourniture_pieces',  label: 'Fourniture de pièces' },
+      { key: 'debouchage',         label: 'Débouchage canalisation' },
+      { key: 'detection_fuite',    label: 'Détection de fuite' },
+    ],
+    'Électricité':  [
+      { key: 'urgence_24h',        label: 'Intervention 24h/24' },
+      { key: 'devis_gratuit',      label: 'Devis gratuit' },
+      { key: 'mise_aux_normes',    label: 'Mise aux normes' },
+      { key: 'tableau_electrique', label: 'Tableau électrique' },
+      { key: 'domotique',          label: 'Domotique' },
+      { key: 'garantie_travaux',   label: 'Garantie travaux' },
+    ],
+    'Ménage':       [
+      { key: 'produits_fournis',   label: 'Produits fournis' },
+      { key: 'menage_regulier',    label: 'Ménage régulier' },
+      { key: 'repassage',          label: 'Repassage' },
+      { key: 'vitres',             label: 'Nettoyage vitres' },
+      { key: 'apres_travaux',      label: 'Nettoyage après travaux' },
+      { key: 'livraison_express',  label: 'Intervention express' },
+    ],
+    'Bricolage':    [
+      { key: 'devis_gratuit',      label: 'Devis gratuit' },
+      { key: 'fourniture_pieces',  label: 'Fourniture de matériel' },
+      { key: 'garantie_travaux',   label: 'Garantie travaux' },
+      { key: 'montage_meubles',    label: 'Montage de meubles' },
+      { key: 'peinture',           label: 'Peinture' },
+      { key: 'livraison_express',  label: 'Intervention rapide' },
+    ],
+    _default: [
+      { key: 'devis_gratuit',      label: 'Devis gratuit' },
+      { key: 'urgence_24h',        label: 'Intervention 24h/24' },
+      { key: 'garantie_travaux',   label: 'Garantie travaux' },
+      { key: 'livraison_express',  label: 'Service express' },
+    ],
+  },
+  'Transport & logistique': {
+    'Chauffeur':    [
+      { key: 'aeroport_gare',      label: 'Aéroport / Gare' },
+      { key: 'mise_a_disposition', label: 'Mise à disposition' },
+      { key: 'vehicule_climatise', label: 'Véhicule climatisé' },
+      { key: 'siege_bebe',         label: 'Siège bébé' },
+      { key: 'longue_distance',    label: 'Longue distance' },
+      { key: 'livraison_express',  label: 'Réservation express' },
+    ],
+    'Livraison':    [
+      { key: 'livraison_express',  label: 'Livraison express' },
+      { key: 'colis_fragiles',     label: 'Colis fragiles' },
+      { key: 'temperature_controlee', label: 'Température contrôlée' },
+      { key: 'suivi_temps_reel',   label: 'Suivi en temps réel' },
+      { key: 'weekend',            label: 'Livraison weekend' },
+    ],
+    'Déménagement': [
+      { key: 'emballage',          label: 'Emballage / Déballage' },
+      { key: 'monte_meubles',      label: 'Monte-meubles' },
+      { key: 'montage_meubles',    label: 'Montage de meubles' },
+      { key: 'stockage',           label: 'Stockage temporaire' },
+      { key: 'nettoyage',          label: 'Nettoyage après déménagement' },
+      { key: 'devis_gratuit',      label: 'Devis gratuit' },
+    ],
+    _default: [
+      { key: 'livraison_express',  label: 'Service express' },
+      { key: 'suivi_temps_reel',   label: 'Suivi en temps réel' },
+      { key: 'devis_gratuit',      label: 'Devis gratuit' },
+    ],
+  },
+  'Services digitaux': {
+    'Développement': [
+      { key: 'maintenance',        label: 'Maintenance mensuelle' },
+      { key: 'hebergement',        label: 'Hébergement inclus' },
+      { key: 'support_prioritaire',label: 'Support prioritaire' },
+      { key: 'documentation',      label: 'Documentation technique' },
+      { key: 'formation',          label: 'Formation client' },
+      { key: 'livraison_express',  label: 'Livraison rapide' },
+    ],
+    'Design':        [
+      { key: 'retouche_pro',       label: 'Retouche pro' },
+      { key: 'fichiers_sources',   label: 'Fichiers sources fournis' },
+      { key: 'charte_graphique',   label: 'Charte graphique' },
+      { key: 'livraison_express',  label: 'Livraison express' },
+      { key: 'revision_illimitee', label: 'Révisions illimitées' },
+      { key: 'motion_design',      label: 'Motion design' },
+    ],
+    'Marketing':     [
+      { key: 'rapport_mensuel',    label: 'Rapport mensuel' },
+      { key: 'suivi_analytique',   label: 'Suivi analytique' },
+      { key: 'gestion_rs',         label: 'Gestion réseaux sociaux' },
+      { key: 'creation_contenu',   label: 'Création de contenu' },
+      { key: 'publicite_payante',  label: 'Publicité payante' },
+      { key: 'seo',                label: 'Référencement SEO' },
+    ],
+    _default: [
+      { key: 'support_prioritaire',label: 'Support prioritaire' },
+      { key: 'livraison_express',  label: 'Livraison rapide' },
+      { key: 'formation',          label: 'Formation client' },
+      { key: 'documentation',      label: 'Documentation' },
+    ],
+  },
+  'Éducation & coaching': {
+    'Cours particuliers': [
+      { key: 'supports_cours',     label: 'Supports de cours fournis' },
+      { key: 'bilan_progression',  label: 'Bilan de progression' },
+      { key: 'cours_en_ligne',     label: 'Cours en ligne' },
+      { key: 'petits_groupes',     label: 'Petits groupes' },
+      { key: 'cours_weekend',      label: 'Cours le weekend' },
+      { key: 'livraison_express',  label: 'Disponibilité rapide' },
+    ],
+    'Coaching':           [
+      { key: 'suivi_intersession', label: 'Suivi entre séances' },
+      { key: 'outils_evaluation',  label: "Outils d'évaluation" },
+      { key: 'bilan_progression',  label: 'Bilan de progression' },
+      { key: 'coaching_en_ligne',  label: 'Coaching en ligne' },
+      { key: 'urgence_24h',        label: 'Disponibilité urgence' },
+      { key: 'plan_action',        label: "Plan d'action personnalisé" },
+    ],
+    _default: [
+      { key: 'supports_cours',     label: 'Supports fournis' },
+      { key: 'bilan_progression',  label: 'Bilan de progression' },
+      { key: 'cours_en_ligne',     label: 'En ligne disponible' },
+      { key: 'livraison_express',  label: 'Disponibilité rapide' },
+    ],
+  },
+  _default: [
+    { key: 'devis_gratuit',        label: 'Devis gratuit' },
+    { key: 'livraison_express',    label: 'Service express' },
+    { key: 'garantie',             label: 'Garantie satisfaction' },
+    { key: 'urgence_24h',          label: 'Disponible 24h/24' },
+    { key: 'facture_fournie',      label: 'Facture fournie' },
+    { key: 'paiement_echelonne',   label: 'Paiement échelonné' },
+  ],
+};
+
+const getServicesAdditionnels = (categories, specialisations) => {
+  const cat = (categories || [])[0];
+  const spec = (specialisations || [])[0];
+  if (!cat) return SERVICES_ADDITIONNELS_MAP._default;
+  const catMap = SERVICES_ADDITIONNELS_MAP[cat];
+  if (!catMap) return SERVICES_ADDITIONNELS_MAP._default;
+  return (spec && catMap[spec]) || catMap._default || SERVICES_ADDITIONNELS_MAP._default;
+};
+
 const TARIFS_CATEGORIES = [
   { id: 'portrait', label: 'Portrait', icon: User },
   { id: 'mariage', label: 'Mariage', icon: Star },
@@ -313,14 +498,13 @@ export default function PhotographeProfilPage() {
         setProfile(mergedProfile);
 
         // Calculer le statut de vérification depuis les données du profil
-        const val = photoProfile?.statut_validation || null;
         const hasIdentityDoc = !!(photoProfile?.document_identite_recto_url);
         const hasBusinessDoc = !!(photoProfile?.documents_siret || photoProfile?.documents_kbis);
         const emailVerified = true; // Supabase impose la confirmation email à l'inscription
         const phoneVerified = !!(baseProfile?.phone_verified);
-        const identityVerified = hasIdentityDoc && val === 'verified';
+        const identityVerified = !!(photoProfile?.identite_verifiee);
         const identityPending = hasIdentityDoc && !identityVerified;
-        const businessVerified = hasBusinessDoc && val === 'verified';
+        const businessVerified = !!(photoProfile?.entreprise_verifiee);
         const businessPending = hasBusinessDoc && !businessVerified;
         let score = 20;
         if (emailVerified) score += 20;
@@ -447,14 +631,15 @@ export default function PhotographeProfilPage() {
       if (photoError) console.error('Erreur profils_prestataire:', photoError);
 
       if (profileError || photoError) {
-        throw new Error('Erreur lors de la sauvegarde');
+        const realError = photoError || profileError;
+        throw new Error(realError?.message || 'Erreur inconnue');
       }
 
       alert('Profil mis à jour !');
       await fetchFullProfile(currentUser.id);
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Erreur lors de la sauvegarde');
+      alert('Erreur lors de la sauvegarde : ' + error.message);
     } finally {
       setSaving(false);
     }
@@ -909,7 +1094,7 @@ export default function PhotographeProfilPage() {
                         type="text"
                         value={profile?.numero_tva || ''}
                         onChange={(e) => handleProfileChange('numero_tva', e.target.value)}
-                        placeholder="FR12 123456789"
+                        placeholder="Ex : ICE 001234567000012 ou IF 1234567"
                         className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
@@ -1064,7 +1249,7 @@ export default function PhotographeProfilPage() {
                     type="text"
                     value={profile?.nom_entreprise || ''}
                     onChange={(e) => handleProfileChange('nom_entreprise', e.target.value)}
-                    placeholder="Mon Studio Photo"
+                    placeholder="Mon agence"
                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -1109,7 +1294,7 @@ export default function PhotographeProfilPage() {
                 <textarea
                   value={profile?.bio || ''}
                   onChange={(e) => handleProfileChange('bio', e.target.value)}
-                  placeholder="Présentez-vous et votre style de photographie..."
+                  placeholder="Présentez-vous et votre expérience..."
                   rows={4}
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
@@ -1125,7 +1310,7 @@ export default function PhotographeProfilPage() {
                     type="text"
                     value={villeNom || ''}
                     onChange={(e) => setVilleNom(e.target.value)}
-                    placeholder="Paris, Lyon, Marseille..."
+                    placeholder="Casablanca, Rabat, Marrakech, Fès, Tanger..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -1431,30 +1616,28 @@ export default function PhotographeProfilPage() {
               <div>
                 <h2 className="font-semibold text-gray-900 mb-2">Équipement disponible</h2>
                 <p className="text-sm text-gray-500 mb-4">Décrivez votre matériel ou équipement professionnel</p>
-                <textarea
+<textarea
                   value={profile?.materiel || ''}
                   onChange={(e) => handleProfileChange('materiel', e.target.value)}
-                  placeholder="Ex: véhicule utilitaire, outils professionnels, ordinateur portable, tablette graphique, matériel de nettoyage..." 
+                  placeholder={getEquipementPlaceholder(profile?.categories, profile?.specialisations)}
                   rows={4}
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
               </div>
 
-              {/* Services additionnels */}
+{/* Services additionnels */}
               <div>
                 <h2 className="font-semibold text-gray-900 mb-2">Services additionnels</h2>
-                <p className="text-sm text-gray-500 mb-4">Sélectionnez les services supplémentaires que vous proposez</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { key: 'drone', label: 'Drone' },
-                    { key: 'video', label: 'Vidéo' },
-                    { key: 'stylisme', label: 'Stylisme' },
-                    { key: 'maquillage', label: 'Maquillage' },
-                    { key: 'retouche_pro', label: 'Retouche pro' },
-                    { key: 'retouche_beaute', label: 'Retouche beauté' },
-                    { key: 'impression_album', label: 'Album photo' },
-                    { key: 'livraison_express', label: 'Livraison express' },
-                  ].map(({ key, label }) => {
+                <p className="text-sm text-gray-500 mb-4">
+                  Sélectionnez les services supplémentaires que vous proposez
+                  {(profile?.categories || [])[0] && (
+                    <span className="ml-1 text-indigo-600 font-medium">
+                      — adaptés à {(profile?.categories || [])[0]}{(profile?.specialisations || [])[0] ? ` / ${(profile?.specialisations || [])[0]}` : ''}
+                    </span>
+                  )}
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {getServicesAdditionnels(profile?.categories, profile?.specialisations).map(({ key, label }) => {
                     const isOn = profile?.services_additionnels?.[key] ?? false;
                     return (
                       <button
@@ -1464,16 +1647,33 @@ export default function PhotographeProfilPage() {
                           ...(profile?.services_additionnels || {}),
                           [key]: !isOn,
                         })}
-                        className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                        className={`p-3 rounded-xl border-2 text-sm font-medium transition-all text-left ${
                           isOn
                             ? 'border-purple-500 bg-purple-50 text-purple-900'
                             : 'border-gray-200 text-gray-600 hover:border-purple-300'
                         }`}
                       >
-                        {label}
+                        {isOn && <span className="mr-1">✓ </span>}{label}
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Champ libre */}
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Autres services (champ libre)
+                  </label>
+                  <textarea
+                    value={profile?.services_additionnels?._texte_libre || ''}
+                    onChange={(e) => handleProfileChange('services_additionnels', {
+                      ...(profile?.services_additionnels || {}),
+                      _texte_libre: e.target.value,
+                    })}
+                    placeholder="Ex : Installation de climatiseur, Cours de cuisine, Séance photo à domicile..."
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none text-sm"
+                  />
                 </div>
               </div>
 
@@ -1561,7 +1761,7 @@ export default function PhotographeProfilPage() {
               {profile?.agence && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Adresse du studio
+                    Adresse de votre agence
                   </label>
                   <div className="relative">
                     <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -1569,7 +1769,7 @@ export default function PhotographeProfilPage() {
                       type="text"
                       value={profile?.agence_adresse || ''}
                       onChange={(e) => handleProfileChange('agence_adresse', e.target.value)}
-                      placeholder="123 Rue de la Photo, 75001 Paris"
+                      placeholder="Ex : 45 Boulevard Mohammed V, Casablanca 20000"
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
@@ -1605,18 +1805,15 @@ export default function PhotographeProfilPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Frais de déplacement (MAD/km)
                   </label>
-                  <div className="relative">
-                    <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
+                  <input
                       type="number"
                       step="0.1"
                       min="0"
                       value={profile?.frais_deplacement || ''}
                       onChange={(e) => handleProfileChange('frais_deplacement', parseFloat(e.target.value))}
                       placeholder="0.50"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                     />
-                  </div>
                   <p className="text-xs text-gray-500 mt-1">Laissez vide pour inclure les frais dans vos tarifs</p>
                 </div>
               )}

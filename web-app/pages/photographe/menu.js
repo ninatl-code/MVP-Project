@@ -134,7 +134,7 @@ function NotificationsPopup({ userId }) {
     if (!userId) return;
     const fetchNotifications = async () => {
       const { data, error } = await supabase
-        .from("notification")
+        .from("notifications")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
@@ -175,9 +175,9 @@ function NotificationsPopup({ userId }) {
       {open && (
         <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
           <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-lg text-gray-800">
+            <h2 className="font-semibold text-lg text-gray-800">
               Notifications
-            </h3>
+            </h2>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
@@ -288,7 +288,7 @@ const shareAnnonce = (annonceId, titre) => {
     `;
     
     shareMenu.innerHTML = `
-      <h3 style="margin: 0 0 20px 0; font-weight: 600; color: ${COLORS.text}; font-size: 18px; text-align: center;">Partager cette annonce</h3>
+      <h2 style="margin: 0 0 20px 0; font-weight: 600; color: ${COLORS.text}; font-size: 18px; text-align: center;">Partager cette annonce</h2>
       ${shareOptions.map(option => 
         `<a href="${option.url}" target="_blank" style="
           display: flex; align-items: center; gap: 15px; padding: 14px 18px;
@@ -356,9 +356,9 @@ function StartupChecklist({ userId, onHide }) {
         .eq("id", userId)
         .single();
 
-      // Récupérer les données photographe séparément
+      // Récupérer les données prestataire séparément
       const { data: photoProfile } = await supabase
-        .from("profils_photographe")
+        .from("profils_prestataire")
         .select("bio, instagram, facebook, linkedin, site_web")
         .eq("id", userId)
         .single();
@@ -367,11 +367,11 @@ function StartupChecklist({ userId, onHide }) {
       const { data: { user } } = await supabase.auth.getUser();
       const emailConfirmed = user?.email_confirmed_at !== null;
 
-      // Compter les annonces
+      // Compter les forfaits
       const { count: annonceCount } = await supabase
-        .from("annonces")
+        .from("packages_types")
         .select("*", { count: "exact", head: true })
-        .eq("prestataire", userId);
+        .eq("prestataire_id", userId);
 
       // Calculer le statut de chaque étape
       const profileComplete = !!(
@@ -489,13 +489,13 @@ function StartupChecklist({ userId, onHide }) {
       </button>
 
       <div className="mb-6">
-        <h3 
+        <h2 
           className="text-xl font-bold mb-2 flex items-center gap-3"
           style={{ color: COLORS.text }}
         >
           <span className="text-2xl">🚀</span>
           Lancez votre activité Shooty
-        </h3>
+        </h2>
         <p 
           className="text-sm mb-4"
           style={{ color: COLORS.text + 'CC' }}
@@ -739,9 +739,9 @@ function SupportModal({ isOpen, onClose, userProfile }) {
               }}
             >
               <CheckCircle style={{ width: '64px', height: '64px', margin: '0 auto 16px' }} />
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>
                 Message envoyé !
-              </h3>
+              </h2>
               <p style={{ color: COLORS.text + 'CC' }}>
                 Nous avons bien reçu votre demande. Un email de confirmation vous a été envoyé.
               </p>
@@ -1046,24 +1046,22 @@ export default function ProviderHomeMenu() {
       setProfile(profileData);
 
       // Charger toutes les stats en parallèle (aligné sur mobile)
-      const [reservationsRes, devisRes, demandesRes, messagesRes, matchingsRes] = await Promise.all([
+      const [reservationsRes, devisRes, messagesRes, matchingsRes] = await Promise.all([
         supabase.from('reservations')
           .select('id, montant_total, statut')
-          .eq('photographe_id', user.id),
+          .eq('prestataire_id', user.id),
         supabase.from('devis')
           .select('id, statut')
-          .eq('photographe_id', user.id),
-        supabase.from('demandes_client')
-          .select('id, photographes_notifies')
-          .contains('photographes_notifies', [user.id]),
+          .eq('prestataire_id', user.id),
         supabase.from('conversations')
           .select('id', { count: 'exact' })
-          .eq('photographe_id', user.id)
-          .gt('unread_count_photographe', 0),
+          .eq('prestataire_id', user.id)
+          .gt('unread_count_prestataire', 0),
         supabase.from('matchings')
-          .select('id', { count: 'exact', head: true })
+          .select('id, demandes_client!inner(statut)', { count: 'exact' })
           .eq('prestataire_id', user.id)
           .eq('status', 'pending')
+          .eq('demandes_client.statut', 'ouverte')
       ]);
 
       // Total réservations
@@ -1096,20 +1094,20 @@ export default function ProviderHomeMenu() {
       const taux = devisData.length > 0 ? Math.round((devisAcceptes / devisData.length) * 100) : 0;
       setTauxAcceptation(taux);
 
-      // Demandes vues
-      setDemandesVues(demandesRes.data?.length || 0);
+      // Demandes vues (= matchings plateforme reçus)
+      setDemandesVues(matchingsRes.data?.length || 0);
 
-      // Matchings en attente (proposés par la plateforme)
-      setNbMatchingsPending(matchingsRes.count || 0);
+      // Matchings en attente (proposés par la plateforme) — uniquement demandes encore ouvertes
+      setNbMatchingsPending(matchingsRes.data?.length || 0);
 
       // Messages non lus
       setMessagesNonLus(messagesRes.count || 0);
 
       // Nb prestations actives
       const { count: activeCount } = await supabase
-        .from("annonces")
+        .from("packages_types")
         .select("*", { count: "exact", head: true })
-        .eq("prestataire", user.id)
+        .eq("prestataire_id", user.id)
         .eq("actif", true);
       setNbActivePrestations(activeCount || 0);
 
@@ -1123,7 +1121,7 @@ export default function ProviderHomeMenu() {
   const checkProfileCompleteness = async (userId) => {
     try {
       const { data: profilPhoto, error } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select('bio, specialisations, portfolio_photos, rayon_deplacement_km, tarifs_indicatifs')
         .eq('id', userId)
         .single();
@@ -1305,9 +1303,9 @@ export default function ProviderHomeMenu() {
             >
               <div className="flex items-center gap-3 mb-3">
                 <AlertTriangle className="w-6 h-6" style={{ color: '#F59E0B' }} />
-                <h3 className="text-lg font-bold" style={{ color: COLORS.text }}>
+                <h2 className="text-lg font-bold" style={{ color: COLORS.text }}>
                   Profil incomplet
-                </h3>
+                </h2>
               </div>
               <p className="text-sm mb-4" style={{ color: COLORS.text + 'CC' }}>
                 Complétez votre profil pour recevoir plus de demandes

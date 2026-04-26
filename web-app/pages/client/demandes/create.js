@@ -52,6 +52,7 @@ export default function CreateDemandePage() {
     categorie: '',
     description: '',
     date_souhaitee: '',
+    heure_debut: '',
     date_flexible: false,
     ville: '',
     lieu: '',
@@ -62,6 +63,7 @@ export default function CreateDemandePage() {
     exigences_specifiques: '',
     specialite: '',
     specialite_autre: '',
+    langues_souhaitees: [],
   });
 
   // Redirect if not authenticated (instant — reads from local storage)
@@ -130,6 +132,7 @@ export default function CreateDemandePage() {
         categorie: formData.categorie,
         description: formData.description || '',
         date_souhaitee: formData.date_souhaitee || new Date().toISOString().split('T')[0],
+        heure_debut: formData.heure_debut || null,
         ville: formData.ville,
         lieu: formData.lieu || '',
         duree_estimee_heures: parseInt(formData.duree_estimee) || null,
@@ -137,6 +140,9 @@ export default function CreateDemandePage() {
         type_prestation: formData.specialite === 'Autre'
           ? [formData.specialite_autre?.trim() || 'Autre']
           : [formData.specialite || ''],
+        langues_souhaitees: formData.langues_souhaitees,
+        nb_personnes: parseInt(formData.nombre_personnes) || null,
+        instructions_speciales: formData.exigences_specifiques || null,
         statut: 'ouverte',
       };
 
@@ -320,6 +326,19 @@ export default function CreateDemandePage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Clock className="w-4 h-4 inline mr-1" />
+            Heure souhaitée (optionnel)
+          </label>
+          <input
+            type="time"
+            value={formData.heure_debut}
+            onChange={(e) => updateFormData('heure_debut', e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             <MapPin className="w-4 h-4 inline mr-1" />
             Ville de la prestation *
           </label>
@@ -394,6 +413,37 @@ export default function CreateDemandePage() {
           rows={3}
           className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
+      </div>
+
+      {/* Langues souhaitées */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Langue(s) souhaitée(s) du prestataire (optionnel)
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {['Arabe', 'Français', 'Amazigh', 'Anglais', 'Espagnol'].map((lang) => {
+            const selected = formData.langues_souhaitees.includes(lang);
+            return (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => {
+                  const next = selected
+                    ? formData.langues_souhaitees.filter(l => l !== lang)
+                    : [...formData.langues_souhaitees, lang];
+                  updateFormData('langues_souhaitees', next);
+                }}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                  selected
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
+                }`}
+              >
+                {lang}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -567,6 +617,14 @@ export default function CreateDemandePage() {
                   {formData.date_flexible && ' (flexible)'}
                 </p>
               </div>
+              {formData.heure_debut && (
+                <div>
+                  <p className="text-sm text-gray-500 flex items-center gap-1">
+                    <Clock className="w-4 h-4" /> Heure
+                  </p>
+                  <p className="font-medium">{formData.heure_debut}</p>
+                </div>
+              )}
               <div>
                 <p className="text-sm text-gray-500 flex items-center gap-1">
                   <MapPin className="w-4 h-4" /> Lieu
@@ -587,6 +645,14 @@ export default function CreateDemandePage() {
               </div>
             </div>
           </div>
+
+          {/* Langues souhaitées */}
+          {formData.langues_souhaitees.length > 0 && (
+            <div className="p-4 border-t border-gray-100">
+              <p className="text-sm text-gray-500 mb-1">Langue(s) souhaitée(s)</p>
+              <p className="font-medium">{formData.langues_souhaitees.join(', ')}</p>
+            </div>
+          )}
 
           {/* Budget */}
           <div className="p-4">

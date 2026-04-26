@@ -39,8 +39,8 @@ export default function RevenusPage() {
   const fetchStripeAccount = async () => {
     try {
       const { data, error } = await supabase
-        .from('profils_photographe')
-        .select('stripe_account_id, stripe_account_status')
+        .from('profils_prestataire')
+        .select('stripe_account_id, stripe_onboarding_complete')
         .eq('id', photographeProfile.id)
         .single();
 
@@ -80,7 +80,7 @@ export default function RevenusPage() {
             client:client_id (prenom, nom)
           )
         `)
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });
@@ -110,7 +110,7 @@ export default function RevenusPage() {
       const { data: prevPaiements } = await supabase
         .from('paiements')
         .select('montant')
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .eq('statut', 'complete')
         .gte('created_at', prevStartDate.toISOString())
         .lte('created_at', prevEndDate.toISOString());

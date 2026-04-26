@@ -9,12 +9,13 @@ export const createDemande = async ({
   description,
   categorie,
   date_souhaitee,
+  heure_debut,
   lieu,
   ville,
   budget_max,
   duree_estimee_heures,
   type_prestation = [],
-  services_souhaites = {},
+  langues_souhaitees = [],
 }) => {
   try {
     const { data, error } = await supabase
@@ -25,12 +26,13 @@ export const createDemande = async ({
         description,
         categorie,
         date_souhaitee,
+        heure_debut: heure_debut || null,
         lieu,
         ville: ville || lieu,
         budget_max,
         duree_estimee_heures,
         type_prestation,
-        services_souhaites,
+        langues_souhaitees,
         statut: 'ouverte',
       })
       .select()

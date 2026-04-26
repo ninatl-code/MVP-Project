@@ -400,12 +400,14 @@ export default function DemandesClients() {
   const [activeTab, setActiveTab] = useState('clients'); // 'clients' | 'plateforme'
   const [demandes, setDemandes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [filterCategorie, setFilterCategorie] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [selectedDemande, setSelectedDemande] = useState(null);
   const [devisEnvoyes, setDevisEnvoyes] = useState(new Set());
   const [matchings, setMatchings] = useState([]);
   const [loadingMatchings, setLoadingMatchings] = useState(true);
+  const [matchError, setMatchError] = useState(null);
 
   // Lire le tab depuis l'URL
   useEffect(() => {
@@ -423,6 +425,7 @@ export default function DemandesClients() {
 
   const loadDemandes = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const { data, error } = await supabase
         .from('demandes_client')
@@ -445,7 +448,7 @@ export default function DemandesClients() {
         .eq('statut', 'ouverte')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) { setLoadError(error.message); throw error; }
       setDemandes(data || []);
     } catch (err) {
       console.error('Erreur chargement demandes:', err);
@@ -466,6 +469,7 @@ export default function DemandesClients() {
   const loadMatchings = async () => {
     if (!user) return;
     setLoadingMatchings(true);
+    setMatchError(null);
     try {
       const { data, error } = await supabase
         .from('matchings')
@@ -474,7 +478,7 @@ export default function DemandesClients() {
           match_score,
           status,
           created_at,
-          demandes_client(
+          demandes_client!inner(
             id, titre, description, categorie, date_souhaitee,
             lieu, ville, budget_max, duree_estimee_heures,
             statut, created_at, client_id,
@@ -483,10 +487,10 @@ export default function DemandesClients() {
         `)
         .eq('prestataire_id', user.id)
         .eq('status', 'pending')
+        .eq('demandes_client.statut', 'ouverte')
         .order('match_score', { ascending: false });
-      if (error) throw error;
-      // Garder uniquement les demandes encore ouvertes
-      setMatchings((data || []).filter((m) => m.demandes_client?.statut === 'ouverte'));
+      if (error) { setMatchError(error.message); throw error; }
+      setMatchings(data || []);
     } catch (err) {
       console.error('Erreur chargement matchings:', err);
     } finally {
@@ -582,6 +586,10 @@ export default function DemandesClients() {
                     <div className="h-4 bg-gray-100 rounded w-3/4" />
                   </div>
                 ))}
+              </div>
+            ) : matchError ? (
+              <div className="text-center py-16">
+                <p className="text-red-500 font-medium text-sm">Erreur : {matchError}</p>
               </div>
             ) : matchings.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -748,6 +756,10 @@ export default function DemandesClients() {
                   <div className="h-4 bg-gray-100 rounded w-3/4" />
                 </div>
               ))}
+            </div>
+          ) : loadError ? (
+            <div className="text-center py-16">
+              <p className="text-red-500 font-medium text-sm">Erreur : {loadError}</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-20">

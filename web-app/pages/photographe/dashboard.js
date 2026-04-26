@@ -111,12 +111,12 @@ export default function PhotographerDashboard() {
         .from('reservations')
         .select(`
           *,
-          client:profiles!reservations_client_id_fkey(nom, prenom, photo_profil)
+          client:profiles!reservations_client_id_fkey(nom, prenom, avatar_url)
         `)
-        .eq('photographe_id', photographeId)
+        .eq('prestataire_id', photographeId)
         .in('statut', ['confirmee', 'en_cours'])
-        .gte('date_prestation', new Date().toISOString().split('T')[0])
-        .order('date_prestation', { ascending: true })
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true })
         .limit(5);
 
       setUpcomingBookings(bookings || []);
@@ -126,9 +126,9 @@ export default function PhotographerDashboard() {
         .from('demandes_client')
         .select(`
           *,
-          client:profiles!demandes_client_particulier_id_fkey(nom, prenom)
+          client:profiles!demandes_client_client_id_fkey(nom, prenom)
         `)
-        .eq('status', 'active')
+        .eq('statut', 'ouverte')
         .order('created_at', { ascending: false })
         .limit(5);
 

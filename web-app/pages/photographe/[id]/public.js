@@ -32,12 +32,12 @@ export default function PhotographeProfilePage() {
     try {
       // Fetch photographer profile
       const { data: profileData, error: profileError } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select(`
           *,
-          profile:profiles!profils_photographe_user_id_fkey(id, nom, avatar_url, ville, email, created_at)
+          profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url, ville, email, created_at)
         `)
-        .eq('user_id', id)
+        .eq('id', id)
         .single();
 
       if (profileError) throw profileError;
@@ -47,9 +47,9 @@ export default function PhotographeProfilePage() {
       const { data: packagesData } = await supabase
         .from('packages_types')
         .select('*')
-        .eq('photographe_id', id)
+        .eq('prestataire_id', id)
         .eq('actif', true)
-        .order('prix', { ascending: true });
+        .order('prix_fixe', { ascending: true });
       
       setPackages(packagesData || []);
 
@@ -57,7 +57,7 @@ export default function PhotographeProfilePage() {
       const { data: portfolioData } = await supabase
         .from('portfolio')
         .select('*')
-        .eq('photographe_id', id)
+        .eq('prestataire_id', id)
         .order('created_at', { ascending: false })
         .limit(12);
       
@@ -65,12 +65,12 @@ export default function PhotographeProfilePage() {
 
       // Fetch reviews
       const { data: avisData } = await supabase
-        .from('avis')
+        .from('reviews_photographe')
         .select(`
           *,
-          auteur:profiles!avis_auteur_id_fkey(id, nom, avatar_url)
+          auteur:profiles!reviews_photographe_client_id_fkey(id, nom, avatar_url)
         `)
-        .eq('destinataire_id', id)
+        .eq('prestataire_id', id)
         .order('created_at', { ascending: false })
         .limit(10);
       
@@ -79,7 +79,7 @@ export default function PhotographeProfilePage() {
       // Track view
       if (user?.id && user.id !== id) {
         await supabase.from('vues_profil').insert({
-          photographe_id: id,
+          prestataire_id: id,
           visiteur_id: user.id,
           created_at: new Date().toISOString(),
         }).single();
@@ -102,8 +102,8 @@ export default function PhotographeProfilePage() {
       const { data: existingConv } = await supabase
         .from('conversations')
         .select('id')
-        .eq('particulier_id', user.id)
-        .eq('photographe_id', id)
+        .eq('client_id', user.id)
+        .eq('prestataire_id', id)
         .single();
 
       if (existingConv) {
@@ -115,8 +115,8 @@ export default function PhotographeProfilePage() {
       const { data: newConv, error } = await supabase
         .from('conversations')
         .insert({
-          particulier_id: user.id,
-          photographe_id: id,
+          client_id: user.id,
+          prestataire_id: id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

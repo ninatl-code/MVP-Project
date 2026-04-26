@@ -103,7 +103,7 @@ export default function DevisDetailPage() {
       if (devis.demande_id) {
         await supabase
           .from('demandes_client')
-          .update({ statut: 'pourvue' })
+          .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
           .eq('id', devis.demande_id);
       }
 

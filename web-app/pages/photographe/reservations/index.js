@@ -41,12 +41,12 @@ export default function PhotographerReservationsPage() {
         .select(`
           *,
           client:profiles!reservations_client_id_fkey(
-            id, nom, prenom, email, photo_profil, telephone
+            id, nom, prenom, email, avatar_url, telephone
           ),
-          package:packages(id, nom)
+          package:packages_types(id, titre)
         `)
-        .eq('photographe_id', photographeProfile.id)
-        .order('date_prestation', { ascending: timeFilter === 'upcoming' });
+        .eq('prestataire_id', photographeProfile.id)
+        .order('date', { ascending: timeFilter === 'upcoming' });
 
       if (filter !== 'all') {
         query = query.eq('statut', filter);
@@ -54,9 +54,9 @@ export default function PhotographerReservationsPage() {
 
       const today = new Date().toISOString().split('T')[0];
       if (timeFilter === 'upcoming') {
-        query = query.gte('date_prestation', today);
+        query = query.gte('date', today);
       } else if (timeFilter === 'past') {
-        query = query.lt('date_prestation', today);
+        query = query.lt('date', today);
       }
 
       const { data, error } = await query;

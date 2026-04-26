@@ -115,13 +115,12 @@ export default function CreateDevisPage() {
         .from('devis')
         .insert({
           demande_id: id,
-          photographe_id: photographeProfile.id,
+          prestataire_id: photographeProfile.id,
           titre: formData.titre,
           description: formData.description,
-          montant: parseFloat(formData.montant),
-          validite_jours: formData.validite_jours,
-          prestations_incluses: formData.prestations_incluses,
-          details_prix: validDetails.length > 0 ? JSON.stringify(validDetails) : null,
+          montant_total: parseFloat(formData.montant),
+          duree_validite_jours: formData.validite_jours,
+          services_inclus: formData.prestations_incluses,
           statut: 'en_attente',
         })
         .select()
@@ -131,11 +130,12 @@ export default function CreateDevisPage() {
 
       // Create notification for the client
       await supabase.from('notifications').insert({
-        user_id: demande.particulier_id,
+        user_id: demande.client_id,
         type: 'nouveau_devis',
         titre: 'Nouveau devis reçu',
-        message: `${photographeProfile.nom_entreprise || 'Un photographe'} vous a envoyé un devis pour "${demande.titre}"`,
-        data: { devis_id: data.id, demande_id: id },
+        contenu: `${photographeProfile.nom_entreprise || 'Un prestataire'} vous a envoyé un devis pour "${demande.titre}"`,
+        devis_id: data.id,
+        demande_id: id,
       });
 
       router.push(`/photographe/devis/${data.id}?success=true`);

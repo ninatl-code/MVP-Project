@@ -6,7 +6,7 @@ import { Mail, Lock, AlertCircle, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
 import { useAuth } from '../contexts/AuthContext';
 
-// Palette ServiDaba
+// Palette Bricool
 const COLORS = {
   primary: '#E8EAF6',     // Violet
   secondary: '#5C6BC0',   // Jaune doré
@@ -32,8 +32,20 @@ function Login() {
     if (!shouldRedirect) return;
     if (authLoading) return;
     if (!user) return;
-    const targetPath = activeRole === 'prestataire' || activeRole === 'photographe' ? '/photographe/menu' : '/client/menu';
-    router.push(targetPath);
+    const checkAndRedirect = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+      if (profile?.is_admin) {
+        router.push('/admin');
+      } else {
+        const targetPath = activeRole === 'prestataire' || activeRole === 'photographe' ? '/photographe/menu' : '/client/menu';
+        router.push(targetPath);
+      }
+    };
+    checkAndRedirect();
   }, [user, activeRole, authLoading, shouldRedirect]);
 
   const handleLogin = async (e) => {
@@ -77,10 +89,21 @@ function Login() {
         return
       }
 
-      const role = data.user.user_metadata?.role
-      const targetPath = role === 'prestataire' || role === 'photographe' ? '/photographe/menu' : '/client/menu'
+      // Vérifier is_admin en base avant de rediriger
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', data.user.id)
+        .single();
+
       setShouldRedirect(true)
-      router.push(targetPath)
+      if (profile?.is_admin) {
+        router.push('/admin')
+      } else {
+        const role = data.user.user_metadata?.role
+        const targetPath = role === 'prestataire' || role === 'photographe' ? '/photographe/menu' : '/client/menu'
+        router.push(targetPath)
+      }
 
     } catch (err) {
       clearTimeout(timeout)
@@ -146,7 +169,7 @@ function Login() {
             color: COLORS.text + 'AA', 
             marginBottom: 32 
           }}>
-            Accédez à votre espace ServiDaba
+            Accédez à votre espace Bricool
           </p>
 
           {errorMsg && (

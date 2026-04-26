@@ -39,7 +39,7 @@ export default function PackagesPage() {
       const { data, error } = await supabase
         .from('packages_types')
         .select('*')
-        .eq('photographe_id', id)
+        .eq('prestataire_id', id)
         .order('ordre', { ascending: true });
 
       if (error) throw error;
@@ -295,7 +295,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
 
     try {
       const data = {
-        photographe_id: photographeId,
+        prestataire_id: photographeId,
         nom: formData.nom,
         description: formData.description,
         prix: parseFloat(formData.prix),

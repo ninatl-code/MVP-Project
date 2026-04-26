@@ -147,16 +147,22 @@ export default function PhotographeClientView() {
                       <h1 className="text-2xl font-bold text-gray-900">
                         {profile.nom_entreprise || profile.nom || 'Prestataire'}
                       </h1>
-                      {profile.statut_validation === 'verified' && (
+                      {profile.statut_validation === 'valide' && (
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
                           <CheckCircle className="w-3.5 h-3.5" />
-                          Vérifié
+                          Profil approuvé
                         </span>
                       )}
                       {profile.identite_verifiee && (
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
                           <Shield className="w-3.5 h-3.5" />
                           Identité vérifiée
+                        </span>
+                      )}
+                      {profile.entreprise_verifiee && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Entreprise vérifiée
                         </span>
                       )}
                     </div>

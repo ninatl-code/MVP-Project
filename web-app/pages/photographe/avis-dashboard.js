@@ -50,15 +50,12 @@ export default function AvisDashboardPage() {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from('avis')
+        .from('reviews_photographe')
         .select(`
           *,
-          reviewer:particulier_id(prenom, nom, photos),
-          reservation:reservation_id(
-            annonces(titre)
-          )
+          reviewer:profiles!reviews_photographe_client_id_fkey(prenom, nom, avatar_url)
         `)
-        .eq('photographe_id', user.id)
+        .eq('prestataire_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

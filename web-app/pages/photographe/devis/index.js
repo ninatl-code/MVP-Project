@@ -77,7 +77,7 @@ export default function PhotographeDevisPage() {
             )
           )
         `)
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

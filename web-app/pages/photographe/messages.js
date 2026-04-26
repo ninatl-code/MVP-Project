@@ -122,19 +122,19 @@ export default function MessagesParticulier() {
 
       const { data: conversationsData } = await supabase
         .from('conversations')
-        .select('id, artist_id, client_id, annonce_id, last_message, created_at, updated, deletion_dateParti, lu')
-        .eq('photographe_id', authData.user.id)
-        .is('deletion_datePresta', null)
-        .order('updated', { ascending: false });
+        .select('id, client_id, prestataire_id, demande_id, reservation_id, last_message_text, last_message_at, unread_count_prestataire, is_archived_by_prestataire, created_at, updated_at')
+        .eq('prestataire_id', authData.user.id)
+        .eq('is_archived_by_prestataire', false)
+        .order('updated_at', { ascending: false });
 
       if (!conversationsData) return;
 
       const convIds = conversationsData.map(c => c.id);
       const { data: messages } = await supabase
         .from('messages')
-        .select('id, conversation_id, sender_id, receiver_id, objet, contenu, created_at, deletion_dateParti')
+        .select('id, conversation_id, sender_id, receiver_id, contenu, attachments, lu, created_at')
         .in('conversation_id', convIds)
-        .is('deletion_datePresta', null)
+        .eq('deleted_by_sender', false)
         .order('created_at', { ascending: true });
 
       if (!messages) return;
@@ -148,21 +148,12 @@ export default function MessagesParticulier() {
       const profileMap = {};
       (profiles || []).forEach(p => { profileMap[p.id] = p; });
 
-      const annonceIds = Array.from(new Set(conversationsData.map(c => c.annonce_id).filter(Boolean)));
-      let annonceTitlesMap = {};
-      if (annonceIds.length > 0) {
-        const { data: annoncesData } = await supabase
-          .from('prestations_photographe')
-          .select('id, titre')
-          .in('id', annonceIds);
-        if (annoncesData) annoncesData.forEach(a => { annonceTitlesMap[a.id] = a.titre; });
-      }
-      setAnnonceTitles(annonceTitlesMap);
+      setAnnonceTitles({});
 
       // Map conversations to include profile + photoUrl
       const convMap = {};
       conversationsData.forEach(conv => {
-        const otherId = conv.artist_id === authData.user.id ? conv.client_id : conv.artist_id;
+        const otherId = conv.prestataire_id === authData.user.id ? conv.client_id : conv.prestataire_id;
         const userProfile = profileMap[otherId] || null;
         let photoUrl = getPhotoUrlFromProfile(userProfile);
         if (!photoUrl) photoUrl = svgAvatarDataUrl(userProfile?.nom || 'U'); // fallback svg
@@ -170,7 +161,7 @@ export default function MessagesParticulier() {
           conversation: conv,
           user: userProfile,
           userId: otherId,
-          annonceId: conv.annonce_id,
+          annonceId: conv.demande_id,
           messages: [],
           ParticulierPhoto: photoUrl
         };
@@ -193,7 +184,7 @@ export default function MessagesParticulier() {
       if (convArr.length > 0) {
         const conv = convArr[0];
         await supabase.from('messages').update({ lu: true }).eq('conversation_id', conv.conversation.id).eq('receiver_id', authData.user.id);
-        await supabase.from('conversations').update({ lu: true }).eq('id', conv.conversation.id);
+        await supabase.from('conversations').update({ unread_count_prestataire: 0 }).eq('id', conv.conversation.id);
       }
     };
 
@@ -219,12 +210,12 @@ export default function MessagesParticulier() {
 
   const handleMarkReadUnread = async (markAsRead) => {
     for (const convId of checkedConvs) {
-      await supabase.from('conversations').update({ lu: markAsRead }).eq('id', convId);
+      await supabase.from('conversations').update({ unread_count_prestataire: markAsRead ? 0 : 1 }).eq('id', convId);
     }
     setCheckedConvs([]);
     setConversations(conversations.map(conv =>
       checkedConvs.includes(conv.conversation.id)
-        ? { ...conv, conversation: { ...conv.conversation, lu: markAsRead } }
+        ? { ...conv, conversation: { ...conv.conversation, unread_count_prestataire: markAsRead ? 0 : 1 } }
         : conv
     ));
   };
@@ -238,11 +229,11 @@ export default function MessagesParticulier() {
       .eq('receiver_id', user?.id);
     await supabase
       .from('conversations')
-      .update({ lu: true })
+      .update({ unread_count_prestataire: 0 })
       .eq('id', conv.conversation.id);
     setConversations(conversations.map(c =>
       c.conversation.id === conv.conversation.id
-        ? { ...c, conversation: { ...c.conversation, lu: true } }
+        ? { ...c, conversation: { ...c.conversation, unread_count_prestataire: 0 } }
         : c
     ));
   };
@@ -309,7 +300,6 @@ export default function MessagesParticulier() {
     if (!messageInput.trim() && attachments.length === 0) return;
     if (!selectedConv || !user?.id) return;
     
-    let objetToUse = selectedConv.messages.length > 0 ? selectedConv.messages[0].objet || '' : objetInput;
     const now = new Date().toISOString();
     
     const { error } = await supabase.from('messages').insert([{
@@ -317,14 +307,14 @@ export default function MessagesParticulier() {
       sender_id: user.id,
       receiver_id: selectedConv.userId,
       contenu: messageInput || (attachments.length > 0 ? '[Fichier joint]' : ''),
-      objet: objetToUse,
       lu: false,
       attachments: attachments.length > 0 ? JSON.stringify(attachments) : null
     }]);
         if (!error) {
       await supabase.from('conversations').update({ 
-        last_message: messageInput || '[Fichier joint]', 
-        updated: now 
+        last_message_text: messageInput || '[Fichier joint]', 
+        last_message_at: now,
+        updated_at: now
       }).eq('id', selectedConv.conversation.id);
       setMessageInput('');
       setObjetInput('');
@@ -335,8 +325,7 @@ export default function MessagesParticulier() {
   };
 
   const filteredConvs = conversations.filter(conv =>
-    ((conv.user?.nom || '').toLowerCase().includes(search.toLowerCase())) &&
-    conv.conversation.deletion_datePresta == null
+    (conv.user?.nom || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (

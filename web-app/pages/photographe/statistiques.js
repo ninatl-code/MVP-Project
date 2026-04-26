@@ -77,50 +77,50 @@ export default function StatistiquesPage() {
         supabase
           .from('profile_views')
           .select('*', { count: 'exact', head: true })
-          .eq('photographe_id', photographeProfile.id)
+          .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString()),
         supabase
           .from('profile_views')
           .select('*', { count: 'exact', head: true })
-          .eq('photographe_id', photographeProfile.id)
+          .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', prevStartDate.toISOString())
           .lte('created_at', prevEndDate.toISOString()),
         supabase
           .from('devis')
           .select('id, statut, created_at')
-          .eq('photographe_id', photographeProfile.id)
+          .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString()),
         supabase
           .from('devis')
           .select('id, statut')
-          .eq('photographe_id', photographeProfile.id)
+          .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', prevStartDate.toISOString())
           .lte('created_at', prevEndDate.toISOString()),
         supabase
           .from('reservations')
           .select('id, statut, montant_total, created_at')
-          .eq('photographe_id', photographeProfile.id)
+          .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString()),
         supabase
           .from('reservations')
           .select('montant_total, statut')
-          .eq('photographe_id', photographeProfile.id)
-          .eq('statut', 'termine')
+          .eq('prestataire_id', photographeProfile.id)
+          .eq('statut', 'terminee')
           .gte('created_at', prevStartDate.toISOString())
           .lte('created_at', prevEndDate.toISOString()),
         supabase
-          .from('avis')
-          .select('note, created_at')
-          .eq('photographe_id', photographeProfile.id)
+          .from('reviews_photographe')
+          .select('rating, created_at')
+          .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString()),
         supabase
           .from('profile_views')
           .select('created_at')
-          .eq('photographe_id', photographeProfile.id)
+          .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString()),
       ]);

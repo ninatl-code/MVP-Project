@@ -81,7 +81,7 @@ export default function PhotographeDevisDetailPage() {
           )
         `)
         .eq('id', id)
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .single();
 
       if (error) throw error;
@@ -119,7 +119,7 @@ export default function PhotographeDevisDetailPage() {
         .from('conversations')
         .select('id')
         .eq('client_id', devis.demande.client.id)
-        .eq('photographe_id', photographeProfile.id)
+        .eq('prestataire_id', photographeProfile.id)
         .single();
 
       if (existing) {
@@ -130,7 +130,7 @@ export default function PhotographeDevisDetailPage() {
           .from('conversations')
           .insert({
             client_id: devis.demande.client.id,
-            photographe_id: photographeProfile.id,
+            prestataire_id: photographeProfile.id,
             demande_id: devis.demande_id,
           })
           .select()

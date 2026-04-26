@@ -5,7 +5,7 @@ import Headerhomepage from '../components/Headerhomepage';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
 
-// Palette ServiDaba
+// Palette Bricool
 const COLORS = {
   primary: '#E8EAF6',     // Violet
   secondary: '#5C6BC0',   // Jaune doré
@@ -108,7 +108,7 @@ export default function Signup() {
             color: COLORS.text + 'AA', 
             marginBottom: 32 
           }}>
-            Créez votre espace ServiDaba
+            Créez votre espace Bricool
       </p>
       <input
         type="email"
