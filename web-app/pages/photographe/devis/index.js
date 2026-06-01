@@ -41,7 +41,7 @@ const STATUS_CONFIG = {
 
 export default function PhotographeDevisPage() {
   const router = useRouter();
-  const { photographeProfile } = useAuth();
+  const { user, profileId, photographeProfile } = useAuth();
   const [devis, setDevis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -54,30 +54,22 @@ export default function PhotographeDevisPage() {
   });
 
   useEffect(() => {
-    if (photographeProfile?.id) {
-      fetchDevis();
-    }
-  }, [photographeProfile]);
+    const id = user?.id || profileId || photographeProfile?.id;
+    if (id) fetchDevis(id);
+    else setLoading(false);
+  }, [user, profileId, photographeProfile]);
 
-  const fetchDevis = async () => {
+  const fetchDevis = async (prestataireId) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('devis')
         .select(`
           *,
-          demande:demande_id (
-            titre,
-            categorie,
-            date_souhaitee,
-            client:client_id (
-              prenom,
-              nom,
-              photo_profil
-            )
-          )
+          profiles!devis_client_id_fkey(nom, avatar_url),
+          demandes_client(titre, categorie, date_souhaitee)
         `)
-        .eq('prestataire_id', photographeProfile.id)
+        .eq('prestataire_id', prestataireId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -115,11 +107,11 @@ export default function PhotographeDevisPage() {
     
     // Filter by search
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const clientName = `${d.demande?.client?.prenom || ''} ${d.demande?.client?.nom || ''}`.toLowerCase();
-      const title = (d.demande?.titre || '').toLowerCase();
-      return clientName.includes(query) || title.includes(query);
-    }
+        const query = searchQuery.toLowerCase();
+        const clientName = (d.profiles?.nom || '').toLowerCase();
+        const title = (d.demandes_client?.titre || '').toLowerCase();
+        return clientName.includes(query) || title.includes(query);
+      }
     
     return true;
   });
@@ -205,9 +197,9 @@ export default function PhotographeDevisPage() {
         ) : filteredDevis.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h2 className="text-lg font-medium text-gray-900 mb-2">
               Aucun devis
-            </h3>
+            </h2>
             <p className="text-gray-500 mb-6">
               {activeFilter === 'all' 
                 ? 'Vous n\'avez pas encore envoyé de devis'
@@ -259,16 +251,16 @@ function DevisCard({ devis }) {
             </div>
 
             {/* Demande Title */}
-            <h3 className="font-semibold text-gray-900 mb-2">
-              {devis.demande?.titre || 'Demande sans titre'}
-            </h3>
+            <h2 className="font-semibold text-gray-900 mb-2">
+              {devis.demandes_client?.titre || devis.titre || 'Devis sans titre'}
+            </h2>
 
             {/* Client */}
             <div className="flex items-center gap-3 mb-3">
               <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                {devis.demande?.client?.photo_profil ? (
+                {devis.profiles?.avatar_url ? (
                   <img 
-                    src={devis.demande.client.photo_profil} 
+                    src={devis.profiles.avatar_url} 
                     alt="" 
                     className="w-full h-full object-cover"
                   />
@@ -277,16 +269,16 @@ function DevisCard({ devis }) {
                 )}
               </div>
               <span className="text-gray-600">
-                {devis.demande?.client?.prenom} {devis.demande?.client?.nom}
+                {devis.profiles?.nom || 'Client'}
               </span>
             </div>
 
             {/* Details */}
             <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-              {devis.demande?.date_souhaitee && (
+              {devis.demandes_client?.date_souhaitee && (
                 <span className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  {format(new Date(devis.demande.date_souhaitee), 'dd MMM yyyy', { locale: fr })}
+                  {format(new Date(devis.demandes_client.date_souhaitee), 'dd MMM yyyy', { locale: fr })}
                 </span>
               )}
               {devis.date_expiration && devis.statut === 'en_attente' && !isExpired && (

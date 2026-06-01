@@ -32,7 +32,7 @@ export default function MesReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [timeFilter, setTimeFilter] = useState('upcoming');
+  const [timeFilter, setTimeFilter] = useState('all');
 
   useEffect(() => {
     if (authLoading) return;
@@ -244,6 +244,7 @@ export default function MesReservationsPage() {
                         reservation={reservation}
                         onClick={() => router.push(`/client/reservations/${reservation.id}`)}
                         onMessage={() => router.push(`/shared/messages?prestataire=${reservation.prestataire_id}`)}
+                        onViewDemande={reservation.demande_id ? () => router.push(`/client/demandes/${reservation.demande_id}`) : null}
                       />
                     ))}
                   </div>
@@ -256,7 +257,7 @@ export default function MesReservationsPage() {
   );
 }
 
-function ReservationCard({ reservation, onClick, onMessage }) {
+function ReservationCard({ reservation, onClick, onMessage, onViewDemande }) {
   const photographe = reservation.photographe;
   const profile = photographe?.profile;
   
@@ -356,6 +357,17 @@ function ReservationCard({ reservation, onClick, onMessage }) {
               </span>
             )}
           </div>
+
+          {onViewDemande && (
+            <div className="mt-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); onViewDemande(); }}
+                className="text-xs text-indigo-600 hover:underline font-medium"
+              >
+                Voir la demande associée →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Price & Actions */}

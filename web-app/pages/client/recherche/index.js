@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -12,9 +12,21 @@ const COLORS = {
   accent: '#130183',
 };
 
-const SPECIALITES = [
-  'Mariage', 'Portrait', 'Événement', 'Corporate', 'Produit',
-  'Mode', 'Immobilier', 'Nouveau-né', 'Famille', 'Sport', 'Culinaire', 'Nature',
+// Toutes les spécialisations (sous-catégories)
+const SPECIALISATIONS = [
+  'Plomberie', 'Électricité', 'Ménage', 'Bricolage',
+  'Chauffeur', 'Livraison', 'Déménagement',
+  'Développement', 'Design', 'Marketing',
+  'Cours particuliers', 'Coaching',
+];
+
+const ALL_SPECIALITES = [...SPECIALISATIONS];
+
+const VILLES_MAROC = [
+  'Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 'Agadir',
+  'Meknès', 'Oujda', 'Kénitra', 'Tétouan', 'Safi', 'El Jadida',
+  'Nador', 'Béni Mellal', 'Mohammedia', 'Khouribga', 'Laâyoune',
+  'Settat', 'Berrechid', 'Khémisset', 'Taourirt', 'Dakhla',
 ];
 
 export default function RecherchePrestatairesPage() {
@@ -26,7 +38,7 @@ export default function RecherchePrestatairesPage() {
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
 
-  const [search, setSearch] = useState('');
+
   const [filters, setFilters] = useState({
     specialite: '',
     ville: '',
@@ -35,7 +47,6 @@ export default function RecherchePrestatairesPage() {
     noteMin: '',
   });
   const [sortBy, setSortBy] = useState('note');
-  const debounceRef = useRef(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -43,43 +54,43 @@ export default function RecherchePrestatairesPage() {
     fetchPrestataires();
   }, [filters, sortBy, user, authLoading]);
 
-  useEffect(() => {
-    if (authLoading || !user) return;
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchPrestataires(), 350);
-    return () => clearTimeout(debounceRef.current);
-  }, [search]);
-
   const fetchPrestataires = async () => {
     try {
       setLoading(true);
 
-      // Query FROM profiles, embed profils_prestataire via shared PK (profiles.id = profils_prestataire.id)
       const { data, error } = await supabase
         .from('profiles')
         .select(`
-          id, nom, prenom, avatar_url,
+          id, nom, prenom, avatar_url, ville,
           profil:profils_prestataire!inner(
             bio, nom_entreprise, tarif_horaire_min, note_moyenne, nb_avis,
             specialisations, categories, identite_verifiee, statut_validation,
-            portfolio_photos
+            portfolio_photos, rayon_deplacement_km
           )
         `)
         .eq('role', 'photographe')
-        .limit(100);
+        .limit(200);
 
       if (error) throw error;
 
-      // Flatten: merge profil fields + keep profile identity
       let results = (data || []).map(p => ({
         ...p.profil,
         id: p.id,
-        profile: { id: p.id, nom: p.nom, prenom: p.prenom, avatar_url: p.avatar_url },
+        profile: { id: p.id, nom: p.nom, prenom: p.prenom, avatar_url: p.avatar_url, ville: p.ville },
       }));
 
-      // Client-side filters
+      // Filtres
       if (filters.specialite) {
-        results = results.filter(p => p.specialisations?.includes(filters.specialite));
+        results = results.filter(p =>
+          p.categories?.some(c => c === filters.specialite) ||
+          p.specialisations?.some(s => s === filters.specialite)
+        );
+      }
+      if (filters.ville) {
+        const v = filters.ville.toLowerCase();
+        results = results.filter(p =>
+          p.profile?.ville?.toLowerCase().includes(v)
+        );
       }
       if (filters.prixMin) {
         results = results.filter(p => p.tarif_horaire_min >= parseInt(filters.prixMin));
@@ -89,23 +100,6 @@ export default function RecherchePrestatairesPage() {
       }
       if (filters.noteMin) {
         results = results.filter(p => (p.note_moyenne || 0) >= parseFloat(filters.noteMin));
-      }
-      if (search) {
-        const q = search.toLowerCase();
-        results = results.filter(p =>
-          p.nom_entreprise?.toLowerCase().includes(q) ||
-          p.profile?.nom?.toLowerCase().includes(q) ||
-          p.profile?.prenom?.toLowerCase().includes(q) ||
-          p.bio?.toLowerCase().includes(q) ||
-          p.specialisations?.some(s => s.toLowerCase().includes(q))
-        );
-      }
-      if (filters.ville) {
-        const v = filters.ville.toLowerCase();
-        results = results.filter(p =>
-          p.nom_entreprise?.toLowerCase().includes(v) ||
-          p.profile?.nom?.toLowerCase().includes(v)
-        );
       }
 
       // Sort client-side
@@ -126,7 +120,6 @@ export default function RecherchePrestatairesPage() {
 
   const clearFilters = () => {
     setFilters({ specialite: '', ville: '', prixMin: '', prixMax: '', noteMin: '' });
-    setSearch('');
   };
 
   const activeFiltersCount = Object.values(filters).filter(v => v && v !== false).length;
@@ -145,33 +138,36 @@ export default function RecherchePrestatairesPage() {
             <ArrowLeft className="w-4 h-4" />
             Retour
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Trouver un prestataire</h1>
+          <h2 className="text-2xl font-bold text-gray-900">Trouver un prestataire</h2>
           <p className="text-gray-600 mt-1">Recherchez parmi nos prestataires vérifiés</p>
         </div>
 
         {/* Search bar */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Nom, spécialité, description..."
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-              />
-            </div>
-
-            <div className="relative sm:w-52">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
+            <div className="relative sm:w-56">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+              <select
                 value={filters.ville}
                 onChange={e => setFilters(f => ({ ...f, ville: e.target.value }))}
-                placeholder="Ville..."
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
-              />
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent bg-white appearance-none"
+              >
+                <option value="">Toutes les villes</option>
+                {VILLES_MAROC.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={filters.specialite}
+                onChange={e => setFilters(f => ({ ...f, specialite: e.target.value }))}
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent bg-white appearance-none"
+              >
+                <option value="">Toutes les spécialités</option>
+                {SPECIALISATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                
+              </select>
             </div>
 
             <button
@@ -183,9 +179,9 @@ export default function RecherchePrestatairesPage() {
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
-              Filtres
+              Plus de filtres
               {activeFiltersCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-xs text-white" style={{ backgroundColor: COLORS.accent }}>
+                <span className="px-1.5 py-0.5 rounded-full text-xs text-black" style={{ backgroundColor: COLORS.accent }}>
                   {activeFiltersCount}
                 </span>
               )}
@@ -197,24 +193,12 @@ export default function RecherchePrestatairesPage() {
         {showFilters && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">Filtres</h3>
+              <h2 className="font-semibold text-gray-900">Filtres avancés</h2>
               <button onClick={clearFilters} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
                 <X className="w-4 h-4" /> Réinitialiser
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Spécialité</label>
-                <select
-                  value={filters.specialite}
-                  onChange={e => setFilters(f => ({ ...f, specialite: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2"
-                >
-                  <option value="">Toutes</option>
-                  {SPECIALITES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Note minimum</label>
                 <select
@@ -266,18 +250,16 @@ export default function RecherchePrestatairesPage() {
             <span className="font-semibold text-gray-900">{prestataires.length}</span> prestataire{prestataires.length !== 1 ? 's' : ''} trouvé{prestataires.length !== 1 ? 's' : ''}
           </p>
           <div className="flex items-center gap-2">
-            {!showFilters && (
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white"
-              >
-                <option value="note">Mieux notés</option>
-                <option value="avis">Plus d'avis</option>
-                <option value="prix_asc">Prix croissant</option>
-                <option value="prix_desc">Prix décroissant</option>
-              </select>
-            )}
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white"
+            >
+              <option value="note">Mieux notés</option>
+              <option value="avis">Plus d'avis</option>
+              <option value="prix_asc">Prix croissant</option>
+              <option value="prix_desc">Prix décroissant</option>
+            </select>
             <div className="flex border border-gray-200 rounded-lg overflow-hidden">
               <button
                 onClick={() => setViewMode('grid')}
@@ -305,7 +287,7 @@ export default function RecherchePrestatairesPage() {
         ) : prestataires.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
             <Camera className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun prestataire trouvé</h3>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Aucun prestataire trouvé</h2>
             <p className="text-gray-500 mb-4">Essayez de modifier vos critères de recherche</p>
             <button onClick={clearFilters} className="text-sm font-medium hover:underline" style={{ color: COLORS.accent }}>
               Réinitialiser les filtres
@@ -389,11 +371,18 @@ function PrestaireCard({ prestataire: p, router }) {
 
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-semibold text-gray-900 truncate">{nom}</h3>
+          <h2 className="font-semibold text-gray-900 truncate">{nom}</h2>
           {p.identite_verifiee && (
-            <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" title="Identité vérifiée" />
           )}
         </div>
+
+        {/* Ville */}
+        {p.profile?.ville && (
+          <p className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+            <MapPin className="w-3 h-3" />{p.profile.ville}
+          </p>
+        )}
 
         <div className="mb-2">
           <VerifBadge pct={verifPct} />
@@ -414,6 +403,10 @@ function PrestaireCard({ prestataire: p, router }) {
               <span className="text-xs text-gray-400">+{p.specialisations.length - 3}</span>
             )}
           </div>
+        )}
+
+        {p.bio && (
+          <p className="text-xs text-gray-500 mb-3 line-clamp-2">{p.bio}</p>
         )}
 
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
@@ -449,10 +442,18 @@ function PrestaireRow({ prestataire: p, router }) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <h3 className="font-semibold text-gray-900 truncate">{nom}</h3>
-          {p.identite_verifiee && <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+        <div className="flex items-center gap-2 mb-0.5">
+          <h2 className="font-semibold text-gray-900 truncate">{nom}</h2>
+          {p.identite_verifiee && <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" title="Identité vérifiée" />}
         </div>
+        {p.categories?.length > 0 && (
+          <p className="text-xs font-medium text-indigo-600 mb-0.5">{p.categories[0]}</p>
+        )}
+        {p.profile?.ville && (
+          <p className="flex items-center gap-1 text-xs text-gray-400 mb-1">
+            <MapPin className="w-3 h-3" />{p.profile.ville}
+          </p>
+        )}
         <div className="mb-1.5">
           <VerifBadge pct={verifPct} />
         </div>
@@ -461,11 +462,14 @@ function PrestaireRow({ prestataire: p, router }) {
           <span className="text-sm text-gray-500">{(p.note_moyenne || 0).toFixed(1)} ({p.nb_avis || 0} avis)</span>
         </div>
         {p.specialisations?.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 mb-1">
             {p.specialisations.slice(0, 4).map((s, i) => (
               <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full">{s}</span>
             ))}
           </div>
+        )}
+        {p.bio && (
+          <p className="text-xs text-gray-500 line-clamp-1">{p.bio}</p>
         )}
       </div>
 

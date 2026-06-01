@@ -975,6 +975,7 @@ export default function ProviderHomeMenu() {
   const [nbActivePrestations, setNbActivePrestations] = useState(0);
   const [nbDevisPending, setNbDevisPending] = useState(0);
   const [nbDevisAccepted, setNbDevisAccepted] = useState(0);
+  const [nbDevisTotal, setNbDevisTotal] = useState(0);
   const [showChecklist, setShowChecklist] = useState(true);
   const [userId, setUserId] = useState(null);
   const [showSupportModal, setShowSupportModal] = useState(false);
@@ -1085,8 +1086,9 @@ export default function ProviderHomeMenu() {
 
       // Statistiques devis
       const devisData = devisRes.data || [];
-      const devisEnAttente = devisData.filter(d => d.statut === 'en_attente' || d.statut === 'pending').length;
+      const devisEnAttente = devisData.filter(d => ['en_attente', 'pending', 'lu'].includes(d.statut)).length;
       const devisAcceptes = devisData.filter(d => d.statut === 'accepte' || d.statut === 'accepted').length;
+      setNbDevisTotal(devisData.length);
       setNbDevisPending(devisEnAttente);
       setNbDevisAccepted(devisAcceptes);
 
@@ -1382,10 +1384,11 @@ export default function ProviderHomeMenu() {
                     </p>
                   </div>
                   <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
-                    {nbDevisPending + nbDevisAccepted}
+                    {nbDevisTotal}
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    Acceptés : <span className="font-semibold text-green-500">{nbDevisAccepted}</span>
+                    En attente : <span className="font-semibold text-amber-500">{nbDevisPending}</span>
+                    {' · '}Acceptés : <span className="font-semibold text-green-500">{nbDevisAccepted}</span>
                   </p>
                 </div>
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
@@ -1445,6 +1448,48 @@ export default function ProviderHomeMenu() {
                 </div>
                 {demandesVues > 0 && (
                   <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full mr-2">{demandesVues}</span>
+                )}
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+
+              {/* Devis */}
+              <div
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => navigateWithSplash("/photographe/devis", "Chargement de vos devis...")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#EEF2FF' }}>
+                  <FileText className="w-6 h-6" style={{ color: '#4F46E5' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Mes devis</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>
+                    {nbDevisTotal > 0 ? `${nbDevisTotal} devis · ${nbDevisAccepted} accepté${nbDevisAccepted !== 1 ? 's' : ''}` : 'Consulter mes devis envoyés'}
+                  </p>
+                </div>
+                {nbDevisPending > 0 && (
+                  <span className="bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-full mr-2">{nbDevisPending}</span>
+                )}
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+
+              {/* Réservations */}
+              <div
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => navigateWithSplash("/photographe/reservations", "Chargement des réservations...")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#ECFDF5' }}>
+                  <Calendar className="w-6 h-6" style={{ color: '#059669' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Mes réservations</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>
+                    {totalReservations > 0 ? `${totalReservations} réservation${totalReservations !== 1 ? 's' : ''} · ${nbAccepted} confirmée${nbAccepted !== 1 ? 's' : ''}` : 'Consulter mes réservations'}
+                  </p>
+                </div>
+                {nbPending > 0 && (
+                  <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full mr-2">{nbPending}</span>
                 )}
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>

@@ -91,7 +91,7 @@ export default function CreateDemandePage() {
           formData.specialite !== '' &&
           (formData.specialite !== 'Autre' || formData.specialite_autre.trim() !== '')
         );
-        return formData.titre.trim() !== '' && formData.ville.trim() !== '' && specValid;
+        return formData.titre.trim() !== '' && formData.ville.trim() !== '' && formData.description.trim() !== '' && formData.lieu.trim() !== '' && specValid;
       }
       case 2:
         return formData.budget_max !== '';
@@ -289,13 +289,14 @@ export default function CreateDemandePage() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description détaillée
+          Description détaillée <span className="text-red-500">*</span>
         </label>
         <textarea
           value={formData.description}
           onChange={(e) => updateFormData('description', e.target.value)}
           placeholder="Décrivez votre projet en détail..."
           rows={4}
+          required
           className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
       </div>
@@ -353,13 +354,14 @@ export default function CreateDemandePage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <MapPin className="w-4 h-4 inline mr-1" />
-            Lieu exact (optionnel)
+            Lieu exact <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={formData.lieu}
             onChange={(e) => updateFormData('lieu', e.target.value)}
             placeholder="Ex: Salle des fêtes Al Amal, 12 rue Hassan II..."
+            required
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>

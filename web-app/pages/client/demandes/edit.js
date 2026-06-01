@@ -93,7 +93,7 @@ export default function EditDemandePage() {
   const update = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
   const canSubmit = () =>
-    formData.titre.trim() !== '' && formData.ville.trim() !== '' && formData.budget_max !== '' && formData.categorie !== '';
+    formData.titre.trim() !== '' && formData.ville.trim() !== '' && formData.budget_max !== '' && formData.categorie !== '' && formData.description.trim() !== '' && formData.lieu.trim() !== '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -206,12 +206,13 @@ export default function EditDemandePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description <span className="text-red-500">*</span></label>
               <textarea
                 value={formData.description}
                 onChange={(e) => update('description', e.target.value)}
                 rows={4}
                 placeholder="Décrivez votre projet en détail..."
+                required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               />
             </div>
@@ -266,13 +267,14 @@ export default function EditDemandePage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="w-4 h-4 inline mr-1" />
-                  Lieu exact (optionnel)
+                  Lieu exact <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.lieu}
                   onChange={(e) => update('lieu', e.target.value)}
                   placeholder="Salle, adresse exacte..."
+                  required
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>

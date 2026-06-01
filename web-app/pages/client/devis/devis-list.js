@@ -18,11 +18,11 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
-  envoye:  { label: 'En attente de réponse', bg: 'bg-yellow-100', text: 'text-yellow-700', icon: Clock },
-  lu:      { label: 'Lu',                   bg: 'bg-blue-100',   text: 'text-blue-700',   icon: Clock },
-  accepte: { label: 'Accepté',              bg: 'bg-green-100',  text: 'text-green-700',  icon: CheckCircle },
-  refuse:  { label: 'Refusé',              bg: 'bg-red-100',    text: 'text-red-700',    icon: XCircle },
-  expire:  { label: 'Expiré',              bg: 'bg-gray-100',   text: 'text-gray-700',   icon: XCircle },
+  en_attente: { label: 'En attente de réponse', bg: 'bg-yellow-100', text: 'text-yellow-700', icon: Clock },
+  lu:         { label: 'Lu',                   bg: 'bg-blue-100',   text: 'text-blue-700',   icon: Clock },
+  accepte:    { label: 'Accepté',              bg: 'bg-green-100',  text: 'text-green-700',  icon: CheckCircle },
+  refuse:     { label: 'Refusé',              bg: 'bg-red-100',    text: 'text-red-700',    icon: XCircle },
+  expire:     { label: 'Expiré',              bg: 'bg-gray-100',   text: 'text-gray-700',   icon: XCircle },
 };
 
 export default function DevisListPage() {
@@ -78,7 +78,7 @@ export default function DevisListPage() {
   );
 
   const StatusBadge = ({ statut }) => {
-    const cfg = STATUS_CONFIG[statut] || STATUS_CONFIG.envoye;
+    const cfg = STATUS_CONFIG[statut] || STATUS_CONFIG.en_attente;
     const Icon = cfg.icon;
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
@@ -127,7 +127,7 @@ export default function DevisListPage() {
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm"
             >
               <option value="all">Tous les statuts</option>
-              <option value="envoye">⏳ En attente</option>
+              <option value="en_attente">⏳ En attente</option>
               <option value="lu">👁️ Lu</option>
               <option value="accepte">✅ Accepté</option>
               <option value="refuse">❌ Refusé</option>
@@ -173,6 +173,9 @@ export default function DevisListPage() {
                   {/* Top strip accent if accepted */}
                   {d.statut === 'accepte' && (
                     <div className="h-1 w-full bg-green-400" />
+                  )}
+                  {d.statut === 'expire' && (
+                    <div className="h-1 w-full bg-amber-400" />
                   )}
 
                   <div className="p-5">
@@ -227,6 +230,31 @@ export default function DevisListPage() {
                       <ChevronRight className="w-5 h-5 text-gray-300 flex-shrink-0 mt-1" />
                     </div>
 
+                    {d.statut === 'expire' && (() => {
+                      const today = new Date();
+                      const todayStr = today.toISOString().split('T')[0];
+                      const demandeExp = d.demande?.date_souhaitee ? d.demande.date_souhaitee < todayStr : false;
+                      let devisValExp = false;
+                      if (d.created_at && d.duree_validite_jours) {
+                        const expiry = new Date(new Date(d.created_at).getTime() + d.duree_validite_jours * 86400000);
+                        devisValExp = expiry < today;
+                      }
+                      const dateLabel = d.demande?.date_souhaitee
+                        ? new Date(d.demande.date_souhaitee).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : null;
+                      const msg = devisValExp && demandeExp
+                        ? `Ce devis a expiré : la durée de validité et la date de la demande${dateLabel ? ` (${dateLabel})` : ''} sont toutes deux dépassées.`
+                        : devisValExp
+                        ? 'Ce devis a expiré : la durée de validité fixée par le prestataire est dépassée.'
+                        : `Ce devis a expiré car la date souhaitée de la demande${dateLabel ? ` (${dateLabel})` : ''} est passée.`;
+                      return (
+                        <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
+                          <Clock className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                          <p>{msg}</p>
+                        </div>
+                      );
+                    })()}
+
                     {/* Separator */}
                     {demande && (
                       <div className="mt-4 pt-4 border-t border-gray-50">
@@ -261,6 +289,14 @@ export default function DevisListPage() {
                               Budget max : {Number(demande.budget_max).toLocaleString('fr-FR')} DH
                             </span>
                           )}
+                        </div>
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); router.push(`/client/demandes/${demande.id}`); }}
+                            className="text-xs text-indigo-600 hover:underline font-medium"
+                          >
+                            Voir la demande →
+                          </button>
                         </div>
                       </div>
                     )}

@@ -15,9 +15,14 @@ END LOOP; END $$;
 CREATE POLICY "devis_prestataire_select" ON devis
   FOR SELECT USING (prestataire_id = auth.uid());
 
--- Les clients voient les devis qui les concernent
+-- Les clients voient les devis qui les concernent (via client_id direct ou via la demande)
 CREATE POLICY "devis_client_select" ON devis
-  FOR SELECT USING (client_id = auth.uid());
+  FOR SELECT USING (
+    client_id = auth.uid()
+    OR demande_id IN (
+      SELECT id FROM demandes_client WHERE client_id = auth.uid()
+    )
+  );
 
 -- Seuls les prestataires peuvent créer des devis
 CREATE POLICY "devis_prestataire_insert" ON devis

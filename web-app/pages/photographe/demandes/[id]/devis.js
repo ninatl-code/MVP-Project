@@ -17,7 +17,7 @@ export default function CreateDevisPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     titre: '',
     description: '',
@@ -26,6 +26,92 @@ export default function CreateDevisPage() {
     prestations_incluses: '',
     details: [{ label: '', montant: '' }],
   });
+
+  // Génère les valeurs pré-remplies selon la demande + profil prestataire
+  const buildPrefill = (data, tarif) => {
+    const duree = parseFloat(data.duree_estimee) || 3;
+    const cat = (data.categorie || '').toLowerCase();
+    const lieu = data.lieu || data.ville || '';
+    const dateStr = data.date_souhaitee
+      ? new Date(data.date_souhaitee).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : null;
+
+    // Titre
+    const titre = data.titre
+      ? `Devis – ${data.titre}`
+      : 'Devis pour votre projet';
+
+    // Description
+    const descParts = [
+      `Bonjour,`,
+      `Suite à votre demande${data.titre ? ` « ${data.titre} »` : ''}, je vous propose ci-dessous mon offre personnalisée.`,
+    ];
+    if (data.description) descParts.push(`\nVotre projet : ${data.description}`);
+    if (lieu) descParts.push(`Lieu : ${lieu}`);
+    if (dateStr) descParts.push(`Date souhaitée : ${dateStr}`);
+    descParts.push(`\nN’hésitez pas à me contacter pour toute question.`);
+    const description = descParts.join('\n');
+
+    // Prestations incluses selon catégorie
+    const prestationsMap = {
+      mariage: [
+        `- Préparation + cérémonie (${duree}h de couverture)`,
+        '- Photos des mariés, famille et invités',
+        '- Retouche professionnelle',
+        '- Galerie privée en ligne (téléchargement inclus)',
+        '- Livraison sous 3 semaines',
+      ],
+      portrait: [
+        `- Séance portrait (${duree}h)`,
+        '- Conseil tenue et mise en scène',
+        '- Sélection et retouche des meilleures photos',
+        '- Livraison en haute résolution',
+      ],
+      evenement: [
+        `- Couverture complète de l’événement (${duree}h)`,
+        '- Photos ambiante, portraits et moments clés',
+        '- Retouche et sélection',
+        '- Livraison galerie en ligne',
+      ],
+      produit: [
+        '- Shooting produit en studio ou sur site',
+        '- Mise en scène et éclairage professionnel',
+        '- Retouche avancée',
+        '- Livraison fichiers haute résolution',
+      ],
+      immobilier: [
+        '- Visite et photos intérieures / extérieures',
+        '- Traitement HDR professionnel',
+        '- Livraison sous 48h',
+      ],
+    };
+    const catKey = Object.keys(prestationsMap).find(k => cat.includes(k));
+    const prestations_incluses = (prestationsMap[catKey] || [
+      `- Prestation de ${duree}h`,
+      '- Retouche professionnelle',
+      '- Livraison des fichiers en haute résolution',
+    ]).join('\n');
+
+    // Montant : budget_max du client, ou tarif horaire × durée
+    let montant = '';
+    if (data.budget_max) {
+      montant = String(data.budget_max);
+    } else if (tarif) {
+      montant = String(Math.round(tarif * duree));
+    }
+
+    // Détail des lignes de prix
+    const details = [];
+    if (tarif && duree) {
+      details.push({ label: `Prestation (${duree}h × ${tarif} DH/h)`, montant: String(Math.round(tarif * duree)) });
+    } else if (montant) {
+      details.push({ label: 'Prestation principale', montant });
+    } else {
+      details.push({ label: '', montant: '' });
+    }
+
+    return { titre, description, montant, prestations_incluses, details, validite_jours: 30 };
+  };
 
   useEffect(() => {
     if (id) {
@@ -36,23 +122,31 @@ export default function CreateDevisPage() {
   const fetchDemande = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('demandes_client')
-        .select(`
-          *,
-          client:profiles!demandes_client_client_id_fkey(nom, prenom)
-        `)
-        .eq('id', id)
-        .single();
+      const [{ data, error }, { data: { user } }] = await Promise.all([
+        supabase
+          .from('demandes_client')
+          .select(`*, client:profiles!demandes_client_client_id_fkey(nom, prenom)`)
+          .eq('id', id)
+          .single(),
+        supabase.auth.getUser(),
+      ]);
 
       if (error) throw error;
       setDemande(data);
 
-      // Pre-fill title based on demande
-      setFormData(prev => ({
-        ...prev,
-        titre: `Devis pour: ${data.titre}`,
-      }));
+      // Fetch prestataire tarif_horaire_min pour suggestion de prix
+      let tarif = null;
+      if (user?.id) {
+        const { data: prest } = await supabase
+          .from('profils_prestataire')
+          .select('tarif_horaire_min')
+          .eq('id', user.id)
+          .single();
+        tarif = prest?.tarif_horaire_min || null;
+      }
+
+      // Pré-remplir tous les champs
+      setFormData(buildPrefill(data, tarif));
     } catch (error) {
       console.error('Error fetching demande:', error);
     } finally {
@@ -115,6 +209,7 @@ export default function CreateDevisPage() {
         .from('devis')
         .insert({
           demande_id: id,
+          client_id: demande.client_id,
           prestataire_id: photographeProfile.id,
           titre: formData.titre,
           description: formData.description,

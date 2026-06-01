@@ -243,6 +243,25 @@ export default function MesDemandesPage() {
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
                 </div>
+
+                {demande.statut === 'expiree' && (
+                  <div className="mt-4 pt-4 border-t border-amber-100 flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex items-start gap-2 text-sm text-amber-700">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                      <p>
+                        Cette demande a expiré car la date souhaitée
+                        {demande.date_souhaitee ? ` (${formatDate(demande.date_souhaitee)})` : ''}
+                        {' '}est passée.
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); router.push('/client/demandes/create'); }}
+                      className="flex-shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-400 rounded-lg px-3 py-1.5 transition-all"
+                    >
+                      Créer une nouvelle demande
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

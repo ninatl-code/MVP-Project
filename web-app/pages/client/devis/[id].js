@@ -17,11 +17,11 @@ const COLORS = {
 };
 
 const STATUS_CONFIG = {
-  envoye:  { label: 'En attente de réponse', color: 'bg-yellow-100 text-yellow-700' },
-  lu:      { label: 'Lu',                   color: 'bg-blue-100 text-blue-700' },
-  accepte: { label: 'Accepté',              color: 'bg-green-100 text-green-700' },
-  refuse:  { label: 'Refusé',              color: 'bg-red-100 text-red-700' },
-  expire:  { label: 'Expiré',              color: 'bg-gray-100 text-gray-700' },
+  en_attente: { label: 'En attente de réponse', color: 'bg-yellow-100 text-yellow-700' },
+  lu:         { label: 'Lu',                   color: 'bg-blue-100 text-blue-700' },
+  accepte:    { label: 'Accepté',              color: 'bg-green-100 text-green-700' },
+  refuse:     { label: 'Refusé',              color: 'bg-red-100 text-red-700' },
+  expire:     { label: 'Expiré',              color: 'bg-gray-100 text-gray-700' },
 };
 
 export default function DevisDetailPage() {
@@ -76,6 +76,29 @@ export default function DevisDetailPage() {
         prestataire = prestData;
       }
 
+      // Auto-expire si conditions remplies (fire-and-forget)
+      if (['en_attente', 'lu'].includes(devisData.statut)) {
+        const today = new Date().toISOString().split('T')[0];
+        const demandeExpired = devisData.demande?.date_souhaitee
+          ? devisData.demande.date_souhaitee < today
+          : false;
+        let devisValExpired = false;
+        if (devisData.created_at && devisData.duree_validite_jours) {
+          const expiry = new Date(
+            new Date(devisData.created_at).getTime() + devisData.duree_validite_jours * 86400000
+          );
+          devisValExpired = expiry < new Date();
+        }
+        if (demandeExpired || devisValExpired) {
+          devisData.statut = 'expire';
+          supabase
+            .from('devis')
+            .update({ statut: 'expire', expire_at: new Date().toISOString() })
+            .eq('id', id)
+            .then(({ error }) => { if (error) console.error('expire fallback:', error); });
+        }
+      }
+
       setDevis({ ...devisData, prestataire });
     } catch (error) {
       console.error('Error fetching devis:', error);
@@ -99,12 +122,20 @@ export default function DevisDetailPage() {
       // Update local state immediately so UI reflects acceptance
       setDevis(prev => ({ ...prev, statut: 'accepte' }));
 
-      // 2. Update demande status
+      // 2. Update demande status + refuse other pending devis
       if (devis.demande_id) {
         await supabase
           .from('demandes_client')
           .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
           .eq('id', devis.demande_id);
+
+        // Refuser tous les autres devis en attente sur cette demande
+        await supabase
+          .from('devis')
+          .update({ statut: 'refuse', refuse_at: new Date().toISOString() })
+          .eq('demande_id', devis.demande_id)
+          .neq('id', id)
+          .eq('statut', 'en_attente');
       }
 
       // 3. Create reservation from devis data
@@ -180,14 +211,30 @@ export default function DevisDetailPage() {
     });
   };
 
-  const getExpirationDays = () => {
-    if (!devis?.created_at) return 0;
-    const created = new Date(devis.created_at);
-    const validityDays = devis.duree_validite_jours || 30;
-    const expiration = new Date(created.getTime() + validityDays * 24 * 60 * 60 * 1000);
+  const getExpirationInfo = () => {
     const today = new Date();
-    const daysLeft = Math.ceil((expiration - today) / (1000 * 60 * 60 * 24));
-    return Math.max(0, daysLeft);
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Validité fixée par le prestataire
+    let devisValExpired = false;
+    let daysLeft = null;
+    if (devis?.created_at && devis?.duree_validite_jours) {
+      const expiry = new Date(
+        new Date(devis.created_at).getTime() + devis.duree_validite_jours * 86400000
+      );
+      if (expiry < today) {
+        devisValExpired = true;
+      } else {
+        daysLeft = Math.ceil((expiry - today) / 86400000);
+      }
+    }
+
+    // Date souhaitée de la demande
+    const demandeExpired = devis?.demande?.date_souhaitee
+      ? devis.demande.date_souhaitee < todayStr
+      : false;
+
+    return { devisValExpired, demandeExpired, daysLeft };
   };
 
   if (loading) {
@@ -223,9 +270,9 @@ export default function DevisDetailPage() {
   const photographe = devis.prestataire;
   const profile = devis.prestataire;
   const demande = devis.demande;
-  const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG.envoye;
-  const expirationDays = getExpirationDays();
-  const canRespond = ['envoye', 'lu'].includes(devis.statut) && expirationDays > 0;
+  const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG.en_attente;
+  const { devisValExpired, demandeExpired, daysLeft } = getExpirationInfo();
+  const canRespond = ['en_attente', 'lu'].includes(devis.statut);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -263,11 +310,18 @@ export default function DevisDetailPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-3xl font-bold text-indigo-600">{devis.montant_total ?? devis.tarif_base} DH</p>
-                  {['envoye', 'lu'].includes(devis.statut) && (
-                    <p className={`text-sm ${expirationDays <= 3 ? 'text-red-500' : 'text-gray-500'}`}>
-                      {expirationDays > 0
-                        ? `Expire dans ${expirationDays} jour${expirationDays > 1 ? 's' : ''}`
-                        : 'Expiré'}
+                  {devis.statut === 'expire' && (
+                    <p className="text-sm text-red-500 max-w-xs text-right mt-1">
+                      {devisValExpired && demandeExpired
+                        ? `Expiré : la durée de validité du devis et la date de la demande (${formatDate(devis.demande?.date_souhaitee)}) sont toutes deux dépassées.`
+                        : devisValExpired
+                        ? 'Expiré : la durée de validité fixée par le prestataire est dépassée.'
+                        : `Expiré : la date souhaitée de la demande (${formatDate(devis.demande?.date_souhaitee)}) est passée.`}
+                    </p>
+                  )}
+                  {['en_attente', 'lu'].includes(devis.statut) && daysLeft !== null && (
+                    <p className={`text-sm mt-1 ${daysLeft <= 3 ? 'text-red-500' : 'text-gray-500'}`}>
+                      Expire dans {daysLeft} jour{daysLeft > 1 ? 's' : ''}
                     </p>
                   )}
                 </div>

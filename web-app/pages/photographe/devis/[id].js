@@ -43,52 +43,36 @@ const STATUS_CONFIG = {
 export default function PhotographeDevisDetailPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { photographeProfile } = useAuth();
+  const { user, profileId, photographeProfile } = useAuth();
   const [devis, setDevis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    if (id && photographeProfile?.id) {
-      fetchDevis();
-    }
-  }, [id, photographeProfile]);
+    const prestataireId = user?.id || profileId || photographeProfile?.id;
+    if (id && prestataireId) fetchDevis(prestataireId);
+    else if (id && !prestataireId) setLoading(false);
+  }, [id, user, profileId, photographeProfile]);
 
-  const fetchDevis = async () => {
+  const fetchDevis = async (prestataireId) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('devis')
         .select(`
           *,
-          demande:demande_id (
-            id,
-            titre,
-            description,
-            categorie,
-            date_souhaitee,
-            lieu,
-            budget_max,
-            statut,
-            client:client_id (
-              id,
-              prenom,
-              nom,
-              photo_profil,
-              email
-            )
-          )
+          profiles!devis_client_id_fkey(id, nom, email, avatar_url),
+          demandes_client(id, titre, description, categorie, date_souhaitee, lieu, budget_max, statut)
         `)
         .eq('id', id)
-        .eq('prestataire_id', photographeProfile.id)
+        .eq('prestataire_id', prestataireId)
         .single();
 
       if (error) throw error;
       setDevis(data);
     } catch (error) {
       console.error('Error fetching devis:', error);
-      router.push('/photographe/devis');
     } finally {
       setLoading(false);
     }
@@ -118,8 +102,8 @@ export default function PhotographeDevisDetailPage() {
       const { data: existing } = await supabase
         .from('conversations')
         .select('id')
-        .eq('client_id', devis.demande.client.id)
-        .eq('prestataire_id', photographeProfile.id)
+        .eq('client_id', devis.client_id)
+        .eq('prestataire_id', user?.id || profileId || photographeProfile?.id)
         .single();
 
       if (existing) {
@@ -129,8 +113,8 @@ export default function PhotographeDevisDetailPage() {
         const { data: newConv, error } = await supabase
           .from('conversations')
           .insert({
-            client_id: devis.demande.client.id,
-            prestataire_id: photographeProfile.id,
+            client_id: devis.client_id,
+            prestataire_id: user?.id || profileId || photographeProfile?.id,
             demande_id: devis.demande_id,
           })
           .select()
@@ -204,7 +188,7 @@ export default function PhotographeDevisDetailPage() {
               </div>
 
               <h1 className="text-xl font-bold text-gray-900 mb-2">
-                {devis.demande?.titre || 'Devis sans titre'}
+                {devis.demandes_client?.titre || devis.titre || 'Devis sans titre'}
               </h1>
 
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
@@ -225,7 +209,7 @@ export default function PhotographeDevisDetailPage() {
 
               {devis.message && (
                 <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Message au client</h3>
+                  <h2 className="text-sm font-medium text-gray-500 mb-2">Message au client</h2>
                   <p className="text-gray-700 bg-gray-50 rounded-xl p-4">
                     {devis.message}
                   </p>
@@ -274,42 +258,42 @@ export default function PhotographeDevisDetailPage() {
             </div>
 
             {/* Demande Reference */}
-            {devis.demande && (
+            {devis.demandes_client && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="font-semibold text-gray-900 mb-4">Demande associée</h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-1">Description</h3>
-                    <p className="text-gray-700">{devis.demande.description}</p>
+                    <h2 className="text-sm font-medium text-gray-500 mb-1">Description</h2>
+                    <p className="text-gray-700">{devis.demandes_client.description}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {devis.demande.date_souhaitee && (
+                    {devis.demandes_client.date_souhaitee && (
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Date souhaitée</h3>
+                        <h2 className="text-sm font-medium text-gray-500 mb-1">Date souhaitée</h2>
                         <p className="text-gray-900 flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          {format(new Date(devis.demande.date_souhaitee), 'dd MMMM yyyy', { locale: fr })}
+                          {format(new Date(devis.demandes_client.date_souhaitee), 'dd MMMM yyyy', { locale: fr })}
                         </p>
                       </div>
                     )}
-                    {devis.demande.lieu && (
+                    {devis.demandes_client.lieu && (
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Lieu</h3>
+                        <h2 className="text-sm font-medium text-gray-500 mb-1">Lieu</h2>
                         <p className="text-gray-900 flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-gray-400" />
-                          {devis.demande.lieu}
+                          {devis.demandes_client.lieu}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {devis.demande.budget_max && (
+                  {devis.demandes_client.budget_max && (
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Budget client</h3>
+                      <h2 className="text-sm font-medium text-gray-500 mb-1">Budget client</h2>
                       <p className="text-gray-900">
-                        Max {devis.demande.budget_max} DH
+                        Max {devis.demandes_client.budget_max} DH
                       </p>
                     </div>
                   )}
@@ -333,9 +317,9 @@ export default function PhotographeDevisDetailPage() {
               
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {devis.demande?.client?.photo_profil ? (
+                  {devis.profiles?.avatar_url ? (
                     <img 
-                      src={devis.demande.client.photo_profil} 
+                      src={devis.profiles.avatar_url} 
                       alt="" 
                       className="w-full h-full object-cover"
                     />
@@ -345,10 +329,10 @@ export default function PhotographeDevisDetailPage() {
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">
-                    {devis.demande?.client?.prenom} {devis.demande?.client?.nom}
+                    {devis.profiles?.nom || 'Client'}
                   </p>
-                  {devis.demande?.client?.email && (
-                    <p className="text-sm text-gray-500">{devis.demande.client.email}</p>
+                  {devis.profiles?.email && (
+                    <p className="text-sm text-gray-500">{devis.profiles.email}</p>
                   )}
                 </div>
               </div>
@@ -484,9 +468,9 @@ export default function PhotographeDevisDetailPage() {
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">
               Annuler ce devis ?
-            </h3>
+            </h2>
             <p className="text-gray-600 mb-6">
               Cette action est irréversible. Le client ne pourra plus accepter ce devis.
             </p>

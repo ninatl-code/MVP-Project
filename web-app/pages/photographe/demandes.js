@@ -26,14 +26,12 @@ import {
 
 const CATEGORIES = [
   { value: '', label: 'Toutes les catégories' },
-  { value: 'mariage', label: 'Mariage' },
-  { value: 'portrait', label: 'Portrait' },
-  { value: 'evenement', label: 'Événement' },
-  { value: 'corporate', label: 'Corporate' },
-  { value: 'famille', label: 'Famille' },
-  { value: 'immobilier', label: 'Immobilier' },
-  { value: 'mode', label: 'Mode' },
-  { value: 'autre', label: 'Autre' },
+  { value: 'services-domicile', label: 'Services à domicile' },
+  { value: 'beaute-bien-etre', label: 'Beauté & Bien-être' },
+  { value: 'evenementiel', label: 'Événementiel' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'digital', label: 'Digital' },
+  { value: 'education', label: 'Éducation' },
 ];
 
 const STATUT_COLORS = {

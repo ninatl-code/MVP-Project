@@ -29,6 +29,7 @@ export default function DemandeDetailPage() {
   
   const [demande, setDemande] = useState(null);
   const [devis, setDevis] = useState([]);
+  const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('devis');
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -56,25 +57,66 @@ export default function DemandeDetailPage() {
       if (demandeError) throw demandeError;
       setDemande(demandeData);
 
-      // Fetch related devis
+      // Fetch related devis — requête séparée du join profils pour éviter l'erreur FK ambiguë
       const { data: devisData, error: devisError } = await supabase
         .from('devis')
-        .select(`
-          id, prestataire_id, montant_total, duree_validite_jours, statut, created_at,
-          message_personnalise, titre,
-          photographe:profils_prestataire(
-            id, nom_entreprise, note_moyenne, nb_avis, ville, identite_verifiee
-          )
-        `)
+        .select('id, prestataire_id, client_id, montant_total, duree_validite_jours, statut, created_at, message_personnalise, titre')
         .eq('demande_id', id)
         .order('created_at', { ascending: false });
 
       if (devisError) {
         console.error('Devis error:', devisError);
-        // Ne pas bloquer l'affichage si les devis échouent
         setDevis([]);
       } else {
-        setDevis(devisData || []);
+        // Fetch prestataire profiles séparément
+        const prestataireIds = [...new Set((devisData || []).map(d => d.prestataire_id).filter(Boolean))];
+        let prestataireMap = {};
+        if (prestataireIds.length > 0) {
+          const [{ data: prestData }, { data: profilesData }] = await Promise.all([
+            supabase
+              .from('profils_prestataire')
+              .select('id, nom_entreprise, note_moyenne, nb_avis, ville, identite_verifiee')
+              .in('id', prestataireIds),
+            supabase
+              .from('profiles')
+              .select('id, nom, prenom, avatar_url')
+              .in('id', prestataireIds),
+          ]);
+          const profilesMap = {};
+          (profilesData || []).forEach(p => { profilesMap[p.id] = p; });
+          // Construire la map depuis profils_prestataire (enrichi de profiles)
+          (prestData || []).forEach(p => {
+            prestataireMap[p.id] = { ...p, profile: profilesMap[p.id] || null };
+          });
+          // Fallback : prestataires présents dans profiles mais sans profils_prestataire
+          prestataireIds.forEach(pid => {
+            if (!prestataireMap[pid] && profilesMap[pid]) {
+              prestataireMap[pid] = { id: pid, profile: profilesMap[pid] };
+            }
+          });
+        }
+        setDevis((devisData || []).map(d => ({ ...d, photographe: prestataireMap[d.prestataire_id] || null })));
+      }
+
+      // Fetch reservations liées à cette demande
+      const { data: resaData } = await supabase
+        .from('reservations')
+        .select('id, statut, date, lieu, montant_total, titre, prestataire_id')
+        .eq('demande_id', id)
+        .order('created_at', { ascending: false });
+
+      if (resaData && resaData.length > 0) {
+        const resaPrestIds = [...new Set(resaData.map(r => r.prestataire_id).filter(Boolean))];
+        const [{ data: resaPrest }, { data: resaProfiles }] = await Promise.all([
+          supabase.from('profils_prestataire').select('id, nom_entreprise').in('id', resaPrestIds),
+          supabase.from('profiles').select('id, nom, prenom').in('id', resaPrestIds),
+        ]);
+        const resaPrestMap = {};
+        (resaProfiles || []).forEach(p => { resaPrestMap[p.id] = { profile: p }; });
+        (resaPrest || []).forEach(p => { resaPrestMap[p.id] = { ...resaPrestMap[p.id], ...p }; });
+        setReservations(resaData.map(r => ({ ...r, prestataire: resaPrestMap[r.prestataire_id] || null })));
+      } else {
+        setReservations([]);
       }
     } catch (error) {
       console.error('Error fetching demande:', error);
@@ -111,15 +153,29 @@ export default function DemandeDetailPage() {
 
   const handleAcceptDevis = async (devisId) => {
     try {
-      // Update devis status
+      // 1. Récupérer le devis accepté pour créer la réservation
+      const devisAccepte = devis.find(d => d.id === devisId);
+
+      // 2. Marquer ce devis comme accepté
       const { error: devisError } = await supabase
         .from('devis')
-        .update({ statut: 'accepte' })
+        .update({ statut: 'accepte', accepte_at: new Date().toISOString() })
         .eq('id', devisId);
 
       if (devisError) throw devisError;
 
-      // Update demande status
+      // 3. Marquer les autres devis comme refusés
+      const autresDevisIds = devis
+        .filter(d => d.id !== devisId && d.statut === 'en_attente')
+        .map(d => d.id);
+      if (autresDevisIds.length > 0) {
+        await supabase
+          .from('devis')
+          .update({ statut: 'refuse', refuse_at: new Date().toISOString() })
+          .in('id', autresDevisIds);
+      }
+
+      // 4. Passer la demande à pourvue
       const { error: demandeError } = await supabase
         .from('demandes_client')
         .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
@@ -127,8 +183,38 @@ export default function DemandeDetailPage() {
 
       if (demandeError) throw demandeError;
 
-      // Redirect to payment
-      router.push(`/client/devis/${devisId}/payment`);
+      // 5. Créer la réservation
+      const { data: reservation, error: reservationError } = await supabase
+        .from('reservations')
+        .insert({
+          client_id: demande.client_id,
+          prestataire_id: devisAccepte.prestataire_id,
+          devis_id: devisId,
+          demande_id: id,
+          titre: devisAccepte.titre || demande.titre || 'Prestation photo',
+          categorie: demande.categorie || 'photo',
+          date: demande.date_souhaitee || new Date().toISOString().split('T')[0],
+          heure_debut: demande.heure_debut || null,
+          lieu: demande.lieu || 'À définir',
+          ville: demande.ville || null,
+          montant_total: devisAccepte.montant_total,
+          duree_heures: devisAccepte.duree_prestation_heures || null,
+          services_inclus: devisAccepte.services_inclus || null,
+          monnaie: devisAccepte.monnaie || 'MAD',
+          source: 'devis',
+        })
+        .select('id')
+        .single();
+
+      if (reservationError) {
+        console.error('Erreur création réservation:', reservationError);
+        // On redirige quand même vers le devis
+        router.push(`/client/devis/${devisId}`);
+        return;
+      }
+
+      // 6. Rediriger vers la réservation créée
+      router.push(`/client/reservations/${reservation.id}`);
     } catch (error) {
       console.error('Error accepting devis:', error);
     }
@@ -301,6 +387,16 @@ export default function DemandeDetailPage() {
                   Devis reçus ({devis.length})
                 </button>
                 <button
+                  onClick={() => setActiveTab('reservations')}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-all ${
+                    activeTab === 'reservations'
+                      ? 'text-indigo-600 border-b-2 border-indigo-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Réservations ({reservations.length})
+                </button>
+                <button
                   onClick={() => setActiveTab('matchings')}
                   className={`flex-1 px-4 py-3 text-sm font-medium transition-all ${
                     activeTab === 'matchings'
@@ -333,9 +429,65 @@ export default function DemandeDetailPage() {
                           onAccept={() => handleAcceptDevis(d.id)}
                           onView={() => router.push(`/client/devis/${d.id}`)}
                           onContact={() => router.push(`/messages?photographe=${d.photographe_id}`)}
-                          demandeStatus={demande.status}
+                          demandeStatus={demande.statut}
                         />
                       ))}
+                    </div>
+                  )
+                ) : activeTab === 'reservations' ? (
+                  reservations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">Aucune réservation liée à cette demande.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {reservations.map((r) => {
+                        const STATUS_RESA = {
+                          pending:   { label: 'En attente',  color: 'bg-yellow-100 text-yellow-700' },
+                          confirmee: { label: 'Confirmée',   color: 'bg-green-100 text-green-700' },
+                          en_cours:  { label: 'En cours',    color: 'bg-purple-100 text-purple-700' },
+                          terminee:  { label: 'Terminée',    color: 'bg-blue-100 text-blue-700' },
+                          annulee:   { label: 'Annulée',     color: 'bg-red-100 text-red-700' },
+                        };
+                        const cfg = STATUS_RESA[r.statut] || STATUS_RESA.pending;
+                        return (
+                          <div
+                            key={r.id}
+                            onClick={() => router.push(`/client/reservations/${r.id}`)}
+                            className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer transition-all"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">
+                                {r.prestataire?.nom_entreprise ||
+                                  [r.prestataire?.profile?.prenom, r.prestataire?.profile?.nom].filter(Boolean).join(' ') ||
+                                  r.titre || 'Réservation'}
+                              </p>
+                              <div className="flex flex-wrap gap-3 mt-1 text-xs text-gray-500">
+                                {r.date && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  </span>
+                                )}
+                                {r.lieu && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {r.lieu}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                              {r.montant_total && (
+                                <span className="font-bold text-indigo-600">{r.montant_total} DH</span>
+                              )}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )
                 ) : (
@@ -472,7 +624,10 @@ function DevisCard({ devis, onAccept, onView, onContact, demandeStatus }) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <h4 className="font-semibold text-gray-900">
-                {photographe?.nom_entreprise || `${profile?.prenom} ${profile?.nom}`}
+                {photographe?.nom_entreprise ||
+                  (photographe?.profile?.prenom || photographe?.profile?.nom
+                    ? [photographe.profile.prenom, photographe.profile.nom].filter(Boolean).join(' ')
+                    : 'Prestataire')}
               </h4>
               {photographe?.identite_verifiee && (
                 <Check className="w-4 h-4 text-blue-600" />
