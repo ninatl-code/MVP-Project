@@ -230,12 +230,12 @@ export default function AgendaPage() {
 
           {/* Selected Day Details */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">
+            <h2 className="font-semibold text-gray-900 mb-4">
               {selectedDate 
                 ? format(selectedDate, 'EEEE d MMMM', { locale: fr })
                 : 'Sélectionnez une date'
               }
-            </h3>
+            </h2>
 
             {selectedDate ? (
               <DayDetails 

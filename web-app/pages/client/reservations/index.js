@@ -55,7 +55,7 @@ export default function MesReservationsPage() {
             note_moyenne,
             nb_avis,
             identite_verifiee,
-            profile:profiles(nom, prenom)
+            profile:profiles(nom, avatar_url)
           ),
           package:packages_types(
             id,
@@ -334,7 +334,7 @@ function ReservationCard({ reservation, onClick, onMessage, onViewDemande }) {
                 )}
               </div>
               <span className="truncate">
-                {photographe?.nom_entreprise || `${profile?.prenom} ${profile?.nom}`}
+                {photographe?.nom_entreprise || profile?.nom || 'Prestataire'}
               </span>
               {photographe?.verifie && (
                 <CheckCircle className="w-4 h-4 text-blue-600" />

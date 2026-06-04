@@ -61,7 +61,7 @@ export default function ReservationDetailPage() {
       if (data.prestataire_id) {
         const { data: profil } = await supabase
           .from('profiles')
-          .select('id, nom, prenom, avatar_url')
+          .select('id, nom, avatar_url')
           .eq('id', data.prestataire_id)
           .single();
         prestataire = profil;
@@ -69,16 +69,18 @@ export default function ReservationDetailPage() {
 
       // Fetch existing review from reviews_photographe
       let existingReview = null;
-      const clientId = profileId || user?.id;
-      if (clientId && data.prestataire_id) {
-        const { data: reviewData } = await supabase
-          .from('reviews_photographe')
-          .select('id, rating, comment, created_at')
-          .eq('client_id', clientId)
-          .eq('prestataire_id', data.prestataire_id)
-          .maybeSingle();
-        existingReview = reviewData;
-      }
+      try {
+        const clientId = profileId || user?.id;
+        if (clientId && data.prestataire_id) {
+          const { data: reviewData } = await supabase
+            .from('reviews_photographe')
+            .select('id, rating, comment, created_at')
+            .eq('client_id', clientId)
+            .eq('prestataire_id', data.prestataire_id)
+            .maybeSingle();
+          existingReview = reviewData;
+        }
+      } catch (_) {}
 
       // Fetch linked devis if exists
       let devis = null;
@@ -501,7 +503,7 @@ export default function ReservationDetailPage() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900">
-                    {photographe?.nom || photographe?.prenom ? `${photographe.prenom || ''} ${photographe.nom || ''}`.trim() : 'Prestataire'}
+                    {photographe?.nom || 'Prestataire'}
                   </h4>
                 </div>
               </div>

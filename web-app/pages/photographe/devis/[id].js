@@ -7,7 +7,8 @@ import Header from '../../../components/HeaderPresta';
 import { 
   FileText, Clock, Check, X, Euro, ArrowLeft,
   User, Calendar, AlertCircle, MessageSquare, Trash2,
-  Edit, Send, MapPin
+  Edit, Send, MapPin, Banknote, Timer, Package, CreditCard,
+  ChevronRight, Tag
 } from 'lucide-react';
 import { format, formatDistanceToNow, isAfter } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -70,7 +71,8 @@ export default function PhotographeDevisDetailPage() {
         .single();
 
       if (error) throw error;
-      setDevis(data);
+      // Normalize 'envoye' → 'en_attente'
+      setDevis({ ...data, statut: data.statut === 'envoye' ? 'en_attente' : data.statut });
     } catch (error) {
       console.error('Error fetching devis:', error);
     } finally {
@@ -182,9 +184,6 @@ export default function PhotographeDevisDetailPage() {
                   <StatusIcon className="w-4 h-4" />
                   {isExpired ? 'Expiré' : statusConfig.label}
                 </span>
-                <span className="text-sm text-gray-500">
-                  Devis #{devis.id.slice(0, 8)}
-                </span>
               </div>
 
               <h1 className="text-xl font-bold text-gray-900 mb-2">
@@ -205,56 +204,117 @@ export default function PhotographeDevisDetailPage() {
 
             {/* Details Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="font-semibold text-gray-900 mb-4">Détails du devis</h2>
+              <h2 className="font-semibold text-gray-900 mb-5">Détails du devis</h2>
 
-              {devis.message && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-medium text-gray-500 mb-2">Message au client</h2>
-                  <p className="text-gray-700 bg-gray-50 rounded-xl p-4">
-                    {devis.message}
-                  </p>
+              {/* Description */}
+              {devis.description && (
+                <div className="mb-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Description</p>
+                  <p className="text-gray-700 bg-gray-50 rounded-xl p-4 text-sm leading-relaxed">{devis.description}</p>
                 </div>
               )}
 
-              {/* Detail Lines */}
-              {devis.details && devis.details.length > 0 ? (
-                <div className="space-y-3">
-                  {devis.details.map((detail, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{detail.description}</p>
-                        {detail.quantite && (
-                          <p className="text-sm text-gray-500">
-                            Quantité: {detail.quantite}
-                          </p>
-                        )}
-                      </div>
-                      <p className="font-semibold text-gray-900">{detail.montant} DH</p>
+              {/* Message personnalisé */}
+              {devis.message_personnalise && (
+                <div className="mb-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Message au client</p>
+                  <p className="text-gray-700 bg-indigo-50 rounded-xl p-4 text-sm leading-relaxed border border-indigo-100">{devis.message_personnalise}</p>
+                </div>
+              )}
+
+              {/* Détail tarification */}
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Banknote className="w-3.5 h-3.5" />Tarification
+                </p>
+                <div className="rounded-xl border border-gray-100 overflow-hidden">
+                  {devis.tarif_base != null && (
+                    <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Tarif de base</span>
+                      <span className="text-sm font-semibold text-gray-900">{Number(devis.tarif_base).toLocaleString('fr-FR')} MAD</span>
                     </div>
-                  ))}
+                  )}
+                  {devis.frais_deplacement > 0 && (
+                    <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Frais de déplacement</span>
+                      <span className="text-sm font-semibold text-gray-900">{Number(devis.frais_deplacement).toLocaleString('fr-FR')} MAD</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center px-4 py-3 bg-indigo-50">
+                    <span className="font-bold text-gray-900">Total</span>
+                    <span className="text-xl font-bold text-indigo-600">{Number(devis.montant_total).toLocaleString('fr-FR')} MAD</span>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-gray-500 text-sm">Aucun détail spécifié</p>
+              </div>
+
+              {/* Acompte */}
+              {(devis.acompte_percent > 0 || devis.acompte_montant > 0) && (
+                <div className="mb-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" />Acompte demandé
+                  </p>
+                  <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-amber-50 border border-amber-100">
+                    <span className="text-sm text-amber-700">{devis.acompte_percent}% à la réservation</span>
+                    <span className="font-bold text-amber-700">{Number(devis.acompte_montant || (devis.montant_total * devis.acompte_percent / 100)).toLocaleString('fr-FR')} MAD</span>
+                  </div>
+                </div>
               )}
 
-              {/* Total */}
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-2xl font-bold text-indigo-600">
-                    {devis.montant_total} DH
-                  </span>
-                </div>
-                {devis.acompte && (
-                  <div className="flex justify-between items-center mt-2 text-sm">
-                    <span className="text-gray-500">Acompte demandé (30%)</span>
-                    <span className="font-medium text-gray-700">{devis.acompte} DH</span>
+              {/* Durée & validité */}
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                {devis.duree_prestation_heures > 0 && (
+                  <div className="px-4 py-3 rounded-xl bg-gray-50">
+                    <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Timer className="w-3 h-3" />Durée prestation</p>
+                    <p className="font-semibold text-gray-900">{devis.duree_prestation_heures}h</p>
+                  </div>
+                )}
+                {devis.duree_validite_jours > 0 && (
+                  <div className="px-4 py-3 rounded-xl bg-gray-50">
+                    <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3" />Validité</p>
+                    <p className="font-semibold text-gray-900">{devis.duree_validite_jours} jours</p>
                   </div>
                 )}
               </div>
+
+              {/* Services inclus */}
+              {devis.services_inclus?.length > 0 && (
+                <div className="mb-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5" />Services inclus
+                  </p>
+                  <ul className="space-y-1.5">
+                    {devis.services_inclus.map((s, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                        <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />{s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Horaires proposés */}
+              {devis.horaires_proposes?.detail && (
+                <div className="mb-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />Horaires proposés
+                  </p>
+                  <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3">{devis.horaires_proposes.detail}</p>
+                </div>
+              )}
+
+              {/* Modalités de paiement */}
+              {devis.modalites_paiement?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" />Modalités de paiement
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {devis.modalites_paiement.map((m, i) => (
+                      <span key={i} className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Demande Reference */}
@@ -353,13 +413,6 @@ export default function PhotographeDevisDetailPage() {
               <div className="space-y-3">
                 {displayStatus === 'en_attente' && (
                   <>
-                    <Link
-                      href={`/photographe/demandes/${devis.demande_id}/devis?edit=${devis.id}`}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Edit className="w-5 h-5" />
-                      Modifier
-                    </Link>
                     <button
                       onClick={() => setShowCancelModal(true)}
                       className="w-full px-4 py-2 border border-red-200 rounded-xl text-red-600 font-medium hover:bg-red-50 transition-all flex items-center justify-center gap-2"

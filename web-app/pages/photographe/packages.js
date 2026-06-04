@@ -8,6 +8,24 @@ import {
   Check, X, Eye, EyeOff, GripVertical, Star, ArrowLeft
 } from 'lucide-react';
 
+const CATEGORIES_PACKAGES = [
+  { id: 'services-domicile', label: 'Services à domicile' },
+  { id: 'beaute-bien-etre',  label: 'Beauté & Bien-être' },
+  { id: 'evenementiel',      label: 'Événementiel' },
+  { id: 'transport',         label: 'Transport' },
+  { id: 'digital',           label: 'Digital' },
+  { id: 'education',         label: 'Éducation' },
+];
+
+const SPECIALISATIONS_MAP = {
+  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
+  'beaute-bien-etre':  ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
+  'evenementiel':      ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
+  'transport':         ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
+  'digital':           ['Développement', 'Design', 'Marketing', 'Autre'],
+  'education':         ['Cours particuliers', 'Coaching', 'Autre'],
+};
+
 export default function PackagesPage() {
   const router = useRouter();
   const { photographeProfile } = useAuth();
@@ -40,7 +58,7 @@ export default function PackagesPage() {
         .from('packages_types')
         .select('*')
         .eq('prestataire_id', id)
-        .order('ordre', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setPackages(data || []);
@@ -59,7 +77,8 @@ export default function PackagesPage() {
         .eq('id', packageId);
 
       if (error) throw error;
-      fetchPackages();
+      const id = userId || photographeProfile?.id;
+      if (id) fetchPackages(id);
     } catch (error) {
       console.error('Error toggling package:', error);
     }
@@ -76,7 +95,8 @@ export default function PackagesPage() {
         .eq('id', packageId);
 
       if (error) throw error;
-      fetchPackages();
+      const id = userId || photographeProfile?.id;
+      if (id) fetchPackages(id);
     } catch (error) {
       console.error('Error deleting package:', error);
     } finally {
@@ -96,7 +116,8 @@ export default function PackagesPage() {
 
   const handleFormSuccess = () => {
     handleFormClose();
-    fetchPackages();
+    const id = userId || photographeProfile?.id;
+    if (id) fetchPackages(id);
   };
 
   return (
@@ -137,9 +158,9 @@ export default function PackagesPage() {
         ) : packages.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h2 className="text-lg font-medium text-gray-900 mb-2">
               Aucun forfait créé
-            </h3>
+            </h2>
             <p className="text-gray-500 mb-6">
               Créez des forfaits pour présenter vos offres aux clients
             </p>
@@ -169,13 +190,7 @@ export default function PackagesPage() {
                   {/* Content */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{pkg.nom}</h3>
-                      {pkg.populaire && (
-                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-yellow-500" />
-                          Populaire
-                        </span>
-                      )}
+                      <h2 className="text-lg font-semibold text-gray-900">{pkg.titre}</h2>
                       {!pkg.actif && (
                         <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
                           Inactif
@@ -188,12 +203,12 @@ export default function PackagesPage() {
                     <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        {pkg.duree_heures}h
+                        {pkg.duree_minutes ? `${Math.round(pkg.duree_minutes / 60)}h` : '—'}
                       </span>
-                      {pkg.nombre_photos_incluses > 0 && (
+                      {pkg.services_inclus > 0 && (
                         <span className="flex items-center gap-1">
                           <Briefcase className="w-4 h-4" />
-                          {pkg.nombre_photos_incluses} livrables
+                          {pkg.services_inclus} livrables
                         </span>
                       )}
                       {pkg.categorie && (
@@ -206,7 +221,7 @@ export default function PackagesPage() {
 
                   {/* Price */}
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-indigo-600">{pkg.prix} DH</p>
+                    <p className="text-2xl font-bold text-indigo-600">{pkg.prix_fixe} DH</p>
                     {pkg.prix_barre && (
                       <p className="text-sm text-gray-400 line-through">{pkg.prix_barre} DH</p>
                     )}
@@ -261,17 +276,19 @@ export default function PackagesPage() {
 
 function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
-    nom: pkg?.nom || '',
+    nom: pkg?.titre || '',
     description: pkg?.description || '',
-    prix: pkg?.prix?.toString() || '',
+    prix: pkg?.prix_fixe?.toString() || '',
     prix_barre: pkg?.prix_barre?.toString() || '',
-    duree_heures: pkg?.duree_heures?.toString() || '1',
-    nombre_photos_incluses: pkg?.nombre_photos_incluses?.toString() || '',
+    duree_heures: pkg?.duree_minutes ? Math.round(pkg.duree_minutes / 60).toString() : '1',
+    services_inclus: pkg?.services_inclus?.toString() || '',
     categorie: pkg?.categorie || '',
+    specialite: pkg?.specialite || '',
+    details: Array.isArray(pkg?.details) ? (pkg.details[0] || {}) : (pkg?.details || {}),
     actif: pkg?.actif ?? true,
-    populaire: pkg?.populaire ?? false,
   });
 
   useEffect(() => {
@@ -292,37 +309,46 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    if (!photographeId) {
+      setError('Session expirée. Veuillez recharger la page.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const data = {
         prestataire_id: photographeId,
-        nom: formData.nom,
+        titre: formData.nom,
         description: formData.description,
-        prix: parseFloat(formData.prix),
+        prix_fixe: parseFloat(formData.prix),
         prix_barre: formData.prix_barre ? parseFloat(formData.prix_barre) : null,
-        duree_heures: parseInt(formData.duree_heures),
-        nombre_photos_incluses: parseInt(formData.nombre_photos_incluses),
+        duree_minutes: parseInt(formData.duree_heures)*60,
+        services_inclus: formData.services_inclus ? parseInt(formData.services_inclus) : null,
         categorie: formData.categorie || null,
+        specialite: formData.specialite || null,
+        details: Object.keys(formData.details).length > 0 ? [formData.details] : null,
         actif: formData.actif,
-        populaire: formData.populaire,
       };
 
       if (pkg?.id) {
-        const { error } = await supabase
+        const { error: err } = await supabase
           .from('packages_types')
           .update(data)
           .eq('id', pkg.id);
-        if (error) throw error;
+        if (err) throw err;
       } else {
-        const { error } = await supabase
+        const { error: err } = await supabase
           .from('packages_types')
           .insert(data);
-        if (error) throw error;
+        if (err) throw err;
       }
 
       onSuccess();
-    } catch (error) {
-      console.error('Error saving package:', error);
+    } catch (err) {
+      console.error('Error saving package:', err);
+      setError(err.message || 'Une erreur est survenue. Vérifiez la console.');
     } finally {
       setLoading(false);
     }
@@ -368,7 +394,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Prix (MAD) *
+                Prix forfait (MAD) *
               </label>
               <input
                 type="number"
@@ -381,7 +407,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Prix barré (MAD)
+                Prix sans forfait (MAD)
               </label>
               <input
                 type="number"
@@ -398,25 +424,27 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Durée estimée *
               </label>
-              <select
-                value={formData.duree_heures}
-                onChange={(e) => updateFormData('duree_heures', e.target.value)}
+
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={formData.duree_heures ?? 1}
+                onChange={(e) =>
+                  updateFormData('duree_heures', parseInt(e.target.value, 10) || 1)
+                }
                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
-              >
-                {[1, 2, 3, 4, 5, 6, 8, 10, 12].map(h => (
-                  <option key={h} value={h}>{h}h</option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Livrables inclus
               </label>
               <input
-                type="number"
+                type="text"
                 min="0"
-                value={formData.nombre_photos_incluses}
-                onChange={(e) => updateFormData('nombre_photos_incluses', e.target.value)}
+                value={formData.services_inclus}
+                onChange={(e) => updateFormData('services_inclus', e.target.value)}
                 placeholder="Ex: 3 rapports, 5 livrables..."
                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
@@ -429,16 +457,84 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             </label>
             <select
               value={formData.categorie}
-              onChange={(e) => updateFormData('categorie', e.target.value)}
+              onChange={(e) => {
+                updateFormData('categorie', e.target.value);
+                updateFormData('specialite', '');
+              }}
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Sélectionner...</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              {CATEGORIES_PACKAGES.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
               ))}
-              <option value="Autre">Autre</option>
             </select>
           </div>
+
+          {/* Spécialité — dynamique selon catégorie */}
+          {formData.categorie && SPECIALISATIONS_MAP[formData.categorie] && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Spécialité
+            </label>
+            <select
+              value={formData.specialite}
+              onChange={(e) => updateFormData('specialite', e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Sélectionner...</option>
+              {SPECIALISATIONS_MAP[formData.categorie].map(spec => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
+            </select>
+          </div>
+          )}
+
+          {/* Champs details conditionnels */}
+          {formData.specialite === 'Développement' && (
+            <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Langages de développement <span className="text-gray-400 font-normal">(optionnel)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.details?.langages || ''}
+                onChange={(e) => updateFormData('details', { ...formData.details, langages: e.target.value })}
+                placeholder="Ex : JavaScript, Python, React..."
+                className="w-full px-4 py-2 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+              />
+            </div>
+          )}
+
+          {formData.specialite === 'Cours particuliers' && (
+            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Matière <span className="text-gray-400 font-normal">(optionnel)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.details?.matiere || ''}
+                    onChange={(e) => updateFormData('details', { ...formData.details, matiere: e.target.value })}
+                    placeholder="Ex : Mathématiques..."
+                    className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Niveau <span className="text-gray-400 font-normal">(optionnel)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.details?.niveau || ''}
+                    onChange={(e) => updateFormData('details', { ...formData.details, niveau: e.target.value })}
+                    placeholder="Ex : Lycée, Université..."
+                    className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -450,16 +546,13 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
               />
               <span className="text-sm text-gray-700">Forfait actif</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.populaire}
-                onChange={(e) => updateFormData('populaire', e.target.checked)}
-                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">Marquer comme populaire</span>
-            </label>
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button

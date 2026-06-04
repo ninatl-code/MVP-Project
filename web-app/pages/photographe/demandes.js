@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
+import { findMatchingDemandes } from '../../lib/matchingService';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
 import {
@@ -22,6 +23,7 @@ import {
   Sparkles,
   FileText,
   Plus,
+  Eye,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -39,6 +41,123 @@ const STATUT_COLORS = {
   pourvue: { bg: '#DBEAFE', text: '#1E40AF', label: 'Pourvue' },
   fermee: { bg: '#F3F4F6', text: '#6B7280', label: 'Fermée' },
 };
+
+function DetailModal({ demande, onClose }) {
+  if (!demande) return null;
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'Non précisée';
+    return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ backgroundColor: 'white', borderRadius: '20px', maxWidth: '560px', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10 rounded-t-2xl">
+          <h2 className="text-xl font-bold text-gray-900">Détail de la demande</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5 text-gray-500" /></button>
+        </div>
+        <div className="p-6 space-y-5">
+          {demande.type_prestation?.filter(Boolean).length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Spécialité recherchée</p>
+              <div className="flex flex-wrap gap-2">
+                {demande.type_prestation.filter(Boolean).map((s, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {demande.details?.langages && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Langages de développement</p>
+              <p className="text-sm text-gray-700">{demande.details.langages}</p>
+            </div>
+          )}
+          {(demande.details?.matiere || demande.details?.niveau) && (
+            <div className="grid grid-cols-2 gap-4">
+              {demande.details.matiere && (
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Matière</p>
+                  <p className="text-sm text-gray-700">{demande.details.matiere}</p>
+                </div>
+              )}
+              {demande.details.niveau && (
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Niveau</p>
+                  <p className="text-sm text-gray-700">{demande.details.niveau}</p>
+                </div>
+              )}
+            </div>
+          )}
+          {demande.categorie && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Catégorie</p>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}>
+                <Tag className="w-3 h-3" />
+                {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
+              </span>
+            </div>
+          )}
+          {demande.description && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Description</p>
+              <p className="text-sm text-gray-700 whitespace-pre-line">{demande.description}</p>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            {(demande.ville || demande.lieu) && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Lieu</p>
+                <p className="text-sm text-gray-700 flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-gray-400" />{demande.ville || demande.lieu}</p>
+              </div>
+            )}
+            {demande.date_souhaitee && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Date souhaitée</p>
+                <p className="text-sm text-gray-700 flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-gray-400" />{formatDate(demande.date_souhaitee)}</p>
+              </div>
+            )}
+            {demande.budget_max && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Budget maximum</p>
+                <p className="text-sm font-semibold text-green-600 flex items-center gap-1"><Banknote className="w-3.5 h-3.5" />{demande.budget_max} MAD</p>
+              </div>
+            )}
+            {demande.duree_estimee_heures && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Durée estimée</p>
+                <p className="text-sm text-gray-700 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-gray-400" />{demande.duree_estimee_heures}h</p>
+              </div>
+            )}
+            {demande.profiles?.nom && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Client</p>
+                <p className="text-sm text-gray-700 flex items-center gap-1"><User className="w-3.5 h-3.5 text-gray-400" />{demande.profiles.nom}</p>
+              </div>
+            )}
+          </div>
+          {demande.statut && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Statut</p>
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium"
+                style={{ backgroundColor: (STATUT_COLORS[demande.statut] || STATUT_COLORS.ouverte).bg, color: (STATUT_COLORS[demande.statut] || STATUT_COLORS.ouverte).text }}>
+                {(STATUT_COLORS[demande.statut] || STATUT_COLORS.ouverte).label}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="px-6 pb-6">
+          <button onClick={onClose} className="w-full py-3 px-4 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm">Fermer</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function DevisModal({ demande, photographeId, onClose, onSuccess }) {
   const [form, setForm] = useState({
@@ -402,6 +521,7 @@ export default function DemandesClients() {
   const [filterCategorie, setFilterCategorie] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [selectedDemande, setSelectedDemande] = useState(null);
+  const [detailDemande, setDetailDemande] = useState(null);
   const [devisEnvoyes, setDevisEnvoyes] = useState(new Set());
   const [matchings, setMatchings] = useState([]);
   const [loadingMatchings, setLoadingMatchings] = useState(true);
@@ -438,6 +558,7 @@ export default function DemandesClients() {
           budget_max,
           duree_estimee_heures,
           type_prestation,
+          details,
           statut,
           created_at,
           client_id,
@@ -472,25 +593,38 @@ export default function DemandesClients() {
       const { data, error } = await supabase
         .from('matchings')
         .select(`
-          id,
           match_score,
-          status,
-          created_at,
+          match_reasons,
           demandes_client!inner(
             id, titre, description, categorie, date_souhaitee,
             lieu, ville, budget_max, duree_estimee_heures,
-            statut, created_at, client_id,
+            type_prestation, details, statut, created_at, client_id,
             profiles!demandes_client_client_id_fkey(nom, avatar_url)
           )
         `)
         .eq('prestataire_id', user.id)
-        .eq('status', 'pending')
-        .eq('demandes_client.statut', 'ouverte')
+        .gte('match_score', 55)
         .order('match_score', { ascending: false });
-      if (error) { setMatchError(error.message); throw error; }
-      setMatchings(data || []);
+
+      if (error) { setMatchError(error.message); return; }
+
+      const now = new Date();
+      const suggestions = (data || [])
+        .map(m => ({
+          ...m.demandes_client,
+          matchScore: m.match_score,
+          matchReasons: m.match_reasons || [],
+        }))
+        // Exclure les demandes pourvues, fermées, annulées ou expirées
+        .filter(d =>
+          d.statut === 'ouverte' &&
+          (!d.date_souhaitee || new Date(d.date_souhaitee) >= now)
+        );
+
+      setMatchings(suggestions);
     } catch (err) {
       console.error('Erreur chargement matchings:', err);
+      setMatchError(err.message || 'Erreur inattendue');
     } finally {
       setLoadingMatchings(false);
     }
@@ -602,107 +736,73 @@ export default function DemandesClients() {
               </div>
             ) : (
               <div className="space-y-4">
-                {matchings.map((matching) => {
-                  const demande = matching.demandes_client;
-                  if (!demande) return null;
+                {matchings.map((demande) => {
                   const dejaEnvoye = devisEnvoyes.has(demande.id);
-                  const score = matching.match_score;
-                  const scoreColor = score >= 70 ? '#059669' : score >= 50 ? '#D97706' : '#6B7280';
+                  const score = demande.matchScore || 0;
+                  const scoreColor = score >= 80 ? '#DC2626' : (score >= 70 && score <= 75) ? '#D97706' : '#6B7280';
                   return (
                     <div
-                      key={matching.id}
+                      key={demande.id}
                       className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-2">
-                            {/* Badge score matching */}
                             <span
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+                              className="relative inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold cursor-default group"
                               style={{ backgroundColor: scoreColor + '1A', color: scoreColor }}
                             >
                               <Sparkles className="w-3 h-3" />
                               Match {score}%
+                              {demande.matchReasons?.length > 0 && (
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[220px] rounded-xl bg-gray-900 text-white text-xs px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                                  <span className="block font-semibold mb-1 text-gray-300">Pourquoi ce match ?</span>
+                                  {demande.matchReasons.map((r, i) => <span key={i} className="block">• {r}</span>)}
+                                  <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent" style={{ borderTopColor: '#111827' }} />
+                                </span>
+                              )}
                             </span>
                             {demande.categorie && (
-                              <span
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
-                                style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}
-                              >
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}>
                                 <Tag className="w-3 h-3" />
                                 {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
                               </span>
                             )}
-                            {dejaEnvoye && (
+                            {dejaEnvoye ? (
                               <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" />
-                                Devis envoyé
+                                <CheckCircle className="w-3 h-3" />Devis envoyé
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />Ouverte
                               </span>
                             )}
                           </div>
-
-                          <h2 className="text-base font-bold text-gray-900 mb-1 truncate">
-                            {demande.titre}
-                          </h2>
-
-                          {demande.description && (
-                            <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                              {demande.description}
-                            </p>
-                          )}
-
+                          <h2 className="text-base font-bold text-gray-900 mb-1 truncate">{demande.titre}</h2>
+                          {demande.description && <p className="text-sm text-gray-600 line-clamp-2 mb-3">{demande.description}</p>}
                           <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                            {(demande.ville || demande.lieu) && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3.5 h-3.5" />
-                                {demande.ville || demande.lieu}
-                              </span>
-                            )}
-                            {demande.date_souhaitee && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3.5 h-3.5" />
-                                {formatDate(demande.date_souhaitee)}
-                              </span>
-                            )}
-                            {demande.budget_max && (
-                              <span className="flex items-center gap-1 text-green-600 font-medium">
-                                <Banknote className="w-3.5 h-3.5" />
-                                Budget : jusqu'à {demande.budget_max} MAD
-                              </span>
-                            )}
-                            {demande.duree_estimee_heures && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" />
-                                {demande.duree_estimee_heures}h estimées
-                              </span>
-                            )}
-                            {demande.profiles?.nom && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3.5 h-3.5" />
-                                {demande.profiles.nom}
-                              </span>
-                            )}
+                            {(demande.ville || demande.lieu) && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{demande.ville || demande.lieu}</span>}
+                            {demande.date_souhaitee && <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatDate(demande.date_souhaitee)}</span>}
+                            {demande.budget_max && <span className="flex items-center gap-1 text-green-600 font-medium"><Banknote className="w-3.5 h-3.5" />Budget : jusqu'à {demande.budget_max} MAD</span>}
+                            {demande.duree_estimee_heures && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{demande.duree_estimee_heures}h estimées</span>}
+                            {demande.profiles?.nom && <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />{demande.profiles.nom}</span>}
                           </div>
                         </div>
-
                         <div className="flex flex-col items-end gap-3 shrink-0">
-                          <span className="text-xs text-gray-400 whitespace-nowrap">
-                            {timeAgo(matching.created_at)}
-                          </span>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">{timeAgo(demande.created_at)}</span>
+                          <button
+                            onClick={() => setDetailDemande(demande)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
+                          >
+                            <Eye className="w-4 h-4" />Voir le détail
+                          </button>
                           <button
                             onClick={() => setSelectedDemande(demande)}
                             disabled={dejaEnvoye}
                             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
-                            style={{
-                              backgroundColor: dejaEnvoye ? '#9CA3AF' : '#130183',
-                              cursor: dejaEnvoye ? 'default' : 'pointer'
-                            }}
+                            style={{ backgroundColor: dejaEnvoye ? '#9CA3AF' : '#130183', cursor: dejaEnvoye ? 'default' : 'pointer' }}
                           >
-                            {dejaEnvoye ? (
-                              <><CheckCircle className="w-4 h-4" />Envoyé</>
-                            ) : (
-                              <><Send className="w-4 h-4" />Envoyer un devis</>
-                            )}
+                            {dejaEnvoye ? <><CheckCircle className="w-4 h-4" />Envoyé</> : <><Send className="w-4 h-4" />Envoyer un devis</>}
                           </button>
                         </div>
                       </div>
@@ -724,7 +824,7 @@ export default function DemandesClients() {
               <input
                 type="text"
                 placeholder="Rechercher par titre, description, ville..."
-                value={filterSearch}
+                value={filterSearch}  
                 onChange={(e) => setFilterSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
@@ -853,6 +953,12 @@ export default function DemandesClients() {
                           {timeAgo(demande.created_at)}
                         </span>
                         <button
+                          onClick={() => setDetailDemande(demande)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
+                        >
+                          <Eye className="w-4 h-4" />Voir le détail
+                        </button>
+                        <button
                           onClick={() => setSelectedDemande(demande)}
                           disabled={dejaEnvoye}
                           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
@@ -862,15 +968,9 @@ export default function DemandesClients() {
                           }}
                         >
                           {dejaEnvoye ? (
-                            <>
-                              <CheckCircle className="w-4 h-4" />
-                              Envoyé
-                            </>
+                            <><CheckCircle className="w-4 h-4" />Envoyé</>
                           ) : (
-                            <>
-                              <Send className="w-4 h-4" />
-                              Envoyer un devis
-                            </>
+                            <><Send className="w-4 h-4" />Envoyer un devis</>
                           )}
                         </button>
                       </div>
@@ -884,6 +984,11 @@ export default function DemandesClients() {
           )}
         </div>
       </div>
+
+      {/* Modal détail */}
+      {detailDemande && (
+        <DetailModal demande={detailDemande} onClose={() => setDetailDemande(null)} />
+      )}
 
       {/* Modal devis */}
       {selectedDemande && (

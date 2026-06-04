@@ -24,7 +24,7 @@ export default function PhotographerReservationsPage() {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [timeFilter, setTimeFilter] = useState('upcoming');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -108,9 +108,10 @@ export default function PhotographerReservationsPage() {
 
   // Group by month
   const groupedReservations = filteredReservations.reduce((groups, reservation) => {
-    const date = new Date(reservation.date_prestation);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const monthLabel = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const rawDate = reservation.date_prestation || reservation.date;
+    const date = rawDate ? new Date(rawDate) : null;
+    const monthKey = date && !isNaN(date) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : '0000-00';
+    const monthLabel = date && !isNaN(date) ? date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'Date inconnue';
     
     if (!groups[monthKey]) {
       groups[monthKey] = { label: monthLabel, items: [] };
@@ -169,26 +170,18 @@ export default function PhotographerReservationsPage() {
               ))}
             </div>
 
-            <div className="flex gap-2 overflow-x-auto">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap ${
-                  filter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
-                }`}
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="pl-3 pr-8 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none cursor-pointer"
               >
-                Tous
-              </button>
-              {Object.entries(STATUS_CONFIG).slice(0, 4).map(([key, config]) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap ${
-                    filter === key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {config.label}
-                </button>
-              ))}
+                <option value="all">Tous les statuts</option>
+                {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                  <option key={key} value={key}>{config.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -201,7 +194,7 @@ export default function PhotographerReservationsPage() {
         ) : filteredReservations.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
             <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune réservation</h3>
+            <h2 className="text-lg font-medium text-gray-900 mb-2">Aucune réservation</h2>
             <p className="text-gray-500">
               {timeFilter === 'upcoming' 
                 ? 'Vous n\'avez pas de réservation à venir.'
@@ -240,12 +233,29 @@ function ReservationCard({ reservation, onClick, onConfirm, onComplete, onMessag
   const client = reservation.client;
   const config = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG.en_attente;
   const Icon = config.icon;
-  const isUpcoming = new Date(reservation.date_prestation) >= new Date();
+
+  const rawDate = reservation.date_prestation || reservation.date;
+  const resaDate = rawDate ? new Date(rawDate) : null;
+  const validDate = resaDate && !isNaN(resaDate);
+  const isUpcoming = validDate ? resaDate >= new Date() : false;
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
     return timeStr.substring(0, 5);
   };
+
+  const formatDuration = () => {
+    if (!reservation.heure_debut || !reservation.heure_fin) return null;
+    const [h1, m1] = reservation.heure_debut.split(':').map(Number);
+    const [h2, m2] = reservation.heure_fin.split(':').map(Number);
+    const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (diff <= 0) return null;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return h > 0 ? (m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`) : `${m}min`;
+  };
+
+  const duration = formatDuration();
 
   return (
     <div
@@ -257,61 +267,99 @@ function ReservationCard({ reservation, onClick, onConfirm, onComplete, onMessag
         <div className={`flex-shrink-0 w-16 h-16 rounded-xl flex flex-col items-center justify-center ${
           isUpcoming ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
         }`}>
-          <span className="text-xs font-medium uppercase">
-            {new Date(reservation.date_prestation).toLocaleDateString('fr-FR', { weekday: 'short' })}
-          </span>
-          <span className="text-2xl font-bold">
-            {new Date(reservation.date_prestation).getDate()}
-          </span>
-          <span className="text-xs">
-            {new Date(reservation.date_prestation).toLocaleDateString('fr-FR', { month: 'short' })}
-          </span>
+          {validDate ? (
+            <>
+              <span className="text-xs font-medium uppercase">
+                {resaDate.toLocaleDateString('fr-FR', { weekday: 'short' })}
+              </span>
+              <span className="text-2xl font-bold">
+                {resaDate.getDate()}
+              </span>
+              <span className="text-xs">
+                {resaDate.toLocaleDateString('fr-FR', { month: 'short' })}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-center px-1">Date N/A</span>
+          )}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
               <Icon className="w-3 h-3" />
               {config.label}
             </span>
             {reservation.heure_debut && (
-              <span className="text-sm text-gray-500">
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                <Clock className="w-3 h-3" />
                 {formatTime(reservation.heure_debut)}
-                {reservation.heure_fin && ` - ${formatTime(reservation.heure_fin)}`}
+                {reservation.heure_fin && ` → ${formatTime(reservation.heure_fin)}`}
+              </span>
+            )}
+            {duration && (
+              <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full font-medium">
+                {duration}
               </span>
             )}
           </div>
 
-          <h3 className="font-semibold text-gray-900 mb-1 truncate">
-            {reservation.titre || reservation.package?.nom || 'Prestation photo'}
-          </h3>
+          <h2 className="font-semibold text-gray-900 mb-1 truncate">
+            {reservation.titre || reservation.package?.titre || 'Prestation photo'}
+          </h2>
+
+          {reservation.package?.titre && reservation.titre && (
+            <p className="text-xs text-indigo-500 mb-1 truncate">
+              Forfait : {reservation.package.titre}
+            </p>
+          )}
 
           {/* Client info */}
-          <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
+          <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                {client?.photo_profil ? (
-                  <img src={client.photo_profil} alt="" className="w-full h-full object-cover" />
+              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {client?.avatar_url ? (
+                  <img src={client.avatar_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-3 h-3 text-gray-500" />
+                  <User className="w-3.5 h-3.5 text-gray-500" />
                 )}
               </div>
-              <span>{client?.prenom} {client?.nom}</span>
+              <div>
+                <span className="font-medium text-gray-700">{client?.prenom} {client?.nom}</span>
+                {client?.email && (
+                  <span className="block text-xs text-gray-400">{client.email}</span>
+                )}
+              </div>
             </div>
           </div>
 
-          {reservation.lieu && (
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <MapPin className="w-4 h-4" />
-              <span>{reservation.lieu}</span>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {reservation.lieu && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <MapPin className="w-3.5 h-3.5" />
+                <span className="truncate max-w-[180px]">{reservation.lieu}</span>
+              </div>
+            )}
+            {reservation.nb_photos && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Camera className="w-3.5 h-3.5" />
+                <span>{reservation.nb_photos} photos</span>
+              </div>
+            )}
+            {reservation.type_prestation && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                {reservation.type_prestation}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Price & Actions */}
         <div className="flex flex-col items-end gap-2">
-          <p className="text-lg font-bold text-gray-900">{reservation.montant_total} DH</p>
+          <p className="text-lg font-bold text-gray-900">
+            {reservation.montant_total != null ? `${reservation.montant_total} DH` : '—'}
+          </p>
           
           <div className="flex items-center gap-2">
             {reservation.statut === 'en_attente' && (

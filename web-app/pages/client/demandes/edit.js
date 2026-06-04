@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
+import { computeAndSaveMatchesForDemande } from '../../../lib/matchingService';
 import Header from '../../../components/HeaderParti';
 import {
   ArrowLeft, Calendar, MapPin, Clock, Users,
   Check, X, Info, Save
 } from 'lucide-react';
+
+const SPECIALITES_MAP = {
+  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
+  'beaute-bien-etre': ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
+  'evenementiel': ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
+  'transport': ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
+  'digital': ['Développement', 'Design', 'Marketing', 'Autre'],
+  'education': ['Cours particuliers', 'Coaching', 'Autre'],
+};
 
 const categories = [
   { id: 'services-domicile', label: 'Services à domicile', icon: '🔧', description: 'Plomberie, électricité, ménage, jardinage...' },
@@ -36,6 +46,11 @@ export default function EditDemandePage() {
     duree_estimee: '2',
     budget_max: '',
     instructions_speciales: '',
+    specialite: '',
+    specialite_autre: '',
+    langages_dev: '',
+    matiere: '',
+    niveau: '',
   });
 
   useEffect(() => {
@@ -46,7 +61,7 @@ export default function EditDemandePage() {
 
       const { data, error: fetchError } = await supabase
         .from('demandes_client')
-        .select('titre, categorie, description, date_souhaitee, ville, lieu, duree_estimee_heures, budget_max, instructions_speciales, client_id, statut')
+        .select('titre, categorie, description, date_souhaitee, ville, lieu, duree_estimee_heures, budget_max, instructions_speciales, client_id, statut, type_prestation, details')
         .eq('id', id)
         .single();
 
@@ -69,6 +84,11 @@ export default function EditDemandePage() {
         return;
       }
 
+      const currentSpec = Array.isArray(data.type_prestation) ? data.type_prestation[0] || '' : data.type_prestation || '';
+      const specs = SPECIALITES_MAP[data.categorie] || [];
+      const isKnownSpec = specs.includes(currentSpec);
+      const det = data.details || {};
+
       setFormData({
         titre: data.titre || '',
         categorie: data.categorie || '',
@@ -79,6 +99,11 @@ export default function EditDemandePage() {
         duree_estimee: data.duree_estimee_heures?.toString() || '2',
         budget_max: data.budget_max?.toString() || '',
         instructions_speciales: data.instructions_speciales || '',
+        specialite: isKnownSpec ? currentSpec : (currentSpec ? 'Autre' : ''),
+        specialite_autre: isKnownSpec ? '' : currentSpec,
+        langages_dev: det.langages || '',
+        matiere: det.matiere || '',
+        niveau: det.niveau || '',
       });
       setLoading(false);
     };
@@ -113,11 +138,27 @@ export default function EditDemandePage() {
           duree_estimee_heures: parseInt(formData.duree_estimee) || null,
           budget_max: parseFloat(formData.budget_max) || null,
           instructions_speciales: formData.instructions_speciales || null,
+          type_prestation: formData.specialite === 'Autre'
+            ? [formData.specialite_autre?.trim() || 'Autre']
+            : formData.specialite ? [formData.specialite] : null,
+          details: (() => {
+            const d = {};
+            if (formData.specialite === 'Développement' && formData.langages_dev.trim()) d.langages = formData.langages_dev.trim();
+            if (formData.specialite === 'Cours particuliers') {
+              if (formData.matiere.trim()) d.matiere = formData.matiere.trim();
+              if (formData.niveau.trim()) d.niveau = formData.niveau.trim();
+            }
+            return Object.keys(d).length > 0 ? d : null;
+          })(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
 
       if (updateError) throw updateError;
+
+      // Recompute matching scores after update (fire and forget)
+      computeAndSaveMatchesForDemande(id, { ...formData, id, categorie: formData.categorie });
+
       setSuccess(true);
       setTimeout(() => router.push(`/client/demandes/${id}`), 1500);
     } catch (err) {
@@ -216,6 +257,73 @@ export default function EditDemandePage() {
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               />
             </div>
+
+            {SPECIALITES_MAP[formData.categorie] && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Spécialité recherchée</label>
+                <div className="flex flex-wrap gap-2">
+                  {SPECIALITES_MAP[formData.categorie].map(spec => (
+                    <button
+                      key={spec}
+                      type="button"
+                      onClick={() => { update('specialite', spec); if (spec !== 'Autre') update('specialite_autre', ''); }}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                        formData.specialite === spec
+                          ? 'border-indigo-600 bg-indigo-600 text-white'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
+                      }`}
+                    >
+                      {spec}
+                    </button>
+                  ))}
+                </div>
+                {formData.specialite === 'Autre' && (
+                  <input
+                    type="text"
+                    value={formData.specialite_autre}
+                    onChange={(e) => update('specialite_autre', e.target.value)}
+                    placeholder="Précisez la spécialité..."
+                    className="mt-3 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                )}
+                {formData.specialite === 'Développement' && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Langages de développement <span className="text-gray-400">(optionnel)</span></label>
+                    <input
+                      type="text"
+                      value={formData.langages_dev}
+                      onChange={(e) => update('langages_dev', e.target.value)}
+                      placeholder="Ex : JavaScript, Python, React, PHP..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+                {formData.specialite === 'Cours particuliers' && (
+                  <div className="mt-3 grid md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Matière <span className="text-gray-400">(optionnel)</span></label>
+                      <input
+                        type="text"
+                        value={formData.matiere}
+                        onChange={(e) => update('matiere', e.target.value)}
+                        placeholder="Ex : Mathématiques, Français..."
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Niveau <span className="text-gray-400">(optionnel)</span></label>
+                      <input
+                        type="text"
+                        value={formData.niveau}
+                        onChange={(e) => update('niveau', e.target.value)}
+                        placeholder="Ex : CP, 3ème, Terminale, Bac+2..."
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>

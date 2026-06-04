@@ -18,6 +18,7 @@ const COLORS = {
 
 const STATUS_CONFIG = {
   en_attente: { label: 'En attente de réponse', color: 'bg-yellow-100 text-yellow-700' },
+  envoye:     { label: 'En attente de réponse', color: 'bg-yellow-100 text-yellow-700' },
   lu:         { label: 'Lu',                   color: 'bg-blue-100 text-blue-700' },
   accepte:    { label: 'Accepté',              color: 'bg-green-100 text-green-700' },
   refuse:     { label: 'Refusé',              color: 'bg-red-100 text-red-700' },
@@ -77,7 +78,7 @@ export default function DevisDetailPage() {
       }
 
       // Auto-expire si conditions remplies (fire-and-forget)
-      if (['en_attente', 'lu'].includes(devisData.statut)) {
+      if (['en_attente', 'envoye', 'lu'].includes(devisData.statut)) {
         const today = new Date().toISOString().split('T')[0];
         const demandeExpired = devisData.demande?.date_souhaitee
           ? devisData.demande.date_souhaitee < today
@@ -272,7 +273,7 @@ export default function DevisDetailPage() {
   const demande = devis.demande;
   const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG.en_attente;
   const { devisValExpired, demandeExpired, daysLeft } = getExpirationInfo();
-  const canRespond = ['en_attente', 'lu'].includes(devis.statut);
+  const canRespond = ['en_attente', 'envoye', 'lu'].includes(devis.statut);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -725,14 +726,14 @@ export default function DevisDetailPage() {
             </div>
 
             {/* Expiration warning */}
-            {['envoye', 'lu'].includes(devis.statut) && expirationDays <= 5 && expirationDays > 0 && (
+            {['en_attente', 'lu'].includes(devis.statut) && daysLeft !== null && daysLeft <= 5 && daysLeft > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-yellow-600 mt-0.5" />
                   <div>
                     <p className="font-medium text-yellow-800">Devis bientôt expiré</p>
                     <p className="text-sm text-yellow-700">
-                      Ce devis expire dans {expirationDays} jour{expirationDays > 1 ? 's' : ''}.
+                      Ce devis expire dans {daysLeft} jour{daysLeft > 1 ? 's' : ''}.
                       Pensez à y répondre rapidement.
                     </p>
                   </div>

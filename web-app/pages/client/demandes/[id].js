@@ -371,6 +371,29 @@ export default function DemandeDetailPage() {
                   <p className="text-sm text-gray-600">{demande.instructions_speciales}</p>
                 </div>
               )}
+
+              {(demande.type_prestation?.length > 0 || demande.details) && (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {demande.type_prestation?.filter(Boolean).map((s, i) => (
+                    <span key={i} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">{s}</span>
+                  ))}
+                  {demande.details?.langages && (
+                    <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
+                      Langages : {demande.details.langages}
+                    </span>
+                  )}
+                  {demande.details?.matiere && (
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                      Matière : {demande.details.matiere}
+                    </span>
+                  )}
+                  {demande.details?.niveau && (
+                    <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+                      Niveau : {demande.details.niveau}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Tabs */}

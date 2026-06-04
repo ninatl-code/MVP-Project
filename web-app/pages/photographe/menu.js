@@ -42,6 +42,8 @@ import {
   Wallet,
   Zap,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ImageIcon,
 } from "lucide-react";
 
@@ -990,6 +992,7 @@ export default function ProviderHomeMenu() {
   // Nouveau: Profil incomplet (aligné sur mobile)
   const [profileComplete, setProfileComplete] = useState(true);
   const [missingSteps, setMissingSteps] = useState([]);
+  const [showProfileWarning, setShowProfileWarning] = useState(true);
   const router = useRouter();
   
   // Hook pour le switch de profil
@@ -1288,7 +1291,7 @@ export default function ProviderHomeMenu() {
               </div>
               <div>
                 <p className="text-lg font-bold">Demandes plateforme</p>
-                <p className="text-sm opacity-80">Missions proposées par ServiDaba</p>
+                <p className="text-sm opacity-80">Missions proposées par Bricool</p>
               </div>
               <ChevronRight className="w-5 h-5 ml-auto shrink-0" />
             </button>
@@ -1297,93 +1300,96 @@ export default function ProviderHomeMenu() {
           {/* Alerte Profil Incomplet (aligné sur mobile) */}
           {!profileComplete && missingSteps.length > 0 && (
             <div 
-              className="mb-8 rounded-2xl p-6 border-2"
+              className="mb-8 rounded-2xl border-2"
               style={{ 
                 background: 'linear-gradient(135deg, #FFF3CD, #FFE8A3)',
                 borderColor: '#F59E0B'
               }}
             >
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 p-6" style={{ paddingBottom: showProfileWarning ? '0.75rem' : '1.5rem' }}>
                 <AlertTriangle className="w-6 h-6" style={{ color: '#F59E0B' }} />
-                <h2 className="text-lg font-bold" style={{ color: COLORS.text }}>
+                <h2 className="text-lg font-bold flex-1" style={{ color: COLORS.text }}>
                   Profil incomplet
                 </h2>
+                <button
+                  onClick={() => setShowProfileWarning(v => !v)}
+                  className="p-1 rounded-lg transition-colors hover:bg-amber-200"
+                  style={{ color: '#F59E0B' }}
+                  aria-label={showProfileWarning ? 'Masquer' : 'Afficher'}
+                >
+                  {showProfileWarning ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
               </div>
-              <p className="text-sm mb-4" style={{ color: COLORS.text + 'CC' }}>
-                Complétez votre profil pour recevoir plus de demandes
-              </p>
-              <div className="space-y-2 mb-4">
-                {missingSteps.map((step, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4" style={{ color: '#F59E0B' }} />
-                    <span className="text-sm" style={{ color: COLORS.text }}>{step}</span>
+              {showProfileWarning && (
+                <div className="px-6 pb-6">
+                  <p className="text-sm mb-4" style={{ color: COLORS.text + 'CC' }}>
+                    Complétez votre profil pour recevoir plus de demandes
+                  </p>
+                  <div className="space-y-2 mb-4">
+                    {missingSteps.map((step, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" style={{ color: '#F59E0B' }} />
+                        <span className="text-sm" style={{ color: COLORS.text }}>{step}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button
-                onClick={() => router.push('/photographe/profil')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-white font-semibold text-sm transition-all hover:bg-amber-50"
-                style={{ borderColor: '#F59E0B', color: '#F59E0B' }}
-              >
-                Compléter mon profil
-                <ArrowRight className="w-4 h-4" />
-              </button>
+                  <button
+                    onClick={() => router.push('/photographe/profil')}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-white font-semibold text-sm transition-all hover:bg-amber-50"
+                    style={{ borderColor: '#F59E0B', color: '#F59E0B' }}
+                  >
+                    Compléter mon profil
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Statistiques principales - cliquables */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+          {/* Statistiques principales - non cliquables */}
+          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             
-            {/* Réservations - cliquable */}
-            <Card 
-              hover={true} 
-              className="cursor-pointer"
-              onClick={() => router.push("/photographe/reservations")}
-            >
+            {/* Réservations - non cliquable */}
+            <Card>
               <CardContent className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.secondary + '20' }}
+                      style={{ backgroundColor: '#FFFFFF' + '20' }}
                     >
-                      <Calendar className="w-5 h-5" style={{ color: COLORS.accent }} />
+                      <Calendar className="w-5 h-5" style={{ color: '#A10505' }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
                       Réservations
                     </p>
                   </div>
-                  <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
+                  <p className="text-3xl font-bold mb-1" style={{ color: '#A10505' }}>
                     {totalReservations}
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
                     En attente : <span className="font-semibold text-amber-500">{nbPending}</span>
                   </p>
                 </div>
-                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </CardContent>
             </Card>
 
-            {/* Devis envoyés - cliquable */}
-            <Card 
-              hover={true}
-              className="cursor-pointer"
-              onClick={() => router.push("/photographe/devis")}
-            >
+            {/* Devis envoyés - non cliquable */}
+            <Card>
               <CardContent className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <div 
                       className="p-2 rounded-xl"
-                      style={{ backgroundColor: COLORS.secondary + '40' }}
+                      style={{ backgroundColor: '#FFFFFF' + '40' }}
                     >
-                      <FileText className="w-5 h-5" style={{ color: COLORS.accent }} />
+                      <FileText className="w-5 h-5" style={{ color: '#1B15B3' }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
                       Devis envoyés
                     </p>
                   </div>
-                  <p className="text-3xl font-bold mb-1" style={{ color: COLORS.text }}>
+                  <p className="text-3xl font-bold mb-1" style={{ color: '#1B15B3' }}>
                     {nbDevisTotal}
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
@@ -1391,28 +1397,25 @@ export default function ProviderHomeMenu() {
                     {' · '}Acceptés : <span className="font-semibold text-green-500">{nbDevisAccepted}</span>
                   </p>
                 </div>
-                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </CardContent>
             </Card>
-            
-          </section>
+          
 
           {/* Chiffre d'affaires - seul, non cliquable */}
-          <section className="mb-8">
             <Card>
-              <CardContent className="flex items-center justify-center py-6">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-3 mb-2">
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
                     <div 
-                      className="p-3 rounded-xl"
-                      style={{ backgroundColor: '#10B98120' }}
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: '#10B98120' + '40' }}
                     >
-                      <BarChart3 className="w-6 h-6" style={{ color: '#10B981' }} />
+                      <BarChart3 className="w-5 h-5" style={{ color: '#10B981' }} />
                     </div>
-                  </div>
-                  <p className="text-sm font-medium mb-1" style={{ color: COLORS.text + 'CC' }}>
+                  <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
                     Chiffre d'affaires total
                   </p>
+                  </div>
                   <p className="text-4xl font-bold" style={{ color: '#10B981' }}>
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(chiffreAffaires)}
                   </p>

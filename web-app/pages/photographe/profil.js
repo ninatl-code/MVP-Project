@@ -37,11 +37,22 @@ const EQUIPE = [
   { id: 'binome', label: "J'ai un binôme", icon: Users },
 ];
 
+const CATEGORIES_PROFIL = [
+  { id: 'services-domicile',  label: 'Services à domicile' },
+  { id: 'beaute-bien-etre',   label: 'Beauté & Bien-être' },
+  { id: 'evenementiel',       label: 'Événementiel' },
+  { id: 'transport',          label: 'Transport' },
+  { id: 'digital',            label: 'Digital' },
+  { id: 'education',          label: 'Éducation' },
+];
+
 const SPECIALISATIONS_MAP = {
-  'Services à domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage'],
-  'Transport & logistique': ['Chauffeur', 'Livraison', 'Déménagement'],
-  'Services digitaux': ['Développement', 'Design', 'Marketing'],
-  'Éducation & coaching': ['Cours particuliers', 'Coaching'],
+  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
+  'beaute-bien-etre': ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
+  'evenementiel': ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
+  'transport': ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
+  'digital': ['Développement', 'Design', 'Marketing', 'Autre'],
+  'education': ['Cours particuliers', 'Coaching', 'Autre'],
 };
 
 // Placeholders dynamiques pour "Équipement disponible"
@@ -228,15 +239,6 @@ const getServicesAdditionnels = (categories, specialisations) => {
   if (!catMap) return SERVICES_ADDITIONNELS_MAP._default;
   return (spec && catMap[spec]) || catMap._default || SERVICES_ADDITIONNELS_MAP._default;
 };
-
-const TARIFS_CATEGORIES = [
-  { id: 'portrait', label: 'Portrait', icon: User },
-  { id: 'mariage', label: 'Mariage', icon: Star },
-  { id: 'evenement', label: 'Événement', icon: Camera },
-  { id: 'corporate', label: 'Corporate', icon: Briefcase },
-  { id: 'produit', label: 'Produit', icon: Image },
-  { id: 'immobilier', label: 'Immobilier', icon: Home },
-];
 
 export default function PhotographeProfilPage() {
   const router = useRouter();
@@ -492,6 +494,7 @@ export default function PhotographeProfilPage() {
           documents_assurance: photoProfile?.documents_assurance || null,
           statut_validation: photoProfile?.statut_validation || 'pending',
           portfolio_photos: photoProfile?.portfolio_photos || [],
+          details: Array.isArray(photoProfile?.details) ? (photoProfile.details[0] || {}) : (photoProfile?.details || {}),
         };
         
         console.log('✅ Profil fusionné:', mergedProfile);
@@ -569,6 +572,16 @@ export default function PhotographeProfilPage() {
     setProfile(prev => ({ ...prev, [field]: value }));
   };
 
+  // Sauvegarde immédiate catégorie + spécialisations pour ne pas perdre la sélection en naviguant
+  const autoSaveSpecialisations = async (newCategories, newSpecialisations) => {
+    if (!user?.id) return;
+    await supabase.from('profils_prestataire').upsert({
+      id: user.id,
+      categories: newCategories,
+      specialisations: newSpecialisations,
+    });
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -626,6 +639,16 @@ export default function PhotographeProfilPage() {
           numero_tva: profile.numero_tva || null,
           statut_pro: profile.statut_pro ?? false,
           portfolio_photos: portfolioImages.map(i => i.url),
+          details: (() => {
+            const d = {};
+            const specs = profile.specialisations || [];
+            if (specs.includes('Développement') && profile.details?.langages) d.langages = profile.details.langages;
+            if (specs.includes('Cours particuliers')) {
+              if (profile.details?.matiere) d.matiere = profile.details.matiere;
+              if (profile.details?.niveau) d.niveau = profile.details.niveau;
+            }
+            return Object.keys(d).length > 0 ? [d] : null;
+          })(),
         });
 
       if (photoError) console.error('Erreur profils_prestataire:', photoError);
@@ -1305,14 +1328,26 @@ export default function PhotographeProfilPage() {
                   Ville
                 </label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                  <select
                     value={villeNom || ''}
                     onChange={(e) => setVilleNom(e.target.value)}
-                    placeholder="Casablanca, Rabat, Marrakech, Fès, Tanger..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
-                  />
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white appearance-none"
+                  >
+                    <option value="">Sélectionner une ville</option>
+                    {[
+                      'Casablanca','Rabat','Marrakech','Fès','Tanger','Agadir','Meknès','Oujda',
+                      'Kénitra','Tétouan','Safi','Mohammedia','Khouribga','Béni Mellal','El Jadida',
+                      'Nador','Settat','Berrechid','Khémisset','Inezgane','Ait Melloul','Taza',
+                      'Laâyoune','Dakhla','Guelmim','Taroudant','Ouarzazate','Errachidia','Ifrane',
+                      'Al Hoceima','Larache','Ksar El Kébir','Fnideq','Martil','Asilah','Essaouira',
+                      'Tiznit','Sidi Ifni','Tan-Tan','Midelt','Azrou','Figuig','Zagora','Tinghir',
+                      'Boujdour','Smara','Chefchaouen','Ouezzane','Sidi Kacem','Sidi Slimane',
+                      'Souk El Arbaa','Bouznika','Benslimane','Médiouna','Nouaceur','Salé','Témara',
+                    ].sort().map(v => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1444,15 +1479,16 @@ export default function PhotographeProfilPage() {
                 <h2 className="font-semibold text-gray-900 mb-2">Catégorie principale</h2>
                 <p className="text-sm text-gray-500 mb-4">Sélectionnez votre domaine d'activité (un seul choix)</p>
                 <div className="flex flex-wrap gap-2">
-                  {prestationsCategories.map(cat => {
-                    const isSelected = (profile?.categories || [])[0] === cat.nom;
+                  {CATEGORIES_PROFIL.map(cat => {
+                    const isSelected = (profile?.categories || [])[0] === cat.id;
                     return (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => {
-                          handleProfileChange('categories', [cat.nom]);
+                          handleProfileChange('categories', [cat.id]);
                           handleProfileChange('specialisations', []);
+                          autoSaveSpecialisations([cat.id], []);
                         }}
                         className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                           isSelected
@@ -1460,7 +1496,7 @@ export default function PhotographeProfilPage() {
                             : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
                         }`}
                       >
-                        {cat.nom}
+                        {cat.label}
                       </button>
                     );
                   })}
@@ -1472,7 +1508,7 @@ export default function PhotographeProfilPage() {
                 <div>
                   <h2 className="font-semibold text-gray-900 mb-2">Spécialisations</h2>
                   <p className="text-sm text-gray-500 mb-4">
-                    Vos spécialisations dans <span className="font-medium text-indigo-700">{(profile?.categories || [])[0]}</span>
+                    Vos spécialisations dans <span className="font-medium text-indigo-700">{CATEGORIES_PROFIL.find(c => c.id === (profile?.categories || [])[0])?.label || (profile?.categories || [])[0]}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {SPECIALISATIONS_MAP[(profile?.categories || [])[0]].map(spec => {
@@ -1483,10 +1519,9 @@ export default function PhotographeProfilPage() {
                           type="button"
                           onClick={() => {
                             const current = profile?.specialisations || [];
-                            handleProfileChange(
-                              'specialisations',
-                              isSelected ? current.filter(s => s !== spec) : [...current, spec]
-                            );
+                            const newSpecs = isSelected ? current.filter(s => s !== spec) : [...current, spec];
+                            handleProfileChange('specialisations', newSpecs);
+                            autoSaveSpecialisations(profile?.categories || [], newSpecs);
                           }}
                           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                             isSelected
@@ -1506,10 +1541,9 @@ export default function PhotographeProfilPage() {
                           type="button"
                           onClick={() => {
                             const current = profile?.specialisations || [];
-                            handleProfileChange(
-                              'specialisations',
-                              autreSelected ? current.filter(s => s !== 'Autre') : [...current, 'Autre']
-                            );
+                            const newSpecs = autreSelected ? current.filter(s => s !== 'Autre') : [...current, 'Autre'];
+                            handleProfileChange('specialisations', newSpecs);
+                            autoSaveSpecialisations(profile?.categories || [], newSpecs);
                             if (autreSelected) setAutreSpecInput('');
                           }}
                           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
@@ -1524,7 +1558,7 @@ export default function PhotographeProfilPage() {
                     })()}
                   </div>
 
-                  {/* Champ libre si "Autre" coché */}
+              {/* Champ libre si "Autre" coché */}
                   {(profile?.specialisations || []).includes('Autre') && (
                     <div className="mt-4">
                       <p className="text-sm text-gray-500 mb-2">Précisez vos autres spécialités</p>
@@ -1551,7 +1585,9 @@ export default function PhotographeProfilPage() {
                           onClick={() => {
                             const val = autreSpecInput.trim();
                             if (val && val !== 'Autre' && !(profile?.specialisations || []).includes(val)) {
-                              handleProfileChange('specialisations', [...(profile?.specialisations || []), val]);
+                              const newSpecs = [...(profile?.specialisations || []), val];
+                              handleProfileChange('specialisations', newSpecs);
+                              autoSaveSpecialisations(profile?.categories || [], newSpecs);
                             }
                             setAutreSpecInput('');
                           }}
@@ -1576,6 +1612,53 @@ export default function PhotographeProfilPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Champs conditionnels selon spécialité */}
+              {(profile?.specialisations || []).includes('Développement') && (
+                <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Langages de développement <span className="text-gray-400 font-normal">(optionnel)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={profile?.details?.langages || ''}
+                    onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), langages: e.target.value })}
+                    placeholder="Ex : JavaScript, Python, React, Node.js..."
+                    className="w-full px-4 py-2.5 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                  />
+                </div>
+              )}
+
+              {(profile?.specialisations || []).includes('Cours particuliers') && (
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Matière <span className="text-gray-400 font-normal">(optionnel)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={profile?.details?.matiere || ''}
+                        onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), matiere: e.target.value })}
+                        placeholder="Ex : Mathématiques, Français..."
+                        className="w-full px-4 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Niveau <span className="text-gray-400 font-normal">(optionnel)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={profile?.details?.niveau || ''}
+                        onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), niveau: e.target.value })}
+                        placeholder="Ex : Collège, Lycée, Université..."
+                        className="w-full px-4 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 

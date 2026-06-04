@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
+import { computeAndSaveMatchesForDemande } from '../../../lib/matchingService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
@@ -16,8 +17,24 @@ const COLORS = {
   text: '#1C1C1E',
 };
 
+const VILLES_MAROC = [
+  'Agadir','Aït Melloul','Al Hoceïma','Azemmour','Azrou',
+  'Béni Mellal','Benslimane','Berkane','Berrechid','Bouznika',
+  'Casablanca','Chefchaouen','Dakhla','El Jadida','El Kelaa des Sraghna',
+  'Errachidia','Essaouira','Fès','Figuig','Guelmim',
+  'Ifrane','Inezgane','Kénitra','Khémisset','Khénifra',
+  'Khouribga','Laâyoune','Larache','Marrakech','Meknès',
+  'Midelt','Mohammedia','Nador','Ouarzazate','Oujda',
+  'Rabat','Safi','Salé','Settat','Sidi Bennour',
+  'Sidi Ifni','Sidi Kacem','Sidi Slimane','Tanger','Tan-Tan',
+  'Taounate','Taroudant','Taza','Tétouan','Tiznit',
+  'Zagora'
+];
+
 const SPECIALITES_MAP = {
   'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
+  'beaute-bien-etre': ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
+  'evenementiel': ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
   'transport': ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
   'digital': ['Développement', 'Design', 'Marketing', 'Autre'],
   'education': ['Cours particuliers', 'Coaching', 'Autre'],
@@ -64,6 +81,9 @@ export default function CreateDemandePage() {
     specialite: '',
     specialite_autre: '',
     langues_souhaitees: [],
+    langages_dev: '',
+    matiere: '',
+    niveau: '',
   });
 
   // Redirect if not authenticated (instant — reads from local storage)
@@ -137,23 +157,40 @@ export default function CreateDemandePage() {
         lieu: formData.lieu || '',
         duree_estimee_heures: parseInt(formData.duree_estimee) || null,
         budget_max: parseFloat(formData.budget_max) || null,
-        type_prestation: formData.specialite === 'Autre'
-          ? [formData.specialite_autre?.trim() || 'Autre']
-          : [formData.specialite || ''],
-        langues_souhaitees: formData.langues_souhaitees,
+        type_prestation: (() => {
+          const spec = formData.specialite === 'Autre'
+            ? (formData.specialite_autre?.trim() || 'Autre')
+            : formData.specialite?.trim();
+          return spec ? [spec] : null;
+        })(),
+        langues_souhaitees: formData.langues_souhaitees?.length > 0 ? formData.langues_souhaitees : null,
         nb_personnes: parseInt(formData.nombre_personnes) || null,
         instructions_speciales: formData.exigences_specifiques || null,
+        details: (() => {
+          const d = {};
+          if (formData.specialite === 'Développement' && formData.langages_dev.trim()) d.langages = formData.langages_dev.trim();
+          if (formData.specialite === 'Cours particuliers') {
+            if (formData.matiere.trim()) d.matiere = formData.matiere.trim();
+            if (formData.niveau.trim()) d.niveau = formData.niveau.trim();
+          }
+          return Object.keys(d).length > 0 ? [d] : null;
+        })(),
         statut: 'ouverte',
       };
 
-      const { error: insertError } = await supabase
+      const { data: insertedData, error: insertError } = await supabase
         .from('demandes_client')
-        .insert(insertPayload);
+        .insert(insertPayload)
+        .select('id')
+        .single();
 
       if (insertError) {
         console.error('Insert error:', insertError);
         throw insertError;
       }
+
+      // Compute and persist matching scores for all prestataires (fire and forget)
+      computeAndSaveMatchesForDemande(insertedData.id, { ...insertPayload, id: insertedData.id });
 
       setSuccess(true);
       setTimeout(() => router.push('/client/demandes'), 2000);
@@ -271,6 +308,42 @@ export default function CreateDemandePage() {
               className="mt-3 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           )}
+          {formData.specialite === 'Développement' && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Langages de développement <span className="text-gray-400">(optionnel)</span></label>
+              <input
+                type="text"
+                value={formData.langages_dev}
+                onChange={(e) => updateFormData('langages_dev', e.target.value)}
+                placeholder="Ex : JavaScript, Python, React, PHP..."
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+          )}
+          {formData.specialite === 'Cours particuliers' && (
+            <div className="mt-3 grid md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Matière <span className="text-gray-400">(optionnel)</span></label>
+                <input
+                  type="text"
+                  value={formData.matiere}
+                  onChange={(e) => updateFormData('matiere', e.target.value)}
+                  placeholder="Ex : Mathématiques, Français..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Niveau <span className="text-gray-400">(optionnel)</span></label>
+                <input
+                  type="text"
+                  value={formData.niveau}
+                  onChange={(e) => updateFormData('niveau', e.target.value)}
+                  placeholder="Ex : CP, 3ème, Terminale, Bac+2..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -343,13 +416,14 @@ export default function CreateDemandePage() {
             <MapPin className="w-4 h-4 inline mr-1" />
             Ville de la prestation *
           </label>
-          <input
-            type="text"
+          <select
             value={formData.ville}
             onChange={(e) => updateFormData('ville', e.target.value)}
-            placeholder="Ex: Casablanca, Rabat, Marrakech..."
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          />
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+          >
+            <option value="">Sélectionner une ville...</option>
+            {VILLES_MAROC.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">

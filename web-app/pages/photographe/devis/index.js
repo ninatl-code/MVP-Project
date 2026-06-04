@@ -77,10 +77,13 @@ export default function PhotographeDevisPage() {
       // Check and update expired devis
       const now = new Date();
       const processedDevis = (data || []).map(d => {
-        if (d.statut === 'en_attente' && d.date_expiration && isAfter(now, new Date(d.date_expiration))) {
+        // Normalize 'envoye' → 'en_attente' (same semantic, different label used at insert)
+        const statut = d.statut === 'envoye' ? 'en_attente' : d.statut;
+        // Mark expired
+        if (statut === 'en_attente' && d.date_expiration && isAfter(now, new Date(d.date_expiration))) {
           return { ...d, statut: 'expire' };
         }
-        return d;
+        return { ...d, statut };
       });
 
       setDevis(processedDevis);
@@ -121,6 +124,7 @@ export default function PhotographeDevisPage() {
     { key: 'en_attente', label: 'En attente', count: stats.pending },
     { key: 'accepte', label: 'Acceptés', count: stats.accepted },
     { key: 'refuse', label: 'Refusés', count: devis.filter(d => d.statut === 'refuse').length },
+    { key: 'expire', label: 'Expirés', count: devis.filter(d => d.statut === 'expire').length },
   ];
 
   return (

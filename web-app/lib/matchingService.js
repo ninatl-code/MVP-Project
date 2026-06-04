@@ -1,80 +1,94 @@
 import { supabase } from './supabaseClient';
 
+// Mapping slug de catégorie (demandes) → label catégorie (profils_prestataire)
+const CATEGORIE_SLUG_TO_LABEL = {
+  'services-domicile': 'Services à domicile',
+  'transport': 'Transport & logistique',
+  'digital': 'Services digitaux',
+  'education': 'Éducation & coaching',
+  'beaute-bien-etre': 'Beauté & Bien-être',
+  'evenementiel': 'Événementiel',
+};
+
 /**
  * Calculate match score between a demande and a service provider
  * Score is 0-100 based on:
- * - Specialization match (40 pts)
- * - City match (30 pts)
- * - Budget compatibility (20 pts)
- * - Verification status (10 pts)
- * - Bonus: high rating (+5 pts)
+ * - Same speciality (type_prestation vs specialisations) : +50
+ * - Same category (categorie slug vs categories)         : +25
+ * - Same city                                            : +30
+ * - Future service date                                  : +20
  */
 export const calculateMatchScore = (demande, photographe) => {
   let score = 0;
   const matchReasons = [];
 
-  // 1. Specialization match (40 points)
-  if (photographe.specialisations && demande.categorie) {
-    const specialisations = Array.isArray(photographe.specialisations)
-      ? photographe.specialisations
-      : [photographe.specialisations];
+  // Normalise arrays
+  const demandeSpecialties = Array.isArray(demande.type_prestation)
+    ? demande.type_prestation.filter(Boolean)
+    : (demande.type_prestation ? [demande.type_prestation] : []);
 
-    if (specialisations.includes(demande.categorie)) {
-      score += 40;
-      matchReasons.push('Spécialité correspondante');
-    } else if (specialisations.some(s => s.toLowerCase().includes(demande.categorie.toLowerCase()))) {
-      score += 20;
-      matchReasons.push('Spécialité similaire');
-    }
+  const prestaSpecialisations = Array.isArray(photographe.specialisations)
+    ? photographe.specialisations.filter(Boolean)
+    : (photographe.specialisations ? [photographe.specialisations] : []);
+
+  const prestaCategories = Array.isArray(photographe.categories)
+    ? photographe.categories.filter(Boolean)
+    : (photographe.categories ? [photographe.categories] : []);
+
+  const categorieLabel = CATEGORIE_SLUG_TO_LABEL[demande.categorie] || demande.categorie || '';
+
+  // 1. Specialty exact match: type_prestation vs specialisations
+  const matchedSpec = demandeSpecialties.find(s =>
+    prestaSpecialisations.some(ps => ps.toLowerCase() === s.toLowerCase())
+  );
+
+  // 2. Category match: categorie label vs photographe.categories
+  const hasCategoryMatch = categorieLabel && prestaCategories.some(c =>
+    c.toLowerCase() === categorieLabel.toLowerCase() ||
+    c.toLowerCase().includes(categorieLabel.toLowerCase()) ||
+    categorieLabel.toLowerCase().includes(c.toLowerCase())
+  );
+
+  // 3. Fallback: specialty name contains/matches category label (e.g. 'Photographe' in 'Événementiel')
+  const hasSpecCategoryFallback = !hasCategoryMatch && categorieLabel && prestaSpecialisations.some(ps =>
+    ps.toLowerCase().includes(categorieLabel.toLowerCase()) ||
+    categorieLabel.toLowerCase().includes(ps.toLowerCase())
+  );
+
+  if (matchedSpec) {
+    score += 50;
+    matchReasons.push(`Même spécialité : ${matchedSpec} (+50%)`);
+  } else if (hasCategoryMatch || hasSpecCategoryFallback) {
+    score += 25;
+    matchReasons.push(`Même catégorie : ${categorieLabel} (+25%)`);
   }
 
-  // 2. City match (30 points) — based on demande.ville only
+  // 2. City match
   if (demande.ville && photographe.ville) {
     const villesDemande = demande.ville.toLowerCase().trim();
     const villesPresta = photographe.ville.toLowerCase().trim();
 
     if (villesDemande === villesPresta) {
       score += 30;
-      matchReasons.push(`Même ville (${demande.ville})`);
+      matchReasons.push(`Même lieu : ${demande.ville} (+30%)`);
     } else if (
       villesPresta.includes(villesDemande) ||
       villesDemande.includes(villesPresta)
     ) {
-      // Partial match (e.g. "Grand Casablanca" vs "Casablanca")
       score += 15;
-      matchReasons.push('Ville proche');
+      matchReasons.push('Lieu proche (+15%)');
     }
-  } else if (!photographe.ville) {
-    // Prestataire sans ville renseignée — score neutre
-    score += 10;
   }
 
-  // 3. Budget compatibility (20 points)
-  if (photographe.tarif_horaire_min && demande.budget_max) {
-    const estimatedCost = photographe.tarif_horaire_min * (demande.duree_estimee_heures || 2);
-
-    if (estimatedCost <= demande.budget_max) {
+  // 3. Future service date
+  if (demande.date_souhaitee) {
+    const dateService = new Date(demande.date_souhaitee);
+    if (dateService >= new Date()) {
       score += 20;
-      matchReasons.push('Budget compatible');
-    } else if (estimatedCost <= demande.budget_max * 1.2) {
-      score += 10;
-      matchReasons.push('Budget légèrement au-dessus');
+      matchReasons.push(
+        `Date disponible : ${dateService.toLocaleDateString('fr-FR')} (+20%)`
+      );
     }
-  } else if (!photographe.tarif_horaire_min) {
-    score += 15;
-    matchReasons.push('Tarif flexible');
-  }
-
-  // 4. Verification status (10 points)
-  if (photographe.identite_verifiee) {
-    score += 10;
-    matchReasons.push('Prestataire vérifié');
-  }
-
-  // Bonus: High rating
-  if (photographe.note_moyenne && photographe.note_moyenne >= 4.5) {
-    score += 5;
-    matchReasons.push('Excellentes notes');
   }
 
   return {
@@ -149,16 +163,20 @@ export const findMatchingPhotographers = async (demandeId, limit = 10) => {
  */
 export const findMatchingDemandes = async (photographeId, limit = 20) => {
   try {
-    // Get service provider profile
-    const { data: photographe, error: profError } = await supabase
-      .from('profils_prestataire')
-      .select('*')
-      .eq('id', photographeId)
-      .single();
+    // Get service provider profile (profils_prestataire: specialisations, categories, ville absente ici)
+    const [{ data: photographe, error: profError }, { data: profileBase }] = await Promise.all([
+      supabase.from('profils_prestataire').select('*').eq('id', photographeId).single(),
+      supabase.from('profiles').select('ville').eq('id', photographeId).single(),
+    ]);
 
     if (profError) {
       console.warn('No service provider profile found');
     }
+
+    // Merge ville from profiles into the photographe object
+    const photographeWithVille = photographe
+      ? { ...photographe, ville: profileBase?.ville || photographe.ville || null }
+      : null;
 
     // Get active demandes
     const { data: demandes, error: demandeError } = await supabase
@@ -172,28 +190,104 @@ export const findMatchingDemandes = async (photographeId, limit = 20) => {
 
     if (demandeError) throw demandeError;
 
-    if (!photographe) {
-      // Return all active demandes without scoring
-      return { matches: demandes || [], photographe: null, error: null };
+    if (!photographeWithVille) {
+      return { matches: [], photographe: null, error: null };
     }
 
-    // Calculate scores
+    // Calculate scores — keep only non-expired demandes with score >= 55, sorted desc
+    const now = new Date();
     const matchedDemandes = demandes
+      .filter(d => !d.date_souhaitee || new Date(d.date_souhaitee) >= now)
       .map(demande => {
-        const { score, matchReasons } = calculateMatchScore(demande, photographe);
-        return {
-          ...demande,
-          matchScore: score,
-          matchReasons,
-        };
+        const { score, matchReasons } = calculateMatchScore(demande, photographeWithVille);
+        return { ...demande, matchScore: score, matchReasons };
       })
+      .filter(d => d.matchScore >= 55)
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, limit);
 
-    return { matches: matchedDemandes, photographe, error: null };
+    return { matches: matchedDemandes, photographe: photographeWithVille, error: null };
   } catch (error) {
     console.error('Error finding matching demandes:', error);
     return { matches: [], photographe: null, error };
+  }
+};
+
+/**
+ * Compute scores for all prestataires against a given demande and persist to matchings table.
+ * Called when a demande is created or updated by a client.
+ */
+export const computeAndSaveMatchesForDemande = async (demandeId, demandeData) => {
+  try {
+    // Fetch all prestataire profiles
+    const { data: prestataires, error: prestError } = await supabase
+      .from('profils_prestataire')
+      .select('id, specialisations, categories, ville');
+    if (prestError) throw prestError;
+    if (!prestataires || prestataires.length === 0) return { error: null };
+
+    // Fetch villes from profiles table (ville is stored there)
+    const prestaIds = prestataires.map(p => p.id);
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, ville')
+      .in('id', prestaIds);
+    const villeMap = {};
+    (profilesData || []).forEach(p => { villeMap[p.id] = p.ville; });
+
+    // Score each prestataire
+    const scored = prestataires.map(p => {
+      const prestaWithVille = { ...p, ville: villeMap[p.id] || p.ville || null };
+      const { score, matchReasons } = calculateMatchScore(demandeData, prestaWithVille);
+      return { prestataire_id: p.id, score, matchReasons };
+    }).filter(m => m.score >= 55);
+
+    if (scored.length === 0) return { error: null };
+
+    // Upsert into matchings
+    const { error: upsertError } = await supabase
+      .from('matchings')
+      .upsert(
+        scored.map(m => ({
+          demande_id: demandeId,
+          prestataire_id: m.prestataire_id,
+          match_score: m.score,
+          match_reasons: m.matchReasons,
+          status: 'pending',
+        })),
+        { onConflict: 'demande_id,prestataire_id' }
+      );
+    if (upsertError) throw upsertError;
+
+    // Send notifications for score >= 80 (avoid duplicates)
+    const topMatches = scored.filter(m => m.score >= 80);
+    if (topMatches.length > 0) {
+      const { data: existingNotifs } = await supabase
+        .from('notifications')
+        .select('user_id')
+        .eq('demande_id', demandeId)
+        .eq('type', 'mission_suggeree')
+        .in('user_id', topMatches.map(m => m.prestataire_id));
+      const alreadyNotified = new Set((existingNotifs || []).map(n => n.user_id));
+      const newNotifs = topMatches.filter(m => !alreadyNotified.has(m.prestataire_id));
+      if (newNotifs.length > 0) {
+        await supabase.from('notifications').insert(
+          newNotifs.map(m => ({
+            user_id: m.prestataire_id,
+            type: 'mission_suggeree',
+            titre: 'Nouvelle mission suggérée',
+            contenu: `Une demande correspond à votre profil : "${demandeData.titre || demandeData.categorie || 'Prestation'}"`,
+            demande_id: demandeId,
+            lu: false,
+          }))
+        );
+      }
+    }
+
+    return { error: null };
+  } catch (error) {
+    console.error('Error computing matches for demande:', error);
+    return { error };
   }
 };
 
