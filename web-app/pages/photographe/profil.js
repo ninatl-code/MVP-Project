@@ -900,8 +900,8 @@ export default function PhotographeProfilPage() {
       
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Cover Photo */}
-        <div className="relative h-48 rounded-t-2xl overflow-hidden">
-          <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
+        <div className="relative h-15 rounded-t-2xl overflow-hidden">
+          <div className="w-full h-full bg-gradient-to-r from-blue-900 to-blue-900 border-white"/>
         </div>
 
         {/* Profile Header */}

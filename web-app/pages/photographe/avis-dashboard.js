@@ -243,7 +243,7 @@ export default function AvisDashboardPage() {
 
         {/* Rating Distribution */}
         <div className="bg-white rounded-xl p-6 border border-gray-100 mb-8">
-          <h3 className="font-semibold mb-4" style={{ color: COLORS.text }}>Distribution des notes</h3>
+          <h2 className="font-semibold mb-4" style={{ color: COLORS.text }}>Distribution des notes</h2>
           <div className="space-y-3">
             {[5, 4, 3, 2, 1].map(rating => {
               const count = stats.ratingDistribution[rating] || 0;
@@ -329,11 +329,11 @@ export default function AvisDashboardPage() {
         {filteredReviews.length === 0 ? (
           <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
             <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
               {filter === 'pending' ? 'Aucun avis en attente' :
                filter === 'responded' ? 'Aucune réponse publiée' :
                'Aucun avis pour le moment'}
-            </h3>
+            </h2>
             <p className="text-gray-500">
               {filter === 'all' ? 'Les avis de vos clients apparaîtront ici' : 'Changez de filtre pour voir plus d\'avis'}
             </p>
@@ -433,7 +433,7 @@ export default function AvisDashboardPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold" style={{ color: COLORS.text }}>Répondre à l'avis</h3>
+              <h2 className="text-xl font-bold" style={{ color: COLORS.text }}>Répondre à l'avis</h2>
               <button onClick={() => setSelectedReview(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>

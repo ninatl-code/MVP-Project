@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import HeaderParti from '../components/HeaderParti';
+import HeaderPresta from '../components/HeaderPresta';
 import {
   Bell, ArrowLeft, Check, CheckCheck, Calendar, MessageCircle,
   FileText, Euro, Star, Camera, Clock, X, Trash2, Settings, Zap
@@ -16,7 +18,7 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState('all'); // all, unread
   const [selectedIds, setSelectedIds] = useState([]);
 
-  const isPhotographe = activeRole === 'photographe' || activeRole === 'prestataire';
+const isPhotographe = activeRole === 'prestataire';
 
   useEffect(() => {
     if (user?.id) {
@@ -47,6 +49,7 @@ export default function NotificationsPage() {
       setLoading(false);
     }
   };
+const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? HeaderPresta : HeaderParti;
 
   const markAsRead = async (ids) => {
     try {
@@ -193,11 +196,12 @@ export default function NotificationsPage() {
     });
   };
 
-const unreadCount = notifications.filter(n => !n.lu).length;
+  const unreadCount = notifications.filter(n => !n.lu).length;
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Header />
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -205,6 +209,7 @@ const unreadCount = notifications.filter(n => !n.lu).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header />
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

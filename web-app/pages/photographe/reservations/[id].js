@@ -4,72 +4,62 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
-import { 
-  ArrowLeft, User, Calendar, Clock, MapPin, Euro,
-  MessageSquare, Check, X, AlertCircle, Phone, Mail,
-  Camera, FileText, CheckCircle
+import { createNotification, NOTIFICATION_TYPES } from '../../../lib/notificationService';
+import {
+  ArrowLeft, User, Calendar, Clock, MapPin,
+  MessageSquare, Check, X, Camera,
+  FileText, CheckCircle, Mail, Phone, Banknote,
+  AlertCircle, Clock3, ListChecks
 } from 'lucide-react';
-import { format, parseISO, isPast, isFuture } from 'date-fns';
+import { format, parseISO, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const STATUS_CONFIG = {
-  'pending': { 
-    label: 'En attente', 
-    color: 'bg-yellow-100 text-yellow-700',
-    description: 'En attente de confirmation'
-  },
-  'confirmee': { 
-    label: 'Confirmée', 
-    color: 'bg-blue-100 text-blue-700',
-    description: 'Prestation confirmée'
-  },
-  'en_cours': { 
-    label: 'En cours', 
-    color: 'bg-indigo-100 text-indigo-700',
-    description: 'Prestation en cours'
-  },
-  'terminee': { 
-    label: 'Terminée', 
-    color: 'bg-green-100 text-green-700',
-    description: 'Prestation terminée avec succès'
-  },
-  'annulee': { 
-    label: 'Annulée', 
-    color: 'bg-red-100 text-red-700',
-    description: 'Cette réservation a été annulée'
-  },
+  pending:    { label: 'En attente',  color: 'bg-yellow-100 text-yellow-700', border: 'border-yellow-200', bg: 'bg-yellow-50',  description: 'En attente de votre confirmation' },
+  confirmed:  { label: 'Confirmée',   color: 'bg-green-100 text-green-700',   border: 'border-green-200',  bg: 'bg-green-50',   description: 'Prestation confirmée' },
+  in_progress:   { label: 'En cours',    color: 'bg-indigo-100 text-indigo-700', border: 'border-indigo-200', bg: 'bg-indigo-50',  description: 'Prestation en cours' },
+  completed:   { label: 'Terminée',    color: 'bg-blue-100 text-blue-700',     border: 'border-blue-200',   bg: 'bg-blue-50',    description: 'Prestation terminée avec succès' },
+  cancelled:    { label: 'Annulée',     color: 'bg-red-100 text-red-700',       border: 'border-red-200',    bg: 'bg-red-50',     description: 'Cette réservation a été annulée' },
 };
 
 export default function PhotographeReservationDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { photographeProfile } = useAuth();
+
   const [reservation, setReservation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [refuseReason, setRefuseReason] = useState('');
+  const [showRefuseModal, setShowRefuseModal] = useState(false);
+  const [acceptComment, setAcceptComment] = useState('');
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [facture, setFacture] = useState(null);
 
-  useEffect(() => {
-    if (id && photographeProfile?.id) {
-      fetchReservation();
-    }
-  }, [id, photographeProfile]);
-
+  /* =========================
+     FETCH SAFE
+  ========================= */
   const fetchReservation = async () => {
+    if (!id || !photographeProfile?.id) return;
+
     setLoading(true);
+
     try {
       const { data, error } = await supabase
         .from('reservations')
         .select(`
           *,
-          client:client_id (
-            id, prenom, nom, email, telephone, photo_profil
+          client:profiles!reservations_client_id_fkey(
+            id, nom, email, telephone, avatar_url
           ),
           devis:devis_id (
-            id, montant_total, message, details
+            id, montant_total, message_personnalise,
+            tarif_base, frais_deplacement,
+            services_inclus, modalites_paiement
           ),
-          demande:demande_id (
+          demande:demandes_client!reservations_demande_id_fkey(
             id, titre, description, categorie
           )
         `)
@@ -78,426 +68,417 @@ export default function PhotographeReservationDetailPage() {
         .single();
 
       if (error) throw error;
-      setReservation(data);
-    } catch (error) {
-      console.error('Error fetching reservation:', error);
+
+      setReservation(data || null);
+
+      // Fetch linked invoice
+      try {
+        const { data: factureData } = await supabase
+          .from('factures')
+          .select('*')
+          .eq('reservation_id', id)
+          .maybeSingle();
+        setFacture(factureData || null);
+      } catch (_) {}
+    } catch (err) {
+      console.error(err);
       router.push('/photographe/reservations');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirm = async () => {
+  useEffect(() => {
+    fetchReservation();
+  }, [id, photographeProfile?.id]);
+
+  /* =========================
+     HELPERS
+  ========================= */
+  const safeDate = (date) => {
+    try {
+      return date ? parseISO(date) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const reservationDate = safeDate(reservation?.date);
+  const isPastDate = reservationDate ? isPast(reservationDate) : false;
+
+  const status = reservation?.statut;
+  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+
+  const canConfirm = ['pending', 'en_attente'].includes(status);
+  const canRefuse  = ['pending', 'en_attente'].includes(status);
+  const canCancel  = ['pending', 'en_attente', 'confirmee', 'en_cours'].includes(status);
+  const canComplete = status === 'confirmee' && isPastDate;
+
+  /* =========================
+     ACTIONS
+  ========================= */
+  const updateStatus = async (newStatus, extra = {}) => {
     setActionLoading(true);
     try {
       const { error } = await supabase
         .from('reservations')
-        .update({ statut: 'confirmee' })
+        .update({ statut: newStatus, ...extra })
         .eq('id', id);
-
       if (error) throw error;
-
-      // Create notification
-      await supabase.from('notifications').insert({
-        user_id: reservation.client_id,
-        type: 'reservation_confirmee',
-        titre: 'Réservation confirmée',
-        contenu: `Votre réservation du ${format(parseISO(reservation.date), 'dd MMM yyyy', { locale: fr })} a été confirmée`,
-        reservation_id: id
-      });
-
-      fetchReservation();
-    } catch (error) {
-      console.error('Error confirming:', error);
+      await fetchReservation();
+    } catch (err) {
+      console.error(err);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleComplete = async () => {
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from('reservations')
-        .update({ statut: 'terminee' })
-        .eq('id', id);
+  const handleConfirm  = () => { setAcceptComment(''); setShowAcceptModal(true); };
+  const handleComplete = () => updateStatus('terminee');
 
-      if (error) throw error;
-
-      // Notify client to leave a review
-      await supabase.from('notifications').insert({
-        user_id: reservation.client_id,
-        type: 'avis',
-        titre: 'Donnez votre avis',
-        contenu: `Votre prestation du ${format(parseISO(reservation.date), 'dd MMM yyyy', { locale: fr })} est terminée. N'hésitez pas à laisser un avis !`,
-        reservation_id: id
-      });
-
-      fetchReservation();
-    } catch (error) {
-      console.error('Error completing:', error);
-    } finally {
-      setActionLoading(false);
-    }
+  const handleConfirmSubmit = async () => {
+    await updateStatus('confirmee', {
+      notes_prestataire: acceptComment || null,
+      date_confirmation: new Date().toISOString(),
+    });
+    await createNotification({
+      userId: reservation?.client_id,
+      type: NOTIFICATION_TYPES.RESERVATION_CONFIRMED,
+      title: 'Réservation confirmée',
+      message: acceptComment
+        ? `Votre réservation a été acceptée : "${acceptComment}"`
+        : 'Votre réservation a été acceptée par le prestataire.',
+    });
+    setShowAcceptModal(false);
   };
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) return;
-    
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from('reservations')
-        .update({ 
-          statut: 'annulee',
-          motif_annulation: cancelReason
-        })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // Create notification
-      await supabase.from('notifications').insert({
-        user_id: reservation.client_id,
-        type: 'reservation_annulee',
-        titre: 'Réservation annulée',
-        contenu: `La réservation du ${format(parseISO(reservation.date), 'dd MMM yyyy', { locale: fr })} a été annulée par le photographe`,
-        reservation_id: id
-      });
-
-      setShowCancelModal(false);
-      fetchReservation();
-    } catch (error) {
-      console.error('Error cancelling:', error);
-    } finally {
-      setActionLoading(false);
-    }
+    await updateStatus('cancelled', { motif_annulation: cancelReason, annule_par: photographeProfile?.id, date_annulation: new Date().toISOString() });
+    await createNotification({
+      userId: reservation?.client_id,
+      type: NOTIFICATION_TYPES.RESERVATION_CANCELLED,
+      title: 'Réservation annulée',
+      message: `Votre réservation a été annulée : "${cancelReason}"`,
+    });
+    setShowCancelModal(false);
   };
 
-  const startConversation = async () => {
-    try {
-      const { data: existing } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('client_id', reservation.client_id)
-        .eq('prestataire_id', photographeProfile.id)
-        .single();
-
-      if (existing) {
-        router.push(`/messages/${existing.id}`);
-      } else {
-        const { data: newConv, error } = await supabase
-          .from('conversations')
-          .insert({
-            client_id: reservation.client_id,
-            prestataire_id: photographeProfile.id,
-            reservation_id: id,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        router.push(`/messages/${newConv.id}`);
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-    }
+  const handleRefuse = async () => {
+    await updateStatus('cancelled', { motif_annulation: refuseReason || 'Refusé par le prestataire', annule_par: photographeProfile?.id, date_annulation: new Date().toISOString() });
+    await createNotification({
+      userId: reservation?.client_id,
+      type: NOTIFICATION_TYPES.RESERVATION_CANCELLED,
+      title: 'Réservation refusée',
+      message: refuseReason
+        ? `Votre réservation a été refusée : "${refuseReason}"`
+        : 'Votre réservation a été refusée par le prestataire.',
+    });
+    setShowRefuseModal(false);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
-      </div>
-    );
-  }
+  const handleMessage = () => router.push(`/shared/messages?client=${reservation?.client_id}&reservation=${id}`);
 
-  if (!reservation) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-          <p className="text-gray-500">Réservation introuvable</p>
-        </div>
-      </div>
-    );
-  }
+  const formatDate = (d) => {
+    try { return d ? format(parseISO(d), 'EEEE d MMMM yyyy', { locale: fr }) : 'Non définie'; }
+    catch { return 'Non définie'; }
+  };
+  const formatTime = (t) => t ? t.substring(0, 5) : '';
 
-  const statusConfig = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG['en_attente'];
-  const isPastDate = reservation.date ? isPast(parseISO(reservation.date)) : false;
-  const canConfirm = reservation.statut === 'pending';
-  const canComplete = reservation.statut === 'confirmee' && isPastDate;
-  const canCancel = ['pending', 'confirmee'].includes(reservation.statut);
+  /* =========================
+     STATES UI
+  ========================= */
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50"><Header />
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin h-8 w-8 border-b-2 border-indigo-600 rounded-full" />
+      </div>
+    </div>
+  );
+
+  if (!reservation) return (
+    <div className="min-h-screen bg-gray-50"><Header />
+      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Réservation introuvable</h2>
+        <button onClick={() => router.push('/photographe/reservations')} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium">
+          Retour aux réservations
+        </button>
+      </div>
+    </div>
+  );
+
+  const client  = reservation.client  || {};
+  const devis   = reservation.devis   || null;
+  const demande = reservation.demande || {};
+  const sc = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <Link 
-          href="/photographe/reservations"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Retour aux réservations
+      <main className="max-w-6xl mx-auto px-4 py-8">
+
+        <Link href="/photographe/reservations" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
+          <ArrowLeft className="w-5 h-5" /> Retour aux réservations
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
+        {/* Status banner */}
+        <div className={`${sc.bg} border ${sc.border} rounded-xl p-4 mb-6 flex items-center gap-3`}>
+          <Clock3 className={`w-5 h-5 ${sc.color.split(' ')[1]}`} />
+          <div>
+            <p className={`font-semibold ${sc.color.split(' ')[1]}`}>{sc.label}</p>
+            <p className={`text-sm ${sc.color.split(' ')[1]} opacity-80`}>{sc.description}</p>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* ── Main ── */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Header Card */}
+
+            {/* Infos prestation */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${statusConfig.color}`}>
-                  {statusConfig.label}
-                </span>
-                <span className="text-sm text-gray-500">
-                  Réf: #{reservation.id.slice(0, 8)}
-                </span>
-              </div>
-
-              <h1 className="text-xl font-bold text-gray-900 mb-2">
-                {reservation.demande?.titre || 'Prestation photo'}
-              </h1>
-              <p className="text-gray-500">{statusConfig.description}</p>
-            </div>
-
-            {/* Details Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="font-semibold text-gray-900 mb-6">Détails de la prestation</h2>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-100 rounded-lg">
-                    <Calendar className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Date</p>
-                    <p className="font-medium text-gray-900">
-                      {reservation.date ? format(parseISO(reservation.date), 'EEEE d MMMM yyyy', { locale: fr }) : 'Non définie'}
-                    </p>
-                  </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-5">
+                {reservation.titre || demande.titre || 'Prestation'}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <Calendar className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+                  <div><p className="text-xs text-gray-500">Date</p><p className="font-medium text-sm">{formatDate(reservation.date)}</p></div>
                 </div>
-
                 {reservation.heure_debut && (
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Clock className="w-5 h-5 text-purple-600" />
-                    </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <Clock className="w-5 h-5 text-purple-500 flex-shrink-0" />
                     <div>
-                      <p className="text-sm text-gray-500">Horaires</p>
-                      <p className="font-medium text-gray-900">
-                        {reservation.heure_debut} - {reservation.heure_fin || '?'}
-                      </p>
+                      <p className="text-xs text-gray-500">Horaires</p>
+                      <p className="font-medium text-sm">{formatTime(reservation.heure_debut)}{reservation.heure_fin && ` → ${formatTime(reservation.heure_fin)}`}</p>
                     </div>
                   </div>
                 )}
-
-                {reservation.lieu && (
-                  <div className="flex items-center gap-3 col-span-2">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <MapPin className="w-5 h-5 text-green-600" />
-                    </div>
+                {(reservation.lieu || reservation.ville) && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl sm:col-span-2">
+                    <MapPin className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <div>
-                      <p className="text-sm text-gray-500">Lieu</p>
-                      <p className="font-medium text-gray-900">{reservation.lieu}</p>
+                      <p className="text-xs text-gray-500">Lieu</p>
+                      <p className="font-medium text-sm">{reservation.lieu || reservation.ville}</p>
+                      {reservation.adresse_complete && <p className="text-xs text-gray-400 mt-0.5">{reservation.adresse_complete}</p>}
                     </div>
                   </div>
                 )}
               </div>
-
-              {reservation.demande?.description && (
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Description</h3>
-                  <p className="text-gray-700">{reservation.demande.description}</p>
+              {demande.description && (
+                <div className="mt-5 pt-5 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-500 mb-1">Description</p>
+                  <p className="text-gray-700 text-sm whitespace-pre-line">{demande.description}</p>
                 </div>
               )}
-
-              {reservation.notes && (
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Notes</h3>
-                  <p className="text-gray-700">{reservation.notes}</p>
+              {reservation.notes_client && (
+                <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                  <p className="text-xs font-semibold text-indigo-500 uppercase mb-1">Note du client</p>
+                  <p className="text-sm text-indigo-700">{reservation.notes_client}</p>
+                </div>
+              )}
+              {reservation.motif_annulation && status === 'cancelled' && (
+                <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-100">
+                  <p className="text-xs font-semibold text-red-500 uppercase mb-1">Motif d'annulation</p>
+                  <p className="text-sm text-red-700">{reservation.motif_annulation}</p>
                 </div>
               )}
             </div>
 
-            {/* Devis Details */}
-            {reservation.devis && (
+            {/* Devis */}
+            {devis && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-semibold text-gray-900 mb-4">Tarification</h2>
-                
-                {reservation.devis.details && reservation.devis.details.length > 0 ? (
-                  <div className="space-y-3 mb-4">
-                    {reservation.devis.details.map((detail, index) => (
-                      <div key={index} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
-                        <span className="text-gray-600">{detail.description}</span>
-                        <span className="font-medium">{detail.montant} DH</span>
-                      </div>
+                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-500" /> Devis associé
+                </h2>
+                {devis.message_personnalise && (
+                  <div className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <p className="text-xs font-semibold text-indigo-500 uppercase mb-1">Votre message</p>
+                    <p className="text-sm text-indigo-700 italic">"{devis.message_personnalise}"</p>
+                  </div>
+                )}
+                {devis.services_inclus && (Array.isArray(devis.services_inclus) ? devis.services_inclus.length > 0 : Object.keys(devis.services_inclus).length > 0) && (
+                  <div className="mb-4">
+                    <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                      <ListChecks className="w-4 h-4 text-green-500" /> Services inclus
+                    </p>
+                    <ul className="space-y-1.5">
+                      {Array.isArray(devis.services_inclus)
+                        ? devis.services_inclus.map((s, i) => (
+                            <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              {typeof s === 'object' ? (s.nom || s.label || JSON.stringify(s)) : s}
+                            </li>
+                          ))
+                        : Object.entries(devis.services_inclus).map(([k, v]) => (
+                            <li key={k} className="flex items-center gap-2 text-sm text-gray-600">
+                              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <span className="font-medium capitalize">{k}</span>{v && v !== true ? ` : ${v}` : ''}
+                            </li>
+                          ))
+                      }
+                    </ul>
+                  </div>
+                )}
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  {devis.tarif_base != null && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Tarif de base</span>
+                      <span className="font-medium">{devis.tarif_base} MAD</span>
+                    </div>
+                  )}
+                  {devis.frais_deplacement > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Frais de déplacement</span>
+                      <span className="font-medium">{devis.frais_deplacement} MAD</span>
+                    </div>
+                  )}
+                  <div className="border-t border-gray-200 pt-2 flex justify-between">
+                    <span className="font-semibold">Total</span>
+                    <span className="font-bold text-lg text-indigo-700">{reservation.montant_total ?? devis.montant_total} MAD</span>
+                  </div>
+                </div>
+                {devis.modalites_paiement?.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {devis.modalites_paiement.map((m, i) => (
+                      <span key={i} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">{m}</span>
                     ))}
                   </div>
-                ) : null}
+                )}
+                <Link href={`/photographe/devis/${devis.id}`} className="mt-4 inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline font-medium">
+                  <FileText className="w-4 h-4" /> Voir le devis complet →
+                </Link>
+              </div>
+            )}
 
-                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                  <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-2xl font-bold text-indigo-600">
-                    {reservation.montant_total || reservation.devis.montant_total} DH
-                  </span>
+            {/* Facture */}
+            {facture && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-green-500" /> Facture émise
+                </h2>
+                <div className="bg-green-50 rounded-xl border border-green-100 p-3 mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">N° Facture</p>
+                    <p className="font-bold text-gray-900">{facture.num_facture || `#${facture.id}`}</p>
+                  </div>
+                  <button onClick={() => router.push('/photographe/factures')} className="text-xs text-indigo-600 hover:underline font-medium">Voir toutes →</button>
                 </div>
-
-                {reservation.montant_paye && (
-                  <div className="flex justify-between items-center mt-2 text-sm">
-                    <span className="text-gray-500">Acompte reçu</span>
-                    <span className="text-green-600 font-medium flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4" />
-                      {reservation.montant_paye} DH
-                    </span>
+                {Array.isArray(facture.facture) && facture.facture.length > 0 && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-xs text-gray-500">Description</th>
+                          <th className="text-right px-3 py-2 text-xs text-gray-500">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {facture.facture.map((l, i) => (
+                          <tr key={i} className="border-t border-gray-100">
+                            <td className="px-3 py-2">{l.description}</td>
+                            <td className="px-3 py-2 text-right font-medium">{(parseFloat(l.total) || 0).toFixed(2)} MAD</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
+                <div className="space-y-1.5">
+                  {facture.montant_ht > 0 && (
+                    <div className="flex justify-between text-sm"><span className="text-gray-500">HT</span><span>{(parseFloat(facture.montant_ht) || 0).toFixed(2)} MAD</span></div>
+                  )}
+                  {facture.montant_tva > 0 && (
+                    <div className="flex justify-between text-sm"><span className="text-gray-500">TVA</span><span>{(parseFloat(facture.montant_tva) || 0).toFixed(2)} MAD</span></div>
+                  )}
+                  <div className="flex justify-between font-bold border-t border-gray-100 pt-2">
+                    <span>Total TTC</span>
+                    <span className="text-green-700 text-lg">{(parseFloat(facture.montant_ttc) || 0).toFixed(2)} MAD</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Sidebar */}
+          {/* ── Sidebar ── */}
           <div className="space-y-6">
-            {/* Client Card */}
+
+            {/* Client */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="font-semibold text-gray-900 mb-4">Client</h2>
-              
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {reservation.client?.photo_profil ? (
-                    <img 
-                      src={reservation.client.photo_profil} 
-                      alt="" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-6 h-6 text-gray-400" />
-                  )}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-14 h-14 rounded-xl bg-indigo-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {client.avatar_url ? <img src={client.avatar_url} alt="" className="w-full h-full object-cover" /> : <User className="w-7 h-7 text-indigo-400" />}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">
-                    {reservation.client?.prenom} {reservation.client?.nom}
-                  </p>
+                  <p className="font-semibold text-gray-900">{client.nom || 'Client'}</p>
+                  {client.email && <p className="text-xs text-gray-400 truncate">{client.email}</p>}
                 </div>
               </div>
-
-              <div className="space-y-3 mb-4">
-                {reservation.client?.email && (
-                  <a 
-                    href={`mailto:${reservation.client.email}`}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"
-                  >
-                    <Mail className="w-4 h-4" />
-                    {reservation.client.email}
-                  </a>
-                )}
-                {reservation.client?.telephone && (
-                  <a 
-                    href={`tel:${reservation.client.telephone}`}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"
-                  >
-                    <Phone className="w-4 h-4" />
-                    {reservation.client.telephone}
-                  </a>
-                )}
+              <div className="space-y-2 mb-4">
+                {client.email && <a href={`mailto:${client.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"><Mail className="w-4 h-4" />{client.email}</a>}
+                {client.telephone && <a href={`tel:${client.telephone}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"><Phone className="w-4 h-4" />{client.telephone}</a>}
               </div>
-
-              <button
-                onClick={startConversation}
-                className="w-full px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-medium hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
-              >
-                <MessageSquare className="w-5 h-5" />
-                Envoyer un message
+              <button onClick={handleMessage} className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 flex items-center justify-center gap-2">
+                <MessageSquare className="w-5 h-5" /> Envoyer un message
               </button>
             </div>
 
-            {/* Actions Card */}
+            {/* Montant */}
+            {reservation.montant_total != null && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Banknote className="w-5 h-5 text-indigo-500" /> Montant
+                </h2>
+                <p className="text-3xl font-bold text-indigo-600">{reservation.montant_total} MAD</p>
+                {reservation.acompte_paye && <p className="text-sm text-green-600 font-medium mt-2 flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Acompte reçu</p>}
+              </div>
+            )}
+
+            {/* Actions */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="font-semibold text-gray-900 mb-4">Actions</h2>
-              
               <div className="space-y-3">
                 {canConfirm && (
-                  <button
-                    onClick={handleConfirm}
-                    disabled={actionLoading}
-                    className="w-full px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <Check className="w-5 h-5" />
-                    Confirmer la réservation
+                  <button disabled={actionLoading} onClick={handleConfirm}
+                    className="w-full bg-green-600 text-white py-2.5 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                    <Check className="w-5 h-5" /> Accepter
                   </button>
                 )}
-
+                {canRefuse && (
+                  <button disabled={actionLoading} onClick={() => setShowRefuseModal(true)}
+                    className="w-full bg-red-600 text-white py-2.5 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                    <X className="w-5 h-5" /> Refuser
+                  </button>
+                )}
+                <button onClick={handleMessage}
+                  className="w-full border border-indigo-200 text-indigo-600 py-2.5 rounded-xl font-medium hover:bg-indigo-50 flex items-center justify-center gap-2">
+                  <MessageSquare className="w-5 h-5" /> Demander des infos
+                </button>
                 {canComplete && (
-                  <button
-                    onClick={handleComplete}
-                    disabled={actionLoading}
-                    className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    Marquer comme terminée
+                  <button disabled={actionLoading} onClick={handleComplete}
+                    className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                    <CheckCircle className="w-5 h-5" /> Marquer terminée
                   </button>
                 )}
-
-                {reservation.statut === 'confirme' && !isPastDate && (
-                  <div className="bg-blue-50 rounded-xl p-4 text-center">
-                    <Camera className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                    <p className="text-sm text-blue-700 font-medium">
-                      Prestation à venir
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      {format(parseISO(reservation.date_prestation), 'd MMM yyyy', { locale: fr })}
-                    </p>
-                  </div>
-                )}
-
-                {reservation.statut === 'termine' && (
-                  <div className="bg-green-50 rounded-xl p-4 text-center">
-                    <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                    <p className="text-sm text-green-700 font-medium">
-                      Prestation terminée
-                    </p>
-                  </div>
-                )}
-
-                {reservation.statut === 'annule' && (
-                  <div className="bg-red-50 rounded-xl p-4">
-                    <X className="w-8 h-8 text-red-600 mx-auto mb-2" />
-                    <p className="text-sm text-red-700 font-medium text-center">
-                      Réservation annulée
-                    </p>
-                    {reservation.motif_annulation && (
-                      <p className="text-xs text-red-600 mt-2 text-center">
-                        "{reservation.motif_annulation}"
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {canCancel && (
-                  <button
-                    onClick={() => setShowCancelModal(true)}
-                    className="w-full px-4 py-2 border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 flex items-center justify-center gap-2"
-                  >
-                    <X className="w-5 h-5" />
-                    Annuler
+                {canCancel && !canRefuse && (
+                  <button onClick={() => setShowCancelModal(true)}
+                    className="w-full border border-red-200 text-red-600 py-2.5 rounded-xl font-medium hover:bg-red-50 flex items-center justify-center gap-2">
+                    <X className="w-5 h-5" /> Annuler la réservation
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Link to devis/demande */}
-            {reservation.devis_id && (
-              <Link
-                href={`/photographe/devis/${reservation.devis_id}`}
-                className="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:border-indigo-200 transition-all"
-              >
+            {demande.id && (
+              <Link href={`/photographe/demandes/${demande.id}`}
+                className="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:border-indigo-200 transition-all">
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">Voir le devis associé</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Voir la demande associée</p>
+                    {demande.titre && <p className="text-xs text-gray-400 truncate">{demande.titre}</p>}
+                  </div>
                 </div>
               </Link>
             )}
@@ -505,43 +486,57 @@ export default function PhotographeReservationDetailPage() {
         </div>
       </main>
 
-      {/* Cancel Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              Annuler cette réservation ?
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Le client sera notifié. Cette action peut avoir des implications sur le paiement.
-            </p>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Raison de l'annulation *
-              </label>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Expliquez la raison..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 resize-none"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
-              >
-                Non, garder
+      {/* Modal Accepter */}
+      {showAcceptModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Accepter cette réservation ?</h2>
+            <p className="text-gray-500 text-sm mb-4">Le client recevra une notification de confirmation.</p>
+            <textarea value={acceptComment} onChange={(e) => setAcceptComment(e.target.value)}
+              className="w-full border border-gray-200 p-3 rounded-xl resize-none focus:ring-2 focus:ring-green-500 text-sm" rows={3} placeholder="Message pour le client (optionnel)" />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setShowAcceptModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
+              <button disabled={actionLoading} onClick={handleConfirmSubmit}
+                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50">
+                {actionLoading ? 'En cours...' : 'Confirmer'}
               </button>
-              <button
-                onClick={handleCancel}
-                disabled={actionLoading || !cancelReason.trim()}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
-              >
-                {actionLoading ? 'Annulation...' : 'Oui, annuler'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Refuser */}
+      {showRefuseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Refuser cette réservation ?</h2>
+            <p className="text-gray-500 text-sm mb-4">Le client sera notifié de votre refus.</p>
+            <textarea value={refuseReason} onChange={(e) => setRefuseReason(e.target.value)}
+              className="w-full border border-gray-200 p-3 rounded-xl resize-none focus:ring-2 focus:ring-red-500 text-sm" rows={3} placeholder="Raison du refus (optionnel)" />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setShowRefuseModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
+              <button disabled={actionLoading} onClick={handleRefuse}
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
+                {actionLoading ? 'En cours...' : 'Confirmer le refus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Annuler */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Annuler cette réservation ?</h2>
+            <p className="text-gray-600 text-sm mb-4">Le client sera notifié. Cette action peut avoir des implications sur le paiement.</p>
+            <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+              className="w-full border border-gray-200 p-3 rounded-xl resize-none focus:ring-2 focus:ring-red-500 text-sm" rows={3} placeholder="Motif de l'annulation (obligatoire)" />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setShowCancelModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Retour</button>
+              <button disabled={actionLoading || !cancelReason.trim()} onClick={handleCancel}
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
+                {actionLoading ? 'Annulation...' : "Confirmer l'annulation"}
               </button>
             </div>
           </div>

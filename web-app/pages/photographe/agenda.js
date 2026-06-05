@@ -46,7 +46,7 @@ export default function AgendaPage() {
         .eq('prestataire_id', photographeProfile.id)
         .gte('date', monthStart.toISOString())
         .lte('date', monthEnd.toISOString())
-        .in('statut', ['confirme', 'en_attente', 'en_cours']);
+        .in('statut', ['confirmed', 'pending', 'completed']);
 
       if (resError) throw resError;
       setReservations(resData || []);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
+import Header from '../../components/HeaderPresta';
 import { 
   FileText, 
   Download, 
@@ -63,11 +64,13 @@ export default function Factures() {
         .from('factures')
         .select(`
           *,
-          reservations(annonces(titre)),
-          profiles!factures_client_id_fkey(nom, email)
+          reservation:reservations(
+            id, titre, date,
+            client:profiles!reservations_client_id_fkey(nom, email)
+          )
         `)
         .eq('prestataire_id', userId)
-        .order('date_emission', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -84,65 +87,32 @@ export default function Factures() {
   const calculateStats = (invoiceList) => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const paid = invoiceList.filter(i => i.statut === 'paid');
-    const pending = invoiceList.filter(i => i.statut === 'pending');
-    const thisMonth = invoiceList.filter(i => new Date(i.date_emission) >= startOfMonth);
-
+    const thisMonth = invoiceList.filter(i => new Date(i.created_at) >= startOfMonth);
     setStats({
       total: invoiceList.length,
-      paid: paid.length,
-      pending: pending.length,
-      totalAmount: paid.reduce((sum, i) => sum + (i.montant_total || 0), 0),
+      paid: invoiceList.length,
+      pending: 0,
+      totalAmount: invoiceList.reduce((sum, i) => sum + (parseFloat(i.montant_ttc) || 0), 0),
       thisMonth: thisMonth.length
     });
   };
 
   const filterInvoices = () => {
     let filtered = [...invoices];
-
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(invoice =>
-        invoice.numero?.toLowerCase().includes(search) ||
-        invoice.profiles?.nom?.toLowerCase().includes(search) ||
-        invoice.reservations?.annonces?.titre?.toLowerCase().includes(search)
+        invoice.num_facture?.toLowerCase().includes(search) ||
+        invoice.reservation?.client?.nom?.toLowerCase().includes(search) ||
+        invoice.reservation?.titre?.toLowerCase().includes(search)
       );
     }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(invoice => invoice.statut === statusFilter);
-    }
-
     setFilteredInvoices(filtered);
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'paid': return 'bg-green-100 text-green-700';
-      case 'pending': return 'bg-yellow-100 text-yellow-700';
-      case 'cancelled': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'paid': return 'Payée';
-      case 'pending': return 'En attente';
-      case 'cancelled': return 'Annulée';
-      default: return status;
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'paid': return <CheckCircle className="w-4 h-4" />;
-      case 'pending': return <Clock className="w-4 h-4" />;
-      case 'cancelled': return <XCircle className="w-4 h-4" />;
-      default: return null;
-    }
-  };
+  const getStatusColor = () => 'bg-green-100 text-green-700';
+  const getStatusLabel = () => 'Émise';
+  const getStatusIcon = () => <CheckCircle className="w-4 h-4" />;
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -172,6 +142,7 @@ export default function Factures() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Header/>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -179,6 +150,7 @@ export default function Factures() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header/>
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -262,24 +234,14 @@ export default function Factures() {
             <div className="flex gap-2">
               {[
                 { value: 'all', label: 'Toutes', count: stats.total },
-                { value: 'paid', label: 'Payées', count: stats.paid },
-                { value: 'pending', label: 'En attente', count: stats.pending }
               ].map((filter) => (
                 <button
                   key={filter.value}
                   onClick={() => setStatusFilter(filter.value)}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
-                    statusFilter === filter.value
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-4 py-2 rounded-lg font-medium text-sm bg-indigo-600 text-white flex items-center gap-2"
                 >
                   {filter.label}
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    statusFilter === filter.value ? 'bg-white/20' : 'bg-gray-200'
-                  }`}>
-                    {filter.count}
-                  </span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/20">{filter.count}</span>
                 </button>
               ))}
             </div>
@@ -321,18 +283,18 @@ export default function Factures() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-1">
                             <h3 className="font-semibold text-gray-900">
-                              Facture {invoice.numero}
+                              Facture {invoice.num_facture || `#${invoice.id}`}
                             </h3>
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.statut)}`}>
-                              {getStatusIcon(invoice.statut)}
-                              {getStatusLabel(invoice.statut)}
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
+                              {getStatusIcon()}
+                              {getStatusLabel()}
                             </span>
                           </div>
                           <p className="text-gray-600">
-                            {invoice.profiles?.nom || 'Client'}
+                            {invoice.reservation?.client?.nom || 'Client'}
                           </p>
                           <p className="text-sm text-gray-400 truncate">
-                            {invoice.reservations?.annonces?.titre || 'Service'}
+                            {invoice.reservation?.titre || 'Prestation'}
                           </p>
                         </div>
                       </div>
@@ -342,10 +304,10 @@ export default function Factures() {
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <p className="text-sm text-gray-500 mb-1">
-                          {formatDate(invoice.date_emission)}
+                          {formatDate(invoice.created_at)}
                         </p>
                         <p className="text-xl font-bold text-green-600">
-                          {invoice.montant_total?.toLocaleString()} MAD
+                          {(parseFloat(invoice.montant_ttc) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} MAD
                         </p>
                       </div>
 
@@ -391,7 +353,7 @@ export default function Factures() {
               <div>
                 <p className="text-white/80 text-sm mb-1">Total des factures affichées</p>
                 <p className="text-3xl font-bold">
-                  {filteredInvoices.reduce((sum, i) => sum + (i.montant_total || 0), 0).toLocaleString()} MAD
+                  {filteredInvoices.reduce((sum, i) => sum + (parseFloat(i.montant_ttc) || 0), 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} MAD
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -402,9 +364,9 @@ export default function Factures() {
                 <div className="w-px h-12 bg-white/20"></div>
                 <div className="text-center">
                   <p className="text-2xl font-bold">
-                    {filteredInvoices.filter(i => i.statut === 'paid').length}
+                    {filteredInvoices.length}
                   </p>
-                  <p className="text-white/80 text-xs">Payées</p>
+                  <p className="text-white/80 text-xs">Émises</p>
                 </div>
               </div>
             </div>
@@ -418,7 +380,7 @@ export default function Factures() {
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
             <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Aperçu Facture</h2>
+              <h2 className="text-lg font-semibold">Aperçu Facture #{selectedInvoice.num_facture || selectedInvoice.id}</h2>
               <button
                 onClick={() => setShowPreview(false)}
                 className="p-2 hover:bg-gray-100 rounded-full"
@@ -429,14 +391,13 @@ export default function Factures() {
 
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* Invoice Header */}
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900">FACTURE</h3>
-                  <p className="text-gray-500">{selectedInvoice.numero}</p>
+                  <p className="text-gray-500">{selectedInvoice.num_facture || `#${selectedInvoice.id}`}</p>
                 </div>
-                <div className={`px-4 py-2 rounded-lg ${getStatusColor(selectedInvoice.statut)}`}>
-                  {getStatusLabel(selectedInvoice.statut)}
+                <div className={`px-4 py-2 rounded-lg ${getStatusColor()}`}>
+                  {getStatusLabel()}
                 </div>
               </div>
 
@@ -444,27 +405,55 @@ export default function Factures() {
               <div className="grid md:grid-cols-2 gap-6 mb-8">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-500 mb-2">Émise le</p>
-                  <p className="font-medium">{formatDate(selectedInvoice.date_emission)}</p>
+                  <p className="font-medium">{formatDate(selectedInvoice.created_at)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-500 mb-2">Client</p>
-                  <p className="font-medium">{selectedInvoice.profiles?.nom || 'N/A'}</p>
-                  <p className="text-sm text-gray-500">{selectedInvoice.profiles?.email || ''}</p>
+                  <p className="font-medium">{selectedInvoice.reservation?.client?.nom || 'N/A'}</p>
+                  <p className="text-sm text-gray-500">{selectedInvoice.reservation?.client?.email || ''}</p>
                 </div>
               </div>
 
-              {/* Service */}
-              <div className="border rounded-lg p-4 mb-8">
-                <p className="text-sm text-gray-500 mb-2">Service</p>
-                <p className="font-medium">{selectedInvoice.reservations?.annonces?.titre || 'N/A'}</p>
+              {/* Lignes */}
+              {Array.isArray(selectedInvoice.facture) && selectedInvoice.facture.length > 0 && (
+                <div className="border rounded-lg overflow-hidden mb-6">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-xs text-gray-500">Description</th>
+                        <th className="text-right px-3 py-2 text-xs text-gray-500">Qté</th>
+                        <th className="text-right px-3 py-2 text-xs text-gray-500">P.U.</th>
+                        <th className="text-right px-3 py-2 text-xs text-gray-500">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInvoice.facture.map((l, i) => (
+                        <tr key={i} className="border-t border-gray-100">
+                          <td className="px-3 py-2">{l.description}</td>
+                          <td className="px-3 py-2 text-right">{l.quantite}</td>
+                          <td className="px-3 py-2 text-right">{l.prix_unitaire} MAD</td>
+                          <td className="px-3 py-2 text-right font-medium">{(parseFloat(l.total) || 0).toFixed(2)} MAD</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Montants */}
+              <div className="flex justify-end mb-8">
+                <div className="w-56 space-y-1">
+                  <div className="flex justify-between text-sm"><span className="text-gray-500">HT</span><span>{(parseFloat(selectedInvoice.montant_ht) || 0).toFixed(2)} MAD</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-500">TVA</span><span>{(parseFloat(selectedInvoice.montant_tva) || 0).toFixed(2)} MAD</span></div>
+                </div>
               </div>
 
               {/* Total */}
               <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-6 text-white">
                 <div className="flex justify-between items-center">
-                  <span className="text-white/80">Montant Total</span>
+                  <span className="text-white/80">Montant TTC</span>
                   <span className="text-3xl font-bold">
-                    {selectedInvoice.montant_total?.toLocaleString()} MAD
+                    {(parseFloat(selectedInvoice.montant_ttc) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} MAD
                   </span>
                 </div>
               </div>

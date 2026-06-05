@@ -1072,25 +1072,25 @@ export default function ProviderHomeMenu() {
       setTotalReservations(reservationsRes.data?.length || 0);
 
       // Réservations acceptées (confirmée, en_cours, terminée)
-      const reservationsPayees = reservationsRes.data?.filter(r => 
-        r.statut === 'confirmee' || r.statut === 'en_cours' || r.statut === 'terminee'
+      const reservationsConfirmees = reservationsRes.data?.filter(r => 
+        r.statut === 'confirmed' || r.statut === 'completed'
       ) || [];
-      setNbAccepted(reservationsPayees.length);
+      setNbAccepted(reservationsConfirmees.length);
 
       // Réservations en attente
       const reservationsPending = reservationsRes.data?.filter(r => 
-        r.statut === 'en_attente' || r.statut === 'pending'
+        r.statut === 'pending'
       ) || [];
       setNbPending(reservationsPending.length);
 
       // Chiffre d'affaires (somme des réservations payées)
-      const ca = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
+      const ca = reservationsConfirmees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
       setChiffreAffaires(ca);
 
       // Statistiques devis
       const devisData = devisRes.data || [];
-      const devisEnAttente = devisData.filter(d => ['en_attente', 'pending', 'lu'].includes(d.statut)).length;
-      const devisAcceptes = devisData.filter(d => d.statut === 'accepte' || d.statut === 'accepted').length;
+      const devisEnAttente = devisData.filter(d => ['envoye', 'lu'].includes(d.statut)).length;
+      const devisAcceptes = devisData.filter(d => d.statut === 'accepte').length;
       setNbDevisTotal(devisData.length);
       setNbDevisPending(devisEnAttente);
       setNbDevisAccepted(devisAcceptes);
@@ -1283,7 +1283,6 @@ export default function ProviderHomeMenu() {
                 <span
                   className="absolute -top-2 -right-2 flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-xs font-bold bg-red-500 text-white shadow-md"
                 >
-                  {nbMatchingsPending}
                 </span>
               )}
               <div className="p-3 bg-white/20 rounded-xl shrink-0">
@@ -1420,7 +1419,7 @@ export default function ProviderHomeMenu() {
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(chiffreAffaires)}
                   </p>
                   <p className="text-xs mt-1" style={{ color: COLORS.text + '80' }}>
-                    Somme des réservations payées
+                    Somme des réservations confirmées
                   </p>
                 </div>
               </CardContent>
@@ -1573,7 +1572,7 @@ export default function ProviderHomeMenu() {
           </section>
 
           {/* Section Paramètres (aligné sur mobile) */}
-          <section className="mb-8">
+          {/*<section className="mb-8">
             <h2 
               className="text-xl font-bold mb-6"
               style={{ color: COLORS.text }}
@@ -1582,10 +1581,10 @@ export default function ProviderHomeMenu() {
             </h2>
             <Card className="overflow-hidden">
               {/* Ma localisation */}
-              <div 
+              {/*<div 
                 className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
                 style={{ borderColor: '#EBEBEB' }}
-                onClick={() => router.push("/photographe/profil#zones")}
+                onClick={() => router.push("/photographe/profil#Localisation")}
               >
                 <div className="p-3 rounded-xl" style={{ backgroundColor: '#DBEAFE' }}>
                   <MapPin className="w-6 h-6" style={{ color: '#3B82F6' }} />
@@ -1598,7 +1597,7 @@ export default function ProviderHomeMenu() {
               </div>
 
               {/* Intégrations & Paiements */}
-              <div 
+              {/*<div 
                 className="flex items-center gap-4 p-5 cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => router.push("/photographe/integrations")}
               >
@@ -1612,17 +1611,17 @@ export default function ProviderHomeMenu() {
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
             </Card>
-          </section>
+          {/*</section> */}
 
-          {/* Footer avec déconnexion */}
+          {/* Footer */}
           <section className="pt-8 border-t" style={{ borderColor: COLORS.background }}>
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-sm font-medium" style={{ color: COLORS.text }}>
-                  Shooty Business
+                  BriCool Business
                 </p>
                 <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                  Votre plateforme professionnelle de photographie
+                  Votre plateforme professionnelle de prestation
                 </p>
               </div>
               <Button 

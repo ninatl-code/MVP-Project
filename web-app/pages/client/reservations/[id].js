@@ -37,6 +37,7 @@ export default function ReservationDetailPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [facture, setFacture] = useState(null);
 
   useEffect(() => {
     if (id) {
@@ -94,6 +95,16 @@ export default function ReservationDetailPage() {
       }
 
       setReservation({ ...data, prestataire, existingReview, devis });
+
+      // Fetch linked invoice
+      try {
+        const { data: factureData } = await supabase
+          .from('factures')
+          .select('*')
+          .eq('reservation_id', id)
+          .maybeSingle();
+        setFacture(factureData || null);
+      } catch (_) {}
     } catch (error) {
       console.error('Error fetching reservation:', error);
     } finally {
@@ -438,6 +449,57 @@ export default function ReservationDetailPage() {
                     Voir le contrat
                   </a>
                 )}
+              </div>
+            )}
+
+            {/* Facture section */}
+            {facture && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-green-600" />
+                  Facture
+                </h2>
+                <div className="bg-green-50 rounded-xl border border-green-100 p-4 mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">N° Facture</p>
+                    <p className="font-bold text-gray-900">{facture.num_facture || `#${facture.id}`}</p>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Émise</span>
+                </div>
+                {Array.isArray(facture.facture) && facture.facture.length > 0 && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-xs text-gray-500">Description</th>
+                          <th className="text-right px-3 py-2 text-xs text-gray-500">Qté</th>
+                          <th className="text-right px-3 py-2 text-xs text-gray-500">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {facture.facture.map((l, i) => (
+                          <tr key={i} className="border-t border-gray-100">
+                            <td className="px-3 py-2">{l.description}</td>
+                            <td className="px-3 py-2 text-right">{l.quantite}</td>
+                            <td className="px-3 py-2 text-right font-medium">{(parseFloat(l.total) || 0).toFixed(2)} MAD</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  {facture.montant_ht > 0 && (
+                    <div className="flex justify-between text-sm"><span className="text-gray-500">HT</span><span>{(parseFloat(facture.montant_ht) || 0).toFixed(2)} MAD</span></div>
+                  )}
+                  {facture.montant_tva > 0 && (
+                    <div className="flex justify-between text-sm"><span className="text-gray-500">TVA</span><span>{(parseFloat(facture.montant_tva) || 0).toFixed(2)} MAD</span></div>
+                  )}
+                  <div className="flex justify-between font-bold border-t border-gray-100 pt-2">
+                    <span>Total TTC</span>
+                    <span className="text-green-700 text-lg">{(parseFloat(facture.montant_ttc) || 0).toFixed(2)} MAD</span>
+                  </div>
+                </div>
               </div>
             )}
 
