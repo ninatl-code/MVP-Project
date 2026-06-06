@@ -1,12 +1,13 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
+import { computeAndSaveMatchesForDemande } from '../../../lib/matchingService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
   Plus, Search, Filter, Calendar, MapPin, 
   Clock, ChevronRight, FileText, Eye,
-  CheckCircle, XCircle, AlertCircle
+  CheckCircle, XCircle, AlertCircle, Copy
 } from 'lucide-react';
 
 const COLORS = {
@@ -32,6 +33,8 @@ export default function MesDemandesPage() {
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [resolvedId, setResolvedId] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [duplicating, setDuplicating] = useState(false);
 
   // Résoudre l'ID via getSession() (cache local, pas de requête réseau)
   useEffect(() => {
@@ -78,6 +81,46 @@ export default function MesDemandesPage() {
     return matchFilter && matchSearch;
   });
 
+  const handleDuplicate = async (ids) => {
+    setDuplicating(true);
+    try {
+      const { data: rows, error } = await supabase
+        .from('demandes_client')
+        .select('*')
+        .in('id', ids);
+      if (error) throw error;
+
+      const inserts = rows.map(({ id, created_at, updated_at, ...rest }) => ({
+        ...rest,
+        statut: 'ouverte',
+      }));
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('demandes_client')
+        .insert(inserts)
+        .select('id, type_prestation, ville, date_souhaitee, categorie, titre');
+      if (insertError) throw insertError;
+
+      // Déclenche le matching pour chaque nouvelle demande
+      (inserted || []).forEach(d => {
+        computeAndSaveMatchesForDemande(d.id, d);
+      });
+
+      setSelected([]);
+      fetchDemandes();
+    } catch (err) {
+      console.error('[handleDuplicate]', err);
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelected(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const getStatusBadge = (status) => {
     const config = STATUS_CONFIG[status] || { label: status, color: 'gray', icon: AlertCircle };
     const Icon = config.icon;
@@ -112,14 +155,26 @@ export default function MesDemandesPage() {
             </p>
           </div>
           
-          <button
-            onClick={() => router.push('/client/demandes/create')}
+          <div className="flex items-center gap-2">
+            {selected.length > 0 && (
+              <button
+                onClick={() => handleDuplicate(selected)}
+                disabled={duplicating}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-indigo-300 text-indigo-700 font-medium hover:bg-indigo-50 transition-all disabled:opacity-50"
+              >
+                <Copy className="w-4 h-4" />
+                Dupliquer ({selected.length})
+              </button>
+            )}
+            <button
+              onClick={() => router.push('/client/demandes/create')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium transition-all"
-            style={{ backgroundColor: COLORS.accent }}
-          >
-            <Plus className="w-5 h-5" />
-            Nouvelle demande
-          </button>
+              style={{ backgroundColor: COLORS.accent }}
+            >
+              <Plus className="w-5 h-5" />
+              Nouvelle demande
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -190,7 +245,16 @@ export default function MesDemandesPage() {
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                  <div className="flex items-start gap-3 flex-1">
+                    {/* Checkbox sélection */}
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(demande.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => { e.stopPropagation(); toggleSelect(demande.id); }}
+                      className="mt-1.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
+                    />
+                    <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h2 className="text-lg font-semibold text-gray-900">
                         {demande.titre || 'Demande sans titre'}
@@ -227,9 +291,10 @@ export default function MesDemandesPage() {
                         </span>
                       )}
                     </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-4 ml-4">
+                  <div className="flex items-center gap-2 ml-4">
                     {demande.devis?.[0]?.count > 0 && (
                       <div className="text-center">
                         <div className="text-2xl font-bold text-indigo-600">
@@ -240,6 +305,14 @@ export default function MesDemandesPage() {
                         </div>
                       </div>
                     )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDuplicate([demande.id]); }}
+                      disabled={duplicating}
+                      title="Dupliquer cette demande"
+                      className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-40"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
                 </div>

@@ -17,17 +17,26 @@ export const calculateMatchScore = (demande, prestataire, isAvailable = true) =>
   let score = 0;
   const matchReasons = [];
 
-  const demandeSpecs = Array.isArray(demande.type_prestation)
+  const rawSpecs = Array.isArray(demande.type_prestation)
     ? demande.type_prestation.filter(Boolean)
     : demande.type_prestation ? [demande.type_prestation] : [];
+  // Fallback sur categorie si type_prestation est vide
+  const demandeSpecs = rawSpecs.length > 0
+    ? rawSpecs
+    : demande.categorie ? [demande.categorie] : [];
 
   const prestaSpecs = Array.isArray(prestataire.specialisations)
     ? prestataire.specialisations.filter(Boolean)
     : prestataire.specialisations ? [prestataire.specialisations] : [];
 
   // 1. Même spécialité (+55) — obligatoire
+  // Comparaison flexible : égalité exacte OU inclusion partielle (insensible à la casse)
   const matchedSpec = demandeSpecs.find(spec =>
-    prestaSpecs.some(ps => ps.toLowerCase() === spec.toLowerCase())
+    prestaSpecs.some(ps =>
+      ps.toLowerCase() === spec.toLowerCase() ||
+      ps.toLowerCase().includes(spec.toLowerCase()) ||
+      spec.toLowerCase().includes(ps.toLowerCase())
+    )
   );
 
   if (!matchedSpec) return { score: 0, matchReasons: [] };
@@ -88,49 +97,25 @@ export const checkPhotographerAvailability = async (photographeId, date) => {
 };
 
 // ─────────────────────────────────────────────────────────
-// HELPER: envoyer notification (sans doublon)
-// ─────────────────────────────────────────────────────────
-const _sendMatchNotification = async (prestataireId, demandeId, demandeData) => {
-  const { data: existing } = await supabase
-    .from('notifications')
-    .select('id')
-    .eq('user_id', prestataireId)
-    .eq('type', 'Mission suggerée')
-    .eq('demande_id', demandeId)
-    .maybeSingle();
-
-  if (existing) return;
-
-  await supabase.from('notifications').insert({
-    user_id: prestataireId,
-    type: 'Mission suggerée',
-    titre: '🔥 Nouvelle demande qualifiée',
-    contenu: 'Une nouvelle demande correspond à votre profil .Consultez-la et envoyez votre devis rapidement.',
-    demande_id: demandeId,
-    lu: false,
-  });
-};
-
-// ─────────────────────────────────────────────────────────
 // TRIGGER : NOUVELLE DEMANDE
 // Filtre prestataires par spécialité → calcul score → insert si ≥ 55
 // Notification si score ≥ 90
 // ─────────────────────────────────────────────────────────
 export const onNewDemande = async (demandeId, demandeData) => {
   try {
-    const specs = Array.isArray(demandeData.type_prestation)
-      ? demandeData.type_prestation.filter(Boolean)
-      : demandeData.type_prestation ? [demandeData.type_prestation] : [];
+    // Récupère la demande complète depuis la BDD si les champs clés manquent
+    let demande = demandeData;
+    if (!demande.type_prestation && !demande.categorie) {
+      const { data } = await supabase.from('demandes_client').select('*').eq('id', demandeId).single();
+      if (data) demande = data;
+    }
 
-    if (!specs.length) return { error: null };
-
-    // Filtre par spécialité côté DB (overlap)
+    // Fetch tous les prestataires actifs (ville est dans profiles, pas profils_prestataire)
     const { data: prestataires, error: prestError } = await supabase
       .from('profils_prestataire')
-      .select('id, specialisations, ville')
-      .overlaps('specialisations', specs);
+      .select('id, specialisations');
 
-    if (prestError) throw prestError;
+    if (prestError) { console.error('[onNewDemande] fetch prestataires:', prestError); throw prestError; }
     if (!prestataires?.length) return { error: null };
 
     // Récupère les villes depuis profiles
@@ -140,12 +125,12 @@ export const onNewDemande = async (demandeId, demandeData) => {
       .in('id', prestataires.map(p => p.id));
     const villeMap = Object.fromEntries((profilesVille || []).map(p => [p.id, p.ville]));
 
-    // Calcul scores en parallèle
+    // Calcul scores
     const scored = await Promise.all(
       prestataires.map(async (p) => {
-        const { isAvailable } = await checkPhotographerAvailability(p.id, demandeData.date_souhaitee);
+        const { isAvailable } = await checkPhotographerAvailability(p.id, demande.date_souhaitee);
         const { score, matchReasons } = calculateMatchScore(
-          demandeData,
+          demande,
           { ...p, ville: villeMap[p.id] || p.ville || null },
           isAvailable
         );
@@ -154,24 +139,45 @@ export const onNewDemande = async (demandeId, demandeData) => {
     );
 
     const toInsert = scored.filter(m => m.score >= 55);
+    console.log(`[onNewDemande] ${prestataires.length} prestataires, ${toInsert.length} matches ≥55`);
     if (!toInsert.length) return { error: null };
 
-    await supabase.from('matchings').upsert(
+    // Supprime les anciens matchings pour cette demande puis réinsère
+    await supabase.from('matchings').delete().eq('demande_id', demandeId);
+
+    const { error: insertError } = await supabase.from('matchings').insert(
       toInsert.map(m => ({
         demande_id: demandeId,
         prestataire_id: m.prestataire_id,
         match_score: m.score,
         match_reasons: m.matchReasons,
         status: 'pending',
-      })),
-      { onConflict: 'demande_id,prestataire_id' }
+      }))
     );
+    if (insertError) { console.error('[onNewDemande] insert matchings:', insertError); throw insertError; }
 
-    // Notifications score ≥ 90
+    // Notification si score ≥ 90 (sans doublon)
     await Promise.all(
       toInsert
         .filter(m => m.score >= 90)
-        .map(m => _sendMatchNotification(m.prestataire_id, demandeId, demandeData))
+        .map(async (m) => {
+          const { data: existing } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', m.prestataire_id)
+            .eq('type', 'mission_suggeree')
+            .eq('demande_id', demandeId)
+            .maybeSingle();
+          if (existing) return;
+          await supabase.from('notifications').insert({
+            user_id: m.prestataire_id,
+            type: 'mission_suggeree',
+            titre: '🔥 Nouvelle demande qualifiée',
+            contenu: 'Une nouvelle demande correspond à votre profil.',
+            demande_id: demandeId,
+            lu: false,
+          });
+        })
     );
 
     return { error: null };
@@ -232,12 +238,11 @@ export const onNewPrestataire = async (prestataireId, prestataireData) => {
 
     const prestaWithVille = { ...prestataireData, ville };
 
-    // Filtre demandes ouvertes dont le type_prestation overlap les spécialités
+    // Filtre demandes ouvertes (le scoring JS gère le filtre par spécialité)
     const { data: demandes, error: demandeError } = await supabase
       .from('demandes_client')
       .select('*')
-      .eq('statut', 'ouverte')
-      .overlaps('type_prestation', specs);
+      .eq('statut', 'ouverte');
 
     if (demandeError) throw demandeError;
     if (!demandes?.length) return { error: null };
@@ -256,35 +261,36 @@ export const onNewPrestataire = async (prestataireId, prestataireData) => {
     const toInsert = scored.filter(m => m.score >= 55);
     if (!toInsert.length) return { error: null };
 
-    await supabase.from('matchings').upsert(
+    // Supprime les anciens matchings pour ce prestataire puis réinsère
+    await supabase.from('matchings').delete().eq('prestataire_id', prestataireId);
+
+    const { error: insertError } = await supabase.from('matchings').insert(
       toInsert.map(m => ({
         demande_id: m.demande_id,
         prestataire_id: prestataireId,
         match_score: m.score,
         match_reasons: m.matchReasons,
         status: 'pending',
-      })),
-      { onConflict: 'demande_id,prestataire_id' }
+      }))
     );
+    if (insertError) { console.error('[onNewPrestataire] insert matchings:', insertError); throw insertError; }
 
-    // Notification si score ≥ 90 (au prestataire)
+    // Notification si score ≥ 90 (sans doublon)
     const top = toInsert.filter(m => m.score >= 90);
     if (top.length) {
-      const existing = await supabase
+      const { data: alreadySent } = await supabase
         .from('notifications')
-        .select('id')
+        .select('demande_id')
         .eq('user_id', prestataireId)
-        .eq('type', 'Mission suggerée')
+        .eq('type', 'mission_suggeree')
         .in('demande_id', top.map(m => m.demande_id));
-
-      const alreadyNotified = new Set((existing.data || []).map(n => n.demande_id));
-
+      const notified = new Set((alreadySent || []).map(n => n.demande_id));
       await Promise.all(
         top
-          .filter(m => !alreadyNotified.has(m.demande_id))
+          .filter(m => !notified.has(m.demande_id))
           .map(m => supabase.from('notifications').insert({
             user_id: prestataireId,
-            type: 'Mission suggerée',
+            type: 'mission_suggeree',
             titre: '🔥 Nouvelle demande qualifiée',
             contenu: 'Une nouvelle demande correspond à votre profil.',
             demande_id: m.demande_id,
