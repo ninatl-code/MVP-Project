@@ -134,7 +134,18 @@ export default function PhotographeReservationDetailPage() {
   };
 
   const handleConfirm  = () => { setAcceptComment(''); setShowAcceptModal(true); };
-  const handleComplete = () => updateStatus('terminee');
+  const handleComplete = async () => {
+    await updateStatus('terminee');
+    if (reservation?.client_id) {
+      createNotification({
+        userId: reservation.client_id,
+        type: NOTIFICATION_TYPES.PRESTATION_TERMINEE,
+        title: '⭐ Donnez votre avis',
+        message: 'Votre prestation est terminée. Partagez votre expérience !',
+        reservationId: reservation.id,
+      });
+    }
+  };
 
   const handleConfirmSubmit = async () => {
     await updateStatus('confirmee', {
@@ -143,11 +154,10 @@ export default function PhotographeReservationDetailPage() {
     });
     await createNotification({
       userId: reservation?.client_id,
-      type: NOTIFICATION_TYPES.RESERVATION_CONFIRMED,
-      title: 'Réservation confirmée',
-      message: acceptComment
-        ? `Votre réservation a été acceptée : "${acceptComment}"`
-        : 'Votre réservation a été acceptée par le prestataire.',
+      type: NOTIFICATION_TYPES.RESERVATION_CONFIRMEE,
+      title: '✅ Réservation confirmée',
+      message: 'Votre réservation a été confirmée.',
+      reservationId: reservation?.id,
     });
     setShowAcceptModal(false);
   };
@@ -157,9 +167,10 @@ export default function PhotographeReservationDetailPage() {
     await updateStatus('cancelled', { motif_annulation: cancelReason, annule_par: photographeProfile?.id, date_annulation: new Date().toISOString() });
     await createNotification({
       userId: reservation?.client_id,
-      type: NOTIFICATION_TYPES.RESERVATION_CANCELLED,
-      title: 'Réservation annulée',
-      message: `Votre réservation a été annulée : "${cancelReason}"`,
+      type: NOTIFICATION_TYPES.RESERVATION_ANNULEE,
+      title: '❌ Réservation annulée',
+      message: `Votre réservation a été annulée.`,
+      reservationId: reservation?.id,
     });
     setShowCancelModal(false);
   };
@@ -168,11 +179,10 @@ export default function PhotographeReservationDetailPage() {
     await updateStatus('cancelled', { motif_annulation: refuseReason || 'Refusé par le prestataire', annule_par: photographeProfile?.id, date_annulation: new Date().toISOString() });
     await createNotification({
       userId: reservation?.client_id,
-      type: NOTIFICATION_TYPES.RESERVATION_CANCELLED,
-      title: 'Réservation refusée',
-      message: refuseReason
-        ? `Votre réservation a été refusée : "${refuseReason}"`
-        : 'Votre réservation a été refusée par le prestataire.',
+      type: NOTIFICATION_TYPES.RESERVATION_ANNULEE,
+      title: '❌ Réservation annulée',
+      message: 'Votre réservation a été annulée.',
+      reservationId: reservation?.id,
     });
     setShowRefuseModal(false);
   };

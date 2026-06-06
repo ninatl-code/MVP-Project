@@ -70,7 +70,7 @@ export default function PhotographerReservationsPage() {
           package:packages_types(id, titre)
         `)
         .eq('prestataire_id', photographeProfile.id)
-        .order('date', { ascending: timeFilter === 'upcoming' });
+        .order('created_at', { ascending: false });
 
       if (filter !== 'all') {
         query = query.eq('statut', filter);
@@ -168,11 +168,10 @@ export default function PhotographerReservationsPage() {
       }).eq('id', pendingReservation.id);
       await createNotification({
         userId: pendingReservation.client_id,
-        type: NOTIFICATION_TYPES.RESERVATION_CONFIRMED,
-        title: 'Réservation confirmée',
-        message: acceptComment
-          ? `Votre réservation a été acceptée : "${acceptComment}"`
-          : 'Votre réservation a été acceptée par le prestataire.',
+        type: NOTIFICATION_TYPES.RESERVATION_CONFIRMEE,
+        title: '✅ Réservation confirmée',
+        message: 'Votre réservation a été confirmée.',
+        reservationId: pendingReservation.id,
       });
       const montant = parseFloat(pendingReservation.montant_total) || 0;
       setInvoiceData({
@@ -208,11 +207,10 @@ export default function PhotographerReservationsPage() {
       }).eq('id', pendingReservation.id);
       await createNotification({
         userId: pendingReservation.client_id,
-        type: NOTIFICATION_TYPES.RESERVATION_CANCELLED,
-        title: 'Réservation refusée',
-        message: refuseComment
-          ? `Votre réservation a été refusée : "${refuseComment}"`
-          : 'Votre réservation a été refusée par le prestataire.',
+        type: NOTIFICATION_TYPES.RESERVATION_ANNULEE,
+        title: '❌ Réservation annulée',
+        message: 'Votre réservation a été annulée.',
+        reservationId: pendingReservation.id,
       });
       setShowRefuseModal(false);
       fetchReservations();
@@ -272,9 +270,10 @@ export default function PhotographerReservationsPage() {
       });
       await createNotification({
         userId: acceptedReservation.client_id,
-        type: NOTIFICATION_TYPES.RESERVATION_CONFIRMED,
-        title: 'Facture disponible',
+        type: NOTIFICATION_TYPES.RESERVATION_CONFIRMEE,
+        title: '✅ Facture disponible',
         message: `Une facture (${invoiceData.num_facture}) a été émise pour votre réservation.`,
+        reservationId: acceptedReservation.id,
       });
       setShowInvoiceModal(false);
     } catch (e) { console.error(e); }

@@ -102,10 +102,9 @@ BEGIN
       )
       VALUES (
         NEW.id,
-        'nouveau_matching',
-        'Demande correspondant à votre profil',
-        'Un client recherche un prestataire dans votre ville pour : '
-          || COALESCE(demande.titre, demande.categorie, 'une prestation'),
+        'Mission suggerée',
+        'Nouvelle demande qualifiée',
+        'Une nouvelle demande correspondant à vos critères est disponible. Consultez-la et envoyez votre devis rapidement.'',
         demande.id,
         FALSE,
         NOW()
@@ -148,4 +147,4 @@ CREATE TRIGGER trigger_matching_on_new_prestataire
 -- SELECT * FROM matchings WHERE prestataire_id = '<uuid>' ORDER BY created_at DESC;
 
 -- Notifications envoyées :
--- SELECT * FROM notifications WHERE user_id = '<uuid>' AND type = 'nouveau_matching';
+-- SELECT * FROM notifications WHERE user_id = '<uuid>' AND type = 'Mission suggerée';

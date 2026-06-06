@@ -7,7 +7,7 @@ import HeaderParti from '../components/HeaderParti';
 import HeaderPresta from '../components/HeaderPresta';
 import {
   Bell, ArrowLeft, Check, CheckCheck, Calendar, MessageCircle,
-  FileText, Euro, Star, Camera, Clock, X, Trash2, Settings, Zap
+  FileText, Star, Clock, X, Trash2, Settings, Zap
 } from 'lucide-react';
 
 export default function NotificationsPage() {
@@ -36,7 +36,7 @@ const isPhotographe = activeRole === 'prestataire';
         .order('created_at', { ascending: false });
 
       if (filter === 'unread') {
-        query = query.eq('read', false);
+        query = query.eq('lu', false);
       }
 
       const { data, error } = await query.limit(100);
@@ -55,11 +55,11 @@ const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? He
     try {
       await supabase
         .from('notifications')
-        .update({ read: true, read_at: new Date().toISOString() })
+        .update({ lu: true })
         .in('id', ids);
 
       setNotifications(prev =>
-        prev.map(n => ids.includes(n.id) ? { ...n, read: true } : n)
+        prev.map(n => ids.includes(n.id) ? { ...n, lu: true } : n)
       );
       setSelectedIds([]);
     } catch (error) {
@@ -71,11 +71,11 @@ const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? He
     try {
       await supabase
         .from('notifications')
-        .update({ read: true, read_at: new Date().toISOString() })
+        .update({ lu: true })
         .eq('user_id', user.id)
-        .eq('read', false);
+        .eq('lu', false);
 
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, lu: true })));
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
@@ -111,32 +111,16 @@ const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? He
 
   const getNotificationIcon = (type) => {
     switch (type) {
-      case 'nouveau_matching':
-        return <Zap className="w-5 h-5 text-indigo-600" />;
-      case 'nouvelle_demande':
-        return <FileText className="w-5 h-5 text-blue-500" />;
-      case 'nouveau_devis':
-        return <Euro className="w-5 h-5 text-green-500" />;
-      case 'devis_accepte':
-        return <Check className="w-5 h-5 text-green-500" />;
-      case 'devis_refuse':
-        return <X className="w-5 h-5 text-red-500" />;
-      case 'nouvelle_reservation':
-        return <Calendar className="w-5 h-5 text-indigo-500" />;
-      case 'reservation_confirmee':
-        return <CheckCheck className="w-5 h-5 text-green-500" />;
-      case 'reservation_annulee':
-        return <X className="w-5 h-5 text-red-500" />;
-      case 'nouveau_message':
-        return <MessageCircle className="w-5 h-5 text-blue-500" />;
-      case 'nouvel_avis':
-        return <Star className="w-5 h-5 text-yellow-500" />;
-      case 'rappel_prestation':
-        return <Clock className="w-5 h-5 text-orange-500" />;
-      case 'paiement_recu':
-        return <Euro className="w-5 h-5 text-green-500" />;
-      default:
-        return <Bell className="w-5 h-5 text-gray-500" />;
+      case 'Mission suggerée':      return <Zap className="w-5 h-5 text-orange-500" />;
+      case 'devis_recu':            return <FileText className="w-5 h-5 text-indigo-500" />;
+      case 'devis_accepte':         return <Check className="w-5 h-5 text-green-500" />;
+      case 'devis_refuse':          return <X className="w-5 h-5 text-red-500" />;
+      case 'reservation_confirmee': return <CheckCheck className="w-5 h-5 text-green-500" />;
+      case 'reservation_annulee':   return <X className="w-5 h-5 text-red-500" />;
+      case 'prestation_terminee':   return <Star className="w-5 h-5 text-yellow-500" />;
+      case 'nouvel_avis':           return <Star className="w-5 h-5 text-yellow-500" />;
+      case 'nouveau_message':       return <MessageCircle className="w-5 h-5 text-blue-500" />;
+      default:                      return <Bell className="w-5 h-5 text-gray-400" />;
     }
   };
 
@@ -146,31 +130,26 @@ const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? He
     const devis_id = notification.devis_id;
     const reservation_id = notification.reservation_id;
     switch (type) {
-      case 'nouveau_matching':
-        return '/photographe/demandes?tab=plateforme';
-      case 'nouvelle_demande':
-        return isPhotographe 
-          ? `/photographe/demandes?tab=clients` 
-          : `/client/demandes/${demande_id}`;
-      case 'nouveau_devis':
-        return `/client/devis/${devis_id}`;
+      case 'Mission suggerée':
+        return demande_id ? `/photographe/demandes/${demande_id}` : '/photographe/demandes?tab=plateforme';
+      case 'devis_recu':
+        return devis_id ? `/client/devis/${devis_id}` : '/client/devis/devis-list';
       case 'devis_accepte':
+        return devis_id ? `/photographe/devis/${devis_id}` : '/photographe/devis';
       case 'devis_refuse':
-        return `/photographe/devis/${devis_id}`;
-      case 'nouvelle_reservation':
+        return devis_id ? `/photographe/devis/${devis_id}` : '/photographe/devis';
       case 'reservation_confirmee':
+        return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
       case 'reservation_annulee':
         return isPhotographe
-          ? `/photographe/reservations/${reservation_id}`
-          : `/client/reservations/${reservation_id}`;
-      case 'nouveau_message':
-        return `/shared/messages`;
+          ? (reservation_id ? `/photographe/reservations/${reservation_id}` : '/photographe/reservations')
+          : (reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations');
+      case 'prestation_terminee':
+        return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
       case 'nouvel_avis':
-        return `/shared/avis`;
-      case 'rappel_prestation':
-        return isPhotographe
-          ? `/photographe/reservations/${reservation_id}`
-          : `/client/reservations/${reservation_id}`;
+        return reservation_id ? `/photographe/reservations/${reservation_id}` : '/photographe/avis-dashboard';
+      case 'nouveau_message':
+        return '/shared/messages';
       default:
         return '#';
     }

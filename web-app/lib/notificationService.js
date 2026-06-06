@@ -1,21 +1,27 @@
 ﻿import { supabase } from './supabaseClient';
 
 /**
- * Notification types
+ * Canonical notification types
  */
 export const NOTIFICATION_TYPES = {
-  RESERVATION: 'reservation',
-  MESSAGE: 'message',
-  REMINDER: 'reminder',
-  PAYMENT: 'payment',
-  AVIS: 'avis',
-  NEW_DEMANDE: 'new_demande',
-  NEW_DEVIS: 'new_devis',
-  DEVIS_ACCEPTED: 'devis_accepte',
-  DEVIS_REJECTED: 'devis_refuse',
-  RESERVATION_CONFIRMED: 'reservation_confirmed',
-  RESERVATION_CANCELLED: 'reservation_cancelled',
-  SYSTEM: 'system',
+  // Client
+  DEVIS_RECU:             'devis_recu',
+  RESERVATION_CONFIRMEE:  'reservation_confirmee',
+  RESERVATION_ANNULEE:    'reservation_annulee',
+  PRESTATION_TERMINEE:    'prestation_terminee',
+  // Prestataire
+  Mission suggerée:       'Mission suggerée',
+  DEVIS_ACCEPTE:          'devis_accepte',
+  DEVIS_REFUSE:           'devis_refuse',
+  PRESTATAIRE_ANNULATION: 'reservation_annulee',
+  NOUVEL_AVIS:            'nouvel_avis',
+  // Compat aliases
+  RESERVATION_CONFIRMED:  'reservation_confirmee',
+  RESERVATION_CANCELLED:  'reservation_annulee',
+  NEW_DEVIS:              'devis_recu',
+  DEVIS_ACCEPTED:         'devis_accepte',
+  DEVIS_REJECTED:         'devis_refuse',
+  MESSAGE:                'nouveau_message',
 };
 
 /**
@@ -26,6 +32,9 @@ export const createNotification = async ({
   type,
   title,
   message,
+  reservationId = null,
+  devisId = null,
+  demandeId = null,
 }) => {
   try {
     const { data: notification, error } = await supabase
@@ -36,6 +45,9 @@ export const createNotification = async ({
         titre: title,
         contenu: message,
         lu: false,
+        ...(reservationId ? { reservation_id: reservationId } : {}),
+        ...(devisId ? { devis_id: devisId } : {}),
+        ...(demandeId ? { demande_id: demandeId } : {}),
       })
       .select()
       .single();

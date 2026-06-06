@@ -2,6 +2,7 @@
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
+import { createNotification, NOTIFICATION_TYPES } from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
 import { 
   ArrowLeft, Calendar, MapPin, Camera, 
@@ -148,9 +149,9 @@ export default function DevisDetailPage() {
           prestataire_id: devis.prestataire_id,
           devis_id: id,
           demande_id: devis.demande_id || null,
-          titre: devis.titre || demande?.titre || 'Prestation photo',
-          description: devis.description || null,
-          categorie: demande?.categorie || 'photo',
+          titre: "Reservation" + demande?.titre,
+          description: "Reservation" + (devis.description || ''),
+          categorie: demande?.categorie || 'À définir',
           date: demande?.date_souhaitee || new Date().toISOString().split('T')[0],
           lieu: demande?.lieu || 'À définir',
           montant_total: devis.montant_total,
@@ -169,7 +170,18 @@ export default function DevisDetailPage() {
         return;
       }
 
-      // 4. Show success banner with link (no auto-redirect)
+      // 4. Notify photographer
+      if (devis.prestataire_id) {
+        createNotification({
+          userId: devis.prestataire_id,
+          type: NOTIFICATION_TYPES.DEVIS_ACCEPTE,
+          title: '🎉 Devis accepté',
+          message: 'Bonne nouvelle ! Votre devis a été accepté.',
+          devisId: id,
+        });
+      }
+
+      // 5. Show success banner with link (no auto-redirect)
       setCreatedReservationId(reservation.id);
       setAcceptSuccess(true);
     } catch (error) {
@@ -196,6 +208,17 @@ export default function DevisDetailPage() {
       
       setDevis(prev => ({ ...prev, statut: 'refuse' }));
       setShowRefuseModal(false);
+
+      // Notify photographer
+      if (devis.prestataire_id) {
+        createNotification({
+          userId: devis.prestataire_id,
+          type: NOTIFICATION_TYPES.DEVIS_REFUSE,
+          title: '📌 Devis non retenu',
+          message: 'Votre devis n’a pas été retenu.',
+          devisId: id,
+        });
+      }
     } catch (error) {
       console.error('Error refusing devis:', error);
     } finally {

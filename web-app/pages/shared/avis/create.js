@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
+import { createNotification, NOTIFICATION_TYPES } from '../../../lib/notificationService';
 import { 
   Star, ArrowLeft, Send, Camera, Calendar, 
   MapPin, Euro, CheckCircle, AlertCircle
@@ -124,7 +125,17 @@ export default function CreateAvisPage() {
           .insert(avisData);
 
         if (error) throw error;
-        // note_moyenne and nb_avis are updated via DB trigger or statistiques_avis view
+
+        // Notify prestataire of new avis (only when client submits)
+        if (!isPhotographe && reservation.prestataire_id) {
+          createNotification({
+            userId: reservation.prestataire_id,
+            type: NOTIFICATION_TYPES.NOUVEL_AVIS,
+            title: '⭐ Nouvel avis reçu',
+            message: 'Vous avez reçu un nouvel avis.',
+            reservationId: reservationId,
+          });
+        }
       }
 
       setSuccess(true);

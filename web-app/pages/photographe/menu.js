@@ -195,7 +195,7 @@ function NotificationsPopup({ userId }) {
                   } hover:bg-gray-50 cursor-pointer transition`}
                   onClick={() => {
                     setOpen(false);
-                    if (notif.type === 'nouveau_matching') {
+                    if (notif.type === 'Mission suggerée') {
                       router.push('/photographe/demandes?tab=plateforme');
                     } else if (notif.demande_id) {
                       router.push('/photographe/demandes?tab=clients');

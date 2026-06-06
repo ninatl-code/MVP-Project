@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { createNotification, NOTIFICATION_TYPES } from './notificationService';
 
 /**
  * Create a new devis (quote) from service provider
@@ -40,6 +41,16 @@ export const createDevis = async ({
       .single();
 
     if (error) throw error;
+
+    // Notify client that a new devis was received
+    createNotification({
+      userId: clientId,
+      type: NOTIFICATION_TYPES.DEVIS_RECU,
+      title: '📄 Nouveau devis reçu',
+      message: 'Vous avez reçu un nouveau devis.',
+      devisId: data.id,
+    });
+
     return { data, error: null };
   } catch (error) {
     console.error('Error creating devis:', error);

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
-import { computeAndSaveMatchesForDemande } from '../../../lib/matchingService';
+import { onUpdateDemande } from '../../../lib/matchingService';
 import Header from '../../../components/HeaderParti';
 import {
   ArrowLeft, Calendar, MapPin, Clock, Users,
@@ -35,6 +35,7 @@ export default function EditDemandePage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [villesList, setVillesList] = useState([]);
+  const originalDataRef = useRef(null);
 
   const [formData, setFormData] = useState({
     titre: '',
@@ -105,6 +106,11 @@ export default function EditDemandePage() {
         matiere: det.matiere || '',
         niveau: det.niveau || '',
       });
+      originalDataRef.current = {
+        type_prestation: data.type_prestation || null,
+        ville: data.ville || null,
+        date_souhaitee: data.date_souhaitee || null,
+      };
       setLoading(false);
     };
     load();
@@ -157,7 +163,14 @@ export default function EditDemandePage() {
       if (updateError) throw updateError;
 
       // Recompute matching scores after update (fire and forget)
-      computeAndSaveMatchesForDemande(id, { ...formData, id, categorie: formData.categorie });
+      const newTypePrestation = formData.specialite === 'Autre'
+        ? [formData.specialite_autre?.trim() || 'Autre']
+        : formData.specialite ? [formData.specialite] : null;
+      onUpdateDemande(id, originalDataRef.current, {
+        type_prestation: newTypePrestation,
+        ville: formData.ville,
+        date_souhaitee: formData.date_souhaitee || null,
+      });
 
       setSuccess(true);
       setTimeout(() => router.push(`/client/demandes/${id}`), 1500);

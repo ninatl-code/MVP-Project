@@ -226,8 +226,8 @@ export default function CreateDevisPage() {
       // Create notification for the client
       await supabase.from('notifications').insert({
         user_id: demande.client_id,
-        type: 'nouveau_devis',
-        titre: 'Nouveau devis reçu',
+        type: 'Nouveau devis',
+        titre: 'Nouveau devis reçu suite à votre demande',
         contenu: `${photographeProfile.nom_entreprise || 'Un prestataire'} vous a envoyé un devis pour "${demande.titre}"`,
         devis_id: data.id,
         demande_id: id,

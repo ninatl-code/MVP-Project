@@ -2,6 +2,7 @@
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { onNewPrestataire, onUpdatePrestataire } from '../../lib/matchingService';
 import Header from '../../components/HeaderPresta';
 import { 
   User, Camera, MapPin, Instagram, Globe, Phone, Mail,
@@ -251,6 +252,7 @@ export default function PhotographeProfilPage() {
   const [portfolioImages, setPortfolioImages] = useState([]);
   const fileInputRef = useRef(null);
   const portfolioInputRef = useRef(null);
+  const prevPrestaRef = useRef(null);
   
   // Nouveaux états pour vérification, stats, etc.
   const [verificationStatus, setVerificationStatus] = useState(null);
@@ -500,7 +502,11 @@ export default function PhotographeProfilPage() {
         console.log('✅ Profil fusionné:', mergedProfile);
         setProfile(mergedProfile);
 
-        // Calculer le statut de vérification depuis les données du profil
+        prevPrestaRef.current = {
+          exists: !!photoProfile,
+          specialisations: photoProfile?.specialisations || [],
+          ville: baseProfile?.ville || null,
+        };
         const hasIdentityDoc = !!(photoProfile?.document_identite_recto_url);
         const hasBusinessDoc = !!(photoProfile?.documents_siret || photoProfile?.documents_kbis);
         const emailVerified = true; // Supabase impose la confirmation email à l'inscription
@@ -659,6 +665,18 @@ export default function PhotographeProfilPage() {
       }
 
       alert('Profil mis à jour !');
+
+      // Trigger matching
+      const newPrestaData = {
+        specialisations: profile.specialisations || [],
+        ville: villeNom || profile.ville || null,
+      };
+      if (!prevPrestaRef.current?.exists) {
+        onNewPrestataire(currentUser.id, newPrestaData);
+      } else {
+        onUpdatePrestataire(currentUser.id, prevPrestaRef.current, newPrestaData);
+      }
+
       await fetchFullProfile(currentUser.id);
     } catch (error) {
       console.error('Error saving profile:', error);

@@ -1,108 +1,334 @@
 import { supabase } from './supabaseClient';
 
-// Mapping slug de catégorie (demandes) → label catégorie (profils_prestataire)
-const CATEGORIE_SLUG_TO_LABEL = {
-  'services-domicile': 'Services à domicile',
-  'transport': 'Transport & logistique',
-  'digital': 'Services digitaux',
-  'education': 'Éducation & coaching',
-  'beaute-bien-etre': 'Beauté & Bien-être',
-  'evenementiel': 'Événementiel',
-};
-
 /**
- * Calculate match score between a demande and a service provider
- * Score is 0-100 based on:
- * - Same speciality (type_prestation vs specialisations) : +50
- * - Same category (categorie slug vs categories)         : +25
- * - Same city                                            : +30
- * - Future service date                                  : +20
+ * SCORE MATCHING RULES (max 100):
+ * +55 → même spécialité (obligatoire, sans ça score = 0)
+ * +35 → même ville
+ * +10 → disponible à la date souhaitée
+ *
+ * Seuil insertion  : score >= 55
+ * Seuil notif      : score >= 90 (sans doublon)
  */
-export const calculateMatchScore = (demande, photographe) => {
+
+// ─────────────────────────────────────────────────────────
+// SCORE CALCULATION
+// ─────────────────────────────────────────────────────────
+export const calculateMatchScore = (demande, prestataire, isAvailable = true) => {
   let score = 0;
   const matchReasons = [];
 
-  // Normalise arrays
-  const demandeSpecialties = Array.isArray(demande.type_prestation)
+  const demandeSpecs = Array.isArray(demande.type_prestation)
     ? demande.type_prestation.filter(Boolean)
-    : (demande.type_prestation ? [demande.type_prestation] : []);
+    : demande.type_prestation ? [demande.type_prestation] : [];
 
-  const prestaSpecialisations = Array.isArray(photographe.specialisations)
-    ? photographe.specialisations.filter(Boolean)
-    : (photographe.specialisations ? [photographe.specialisations] : []);
+  const prestaSpecs = Array.isArray(prestataire.specialisations)
+    ? prestataire.specialisations.filter(Boolean)
+    : prestataire.specialisations ? [prestataire.specialisations] : [];
 
-  const prestaCategories = Array.isArray(photographe.categories)
-    ? photographe.categories.filter(Boolean)
-    : (photographe.categories ? [photographe.categories] : []);
-
-  const categorieLabel = CATEGORIE_SLUG_TO_LABEL[demande.categorie] || demande.categorie || '';
-
-  // 1. Specialty exact match: type_prestation vs specialisations
-  const matchedSpec = demandeSpecialties.find(s =>
-    prestaSpecialisations.some(ps => ps.toLowerCase() === s.toLowerCase())
+  // 1. Même spécialité (+55) — obligatoire
+  const matchedSpec = demandeSpecs.find(spec =>
+    prestaSpecs.some(ps => ps.toLowerCase() === spec.toLowerCase())
   );
 
-  // 2. Category match: categorie label vs photographe.categories
-  const hasCategoryMatch = categorieLabel && prestaCategories.some(c =>
-    c.toLowerCase() === categorieLabel.toLowerCase() ||
-    c.toLowerCase().includes(categorieLabel.toLowerCase()) ||
-    categorieLabel.toLowerCase().includes(c.toLowerCase())
-  );
+  if (!matchedSpec) return { score: 0, matchReasons: [] };
 
-  // 3. Fallback: specialty name contains/matches category label (e.g. 'Photographe' in 'Événementiel')
-  const hasSpecCategoryFallback = !hasCategoryMatch && categorieLabel && prestaSpecialisations.some(ps =>
-    ps.toLowerCase().includes(categorieLabel.toLowerCase()) ||
-    categorieLabel.toLowerCase().includes(ps.toLowerCase())
-  );
+  score += 55;
+  matchReasons.push(`Même spécialité : ${matchedSpec} (+55)`);
 
-  if (matchedSpec) {
-    score += 50;
-    matchReasons.push(`Même spécialité : ${matchedSpec} (+50%)`);
-  } else if (hasCategoryMatch || hasSpecCategoryFallback) {
-    score += 25;
-    matchReasons.push(`Même catégorie : ${categorieLabel} (+25%)`);
-  }
-
-  // 2. City match
-  if (demande.ville && photographe.ville) {
-    const villesDemande = demande.ville.toLowerCase().trim();
-    const villesPresta = photographe.ville.toLowerCase().trim();
-
-    if (villesDemande === villesPresta) {
-      score += 30;
-      matchReasons.push(`Même lieu : ${demande.ville} (+30%)`);
-    } else if (
-      villesPresta.includes(villesDemande) ||
-      villesDemande.includes(villesPresta)
-    ) {
-      score += 15;
-      matchReasons.push('Lieu proche (+15%)');
+  // 2. Même ville (+35)
+  if (demande.ville && prestataire.ville) {
+    if (demande.ville.toLowerCase().trim() === prestataire.ville.toLowerCase().trim()) {
+      score += 35;
+      matchReasons.push(`Même ville : ${demande.ville} (+35)`);
     }
   }
 
-  // 3. Future service date
-  if (demande.date_souhaitee) {
-    const dateService = new Date(demande.date_souhaitee);
-    if (dateService >= new Date()) {
-      score += 20;
-      matchReasons.push(
-        `Date disponible : ${dateService.toLocaleDateString('fr-FR')} (+20%)`
-      );
-    }
+  // 3. Disponible à la date (+10)
+  if (isAvailable && demande.date_souhaitee && new Date(demande.date_souhaitee) >= new Date()) {
+    score += 10;
+    matchReasons.push(`Disponible à la date souhaitée (+10)`);
   }
 
-  return {
-    score: Math.min(score, 100),
-    matchReasons,
-  };
+  return { score: Math.min(score, 100), matchReasons };
 };
 
-/**
- * Find matching service providers for a demande
- */
+// ─────────────────────────────────────────────────────────
+// COULEUR SCORE UI
+// ─────────────────────────────────────────────────────────
+export const getMatchScoreColor = (score) => {
+  if (score >= 90) return 'green';
+  if (score >= 65) return 'orange';
+  return 'gray';
+};
+
+// ─────────────────────────────────────────────────────────
+// AVAILABILITY CHECK
+// ─────────────────────────────────────────────────────────
+export const checkPhotographerAvailability = async (photographeId, date) => {
+  if (!date) return { isAvailable: false };
+  try {
+    const [{ data: blockedSlots }, { data: reservations }] = await Promise.all([
+      supabase
+        .from('blocked_slots')
+        .select('id')
+        .eq('prestataire_id', photographeId)
+        .lte('start_datetime', date)
+        .gte('end_datetime', date),
+      supabase
+        .from('reservations')
+        .select('id')
+        .eq('prestataire_id', photographeId)
+        .eq('date', date)
+        .in('statut', ['confirmee', 'pending', 'en_attente']),
+    ]);
+    return { isAvailable: !blockedSlots?.length && !reservations?.length };
+  } catch {
+    return { isAvailable: false };
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// HELPER: envoyer notification (sans doublon)
+// ─────────────────────────────────────────────────────────
+const _sendMatchNotification = async (prestataireId, demandeId, demandeData) => {
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('user_id', prestataireId)
+    .eq('type', 'Mission suggerée')
+    .eq('demande_id', demandeId)
+    .maybeSingle();
+
+  if (existing) return;
+
+  await supabase.from('notifications').insert({
+    user_id: prestataireId,
+    type: 'Mission suggerée',
+    titre: '🔥 Nouvelle demande qualifiée',
+    contenu: 'Une nouvelle demande correspond à votre profil .Consultez-la et envoyez votre devis rapidement.',
+    demande_id: demandeId,
+    lu: false,
+  });
+};
+
+// ─────────────────────────────────────────────────────────
+// TRIGGER : NOUVELLE DEMANDE
+// Filtre prestataires par spécialité → calcul score → insert si ≥ 55
+// Notification si score ≥ 90
+// ─────────────────────────────────────────────────────────
+export const onNewDemande = async (demandeId, demandeData) => {
+  try {
+    const specs = Array.isArray(demandeData.type_prestation)
+      ? demandeData.type_prestation.filter(Boolean)
+      : demandeData.type_prestation ? [demandeData.type_prestation] : [];
+
+    if (!specs.length) return { error: null };
+
+    // Filtre par spécialité côté DB (overlap)
+    const { data: prestataires, error: prestError } = await supabase
+      .from('profils_prestataire')
+      .select('id, specialisations, ville')
+      .overlaps('specialisations', specs);
+
+    if (prestError) throw prestError;
+    if (!prestataires?.length) return { error: null };
+
+    // Récupère les villes depuis profiles
+    const { data: profilesVille } = await supabase
+      .from('profiles')
+      .select('id, ville')
+      .in('id', prestataires.map(p => p.id));
+    const villeMap = Object.fromEntries((profilesVille || []).map(p => [p.id, p.ville]));
+
+    // Calcul scores en parallèle
+    const scored = await Promise.all(
+      prestataires.map(async (p) => {
+        const { isAvailable } = await checkPhotographerAvailability(p.id, demandeData.date_souhaitee);
+        const { score, matchReasons } = calculateMatchScore(
+          demandeData,
+          { ...p, ville: villeMap[p.id] || p.ville || null },
+          isAvailable
+        );
+        return { prestataire_id: p.id, score, matchReasons };
+      })
+    );
+
+    const toInsert = scored.filter(m => m.score >= 55);
+    if (!toInsert.length) return { error: null };
+
+    await supabase.from('matchings').upsert(
+      toInsert.map(m => ({
+        demande_id: demandeId,
+        prestataire_id: m.prestataire_id,
+        match_score: m.score,
+        match_reasons: m.matchReasons,
+        status: 'pending',
+      })),
+      { onConflict: 'demande_id,prestataire_id' }
+    );
+
+    // Notifications score ≥ 90
+    await Promise.all(
+      toInsert
+        .filter(m => m.score >= 90)
+        .map(m => _sendMatchNotification(m.prestataire_id, demandeId, demandeData))
+    );
+
+    return { error: null };
+  } catch (error) {
+    console.error('[onNewDemande]', error);
+    return { error };
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// TRIGGER : MODIFICATION DEMANDE
+// Recalcul seulement si type / ville / date change
+// Supprime anciens matchings → recalcul → réinsère si ≥ 55
+// ─────────────────────────────────────────────────────────
+export const onUpdateDemande = async (demandeId, oldData, newData) => {
+  const changed =
+    JSON.stringify(oldData.type_prestation) !== JSON.stringify(newData.type_prestation) ||
+    oldData.ville !== newData.ville ||
+    oldData.date_souhaitee !== newData.date_souhaitee;
+
+  if (!changed) return { error: null };
+
+  try {
+    // Supprime anciens matchings
+    await supabase.from('matchings').delete().eq('demande_id', demandeId);
+
+    // Réinsère avec nouvelles données
+    return await onNewDemande(demandeId, newData);
+  } catch (error) {
+    console.error('[onUpdateDemande]', error);
+    return { error };
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// TRIGGER : NOUVEAU PRESTATAIRE
+// Filtre demandes par spécialité → calcul score → insert si ≥ 55
+// Notification si score ≥ 90
+// ─────────────────────────────────────────────────────────
+export const onNewPrestataire = async (prestataireId, prestataireData) => {
+  try {
+    const specs = Array.isArray(prestataireData.specialisations)
+      ? prestataireData.specialisations.filter(Boolean)
+      : prestataireData.specialisations ? [prestataireData.specialisations] : [];
+
+    if (!specs.length) return { error: null };
+
+    // Récupère la ville depuis profiles si pas fournie
+    let ville = prestataireData.ville;
+    if (!ville) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('ville')
+        .eq('id', prestataireId)
+        .maybeSingle();
+      ville = profile?.ville || null;
+    }
+
+    const prestaWithVille = { ...prestataireData, ville };
+
+    // Filtre demandes ouvertes dont le type_prestation overlap les spécialités
+    const { data: demandes, error: demandeError } = await supabase
+      .from('demandes_client')
+      .select('*')
+      .eq('statut', 'ouverte')
+      .overlaps('type_prestation', specs);
+
+    if (demandeError) throw demandeError;
+    if (!demandes?.length) return { error: null };
+
+    const now = new Date();
+    const scored = await Promise.all(
+      demandes
+        .filter(d => !d.date_souhaitee || new Date(d.date_souhaitee) >= now)
+        .map(async (d) => {
+          const { isAvailable } = await checkPhotographerAvailability(prestataireId, d.date_souhaitee);
+          const { score, matchReasons } = calculateMatchScore(d, prestaWithVille, isAvailable);
+          return { demande_id: d.id, demande: d, score, matchReasons };
+        })
+    );
+
+    const toInsert = scored.filter(m => m.score >= 55);
+    if (!toInsert.length) return { error: null };
+
+    await supabase.from('matchings').upsert(
+      toInsert.map(m => ({
+        demande_id: m.demande_id,
+        prestataire_id: prestataireId,
+        match_score: m.score,
+        match_reasons: m.matchReasons,
+        status: 'pending',
+      })),
+      { onConflict: 'demande_id,prestataire_id' }
+    );
+
+    // Notification si score ≥ 90 (au prestataire)
+    const top = toInsert.filter(m => m.score >= 90);
+    if (top.length) {
+      const existing = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', prestataireId)
+        .eq('type', 'Mission suggerée')
+        .in('demande_id', top.map(m => m.demande_id));
+
+      const alreadyNotified = new Set((existing.data || []).map(n => n.demande_id));
+
+      await Promise.all(
+        top
+          .filter(m => !alreadyNotified.has(m.demande_id))
+          .map(m => supabase.from('notifications').insert({
+            user_id: prestataireId,
+            type: 'Mission suggerée',
+            titre: '🔥 Nouvelle demande qualifiée',
+            contenu: 'Une nouvelle demande correspond à votre profil.',
+            demande_id: m.demande_id,
+            lu: false,
+          }))
+      );
+    }
+
+    return { error: null };
+  } catch (error) {
+    console.error('[onNewPrestataire]', error);
+    return { error };
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// TRIGGER : MODIFICATION PRESTATAIRE
+// Recalcul seulement si spécialités ou ville changent
+// Supprime anciens matchings → recalcul → réinsère si ≥ 55
+// ─────────────────────────────────────────────────────────
+export const onUpdatePrestataire = async (prestataireId, oldData, newData) => {
+  const changed =
+    JSON.stringify(oldData.specialisations) !== JSON.stringify(newData.specialisations) ||
+    oldData.ville !== newData.ville;
+
+  if (!changed) return { error: null };
+
+  try {
+    // Supprime anciens matchings
+    await supabase.from('matchings').delete().eq('prestataire_id', prestataireId);
+
+    // Réinsère avec nouvelles données
+    return await onNewPrestataire(prestataireId, newData);
+  } catch (error) {
+    console.error('[onUpdatePrestataire]', error);
+    return { error };
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// FIND MATCHES FOR CLIENT  (lecture seule, affichage)
+// ─────────────────────────────────────────────────────────
 export const findMatchingPhotographers = async (demandeId, limit = 10) => {
   try {
-    // Get demande details
     const { data: demande, error: demandeError } = await supabase
       .from('demandes_client')
       .select('*')
@@ -111,306 +337,168 @@ export const findMatchingPhotographers = async (demandeId, limit = 10) => {
 
     if (demandeError) throw demandeError;
 
-    // Get all available service providers
+    const specs = Array.isArray(demande.type_prestation)
+      ? demande.type_prestation.filter(Boolean)
+      : demande.type_prestation ? [demande.type_prestation] : [];
+
+    if (!specs.length) return { matches: [], demande, error: null };
+
     const { data: photographers, error: photoError } = await supabase
       .from('profiles')
       .select(`
-        id,
-        nom,
-        email,
-        avatar_url,
+        id, nom, email, avatar_url, ville,
         profils_prestataire(
-          specialisations,
-          rayon_deplacement_km,
-          tarif_horaire_min,
-          identite_verifiee,
-          note_moyenne,
-          nb_avis,
-          portfolio_photos
+          specialisations, rayon_deplacement_km,
+          tarif_horaire_min, identite_verifiee,
+          note_moyenne, nb_avis, portfolio_photos
         )
       `)
-      .eq('role', 'photographe');
+      .eq('role', 'photographe')
+      .not('profils_prestataire', 'is', null);
 
     if (photoError) throw photoError;
 
-    // Calculate scores and sort
-    const matchedPhotographers = photographers
-      .filter(p => p.profils_prestataire)
-      .map(p => {
-        const { score, matchReasons } = calculateMatchScore(
-          demande,
-          p.profils_prestataire
-        );
-        return {
-          ...p,
-          matchScore: score,
-          matchReasons,
-        };
-      })
-      .filter(p => p.matchScore > 0)
+    const matched = await Promise.all(
+      photographers
+        .filter(p => p.profils_prestataire)
+        .map(async (p) => {
+          const { isAvailable } = await checkPhotographerAvailability(p.id, demande.date_souhaitee);
+          const { score, matchReasons } = calculateMatchScore(
+            demande,
+            { ...p.profils_prestataire, ville: p.ville },
+            isAvailable
+          );
+          return { ...p, matchScore: score, matchReasons };
+        })
+    );
+
+    const result = matched
+      .filter(p => p.matchScore >= 55)
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, limit);
 
-    return { matches: matchedPhotographers, demande, error: null };
+    return { matches: result, demande, error: null };
   } catch (error) {
-    console.error('Error finding matching service providers:', error);
+    console.error('[findMatchingPhotographers]', error);
     return { matches: [], demande: null, error };
   }
 };
 
-/**
- * Get matching demandes for a service provider
- */
+// ─────────────────────────────────────────────────────────
+// FIND MATCHES FOR PRESTATAIRE  (lecture seule, affichage)
+// ─────────────────────────────────────────────────────────
 export const findMatchingDemandes = async (photographeId, limit = 20) => {
   try {
-    // Get service provider profile (profils_prestataire: specialisations, categories, ville absente ici)
-    const [{ data: photographe, error: profError }, { data: profileBase }] = await Promise.all([
+    const [{ data: photographe }, { data: profileBase }] = await Promise.all([
       supabase.from('profils_prestataire').select('*').eq('id', photographeId).single(),
       supabase.from('profiles').select('ville').eq('id', photographeId).single(),
     ]);
 
-    if (profError) {
-      console.warn('No service provider profile found');
-    }
+    if (!photographe) return { matches: [], photographe: null, error: null };
 
-    // Merge ville from profiles into the photographe object
-    const photographeWithVille = photographe
-      ? { ...photographe, ville: profileBase?.ville || photographe.ville || null }
-      : null;
+    const photographeWithVille = { ...photographe, ville: profileBase?.ville || photographe.ville || null };
 
-    // Get active demandes
+    const specs = Array.isArray(photographe.specialisations)
+      ? photographe.specialisations.filter(Boolean)
+      : [];
+
+    if (!specs.length) return { matches: [], photographe: photographeWithVille, error: null };
+
     const { data: demandes, error: demandeError } = await supabase
       .from('demandes_client')
-      .select(`
-        *,
-        profiles!demandes_client_client_id_fkey(nom, avatar_url)
-      `)
+      .select(`*, profiles!demandes_client_client_id_fkey(nom, avatar_url)`)
       .eq('statut', 'ouverte')
+      .overlaps('type_prestation', specs)
       .order('created_at', { ascending: false });
 
     if (demandeError) throw demandeError;
 
-    if (!photographeWithVille) {
-      return { matches: [], photographe: null, error: null };
-    }
-
-    // Calculate scores — keep only non-expired demandes with score >= 55, sorted desc
     const now = new Date();
-    const matchedDemandes = demandes
-      .filter(d => !d.date_souhaitee || new Date(d.date_souhaitee) >= now)
-      .map(demande => {
-        const { score, matchReasons } = calculateMatchScore(demande, photographeWithVille);
-        return { ...demande, matchScore: score, matchReasons };
-      })
+    const matched = await Promise.all(
+      (demandes || [])
+        .filter(d => !d.date_souhaitee || new Date(d.date_souhaitee) >= now)
+        .map(async (d) => {
+          const { isAvailable } = await checkPhotographerAvailability(photographeId, d.date_souhaitee);
+          const { score, matchReasons } = calculateMatchScore(d, photographeWithVille, isAvailable);
+          return { ...d, matchScore: score, matchReasons };
+        })
+    );
+
+    const result = matched
       .filter(d => d.matchScore >= 55)
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, limit);
 
-    return { matches: matchedDemandes, photographe: photographeWithVille, error: null };
+    return { matches: result, photographe: photographeWithVille, error: null };
   } catch (error) {
-    console.error('Error finding matching demandes:', error);
+    console.error('[findMatchingDemandes]', error);
     return { matches: [], photographe: null, error };
   }
 };
 
-/**
- * Compute scores for all prestataires against a given demande and persist to matchings table.
- * Called when a demande is created or updated by a client.
- */
-export const computeAndSaveMatchesForDemande = async (demandeId, demandeData) => {
-  try {
-    // Fetch all prestataire profiles
-    const { data: prestataires, error: prestError } = await supabase
-      .from('profils_prestataire')
-      .select('id, specialisations, categories, ville');
-    if (prestError) throw prestError;
-    if (!prestataires || prestataires.length === 0) return { error: null };
+// ─────────────────────────────────────────────────────────
+// COMPUTE + SAVE MATCHES FOR DEMANDE  (alias → onNewDemande)
+// ─────────────────────────────────────────────────────────
+export const computeAndSaveMatchesForDemande = (demandeId, demandeData) =>
+  onNewDemande(demandeId, demandeData);
 
-    // Fetch villes from profiles table (ville is stored there)
-    const prestaIds = prestataires.map(p => p.id);
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, ville')
-      .in('id', prestaIds);
-    const villeMap = {};
-    (profilesData || []).forEach(p => { villeMap[p.id] = p.ville; });
-
-    // Score each prestataire
-    const scored = prestataires.map(p => {
-      const prestaWithVille = { ...p, ville: villeMap[p.id] || p.ville || null };
-      const { score, matchReasons } = calculateMatchScore(demandeData, prestaWithVille);
-      return { prestataire_id: p.id, score, matchReasons };
-    }).filter(m => m.score >= 55);
-
-    if (scored.length === 0) return { error: null };
-
-    // Upsert into matchings
-    const { error: upsertError } = await supabase
-      .from('matchings')
-      .upsert(
-        scored.map(m => ({
-          demande_id: demandeId,
-          prestataire_id: m.prestataire_id,
-          match_score: m.score,
-          match_reasons: m.matchReasons,
-          status: 'pending',
-        })),
-        { onConflict: 'demande_id,prestataire_id' }
-      );
-    if (upsertError) throw upsertError;
-
-    // Send notifications for score >= 80 (avoid duplicates)
-    const topMatches = scored.filter(m => m.score >= 80);
-    if (topMatches.length > 0) {
-      const { data: existingNotifs } = await supabase
-        .from('notifications')
-        .select('user_id')
-        .eq('demande_id', demandeId)
-        .eq('type', 'mission_suggeree')
-        .in('user_id', topMatches.map(m => m.prestataire_id));
-      const alreadyNotified = new Set((existingNotifs || []).map(n => n.user_id));
-      const newNotifs = topMatches.filter(m => !alreadyNotified.has(m.prestataire_id));
-      if (newNotifs.length > 0) {
-        await supabase.from('notifications').insert(
-          newNotifs.map(m => ({
-            user_id: m.prestataire_id,
-            type: 'mission_suggeree',
-            titre: 'Nouvelle mission suggérée',
-            contenu: `Une demande correspond à votre profil : "${demandeData.titre || demandeData.categorie || 'Prestation'}"`,
-            demande_id: demandeId,
-            lu: false,
-          }))
-        );
-      }
-    }
-
-    return { error: null };
-  } catch (error) {
-    console.error('Error computing matches for demande:', error);
-    return { error };
-  }
-};
-
-/**
- * Save a match record
- */
-export const saveMatch = async ({
-  demandeId,
-  photographeId,
-  matchScore,
-  matchReasons,
-}) => {
+// ─────────────────────────────────────────────────────────
+// SAVE SINGLE MATCH
+// ─────────────────────────────────────────────────────────
+export const saveMatch = async ({ demandeId, photographeId, matchScore, matchReasons }) => {
   try {
     const { data, error } = await supabase
       .from('matchings')
-      .upsert({
-        demande_id: demandeId,
-        prestataire_id: photographeId,
-        match_score: matchScore,
-        match_reasons: matchReasons,
-        status: 'pending',
-      }, {
-        onConflict: 'demande_id,prestataire_id',
-      })
+      .upsert(
+        { demande_id: demandeId, prestataire_id: photographeId, match_score: matchScore, match_reasons: matchReasons, status: 'pending' },
+        { onConflict: 'demande_id,prestataire_id' }
+      )
       .select()
       .single();
-
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error saving match:', error);
+    console.error('[saveMatch]', error);
     return { data: null, error };
   }
 };
 
-/**
- * Get service provider's matches
- */
+// ─────────────────────────────────────────────────────────
+// GET MATCHES FOR PRESTATAIRE
+// ─────────────────────────────────────────────────────────
 export const getPhotographerMatches = async (photographeId, status = null) => {
   try {
     let query = supabase
       .from('matchings')
-      .select(`
-        *,
-        demandes_client(*)
-      `)
+      .select(`*, demandes_client(*)`)
       .eq('prestataire_id', photographeId)
       .order('match_score', { ascending: false });
-
-    if (status) {
-      query = query.eq('status', status);
-    }
-
+    if (status) query = query.eq('status', status);
     const { data, error } = await query;
-
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching service provider matches:', error);
+    console.error('[getPhotographerMatches]', error);
     return { data: null, error };
   }
 };
 
-/**
- * Update match status
- */
+// ─────────────────────────────────────────────────────────
+// UPDATE MATCH STATUS
+// ─────────────────────────────────────────────────────────
 export const updateMatchStatus = async (matchId, status) => {
   try {
     const { data, error } = await supabase
       .from('matchings')
-      .update({
-        status,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', matchId)
       .select()
       .single();
-
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating match status:', error);
+    console.error('[updateMatchStatus]', error);
     return { data: null, error };
-  }
-};
-
-/**
- * Check service provider availability for a date
- */
-export const checkPhotographerAvailability = async (photographeId, date) => {
-  try {
-    // Check blocked slots
-    const { data: blockedSlots, error: blockedError } = await supabase
-      .from('blocked_slots')
-      .select('*')
-      .eq('prestataire_id', photographeId)
-      .lte('start_datetime', date)
-      .gte('end_datetime', date);
-
-    if (blockedError) throw blockedError;
-
-    // Check existing reservations
-    const { data: reservations, error: resError } = await supabase
-      .from('reservations')
-      .select('*')
-      .eq('prestataire_id', photographeId)
-      .eq('date', date)
-      .in('statut', ['confirme', 'pending']);
-
-    if (resError) throw resError;
-
-    const isAvailable = (!blockedSlots || blockedSlots.length === 0) && 
-                       (!reservations || reservations.length === 0);
-
-    return { 
-      isAvailable, 
-      blockedSlots: blockedSlots || [],
-      reservations: reservations || [],
-      error: null 
-    };
-  } catch (error) {
-    console.error('Error checking availability:', error);
-    return { isAvailable: false, blockedSlots: [], reservations: [], error };
   }
 };
 
@@ -418,8 +506,14 @@ export default {
   calculateMatchScore,
   findMatchingPhotographers,
   findMatchingDemandes,
+  computeAndSaveMatchesForDemande,
+  onNewDemande,
+  onUpdateDemande,
+  onNewPrestataire,
+  onUpdatePrestataire,
   saveMatch,
   getPhotographerMatches,
   updateMatchStatus,
   checkPhotographerAvailability,
+  getMatchScoreColor,
 };

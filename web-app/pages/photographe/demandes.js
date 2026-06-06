@@ -204,7 +204,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
     if (!form.tarif_base || isNaN(parseFloat(form.tarif_base))) return;
     setSending(true);
     try {
-      const { error } = await supabase.from('devis').insert({
+      const { data, error } = await supabase.from('devis').insert({
         demande_id: demande.id,
         prestataire_id: photographeId,
         client_id: demande.client_id,
@@ -222,15 +222,20 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
         message_personnalise: form.message_personnalise || null,
         duree_validite_jours: parseInt(form.delai_validite_jours),
         statut: 'envoye',
-      });
+      })
+      .select('id')
+      .single();
       if (error) throw error;
+
+    
       // Notifier le client
       await supabase.from('notifications').insert({
         user_id: demande.client_id,
-        type: 'nouveau_devis',
-        titre: 'Nouveau devis reçu',
-        contenu: `Vous avez reçu un nouveau devis pour votre demande "${demande.titre || demande.categorie || 'prestation'}"`,
+        type: 'Nouveau devis',
+        titre: 'Nouveau devis reçu suite à votre demande',
+        contenu: `Vous avez reçu un nouveau devis pour votre demande "${demande.titre || demande.categorie || 'de prestation'}"`,
         demande_id: demande.id,
+        devis_id: data.id,
         lu: false,
       });
       setDone(true);

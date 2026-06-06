@@ -17,6 +17,8 @@
 --   profiles            : id (= auth UID), ville, auth_user_id
 --   matchings           : demande_id, prestataire_id, match_score, status, created_at
 --   notifications       : user_id, type, titre, contenu, demande_id, lu, created_at
+--                         type utilisé : 'Mission suggerée' (titre: '🔥 Nouvelle demande qualifiée')
+--                         notif envoyée uniquement si score >= 90, sans doublon
 --
 -- À exécuter dans : Supabase > SQL Editor
 -- ============================================================
@@ -185,27 +187,32 @@ BEGIN
           match_score = EXCLUDED.match_score,
           status      = 'pending';
 
-      -- Notification in-app au prestataire
-      -- user_id = pp.id = profiles.id = auth UID (AuthContext.js confirme profiles.id = auth UID)
-      INSERT INTO notifications (
-        user_id,
-        type,
-        titre,
-        contenu,
-        demande_id,
-        lu,
-        created_at
-      )
-      VALUES (
-        presta.presta_id,
-        'nouveau_matching',
-        'Nouvelle demande correspondant à votre profil',
-        'Un client recherche un prestataire dans votre ville pour : '
-          || COALESCE(NEW.titre, NEW.categorie, 'une prestation'),
-        NEW.id,
-        FALSE,
-        NOW()
-      );
+      -- Notification in-app au prestataire (seulement si score >= 90, sans doublon)
+      IF calc_score >= 90 THEN
+        INSERT INTO notifications (
+          user_id,
+          type,
+          titre,
+          contenu,
+          demande_id,
+          lu,
+          created_at
+        )
+        SELECT
+          presta.presta_id,
+          'Mission suggerée',
+          '🔥 Nouvelle demande qualifiée',
+          'Une nouvelle demande correspond à votre profil.',
+          NEW.id,
+          FALSE,
+          NOW()
+        WHERE NOT EXISTS (
+          SELECT 1 FROM notifications
+          WHERE user_id   = presta.presta_id
+            AND type      = 'Mission suggerée'
+            AND demande_id = NEW.id
+        );
+      END IF;
 
     END IF;
 

@@ -281,7 +281,7 @@ export default function DemandeDetailPage() {
             <Check className="w-5 h-5 text-green-600" />
             <div>
               <p className="font-medium text-green-800">Demande publiée avec succès !</p>
-              <p className="text-sm text-green-700">Les photographes peuvent désormais vous envoyer leurs devis.</p>
+              <p className="text-sm text-green-700">Les prestataires peuvent désormais vous envoyer leurs devis.</p>
             </div>
           </div>
         )}
@@ -427,7 +427,7 @@ export default function DemandeDetailPage() {
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Photographes suggérés
+                  Prestataires suggérés
                 </button>
               </div>
 
@@ -440,7 +440,7 @@ export default function DemandeDetailPage() {
                         Aucun devis pour le moment
                       </h3>
                       <p className="text-gray-500">
-                        Les photographes peuvent encore vous envoyer des devis.
+                        Les prestataires peuvent encore vous envoyer des devis.
                       </p>
                     </div>
                   ) : (
@@ -579,7 +579,7 @@ export default function DemandeDetailPage() {
               Annuler cette demande ?
             </h3>
             <p className="text-gray-600 mb-6">
-              Cette action est irréversible. Les photographes ne pourront plus voir votre demande ni vous envoyer de devis.
+              Cette action est irréversible. Les prestataires ne pourront plus voir votre demande ni vous envoyer de devis.
             </p>
             {cancelError && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">

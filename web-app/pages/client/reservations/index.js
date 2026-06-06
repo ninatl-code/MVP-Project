@@ -17,11 +17,10 @@ const COLORS = {
 
 const STATUS_CONFIG = {
   pending:    { label: 'En attente', color: 'bg-yellow-100 text-yellow-700', icon: Clock3 },
-  en_attente: { label: 'En attente', color: 'bg-yellow-100 text-yellow-700', icon: Clock3 },
-  confirmee:  { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle },
-  terminee:   { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
-  annulee:    { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle },
-  en_cours:   { label: 'En cours', color: 'bg-purple-100 text-purple-700', icon: Camera },
+  confirmed:  { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  completed:   { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
+  cancelled:    { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle },
+  in_progress:   { label: 'En cours', color: 'bg-purple-100 text-purple-700', icon: Camera },
   litige:     { label: 'Litige', color: 'bg-orange-100 text-orange-700', icon: AlertCircle },
 };
 
@@ -64,7 +63,7 @@ export default function MesReservationsPage() {
           )
         `)
         .eq('client_id', clientId)
-        .order('date', { ascending: timeFilter === 'upcoming' });
+        .order('created_at', { descending: true });
 
       // Status filter
       if (filter !== 'all') {
@@ -134,6 +133,7 @@ export default function MesReservationsPage() {
     if (!groups[monthKey]) {
       groups[monthKey] = { label: monthLabel, items: [] };
     }
+    groups[monthKey].items.sort((a, b) => new Date(b.date) - new Date(a.date));
     groups[monthKey].items.push(reservation);
     return groups;
   }, {});
@@ -195,10 +195,10 @@ export default function MesReservationsPage() {
             >
               <option value="all">Tous les statuts</option>
               <option value="pending">⏳ En attente</option>
-              <option value="confirmee">✅ Confirmée</option>
-              <option value="en_cours">📷 En cours</option>
-              <option value="terminee">🏁 Terminée</option>
-              <option value="annulee">❌ Annulée</option>
+              <option value="confirmed">✅ Confirmée</option>
+              <option value="in_progress">📷 En cours</option>
+              <option value="completed">🏁 Terminée</option>
+              <option value="cancelled">❌ Annulée</option>
             </select>
           </div>
         </div>
@@ -231,7 +231,7 @@ export default function MesReservationsPage() {
         ) : (
           <div className="space-y-8">
             {Object.entries(groupedReservations)
-              .sort(([a], [b]) => timeFilter === 'past' ? b.localeCompare(a) : a.localeCompare(b))
+              .sort(([a], [b]) => b.localeCompare(a))
               .map(([monthKey, { label, items }]) => (
                 <div key={monthKey}>
                   <h2 className="text-lg font-semibold text-gray-700 mb-4 capitalize">
