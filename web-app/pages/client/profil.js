@@ -117,7 +117,7 @@ function UserProfile() {
           supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('client_id', uid),
           supabase.from('commandes').select('id', { count: 'exact', head: true }).eq('particulier_id', uid),
           supabase.from('devis').select('id', { count: 'exact', head: true }).eq('client_id', uid),
-          supabase.from('avis').select('id', { count: 'exact', head: true }).eq('reviewer_id', uid),
+          supabase.from('reviews_presta').select('id', { count: 'exact', head: true }).eq('reviewer_id', uid),
           supabase.from('reservations').select('id, created_at, statut').eq('client_id', uid).order('created_at', { ascending: false }).limit(3),
           supabase.from('favoris').select('id, photographe_id').eq('client_id', uid)
         ]).then(async ([
@@ -575,7 +575,7 @@ function UserProfile() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 rounded-xl" style={{ background: `${COLORS.primary}15` }}>
                   <div className="text-2xl font-bold" style={{ color: COLORS.primary }}>{nbReservations}</div>
-                  <div className="text-sm text-gray-600 mt-1">Prestation {nbReservations > 1 ? 's' : ''} réservée{nbReservations > 1 ? 's' : ''}</div>
+                  <div className="text-sm text-gray-600 mt-1">Prestation{nbReservations > 1 ? 's' : ''} réservée{nbReservations > 1 ? 's' : ''}</div>
                 </div>
                 <div className="text-center p-4 rounded-xl" style={{ background: `${COLORS.secondary}30` }}>
                   <div className="text-2xl font-bold" style={{ color: '#F59E0B' }}>{nbDevis}</div>

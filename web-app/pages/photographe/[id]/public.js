@@ -65,10 +65,10 @@ export default function PhotographeProfilePage() {
 
       // Fetch reviews
       const { data: avisData } = await supabase
-        .from('reviews_photographe')
+        .from('reviews_presta')
         .select(`
           *,
-          auteur:profiles!reviews_photographe_client_id_fkey(id, nom, avatar_url)
+          auteur:profiles!reviews_presta_client_id_fkey(id, nom, avatar_url)
         `)
         .eq('prestataire_id', id)
         .order('created_at', { ascending: false })

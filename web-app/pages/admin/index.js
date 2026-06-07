@@ -28,7 +28,7 @@ export default function AdminDashboard() {
         supabase.from('profils_prestataire').select('id', { count: 'exact', head: true }).eq('statut_validation', 'en_attente'),
         supabase.from('demandes_client').select('id', { count: 'exact', head: true }),
         supabase.from('reservations').select('id', { count: 'exact', head: true }),
-        supabase.from('reviews_photographe').select('id', { count: 'exact', head: true }).eq('reported', true),
+        supabase.from('reviews_presta').select('id', { count: 'exact', head: true }).eq('reported', true),
       ]);
       setStats({ totalClients, totalPrestataires, prestatairesEnAttente, totalDemandes, totalReservations, avisSignales });
     };

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { findMatchingDemandes } from '../../lib/matchingService';
+import {notifyNewDevis} from '../../lib/notificationService';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
 import {
@@ -41,6 +42,13 @@ const STATUT_COLORS = {
   pourvue: { bg: '#DBEAFE', text: '#1E40AF', label: 'Pourvue' },
   fermee: { bg: '#F3F4F6', text: '#6B7280', label: 'Fermée' },
 };
+const normalizeDate = (d) => {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+const today = new Date();
+today.setHours(0, 0, 0, 0);
 
 function DetailModal({ demande, onClose }) {
   if (!demande) return null;
@@ -67,7 +75,7 @@ function DetailModal({ demande, onClose }) {
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Spécialité recherchée</p>
               <div className="flex flex-wrap gap-2">
                 {demande.type_prestation.filter(Boolean).map((s, i) => (
-                  <span key={i} className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}>{s}</span>
+                  <span key={i} className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7A1600' }}>{s}</span>
                 ))}
               </div>
             </div>
@@ -97,7 +105,7 @@ function DetailModal({ demande, onClose }) {
           {demande.categorie && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Catégorie</p>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7A1600' }}>
                 <Tag className="w-3 h-3" />
                 {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
               </span>
@@ -226,18 +234,10 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
       .select('id')
       .single();
       if (error) throw error;
-
-    
       // Notifier le client
-      await supabase.from('notifications').insert({
-        user_id: demande.client_id,
-        type: 'Nouveau devis',
-        titre: 'Nouveau devis reçu suite à votre demande',
-        contenu: `Vous avez reçu un nouveau devis pour votre demande "${demande.titre || demande.categorie || 'de prestation'}"`,
-        demande_id: demande.id,
-        devis_id: data.id,
-        lu: false,
-      });
+      await notifyNewDevis(demande.client_id, data.id, data.prestataire_id, demande.id);
+     
+      
       setDone(true);
       setTimeout(() => { onSuccess(); onClose(); }, 2000);
     } catch (err) {
@@ -250,7 +250,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
 
   const SectionTitle = ({ icon: Icon, label }) => (
     <div className="flex items-center gap-2 mb-3">
-      <Icon className="w-4 h-4" style={{ color: '#7C3AED' }} />
+      <Icon className="w-4 h-4" style={{ color: '#7A1600' }} />
       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{label}</span>
     </div>
   );
@@ -349,7 +349,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
               {montantTotal > 0 && (
                 <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ backgroundColor: '#F5F3FF' }}>
                   <span className="text-sm font-semibold text-gray-700">Total</span>
-                  <span className="text-lg font-bold" style={{ color: '#7C3AED' }}>{montantTotal.toFixed(2)} MAD</span>
+                  <span className="text-lg font-bold" style={{ color: '#7A1600' }}>{montantTotal.toFixed(2)} MAD</span>
                 </div>
               )}
               {demande.budget_max && (
@@ -404,7 +404,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                     type="button"
                     onClick={addService}
                     className="px-4 py-2.5 rounded-xl font-semibold text-white text-sm flex items-center gap-1 shrink-0"
-                    style={{ backgroundColor: '#7C3AED' }}
+                    style={{ backgroundColor: '#7A1600' }}
                   >
                     <Plus className="w-4 h-4" />
                     Ajouter
@@ -453,7 +453,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                       onClick={() => toggleModalite(m)}
                       className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
                       style={form.modalites_paiement.includes(m)
-                        ? { backgroundColor: '#7C3AED', color: 'white', borderColor: '#7C3AED' }
+                        ? { backgroundColor: '#7A1600', color: 'white', borderColor: '#7A1600' }
                         : { backgroundColor: 'white', color: '#6B7280', borderColor: '#D1D5DB' }}
                     >
                       {m}
@@ -503,7 +503,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                 type="submit"
                 disabled={sending}
                 className="flex-1 py-3 px-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-colors text-sm"
-                style={{ backgroundColor: sending ? '#9CA3AF' : '#7C3AED' }}
+                style={{ backgroundColor: sending ? '#9CA3AF' : '#7A1600' }}
               >
                 {sending ? <span>Envoi...</span> : <><Send className="w-4 h-4" />Envoyer le devis</>}
               </button>
@@ -623,7 +623,7 @@ export default function DemandesClients() {
         // Exclure les demandes pourvues, fermées, annulées ou expirées
         .filter(d =>
           d.statut === 'ouverte' &&
-          (!d.date_souhaitee || new Date(d.date_souhaitee) >= now)
+          (!d.date_souhaitee || normalizeDate(d.date_souhaitee) >= today)
         );
 
       setMatchings(suggestions);
@@ -694,7 +694,7 @@ export default function DemandesClients() {
               onClick={() => setActiveTab('clients')}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"
               style={activeTab === 'clients'
-                ? { backgroundColor: '#7C3AED', color: 'white' }
+                ? { backgroundColor: '#7A1600', color: 'white' }
                 : { color: '#6B7280' }}
             >
               <ClipboardList className="w-4 h-4" />
@@ -744,7 +744,7 @@ export default function DemandesClients() {
                 {matchings.map((demande) => {
                   const dejaEnvoye = devisEnvoyes.has(demande.id);
                   const score = demande.matchScore || 0;
-                  const scoreColor = score >= 80 ? '#DC2626' : (score >= 70 && score <= 75) ? '#D97706' : '#6B7280';
+                  const scoreColor = score >= 80 ? '#1E823A' : (score >= 70 && score <= 75) ? '#D97706' : '#6B7280';
                   return (
                     <div
                       key={demande.id}
@@ -768,7 +768,7 @@ export default function DemandesClients() {
                               )}
                             </span>
                             {demande.categorie && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#44338A' }}>
                                 <Tag className="w-3 h-3" />
                                 {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
                               </span>
@@ -887,7 +887,7 @@ export default function DemandesClients() {
                           {demande.categorie && (
                             <span
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
-                              style={{ backgroundColor: '#EDE9FE', color: '#7C3AED' }}
+                              style={{ backgroundColor: '#EDE9FE', color: '#44338A' }}
                             >
                               <Tag className="w-3 h-3" />
                               {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
@@ -968,7 +968,7 @@ export default function DemandesClients() {
                           disabled={dejaEnvoye}
                           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
                           style={{
-                            backgroundColor: dejaEnvoye ? '#9CA3AF' : '#7C3AED',
+                            backgroundColor: dejaEnvoye ? '#5D5E63' : '#7A1600',
                             cursor: dejaEnvoye ? 'default' : 'pointer'
                           }}
                         >

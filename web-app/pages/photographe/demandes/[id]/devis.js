@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../../lib/supabaseClient';
 import { useAuth } from '../../../../contexts/AuthContext';
 import Header from '../../../../components/HeaderPresta';
+import { createDevis } from '../../../../lib/devisService';
 import { 
   ArrowLeft, Calendar, MapPin, Euro, Clock, Users,
   Plus, Minus, Check, Send, Info, FileText
@@ -54,42 +55,53 @@ export default function CreateDevisPage() {
 
     // Prestations incluses selon catégorie
     const prestationsMap = {
-      mariage: [
-        `- Préparation + cérémonie (${duree}h de couverture)`,
-        '- Photos des mariés, famille et invités',
-        '- Retouche professionnelle',
-        '- Galerie privée en ligne (téléchargement inclus)',
-        '- Livraison sous 3 semaines',
+      'services-domicile': [
+        '- Diagnostic sur place et devis',
+        '- Intervention selon la demande (plomberie, électricité, ménage, bricolage)',
+        '- Déplacement inclus ou facturé selon zone',
+        '- Vérification et test après intervention',
       ],
-      portrait: [
-        `- Séance portrait (${duree}h)`,
-        '- Conseil tenue et mise en scène',
-        '- Sélection et retouche des meilleures photos',
-        '- Livraison en haute résolution',
+
+      'beaute-bien-etre': [
+        `- Prestation de ${duree}h selon le service choisi`,
+        '- Conseils personnalisés (style, soin, etc.)',
+        '- Utilisation de produits adaptés',
+        '- Résultat soigné et professionnel',
       ],
-      evenement: [
+
+      'evenementiel': [
         `- Couverture complète de l’événement (${duree}h)`,
-        '- Photos ambiante, portraits et moments clés',
-        '- Retouche et sélection',
-        '- Livraison galerie en ligne',
+        '- Capture des moments clés (ambiance, invités, temps forts)',
+        '- Gestion discrète et professionnelle sur place',
+        '- Livraison des contenus (photos/vidéos) en ligne',
       ],
-      produit: [
-        '- Shooting produit en studio ou sur site',
-        '- Mise en scène et éclairage professionnel',
-        '- Retouche avancée',
-        '- Livraison fichiers haute résolution',
+
+      'transport': [
+        '- Prise en charge ponctuelle ou régulière',
+        '- Transport de personnes ou de marchandises',
+        '- Respect des horaires et itinéraires',
+        '- Assistance selon le type de service (livraison, déménagement, etc.)',
       ],
-      immobilier: [
-        '- Visite et photos intérieures / extérieures',
-        '- Traitement HDR professionnel',
-        '- Livraison sous 48h',
+
+      'digital': [
+        '- Analyse des besoins et cahier des charges',
+        '- Réalisation (développement, design ou marketing)',
+        '- Optimisation et corrections',
+        '- Livraison du projet et accompagnement',
+      ],
+
+      'education': [
+        `- Session de ${duree}h (cours ou coaching)`,
+        '- Contenu adapté au niveau de l’apprenant',
+        '- Exercices pratiques et suivi',
+        '- Conseils pour progression autonome',
       ],
     };
     const catKey = Object.keys(prestationsMap).find(k => cat.includes(k));
     const prestations_incluses = (prestationsMap[catKey] || [
       `- Prestation de ${duree}h`,
-      '- Retouche professionnelle',
-      '- Livraison des fichiers en haute résolution',
+      '- Achat de matériel',
+      '- Déplacement sur place',
     ]).join('\n');
 
     // Montant : budget_max du client, ou tarif horaire × durée
@@ -203,37 +215,30 @@ export default function CreateDevisPage() {
     setError(null);
 
     try {
-      const validDetails = formData.details.filter(d => d.label && d.montant);
+      const validDetails = formData.details.filter(
+        d => d.label && d.montant
+      );
 
-      const { data, error: insertError } = await supabase
-        .from('devis')
-        .insert({
-          demande_id: id,
-          client_id: demande.client_id,
-          prestataire_id: photographeProfile.id,
-          titre: formData.titre,
-          description: formData.description,
-          montant_total: parseFloat(formData.montant),
-          duree_validite_jours: formData.validite_jours,
-          services_inclus: formData.prestations_incluses,
-          statut: 'en_attente',
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      // Create notification for the client
-      await supabase.from('notifications').insert({
-        user_id: demande.client_id,
-        type: 'Nouveau devis',
-        titre: 'Nouveau devis reçu suite à votre demande',
-        contenu: `${photographeProfile.nom_entreprise || 'Un prestataire'} vous a envoyé un devis pour "${demande.titre}"`,
-        devis_id: data.id,
-        demande_id: id,
+      const devis = await createDevis({
+        photographeId: photographeProfile.id,
+        clientId: demande.client_id,
+        demandeId: id,
+        tarif_base: parseFloat(formData.montant),
+        options_supplementaires: validDetails,
+        frais_deplacement: 0,
+        message_personnalise: formData.description,
+        date_expiration: formData.validite_jours,
+        duree_prestation_heures: demande.duree_estimee || null,
+        titre: formData.titre,
+        description: formData.prestations_incluses,
       });
 
-      router.push(`/photographe/devis/${data.id}?success=true`);
+      if (!devis) {
+        throw new Error('Création du devis impossible');
+      }
+
+
+      router.push(`/photographe/devis/${devis.id}?success=true`);
     } catch (err) {
       console.error('Error creating devis:', err);
       setError('Une erreur est survenue lors de la création du devis');

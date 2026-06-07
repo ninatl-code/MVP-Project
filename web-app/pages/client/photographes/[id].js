@@ -28,8 +28,8 @@ export default function PhotographeClientView() {
       const [{ data: base }, { data: extra }, { data: revs }, { data: prests }] = await Promise.all([
         supabase.from('profiles').select('id, nom, email, telephone, ville, avatar_url, created_at').eq('id', userId).single(),
         supabase.from('profils_prestataire').select('*').eq('id', userId).single(),
-        supabase.from('reviews_photographe')
-          .select('id, rating, comment, created_at, client:profiles!reviews_photographe_client_id_fkey(nom, avatar_url)')
+        supabase.from('reviews_presta')
+          .select('id, rating, comment, created_at, client:profiles!reviews_presta_client_id_fkey(nom, avatar_url)')
           .eq('prestataire_id', userId)
           .order('created_at', { ascending: false })
           .limit(5),
@@ -410,24 +410,6 @@ export default function PhotographeClientView() {
                 </div>
               )}
 
-              {/* Contact */}
-              <div>
-                <h2 className="font-semibold text-gray-900 mb-3">Contact</h2>
-                <div className="space-y-2">
-                  {profile.email && (
-                    <a href={`mailto:${profile.email}`} className="flex items-center gap-3 text-gray-600 hover:text-indigo-600 transition-colors text-sm">
-                      <Mail className="w-4 h-4" />
-                      {profile.email}
-                    </a>
-                  )}
-                  {profile.telephone && (
-                    <a href={`tel:${profile.telephone}`} className="flex items-center gap-3 text-gray-600 hover:text-indigo-600 transition-colors text-sm">
-                      <Phone className="w-4 h-4" />
-                      {profile.telephone}
-                    </a>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 

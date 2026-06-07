@@ -153,7 +153,7 @@ function ParticularHomeMenu() {
 
       // Compter les avis donnés
       const { count: avisCount } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('*', { count: 'exact', head: true })
         .eq('auteur_id', profileId);
 
@@ -217,7 +217,7 @@ function ParticularHomeMenu() {
       if (!user) return
 
       const { data: avisData, error } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('reservation_id, note')
         .eq('particulier_id', user.id)
 
@@ -315,7 +315,7 @@ function ParticularHomeMenu() {
       };
 
       const { error: avisError } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .insert(avisData);
 
       if (avisError) {
@@ -342,7 +342,7 @@ function ParticularHomeMenu() {
 
       // Rafraîchir les avis existants
       const { data: updatedAvis, error } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('reservation_id, note')
         .eq('particulier_id', userId);
 

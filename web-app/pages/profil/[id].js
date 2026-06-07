@@ -86,7 +86,7 @@ export default function ProfilPage() {
 
         // Récupérer les avis pour ce prestataire (si la table existe)
         const { data: avisData } = await supabase
-          .from('avis')
+          .from('reviews_presta')
           .select(`
             *,
             profiles!avis_user_id_fkey(nom, avatar_url)

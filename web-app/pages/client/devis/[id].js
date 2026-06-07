@@ -2,7 +2,7 @@
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
-import { createNotification, NOTIFICATION_TYPES } from '../../../lib/notificationService';
+import { notifyDevisAccepted, notifyDevisRefused } from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
 import { 
   ArrowLeft, Calendar, MapPin, Camera, 
@@ -149,8 +149,8 @@ export default function DevisDetailPage() {
           prestataire_id: devis.prestataire_id,
           devis_id: id,
           demande_id: devis.demande_id || null,
-          titre: "Reservation" + demande?.titre,
-          description: "Reservation" + (devis.description || ''),
+          titre: "Reservation " + demande?.titre,
+          description: "Reservation " + (devis.description || ''),
           categorie: demande?.categorie || 'À définir',
           date: demande?.date_souhaitee || new Date().toISOString().split('T')[0],
           lieu: demande?.lieu || 'À définir',
@@ -172,13 +172,7 @@ export default function DevisDetailPage() {
 
       // 4. Notify photographer
       if (devis.prestataire_id) {
-        createNotification({
-          userId: devis.prestataire_id,
-          type: NOTIFICATION_TYPES.DEVIS_ACCEPTE,
-          title: '🎉 Devis accepté',
-          message: 'Bonne nouvelle ! Votre devis a été accepté.',
-          devisId: id,
-        });
+        notifyDevisAccepted(devis.prestataire_id, id, devis.demande_id);
       }
 
       // 5. Show success banner with link (no auto-redirect)
@@ -211,13 +205,7 @@ export default function DevisDetailPage() {
 
       // Notify photographer
       if (devis.prestataire_id) {
-        createNotification({
-          userId: devis.prestataire_id,
-          type: NOTIFICATION_TYPES.DEVIS_REFUSE,
-          title: '📌 Devis non retenu',
-          message: 'Votre devis n’a pas été retenu.',
-          devisId: id,
-        });
+        notifyDevisRefused(devis.prestataire_id, id, devis.demande_id);
       }
     } catch (error) {
       console.error('Error refusing devis:', error);

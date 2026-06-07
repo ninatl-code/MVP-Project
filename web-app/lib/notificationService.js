@@ -4,23 +4,14 @@
  * Canonical notification types
  */
 export const NOTIFICATION_TYPES = {
-  // Client
   DEVIS_RECU:             'devis_recu',
   RESERVATION_CONFIRMEE:  'reservation_confirmee',
   RESERVATION_ANNULEE:    'reservation_annulee',
   PRESTATION_TERMINEE:    'prestation_terminee',
-  // Prestataire
-  Mission suggerée:       'Mission suggerée',
+  MISSION_SUGGEREE:       'mission_suggeree',
   DEVIS_ACCEPTE:          'devis_accepte',
   DEVIS_REFUSE:           'devis_refuse',
-  PRESTATAIRE_ANNULATION: 'reservation_annulee',
   NOUVEL_AVIS:            'nouvel_avis',
-  // Compat aliases
-  RESERVATION_CONFIRMED:  'reservation_confirmee',
-  RESERVATION_CANCELLED:  'reservation_annulee',
-  NEW_DEVIS:              'devis_recu',
-  DEVIS_ACCEPTED:         'devis_accepte',
-  DEVIS_REJECTED:         'devis_refuse',
   MESSAGE:                'nouveau_message',
 };
 
@@ -30,11 +21,12 @@ export const NOTIFICATION_TYPES = {
 export const createNotification = async ({
   userId,
   type,
-  title,
-  message,
+  titre,
+  contenu,
   reservationId = null,
   devisId = null,
   demandeId = null,
+  prestataireId = null,
 }) => {
   try {
     const { data: notification, error } = await supabase
@@ -42,13 +34,14 @@ export const createNotification = async ({
       .insert({
         user_id: userId,
         type,
-        titre: title,
-        contenu: message,
+        titre: titre,
+        contenu: contenu,
         lu: false,
         ...(reservationId ? { reservation_id: reservationId } : {}),
         ...(devisId ? { devis_id: devisId } : {}),
         ...(demandeId ? { demande_id: demandeId } : {}),
-      })
+        ...(prestataireId ? { prestataire_id: prestataireId } : {}),
+        })
       .select()
       .single();
 
@@ -173,154 +166,117 @@ export const getUnreadCount = async (userId) => {
 /**
  * Notify photographer of new demande matching their profile
  */
-export const notifyNewDemande = async (photographeId, demande) => {
+export const notifyNewDemande = async (photographeId, demandeId) => {
   return createNotification({
     userId: photographeId,
-    type: NOTIFICATION_TYPES.NEW_DEMANDE,
-    title: 'Nouvelle demande correspondante',
-    message: `Une nouvelle demande "${demande.titre}" correspond à votre profil.`,
-    data: { demandeId: demande.id },
-    actionUrl: `/photographe/demandes/${demande.id}`,
+    type: NOTIFICATION_TYPES.MISSION_SUGGEREE,
+    titre: 'Nouvelle demande qualifiée',
+    contenu: `Une nouvelle demande correspond à votre profil. Consultez-la et envoyez votre devis rapidement.`,
+    demandeId: demandeId ,
+    prestataireId: photographeId,
   });
 };
 
 /**
  * Notify client of new devis received
  */
-export const notifyNewDevis = async (particulierId, devis, photographeNom) => {
+export const notifyNewDevis = async (particulierId, devisId, photographeId, demandeId) => {
   return createNotification({
     userId: particulierId,
-    type: NOTIFICATION_TYPES.NEW_DEVIS,
-    title: 'Nouveau devis reçu',
-    message: `${photographeNom} vous a envoyé un devis de ${devis.montant_total} DH.`,
-    data: { devisId: devis.id },
-    actionUrl: `/client/devis/${devis.id}`,
+    type: NOTIFICATION_TYPES.DEVIS_RECU,
+    titre: '📄 Nouveau devis reçu',
+    contenu: `Un prestataire vous a envoyé un devis pour votre demande. Consultez-le et confirmez votre réservation si cela vous convient.`,
+    devisId: devisId,
+    demandeId: demandeId,
+    prestataireId: photographeId,
   });
 };
 
 /**
  * Notify photographer that devis was accepted
  */
-export const notifyDevisAccepted = async (photographeId, devis, clientNom) => {
+export const notifyDevisAccepted = async (photographeId, devisId, demandeId) => {
   return createNotification({
     userId: photographeId,
-    type: NOTIFICATION_TYPES.DEVIS_ACCEPTED,
-    title: 'Devis accepté !',
-    message: `${clientNom} a accepté votre devis de ${devis.montant_total} DH.`,
-    data: { devisId: devis.id },
-    actionUrl: `/photographe/devis/${devis.id}`,
+    type: NOTIFICATION_TYPES.DEVIS_ACCEPTE,
+    titre: '🎉 Devis accepté !',
+    contenu: `Bonne nouvelle ! Votre devis a été accepté. Confirmer la réservation rapidement ici !`,
+    devisId: devisId,
+    demandeId: demandeId,
+    prestataireId: photographeId,
   });
 };
 
 /**
  * Notify photographer that devis was rejected
  */
-export const notifyDevisRejected = async (photographeId, devis, clientNom) => {
+export const notifyDevisRejected = async (photographeId, devisId, demandeId) => {
   return createNotification({
     userId: photographeId,
-    type: NOTIFICATION_TYPES.DEVIS_REJECTED,
-    title: 'Devis refusé',
-    message: `${clientNom} a refusé votre devis.`,
-    data: { devisId: devis.id },
-    actionUrl: `/photographe/devis`,
-  });
-};
-
-/**
- * Notify both parties of payment received
- */
-export const notifyPaymentReceived = async (reservation, clientId, photographeId) => {
-  // Notify client
-  await createNotification({
-    userId: clientId,
-    type: NOTIFICATION_TYPES.PAYMENT,
-    title: 'Paiement confirmé',
-    message: `Votre acompte de ${reservation.montant_acompte} DH a été reçu.`,
-    data: { reservationId: reservation.id },
-    actionUrl: `/client/reservations/${reservation.id}`,
-  });
-
-  // Notify photographer
-  return createNotification({
-    userId: photographeId,
-    type: NOTIFICATION_TYPES.PAYMENT,
-    title: 'Acompte reçu',
-    message: `Acompte de ${reservation.montant_acompte} DH reçu pour la réservation du ${new Date(reservation.date_prestation).toLocaleDateString('fr-FR')}.`,
-    data: { reservationId: reservation.id },
-    actionUrl: `/photographe/reservations/${reservation.id}`,
+    type: NOTIFICATION_TYPES.DEVIS_REFUSE,
+    titre: '📌Devis non retenu',
+    contenu: `Votre devis n'a pas été accepté cette fois-ci. D'autres opportunités vous attendent.`,
+    data: { devisId: devisId },
+    demandeId: demandeId,
+    prestataireId: photographeId,
   });
 };
 
 /**
  * Notify client that reservation is confirmed
  */
-export const notifyReservationConfirmed = async (clientId, reservation, photographeNom) => {
+export const notifyReservationConfirmed = async (clientId, datePrestation, reservationId, demandeId, prestataireId) => {
   return createNotification({
     userId: clientId,
-    type: NOTIFICATION_TYPES.RESERVATION_CONFIRMED,
-    title: 'Réservation confirmée',
-    message: `${photographeNom} a confirmé votre réservation du ${new Date(reservation.date_prestation).toLocaleDateString('fr-FR')}.`,
-    data: { reservationId: reservation.id },
-    actionUrl: `/client/reservations/${reservation.id}`,
+    type: NOTIFICATION_TYPES.RESERVATION_CONFIRMEE,
+    titre: '✅ Réservation confirmée',
+    contenu: `Votre réservation du ${new Date(datePrestation).toLocaleDateString('fr-FR')} a été confirmée. Retrouvez tous les détails dans votre espace client`,
+    data: { reservationId: reservationId, demandeId: demandeId, prestataireId: prestataireId },
+
   });
 };
 
 /**
  * Notify of reservation cancellation
  */
-export const notifyReservationCancelled = async (userId, reservation, cancelledByName) => {
+export const notifyReservationCancelled = async ({userId,role, reservationId, cancelledByName,demandeId}) => { 
   return createNotification({
     userId,
-    type: NOTIFICATION_TYPES.RESERVATION_CANCELLED,
-    title: 'Réservation annulée',
-    message: `La réservation du ${new Date(reservation.date_prestation).toLocaleDateString('fr-FR')} a été annulée par ${cancelledByName}.`,
-    data: { reservationId: reservation.id },
-    actionUrl: `/shared/remboursements`,
+    type: NOTIFICATION_TYPES.RESERVATION_ANNULEE,
+    titre: '❌ Réservation annulée',
+    contenu: `La réservation du ${new Date(reservation.date_prestation).toLocaleDateString('fr-FR')} a été annulée par ${cancelledByName}. Consultez les détails ou contactez le prestataire pour plus d'informations`,
+    reservation_id : reservationId,
+    demande_id: demandeId,
   });
 };
 
-/**
- * Notify of new message
- */
-export const notifyNewMessage = async (userId, senderNom, conversationId) => {
-  return createNotification({
-    userId,
-    type: NOTIFICATION_TYPES.MESSAGE,
-    title: 'Nouveau message',
-    message: `${senderNom} vous a envoyé un message.`,
-    data: { conversationId },
-    actionUrl: `/shared/messages/${conversationId}`,
-  });
-};
 
 /**
- * Send reminder notification
+ * Request review notification after completed reservation
  */
-export const sendReminder = async (userId, title, message, data = {}, actionUrl = null) => {
+export const notifyRequestReview = async (clientId, reservationId,demandeId) => {
   return createNotification({
-    userId,
-    type: NOTIFICATION_TYPES.REMINDER,
-    title,
-    message,
-    data,
-    actionUrl,
+    userId: clientId,
+    type: NOTIFICATION_TYPES.PRESTATION_TERMINEE,
+    titre: 'Donnez votre avis',
+    contenu: `Comment s'est passée votre dernière prestation ? Laissez un avis !`,
+    reservation_id : reservationId,
+    demandeId : demandeId,
   });
 };
 
 /**
  * Request review notification after completed reservation
  */
-export const notifyRequestReview = async (clientId, reservation, photographeNom) => {
+export const notifyPrestaReview = async (clientId, reservationId, prestaId, demandeId) => {
   return createNotification({
     userId: clientId,
-    type: NOTIFICATION_TYPES.AVIS,
-    title: 'Donnez votre avis',
-    message: `Comment s'est passée votre séance avec ${photographeNom} ? Laissez un avis !`,
-    data: { reservationId: reservation.id },
-    actionUrl: `/shared/avis/create?reservationId=${reservation.id}`,
+    type: NOTIFICATION_TYPES.NOUVEL_AVIS,
+    titre: 'Nouvel avis reçu',
+    contenu: `Vous avez reçu un nouvel avis de la part d'un client. Consultez-le dès maintenant.`,
+    data: { reservationId: reservationId, prestaId: prestaId ,demandeId: demandeId },
   });
 };
-
 /**
  * Subscribe to real-time notifications (returns channel)
  */
@@ -353,6 +309,37 @@ export const unsubscribeFromNotifications = (channel) => {
   }
 };
 
+export const getNotificationLink = (notification) => {
+    const { type } = notification;
+    const demande_id = notification.demande_id;
+    const devis_id = notification.devis_id;
+    const reservation_id = notification.reservation_id;
+    switch (type) {
+      case 'mission_suggeree':
+        return demande_id ? `/photographe/demandes/${demande_id}` : '/photographe/demandes?tab=plateforme';
+      case 'devis_recu':
+        return devis_id ? `/client/devis/${devis_id}` : '/client/devis/devis-list';
+      case 'devis_accepte':
+        return reservation_id ? `/photographe/reservations/${reservation_id}` : `/photographe/devis/${devis_id}`;
+      case 'devis_refuse':
+        return devis_id ? `/photographe/devis/${devis_id}` : '/photographe/devis';
+      case 'reservation_confirmee':
+        return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
+      case 'reservation_annulee':
+        return isPhotographe
+          ? (reservation_id ? `/photographe/reservations/${reservation_id}` : '/photographe/reservations')
+          : (reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations');
+      case 'prestation_terminee':
+        return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
+      case 'nouvel_avis':
+        return reservation_id ? `/photographe/reservations/${reservation_id}` : '/photographe/avis-dashboard';
+      case 'nouveau_message':
+        return '/shared/messages';
+      default:
+        return '#';
+    }
+  };
+  
 export default {
   NOTIFICATION_TYPES,
   createNotification,
@@ -365,12 +352,10 @@ export default {
   notifyNewDevis,
   notifyDevisAccepted,
   notifyDevisRejected,
-  notifyPaymentReceived,
   notifyReservationConfirmed,
   notifyReservationCancelled,
-  notifyNewMessage,
-  sendReminder,
   notifyRequestReview,
+  notifyPrestaReview,
   subscribeToNotifications,
   unsubscribeFromNotifications,
 };

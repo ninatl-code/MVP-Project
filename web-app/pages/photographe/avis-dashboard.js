@@ -50,11 +50,8 @@ export default function AvisDashboardPage() {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from('reviews_photographe')
-        .select(`
-          *,
-          reviewer:profiles!reviews_photographe_client_id_fkey(prenom, nom, avatar_url)
-        `)
+        .from('reviews_presta')
+        .select('*')
         .eq('prestataire_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -70,7 +67,7 @@ export default function AvisDashboardPage() {
   };
 
   const calculateStats = (reviewsData) => {
-    const total = reviewsData.reduce((sum, r) => sum + (r.note || r.overall_rating || 0), 0);
+    const total = reviewsData.reduce((sum, r) => sum + (r.rating || r.overall_rating || 0), 0);
     const average = reviewsData.length > 0 ? total / reviewsData.length : 0;
     const pending = reviewsData.filter(r => !r.reponse_prestataire && !r.provider_response).length;
 
@@ -84,7 +81,7 @@ export default function AvisDashboardPage() {
     // Rating distribution
     const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     reviewsData.forEach(r => {
-      const rating = r.note || r.overall_rating || 0;
+      const rating = r.rating || 0;
       if (rating >= 1 && rating <= 5) {
         distribution[Math.round(rating)]++;
       }
@@ -105,7 +102,7 @@ export default function AvisDashboardPage() {
     setSubmitting(true);
     try {
       await supabase
-        .from('avis')
+        .from('reviews_presta')
         .update({ 
           reponse_prestataire: responseText.trim(),
           date_reponse: new Date().toISOString()
@@ -341,7 +338,7 @@ export default function AvisDashboardPage() {
         ) : (
           <div className="space-y-4">
             {filteredReviews.map(review => {
-              const rating = review.note || review.overall_rating || 0;
+              const rating = review.rating || 0;
               const comment = review.commentaire || review.comment || '';
               const response = review.reponse_prestataire || review.provider_response;
               const hasResponse = !!response;
@@ -451,7 +448,7 @@ export default function AvisDashboardPage() {
                   <p className="font-medium text-sm">
                     {selectedReview.reviewer?.prenom || 'Client'}
                   </p>
-                  {renderStars(selectedReview.note || selectedReview.overall_rating || 0)}
+                  {renderStars(selectedReview.rating || 0)}
                 </div>
               </div>
               <p className="text-sm text-gray-600">

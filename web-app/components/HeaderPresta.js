@@ -2,7 +2,8 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
-import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, BarChart3, RefreshCcw, User } from "lucide-react";
+import {getNotificationLink} from '../lib/notificationService';
+import { Bell, LogOut, MessageCircle, Menu, Zap, Star, Check, BarChart3, RefreshCcw, User } from "lucide-react";
 
 // Palette Shooty
 const COLORS = {
@@ -220,11 +221,13 @@ function NotificationsPopup({ router, userId }) {
   // Icône selon type
   const getIcon = (type) => {
     switch (type) {
-      case 'reservation': return <Calendar className="w-5 h-5 text-green-500" />;
-      case 'message': return <MessageCircle className="w-5 h-5 text-blue-500" />;
-      case 'review': return <Star className="w-5 h-5 text-yellow-500" />;
-      case 'alert': return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      default: return <Bell className="w-5 h-5 text-slate-500" />;
+      case 'mission_suggeree':      return <Zap className="w-5 h-5 text-orange-500" />;
+      case 'devis_accepte':         return <Check className="w-5 h-5 text-green-500" />;
+      case 'devis_refuse':          return <X className="w-5 h-5 text-red-500" />;
+      case 'reservation_annulee':   return <X className="w-5 h-5 text-red-500" />;
+      case 'nouvel_avis':           return <Star className="w-5 h-5 text-yellow-500" />;
+      case 'nouveau_message':       return <MessageCircle className="w-5 h-5 text-blue-500" />;
+      default:                      return <Bell className="w-5 h-5 text-gray-400" />;
     }
   };
 
@@ -264,13 +267,36 @@ function NotificationsPopup({ router, userId }) {
               notifications.slice(0,3).map((notif) => (
                 <div
                   key={notif.id}
-                  className={`flex items-start gap-3 p-4 border-b border-slate-50 ${notif.lu ? "bg-white" : "bg-pink-50"} hover:bg-slate-100 cursor-pointer transition`}
+                  onClick={() => {
+                    const link = getNotificationLink(notif);
+
+                    if (!link) return;
+
+                    setOpen(false);
+                    router.push(link);
+                  }}
+                  className={`flex items-start gap-3 p-4 border-b border-slate-50 ${
+                    notif.lu ? "bg-white" : "bg-pink-50"
+                  } hover:bg-slate-100 cursor-pointer transition`}
                 >
                   <div>{getIcon(notif.type)}</div>
                   <div className="flex-1">
-                    <p className="font-medium text-slate-800">{notif.type.charAt(0).toUpperCase() + notif.type.slice(1)}</p>
-                    <p className="text-sm text-slate-600">{notif.contenu}</p>
-                    <span className="text-xs text-slate-400">{new Date(notif.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    <p className="font-semibold text-slate-900">
+                      {notif.titre}
+                    </p>
+
+                    <p className="text-sm text-slate-600 mt-1">
+                      {notif.contenu}
+                    </p>
+
+                    <span className="text-xs text-slate-400 block mt-2">
+                      {new Date(notif.created_at).toLocaleString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
                   </div>
                 </div>
               ))

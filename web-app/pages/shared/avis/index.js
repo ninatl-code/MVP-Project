@@ -35,10 +35,10 @@ export default function AvisPage() {
     try {
       setLoading(true);
       
-      let query = supabase.from('reviews_photographe').select(`
+      let query = supabase.from('reviews_presta').select(`
         *,
-        client:profiles!reviews_photographe_client_id_fkey(id, nom, avatar_url),
-        prestataire:profiles!reviews_photographe_prestataire_id_fkey(id, nom, avatar_url)
+        client:profiles!reviews_presta_client_id_fkey(id, nom, avatar_url),
+        prestataire:profiles!reviews_presta_prestataire_id_fkey(id, nom, avatar_url)
       `, { count: 'exact' });
 
       // Filter by role
@@ -71,7 +71,7 @@ export default function AvisPage() {
       // Calculate stats for received reviews
       if (isPhotographe) {
         const { data: statsData } = await supabase
-          .from('avis')
+          .from('reviews_presta')
           .select('note')
           .eq('destinataire_id', user.id);
 

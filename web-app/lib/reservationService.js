@@ -169,7 +169,7 @@ export const updateReservationStatus = async (reservationId, status, additionalD
  * Confirm reservation (service provider accepts)
  */
 export const confirmReservation = async (reservationId) => {
-  return updateReservationStatus(reservationId, 'confirme', {
+  return updateReservationStatus(reservationId, 'confirmed', {
     date_confirmation: new Date().toISOString(),
   });
 };
@@ -178,7 +178,7 @@ export const confirmReservation = async (reservationId) => {
  * Complete reservation (after service is done)
  */
 export const completeReservation = async (reservationId) => {
-  return updateReservationStatus(reservationId, 'termine', {});
+  return updateReservationStatus(reservationId, 'completed', {});
 };
 
 /**
@@ -189,7 +189,7 @@ export const cancelReservation = async (reservationId, reason, cancelledBy) => {
     const { data, error } = await supabase
       .from('reservations')
       .update({
-        statut: 'annule',
+        statut: 'cancelled',
         motif_annulation: reason,
         annule_par: cancelledBy,
         date_annulation: new Date().toISOString(),
@@ -225,8 +225,8 @@ export const getUpcomingReservations = async (userId, role = 'particulier') => {
       .eq(column, userId)
       .gte('date', today)
       .lte('date', nextWeek)
-      .in('statut', ['confirme', 'pending'])
-      .order('date_prestation', { ascending: true });
+      .in('statut', ['confirmed', 'pending'])
+      .order('date', { ascending: true });
 
     if (error) throw error;
     return { data, error: null };
@@ -254,13 +254,13 @@ export const getReservationStats = async (userId, role = 'particulier') => {
     const stats = {
       total: data?.length || 0,
       pending: data?.filter(r => r.statut === 'pending').length || 0,
-      confirmed: data?.filter(r => r.statut === 'confirme').length || 0,
-      completed: data?.filter(r => r.statut === 'termine').length || 0,
-      cancelled: data?.filter(r => r.statut === 'annule').length || 0,
+      confirmed: data?.filter(r => r.statut === 'confirmed').length || 0,
+      completed: data?.filter(r => r.statut === 'completed').length || 0,
+      cancelled: data?.filter(r => r.statut === 'cancelled').length || 0,
       upcoming: data?.filter(r =>
-        r.statut === 'confirme' && new Date(r.date) > now
+        r.statut === 'confirmed' && new Date(r.date) > now
       ).length || 0,
-      totalRevenue: data?.filter(r => r.statut === 'termine').reduce((sum, r) => sum + (r.montant_total || 0), 0) || 0,
+      totalRevenue: data?.filter(r => r.statut === 'completed').reduce((sum, r) => sum + (r.montant_total || 0), 0) || 0,
     };
 
     return { stats, error: null };
@@ -274,10 +274,10 @@ export const getReservationStats = async (userId, role = 'particulier') => {
  * Reservation status labels and colors
  */
 export const RESERVATION_STATUS = {
-  pending: { label: 'En attente de paiement', color: 'yellow', icon: 'Clock' },
-  confirme: { label: 'Confirmée', color: 'green', icon: 'CheckCircle' },
-  termine: { label: 'Terminée', color: 'gray', icon: 'Check' },
-  annule: { label: 'Annulée', color: 'red', icon: 'X' },
+  pending: { label: 'En attente', color: 'yellow', icon: 'Clock' },
+  confirmed: { label: 'Confirmé', color: 'green', icon: 'CheckCircle' },
+  completed: { label: 'Terminé', color: 'gray', icon: 'Check' },
+  cancelled: { label: 'Annulé', color: 'red', icon: 'X' },
 };
 
 /**
@@ -299,7 +299,7 @@ export const getCalendarEvents = async (photographeId, startDate, endDate) => {
       .eq('prestataire_id', photographeId)
       .gte('date', startDate)
       .lte('date', endDate)
-      .not('statut', 'eq', 'annule');
+      .not('statut', 'eq', 'cancelled');
 
     if (resError) throw resError;
 

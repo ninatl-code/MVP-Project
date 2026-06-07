@@ -2,8 +2,8 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
-import { Bell, LogOut, MessageCircle, Menu, Calendar, Star, AlertTriangle, RefreshCcw, User } from "lucide-react";
-
+import { Bell, LogOut, MessageCircle, Menu, CheckCheck, Star, FileText, RefreshCcw, User, X } from "lucide-react";
+import {getNotificationLink} from '../lib/notificationService';
 // Palette Shooty
 const COLORS = {
   primary: '#E8EAF6',     
@@ -197,6 +197,7 @@ function NotificationsPopup({ router, userId }) {
     };
     fetchNotifications();
   }, [userId]);
+  
 
   // Marquer toutes les notifications comme lues
   const markAllAsRead = async () => {
@@ -218,12 +219,12 @@ function NotificationsPopup({ router, userId }) {
   // Icône selon type
   const getIcon = (type) => {
     switch (type) {
-      case 'reservation': return <Calendar className="w-5 h-5 text-green-500" />;
-      case 'message': return <MessageCircle className="w-5 h-5 text-blue-500" />;
-      case 'review': return <Star className="w-5 h-5 text-yellow-500" />;
-      case 'avis': return <Star className="w-5 h-5 text-purple-500" />;
-      case 'alert': return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      default: return <Bell className="w-5 h-5 text-slate-500" />;
+      case 'devis_recu':            return <FileText className="w-5 h-5 text-indigo-500" />;
+      case 'reservation_confirmee': return <CheckCheck className="w-5 h-5 text-green-500" />;
+      case 'reservation_annulee':   return <X className="w-5 h-5 text-red-500" />;
+      case 'prestation_terminee':   return <Star className="w-5 h-5 text-yellow-500" />;
+      case 'nouveau_message':       return <MessageCircle className="w-5 h-5 text-blue-500" />;
+      default:                      return <Bell className="w-5 h-5 text-gray-400" />;
     }
   };
 
@@ -264,25 +265,31 @@ function NotificationsPopup({ router, userId }) {
                 <div
                   key={notif.id}
                   onClick={() => {
-                    if (notif.type === 'avis') {
-                      // Pour les notifications d'avis, rediriger vers menu.js avec un paramètre
-                      setOpen(false);
-                      router.push(`/client/menu?openAvis=${notif.id}`);
-                    } else if (notif.type === 'message') {
-                      setOpen(false);
-                      router.push('/shared/messages');
-                    } else {
-                      setOpen(false);
-                      router.push('/client/notification');
-                    }
+                    const link = getNotificationLink(notif);
+                    if (!link) return;
+                    setOpen(false);
+                    router.push(link);
                   }}
                   className={`flex items-start gap-3 p-4 border-b border-slate-50 ${notif.lu ? "bg-white" : "bg-pink-50"} hover:bg-slate-100 cursor-pointer transition ${notif.type === 'avis' ? 'hover:bg-purple-50' : ''}`}
                 >
                   <div>{getIcon(notif.type)}</div>
                   <div className="flex-1">
-                    <p className="font-medium text-slate-800">{notif.type.charAt(0).toUpperCase() + notif.type.slice(1)}</p>
-                    <p className="text-sm text-slate-600">{notif.contenu}</p>
-                    <span className="text-xs text-slate-400">{new Date(notif.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    <p className="font-semibold text-slate-900">
+                      {notif.titre}
+                    </p>
+
+                    <p className="text-sm text-slate-600 mt-1">
+                      {notif.contenu}
+                    </p>
+
+                    <span className="text-xs text-slate-400 block mt-2">
+                      {new Date(notif.created_at).toLocaleString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
                   </div>
                 </div>
               ))

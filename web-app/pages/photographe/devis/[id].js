@@ -8,7 +8,7 @@ import {
   FileText, Clock, Check, X, Euro, ArrowLeft,
   User, Calendar, AlertCircle, MessageSquare, Trash2,
   Edit, Send, MapPin, Banknote, Timer, Package, CreditCard,
-  ChevronRight, Tag
+  ChevronRight, Tag, Bell
 } from 'lucide-react';
 import { format, formatDistanceToNow, isAfter } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -49,6 +49,8 @@ export default function PhotographeDevisDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [pendingReservation, setPendingReservation] = useState(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     const prestataireId = user?.id || profileId || photographeProfile?.id;
@@ -72,11 +74,42 @@ export default function PhotographeDevisDetailPage() {
 
       if (error) throw error;
       // Normalize 'envoye' → 'en_attente'
-      setDevis({ ...data, statut: data.statut === 'envoye' ? 'en_attente' : data.statut });
+      const normalized = { ...data, statut: data.statut === 'envoye' ? 'en_attente' : data.statut };
+      setDevis(normalized);
+
+      // Si accepté, chercher la réservation pending associée
+      if (normalized.statut === 'accepte') {
+        const { data: resaData } = await supabase
+          .from('reservations')
+          .select('id, statut, client_id')
+          .eq('devis_id', data.id)
+          .in('statut', ['pending'])
+          .maybeSingle();
+        setPendingReservation(resaData || null);
+      }
     } catch (error) {
       console.error('Error fetching devis:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmReservation = async () => {
+    if (!pendingReservation) return;
+    setConfirming(true);
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ statut: 'confirmed', date_confirmation: new Date().toISOString() })
+        .eq('id', pendingReservation.id);
+      if (error) throw error;
+
+
+      router.push(`/photographe/reservations/${pendingReservation.id}`);
+    } catch (err) {
+      console.error('[handleConfirmReservation]', err);
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -171,6 +204,29 @@ export default function PhotographeDevisDetailPage() {
           <ArrowLeft className="w-5 h-5" />
           Retour aux devis
         </Link>
+
+        {/* Bannière réservation en attente de confirmation */}
+        {pendingReservation && (
+          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
+            <div className="flex items-start gap-3">
+              <Bell className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm font-semibold text-red-700">
+                Veuillez confirmer votre réservation —{' '}
+                <Link href={`/photographe/reservations/${pendingReservation.id}`} className="underline hover:text-red-900">
+                  Voir la réservation
+                </Link>
+              </p>
+            </div>
+            <button
+              onClick={handleConfirmReservation}
+              disabled={confirming}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-all disabled:opacity-50"
+            >
+              <Check className="w-4 h-4" />
+              {confirming ? 'Confirmation...' : 'Confirmer la réservation'}
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}

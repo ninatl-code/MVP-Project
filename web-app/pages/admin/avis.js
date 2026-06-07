@@ -29,11 +29,11 @@ export default function AdminAvis() {
   const fetchRows = async () => {
     setFetching(true);
     let query = supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select(`
         id, rating, comment, created_at,
-        client:profiles!reviews_photographe_client_id_fkey(nom, email),
-        prestataire:profiles!reviews_photographe_prestataire_id_fkey(nom, email)
+        client:profiles!reviews_presta_client_id_fkey(nom, email),
+        prestataire:profiles!reviews_presta_prestataire_id_fkey(nom, email)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -60,7 +60,7 @@ export default function AdminAvis() {
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer définitivement cet avis ?')) return;
     setActionLoading(true);
-    await supabase.from('reviews_photographe').delete().eq('id', id);
+    await supabase.from('reviews_presta').delete().eq('id', id);
     setActionLoading(false);
     setSelected(null);
     fetchRows();

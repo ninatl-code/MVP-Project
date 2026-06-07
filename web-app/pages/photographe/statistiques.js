@@ -112,7 +112,7 @@ export default function StatistiquesPage() {
           .gte('created_at', prevStartDate.toISOString())
           .lte('created_at', prevEndDate.toISOString()),
         supabase
-          .from('reviews_photographe')
+          .from('reviews_presta')
           .select('rating, created_at')
           .eq('prestataire_id', photographeProfile.id)
           .gte('created_at', startDate.toISOString())

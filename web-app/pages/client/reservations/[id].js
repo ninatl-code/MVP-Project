@@ -19,12 +19,9 @@ const COLORS = {
 
 const STATUS_CONFIG = {
   pending:    { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le photographe doit confirmer la réservation' },
-  en_attente: { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le photographe doit confirmer la réservation' },
-  confirmee: { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle, description: 'Votre réservation est confirmée' },
-  terminee: { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle, description: 'La prestation a été effectuée' },
-  annulee: { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle, description: 'Cette réservation a été annulée' },
-  en_cours: { label: 'En cours', color: 'bg-purple-100 text-purple-700', icon: Camera, description: 'La prestation est en cours' },
-  litige: { label: 'Litige en cours', color: 'bg-orange-100 text-orange-700', icon: AlertCircle, description: 'Un litige est en cours de résolution' },
+  confirmed: { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle, description: 'Votre réservation est confirmée' },
+  completed: { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle, description: 'La prestation a été effectuée' },
+  cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle, description: 'Cette réservation a été annulée' },
 };
 
 export default function ReservationDetailPage() {
@@ -68,13 +65,13 @@ export default function ReservationDetailPage() {
         prestataire = profil;
       }
 
-      // Fetch existing review from reviews_photographe
+      // Fetch existing review from reviews_presta
       let existingReview = null;
       try {
         const clientId = profileId || user?.id;
         if (clientId && data.prestataire_id) {
           const { data: reviewData } = await supabase
-            .from('reviews_photographe')
+            .from('reviews_presta')
             .select('id, rating, comment, created_at')
             .eq('client_id', clientId)
             .eq('prestataire_id', data.prestataire_id)
@@ -82,6 +79,7 @@ export default function ReservationDetailPage() {
           existingReview = reviewData;
         }
       } catch (_) {}
+      
 
       // Fetch linked devis if exists
       let devis = null;
@@ -117,12 +115,19 @@ export default function ReservationDetailPage() {
     try {
       const { error } = await supabase
         .from('reservations')
-        .update({ statut: 'annulee', annule_par: profileId, date_annulation: new Date().toISOString() })
+        .update({ statut: 'cancelled', annule_par: profileId, date_annulation: new Date().toISOString() })
         .eq('id', id);
-
+      
+        await notifyReservationCancelled({
+        userId: reservation.prestataire_id, // le photographe doit être notifié
+        role: 'particulier',
+        reservationId: reservation.id,
+        cancelledByName: profileId,
+        demandeId: reservation.demande_id,
+      });
       if (error) throw error;
       
-      setReservation(prev => ({ ...prev, statut: 'annulee' }));
+      setReservation(prev => ({ ...prev, statut: 'cancelled' }));
       setShowCancelModal(false);
     } catch (error) {
       console.error('Error cancelling reservation:', error);
@@ -148,7 +153,7 @@ export default function ReservationDetailPage() {
 
   const canCancel = () => {
     if (!reservation) return false;
-    if (!['pending', 'en_attente', 'confirmee'].includes(reservation.statut)) return false;
+    if (!['pending', 'confirmed'].includes(reservation.statut)) return false;
     
     // Check if prestation date is more than 48h away
     const prestationDate = new Date(reservation.date);
@@ -159,7 +164,7 @@ export default function ReservationDetailPage() {
 
   const canReview = () => {
     if (!reservation) return false;
-    if (reservation.statut !== 'terminee') return false;
+    if (reservation.statut !== 'completed') return false;
     if (reservation.existingReview) return false;
     return true;
   };
@@ -504,7 +509,7 @@ export default function ReservationDetailPage() {
             )}
 
             {/* Review section */}
-            {reservation.statut === 'terminee' && (
+            {reservation.statut === 'completed' && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Star className="w-5 h-5 text-yellow-500" />
@@ -695,7 +700,7 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
     setSubmitting(true);
     try {
       const { error } = await supabase
-        .from('reviews_photographe')
+        .from('reviews_presta')
         .insert({
           prestataire_id: photographeId,
           client_id: profileId,
@@ -711,6 +716,7 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
       onSubmit();
     } catch (error) {
       console.error('Error submitting review:', error);
+      alert(error.message);
     } finally {
       setSubmitting(false);
     }

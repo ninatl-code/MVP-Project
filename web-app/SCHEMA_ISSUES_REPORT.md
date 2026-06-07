@@ -66,7 +66,7 @@ CREATE TABLE commandes (
 3. `packages` → `packages_types`
 4. `services` → `prestations_photographe` ou créer
 5. `disponibilites` → `blocked_slots`
-6. `zones_intervention` → Ajouter colonnes dans `profils_photographe`
+6. `zones_intervention` → Ajouter colonnes dans `profils_prestataire`
 
 ---
 
@@ -115,7 +115,7 @@ CREATE TABLE commandes (
 
 ### Tables existantes confirmées (extrait)
 - `profiles` ✅
-- `profils_photographe` ✅
+- `profils_prestataire` ✅
 - `reservations` ✅
 - `messages` ✅
 - `conversations` ✅

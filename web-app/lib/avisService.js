@@ -2,22 +2,22 @@ import { supabase } from './supabaseClient';
 
 /**
  * Create a review
- * reviews_photographe: id, prestataire_id, client_id, matching_id, rating, comment
+ * reviews_presta: id, prestataire_id, client_id, matching_id, rating, comment
  */
 export const createReview = async ({
   reviewerId,
   revieweeId,
-  matchingId = null,
+  reservationId = null,
   note,
   commentaire,
 }) => {
   try {
     const { data, error } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .insert({
         client_id: reviewerId,
         prestataire_id: revieweeId,
-        matching_id: matchingId,
+        reservation_id: reservationId,
         rating: note,
         comment: commentaire,
       })
@@ -42,10 +42,10 @@ export const createReview = async ({
 export const getPhotographerReviews = async (photographeId, limit = 20) => {
   try {
     const { data, error } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select(`
         *,
-        client:profiles!reviews_photographe_client_id_fkey(id, nom, avatar_url)
+        client:profiles!reviews_presta_client_id_fkey(id, nom, avatar_url)
       `)
       .eq('prestataire_id', photographeId)
       .order('created_at', { ascending: false })
@@ -65,10 +65,10 @@ export const getPhotographerReviews = async (photographeId, limit = 20) => {
 export const getClientReviews = async (clientId) => {
   try {
     const { data, error } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select(`
         *,
-        prestataire:profiles!reviews_photographe_prestataire_id_fkey(id, nom, avatar_url)
+        prestataire:profiles!reviews_presta_prestataire_id_fkey(id, nom, avatar_url)
       `)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false });
@@ -82,15 +82,15 @@ export const getClientReviews = async (clientId) => {
 };
 
 /**
- * Check if user has already reviewed a matching
+ * Check if user has already reviewed a reservation
  */
-export const hasReviewed = async (reviewerId, matchingId) => {
+export const hasReviewed = async (reviewerId, reservationId) => {
   try {
     const { data, error } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select('id')
       .eq('client_id', reviewerId)
-      .eq('matching_id', matchingId)
+      .eq('reservation_id', reservationId)
       .single();
 
     if (error && error.code !== 'PGRST116') throw error;
@@ -107,7 +107,7 @@ export const hasReviewed = async (reviewerId, matchingId) => {
 export const updatePhotographerRating = async (photographeId) => {
   try {
     const { data: reviews, error: reviewError } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select('rating')
       .eq('prestataire_id', photographeId);
 
@@ -142,7 +142,7 @@ export const updatePhotographerRating = async (photographeId) => {
 export const getPhotographerRatingStats = async (photographeId) => {
   try {
     const { data: reviews, error } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select('rating')
       .eq('prestataire_id', photographeId);
 
@@ -204,12 +204,12 @@ export const getPendingReviews = async (clientId) => {
         profiles!reservations_prestataire_id_fkey(nom, avatar_url)
       `)
       .eq('client_id', clientId)
-      .eq('statut', 'termine');
+      .eq('statut', 'completed');
 
     if (resError) throw resError;
 
     const { data: existingReviews } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select('prestataire_id')
       .eq('client_id', clientId);
 
@@ -244,7 +244,7 @@ export const formatStarRating = (rating) => {
 export const reportReview = async (reviewId, reporterId, reason = '') => {
   try {
     const { data, error } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .update({ reported: true, report_reason: reason, reported_by: reporterId, reported_at: new Date().toISOString() })
       .eq('id', reviewId)
       .select()
@@ -264,7 +264,7 @@ export const reportReview = async (reviewId, reporterId, reason = '') => {
 export const replyToReview = async (reviewId, reply) => {
   try {
     const { data, error } = await supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .update({ reply, reply_at: new Date().toISOString() })
       .eq('id', reviewId)
       .select()
@@ -284,7 +284,7 @@ export const replyToReview = async (reviewId, reply) => {
 export const getReservationReview = async (reservationId, clientId) => {
   try {
     let query = supabase
-      .from('reviews_photographe')
+      .from('reviews_presta')
       .select('id, rating, comment, created_at, prestataire_id');
 
     if (reservationId) query = query.eq('reservation_id', reservationId);

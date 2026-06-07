@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
-import { computeAndSaveMatchesForDemande } from '../../../lib/matchingService';
+import { onNewDemande } from '../../../lib/matchingService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
@@ -190,7 +190,7 @@ export default function CreateDemandePage() {
       }
 
       // Compute and persist matching scores for all prestataires (fire and forget)
-      computeAndSaveMatchesForDemande(insertedData.id, { ...insertPayload, id: insertedData.id });
+      onNewDemande(insertedData.id, { ...insertPayload, id: insertedData.id });
 
       setSuccess(true);
       setTimeout(() => router.push('/client/demandes'), 2000);

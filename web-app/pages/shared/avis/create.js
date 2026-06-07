@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
-import { createNotification, NOTIFICATION_TYPES } from '../../../lib/notificationService';
+import {notifyPrestaReview} from '../../../lib/notificationService';
 import { 
   Star, ArrowLeft, Send, Camera, Calendar, 
   MapPin, Euro, CheckCircle, AlertCircle
@@ -64,7 +64,7 @@ export default function CreateAvisPage() {
 
       // Check if already reviewed
       const { data: existingReview } = await supabase
-        .from('reviews_photographe')
+        .from('reviews_presta')
         .select('*')
         .eq('prestataire_id', isPhotographe ? user.id : reservation.prestataire_id)
         .eq('client_id', isPhotographe ? reservation.client_id : user.id)
@@ -109,7 +109,7 @@ export default function CreateAvisPage() {
       if (existingAvis) {
         // Update existing review
         const { error } = await supabase
-          .from('reviews_photographe')
+          .from('reviews_presta')
           .update({
             rating: note,
             comment: commentaire.trim() || null,
@@ -121,20 +121,14 @@ export default function CreateAvisPage() {
       } else {
         // Create new review
         const { error } = await supabase
-          .from('reviews_photographe')
+          .from('reviews_presta')
           .insert(avisData);
 
         if (error) throw error;
 
         // Notify prestataire of new avis (only when client submits)
         if (!isPhotographe && reservation.prestataire_id) {
-          createNotification({
-            userId: reservation.prestataire_id,
-            type: NOTIFICATION_TYPES.NOUVEL_AVIS,
-            title: '⭐ Nouvel avis reçu',
-            message: 'Vous avez reçu un nouvel avis.',
-            reservationId: reservationId,
-          });
+          await notifyPrestaReview (reservation.client_id,reservation.id, reservation.prestataire_id, reservation.demande_id);
         }
       }
 

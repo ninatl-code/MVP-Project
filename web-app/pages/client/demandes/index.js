@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
-import { computeAndSaveMatchesForDemande } from '../../../lib/matchingService';
+import { onNewDemande } from '../../../lib/matchingService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { 
@@ -103,7 +103,7 @@ export default function MesDemandesPage() {
 
       // Déclenche le matching pour chaque nouvelle demande
       (inserted || []).forEach(d => {
-        computeAndSaveMatchesForDemande(d.id, d);
+        onNewDemande(d.id, d);
       });
 
       setSelected([]);

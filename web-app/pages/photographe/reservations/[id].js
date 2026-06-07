@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
-import { createNotification, NOTIFICATION_TYPES } from '../../../lib/notificationService';
+import { notifyReservationConfirmed, notifyReservationCancelled } from '../../../lib/notificationService';
 import {
   ArrowLeft, User, Calendar, Clock, MapPin,
   MessageSquare, Check, X, Camera,
@@ -134,56 +134,27 @@ export default function PhotographeReservationDetailPage() {
   };
 
   const handleConfirm  = () => { setAcceptComment(''); setShowAcceptModal(true); };
-  const handleComplete = async () => {
-    await updateStatus('terminee');
-    if (reservation?.client_id) {
-      createNotification({
-        userId: reservation.client_id,
-        type: NOTIFICATION_TYPES.PRESTATION_TERMINEE,
-        title: '⭐ Donnez votre avis',
-        message: 'Votre prestation est terminée. Partagez votre expérience !',
-        reservationId: reservation.id,
-      });
-    }
-  };
+
 
   const handleConfirmSubmit = async () => {
-    await updateStatus('confirmee', {
+    await updateStatus('confirmed', {
       notes_prestataire: acceptComment || null,
       date_confirmation: new Date().toISOString(),
     });
-    await createNotification({
-      userId: reservation?.client_id,
-      type: NOTIFICATION_TYPES.RESERVATION_CONFIRMEE,
-      title: '✅ Réservation confirmée',
-      message: 'Votre réservation a été confirmée.',
-      reservationId: reservation?.id,
-    });
+    await notifyReservationConfirmed (reservation.client_id, reservation.date,reservation.id, reservation.demande_id, reservation.prestataire_id);
     setShowAcceptModal(false);
   };
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) return;
     await updateStatus('cancelled', { motif_annulation: cancelReason, annule_par: photographeProfile?.id, date_annulation: new Date().toISOString() });
-    await createNotification({
-      userId: reservation?.client_id,
-      type: NOTIFICATION_TYPES.RESERVATION_ANNULEE,
-      title: '❌ Réservation annulée',
-      message: `Votre réservation a été annulée.`,
-      reservationId: reservation?.id,
-    });
+    await notifyReservationCancelled({userId: reservation?.client_id, role: 'photographe', reservationId: reservation?.id, cancelledByName: photographeProfile?.id, demandeId: reservation?.demande_id});
     setShowCancelModal(false);
   };
 
   const handleRefuse = async () => {
     await updateStatus('cancelled', { motif_annulation: refuseReason || 'Refusé par le prestataire', annule_par: photographeProfile?.id, date_annulation: new Date().toISOString() });
-    await createNotification({
-      userId: reservation?.client_id,
-      type: NOTIFICATION_TYPES.RESERVATION_ANNULEE,
-      title: '❌ Réservation annulée',
-      message: 'Votre réservation a été annulée.',
-      reservationId: reservation?.id,
-    });
+    await notifyReservationCancelled({userId: reservation?.client_id, role: 'photographe', reservationId: reservation?.id, cancelledByName: photographeProfile?.id, demandeId: reservation?.demande_id});
     setShowRefuseModal(false);
   };
 

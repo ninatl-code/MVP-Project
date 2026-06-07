@@ -42,24 +42,55 @@ export default function AvisListPage() {
   const fetchAvis = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('reviews_photographe')
-        .select(`
-          *,
-          prestataire:profiles!reviews_photographe_prestataire_id_fkey(id, nom, avatar_url)
-        `)
+      // 1. Avis du client
+      const { data: avisData, error } = await supabase
+        .from('reviews_presta')
+        .select('*')
         .eq('client_id', profileId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAvis(data || []);
+
+      if (!avisData || avisData.length === 0) {
+        setAvis([]);
+        return;
+      }
+
+      // 2. IDs prestataires uniques
+      const prestataireIds = [
+        ...new Set(avisData.map(a => a.prestataire_id))
+      ];
+
+      // 3. Récupération des profils prestataires
+      const { data: prestataires, error: err2 } = await supabase
+        .from('profiles')
+        .select('id, nom, avatar_url')
+        .in('id', prestataireIds);
+
+      if (err2) throw err2;
+
+      // 4. Mapping prestataires
+      const prestataireMap = {};
+      prestataires.forEach(p => {
+        prestataireMap[p.id] = p;
+      });
+
+      // 5. Fusion des données
+      const enrichedAvis = avisData.map(a => ({
+        ...a,
+        prestataire: prestataireMap[a.prestataire_id] || null,
+      }));
+
+      // 6. Set state
+      setAvis(enrichedAvis);
+
     } catch (error) {
       console.error('Erreur chargement avis:', error);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const filtered = avis.filter(a =>
     a.prestataire?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.comment?.toLowerCase().includes(searchQuery.toLowerCase())

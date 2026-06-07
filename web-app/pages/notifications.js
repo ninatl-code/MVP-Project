@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderParti from '../components/HeaderParti';
 import HeaderPresta from '../components/HeaderPresta';
+import getNotificationLink from '../lib/notificationService';
 import {
   Bell, ArrowLeft, Check, CheckCheck, Calendar, MessageCircle,
   FileText, Star, Clock, X, Trash2, Settings, Zap
@@ -18,7 +19,7 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState('all'); // all, unread
   const [selectedIds, setSelectedIds] = useState([]);
 
-const isPhotographe = activeRole === 'prestataire';
+const isPhotographe = activeRole === 'photographe';
 
   useEffect(() => {
     if (user?.id) {
@@ -49,7 +50,7 @@ const isPhotographe = activeRole === 'prestataire';
       setLoading(false);
     }
   };
-const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? HeaderPresta : HeaderParti;
+const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
 
   const markAsRead = async (ids) => {
     try {
@@ -111,7 +112,7 @@ const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? He
 
   const getNotificationIcon = (type) => {
     switch (type) {
-      case 'Mission suggerée':      return <Zap className="w-5 h-5 text-orange-500" />;
+      case 'mission_suggeree':      return <Zap className="w-5 h-5 text-orange-500" />;
       case 'devis_recu':            return <FileText className="w-5 h-5 text-indigo-500" />;
       case 'devis_accepte':         return <Check className="w-5 h-5 text-green-500" />;
       case 'devis_refuse':          return <X className="w-5 h-5 text-red-500" />;
@@ -124,36 +125,7 @@ const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? He
     }
   };
 
-  const getNotificationLink = (notification) => {
-    const { type } = notification;
-    const demande_id = notification.demande_id;
-    const devis_id = notification.devis_id;
-    const reservation_id = notification.reservation_id;
-    switch (type) {
-      case 'Mission suggerée':
-        return demande_id ? `/photographe/demandes/${demande_id}` : '/photographe/demandes?tab=plateforme';
-      case 'devis_recu':
-        return devis_id ? `/client/devis/${devis_id}` : '/client/devis/devis-list';
-      case 'devis_accepte':
-        return devis_id ? `/photographe/devis/${devis_id}` : '/photographe/devis';
-      case 'devis_refuse':
-        return devis_id ? `/photographe/devis/${devis_id}` : '/photographe/devis';
-      case 'reservation_confirmee':
-        return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
-      case 'reservation_annulee':
-        return isPhotographe
-          ? (reservation_id ? `/photographe/reservations/${reservation_id}` : '/photographe/reservations')
-          : (reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations');
-      case 'prestation_terminee':
-        return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
-      case 'nouvel_avis':
-        return reservation_id ? `/photographe/reservations/${reservation_id}` : '/photographe/avis-dashboard';
-      case 'nouveau_message':
-        return '/shared/messages';
-      default:
-        return '#';
-    }
-  };
+
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
