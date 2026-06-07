@@ -285,7 +285,7 @@ export const getReservationReview = async (reservationId, clientId) => {
   try {
     let query = supabase
       .from('reviews_presta')
-      .select('id, rating, comment, created_at, prestataire_id');
+      .select('id, rating, comment, created_at, prestataire_id,reservation_id');
 
     if (reservationId) query = query.eq('reservation_id', reservationId);
     if (clientId) query = query.eq('client_id', clientId);

@@ -256,6 +256,7 @@ export default function PhotographerReservationsPage() {
         montant_tva: parseFloat(invoiceData.montant_tva) || 0,
         montant_ttc: parseFloat(invoiceData.montant_ttc) || 0,
         facture: invoiceData.lignes,
+        pdf_url: null
       });
       setShowInvoiceModal(false);
     } catch (e) { console.error(e); }

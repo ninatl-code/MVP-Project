@@ -12,7 +12,7 @@ import {
 export default function CreateAvisPage() {
   const router = useRouter();
   const { reservationId } = router.query;
-  const { user, activeRole } = useAuth();
+  const { user, activeRole, roleReady} = useAuth();
   
   const [reservation, setReservation] = useState(null);
   const [note, setNote] = useState(0);
@@ -24,7 +24,7 @@ export default function CreateAvisPage() {
   const [success, setSuccess] = useState(false);
   const [existingAvis, setExistingAvis] = useState(null);
 
-  const isPhotographe = activeRole === 'photographe' || activeRole === 'prestataire';
+  const isPhotographe = activeRole === 'photographe';
 
   useEffect(() => {
     if (reservationId && user?.id) {
@@ -66,7 +66,7 @@ export default function CreateAvisPage() {
       const { data: existingReview } = await supabase
         .from('reviews_presta')
         .select('*')
-        .eq('prestataire_id', isPhotographe ? user.id : reservation.prestataire_id)
+        .eq('reservation_id', reservationId)
         .eq('client_id', isPhotographe ? reservation.client_id : user.id)
         .single();
 
@@ -100,6 +100,7 @@ export default function CreateAvisPage() {
         : reservation.prestataire_id;
 
       const avisData = {
+        reservation_id: reservationId,
         prestataire_id: reservation.prestataire_id,
         client_id: reservation.client_id,
         rating: note,
@@ -115,7 +116,7 @@ export default function CreateAvisPage() {
             comment: commentaire.trim() || null,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', existingAvis.id);
+          .eq('reservation_id', reservationId);
 
         if (error) throw error;
       } else {
@@ -128,10 +129,13 @@ export default function CreateAvisPage() {
 
         // Notify prestataire of new avis (only when client submits)
         if (!isPhotographe && reservation.prestataire_id) {
-          await notifyPrestaReview (reservation.client_id,reservation.id, reservation.prestataire_id, reservation.demande_id);
+          await notifyPrestaReview(reservation.client_id,reservation.id, reservation.demande_id, reservation.prestataire_id);
+        }
+        if (!roleReady) {
+        setError("Chargement du profil en cours, veuillez réessayer.");
+        return;
         }
       }
-
       setSuccess(true);
       setTimeout(() => {
         router.push('/shared/avis');

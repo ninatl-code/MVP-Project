@@ -226,7 +226,6 @@ function NotificationsPopup({ router, userId }) {
       case 'devis_refuse':          return <X className="w-5 h-5 text-red-500" />;
       case 'reservation_annulee':   return <X className="w-5 h-5 text-red-500" />;
       case 'nouvel_avis':           return <Star className="w-5 h-5 text-yellow-500" />;
-      case 'nouveau_message':       return <MessageCircle className="w-5 h-5 text-blue-500" />;
       default:                      return <Bell className="w-5 h-5 text-gray-400" />;
     }
   };

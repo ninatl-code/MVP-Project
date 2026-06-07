@@ -156,7 +156,7 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
           rating,
           comment: comment.trim() || null,
           reservation_id: n.reservation_id || null,
-          prestataire_id: n.prestataire_id || null
+          prestataire_id: n.prestataire_id || null,
         })
 
       if (error) throw error

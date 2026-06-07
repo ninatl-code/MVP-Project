@@ -73,7 +73,7 @@ export default function Factures() {
       .from('reservations')
       .select(`id, titre, date, statut, client:profiles!reservations_client_id_fkey(nom, email)`)
       .eq('prestataire_id', uid)
-      .in('statut', ['confirmee', 'terminee', 'confirmed', 'completed'])
+      .in('statut', ['confirmed', 'completed'])
       .order('date', { ascending: false });
     setReservations(data || []);
   }, []);

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { updatePhotographerRating } from '../../../lib/avisService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { notifyReservationCancelled } from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
 import { 
   ArrowLeft, Calendar, MapPin, Clock, Camera, 
@@ -73,7 +74,7 @@ export default function ReservationDetailPage() {
           const { data: reviewData } = await supabase
             .from('reviews_presta')
             .select('id, rating, comment, created_at')
-            .eq('client_id', clientId)
+            .eq('reservation_id', id)
             .eq('prestataire_id', data.prestataire_id)
             .maybeSingle();
           existingReview = reviewData;
@@ -537,7 +538,7 @@ export default function ReservationDetailPage() {
                   </div>
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-gray-500 mb-4">Partagez votre expérience avec ce photographe</p>
+                    <p className="text-gray-500 mb-4">Partagez votre expérience avec ce prestataire</p>
                     <button
                       onClick={() => setShowReviewModal(true)}
                       className="px-4 py-2 bg-yellow-500 text-white rounded-xl font-medium hover:bg-yellow-600 transition-all"
@@ -706,6 +707,7 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
           client_id: profileId,
           rating: rating,
           comment: comment,
+          reservation_id: reservationId,
         });
 
       if (error) throw error;

@@ -22,7 +22,39 @@ const STATUS_CONFIG = {
   cancelled:    { label: 'Annulée',     color: 'bg-red-100 text-red-700',       border: 'border-red-200',    bg: 'bg-red-50',     description: 'Cette réservation a été annulée' },
 };
 
+
+
 export default function PhotographeReservationDetailPage() {
+  const generateInvoicePDF = async (factureData) => {
+  const element = document.getElementById('invoice');
+
+    if (!element) {
+      console.error("Element #invoice introuvable");
+      return null;
+    }
+
+    const worker = html2pdf().from(element).outputPdf();
+
+    const pdf = await worker;
+    const blob = pdf.output('blob');
+
+    const filePath = `factures/${factureData.id}.pdf`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('factures')
+      .upload(filePath, blob, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('factures')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
   const router = useRouter();
   const { id } = router.query;
   const { photographeProfile } = useAuth();
@@ -338,6 +370,15 @@ export default function PhotographeReservationDetailPage() {
                 <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-green-500" /> Facture émise
                 </h2>
+                {facture?.pdf_url && (
+                  <a
+                    href={facture.pdf_url}
+                    target="_blank"
+                    className="text-sm text-indigo-600 hover:underline"
+                  >
+                    Télécharger la facture PDF
+                  </a>
+                )}
                 <div className="bg-green-50 rounded-xl border border-green-100 p-3 mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">N° Facture</p>

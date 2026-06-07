@@ -19,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const [activeRole, setActiveRole] = useState(null);
   const [availableProfiles, setAvailableProfiles] = useState([]);
   const [photographeProfile, setPhotographeProfile] = useState(null);
+  const roleReady = !loading && activeRole !== null;
 
   useEffect(() => {
     // Skip auth initialization on server
@@ -218,6 +219,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     profileId,
     activeRole,
+    roleReady,
     availableProfiles,
     photographeProfile,
     signUp,

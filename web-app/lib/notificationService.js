@@ -231,8 +231,9 @@ export const notifyReservationConfirmed = async (clientId, datePrestation, reser
     type: NOTIFICATION_TYPES.RESERVATION_CONFIRMEE,
     titre: '✅ Réservation confirmée',
     contenu: `Votre réservation du ${new Date(datePrestation).toLocaleDateString('fr-FR')} a été confirmée. Retrouvez tous les détails dans votre espace client`,
-    data: { reservationId: reservationId, demandeId: demandeId, prestataireId: prestataireId },
-
+    reservationId: reservationId,
+    demandeId: demandeId, 
+    prestataireId: prestataireId,
   });
 };
 
@@ -268,13 +269,15 @@ export const notifyRequestReview = async (clientId, reservationId,demandeId) => 
 /**
  * Request review notification after completed reservation
  */
-export const notifyPrestaReview = async (clientId, reservationId, prestaId, demandeId) => {
+export const notifyPrestaReview = async (clientId, reservation_id, demande_id, prestaId ) => {
   return createNotification({
     userId: clientId,
     type: NOTIFICATION_TYPES.NOUVEL_AVIS,
     titre: 'Nouvel avis reçu',
     contenu: `Vous avez reçu un nouvel avis de la part d'un client. Consultez-le dès maintenant.`,
-    data: { reservationId: reservationId, prestaId: prestaId ,demandeId: demandeId },
+    reservationId: reservation_id,
+    demandeId: demande_id,
+    prestataireId: prestaId,
   });
 };
 /**
@@ -339,7 +342,7 @@ export const getNotificationLink = (notification) => {
         return '#';
     }
   };
-  
+
 export default {
   NOTIFICATION_TYPES,
   createNotification,
