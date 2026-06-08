@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
+
 import { notifyReservationConfirmed, notifyReservationCancelled } from '../../../lib/notificationService';
 import {
   ArrowLeft, User, Calendar, Clock, MapPin,

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderParti from '../components/HeaderParti';
 import HeaderPresta from '../components/HeaderPresta';
+import Header from '../../components/HeaderParti';
 import {getNotificationLink} from '../lib/notificationService';
 import {
   Bell, ArrowLeft, Check, CheckCheck, Calendar, MessageCircle,

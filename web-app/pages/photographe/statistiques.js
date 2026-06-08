@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
+
 import { 
   BarChart3, TrendingUp, Eye, FileText, Calendar, Star,
   Users, Euro, Clock, ArrowUp, ArrowDown, Percent

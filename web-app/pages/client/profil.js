@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Header from '../../components/HeaderParti';
 
+
 const DEFAULT_ANNONCE_IMG = "/shutterstock_2502519999.jpg";
 
 // Couleurs Shooty (aligné sur mobile)

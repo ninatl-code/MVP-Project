@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { Search, MapPin, Star, User, Mail, FileText } from "lucide-react";
 import Header from '../../components/HeaderParti';
 
+
 const GOLD = "#D4AF37";
 const ROSE = "#F6DCE8";
 const SBLUE = "#130183";

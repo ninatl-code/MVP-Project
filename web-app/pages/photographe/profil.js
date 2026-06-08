@@ -4,6 +4,10 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { onNewPrestataire, onUpdatePrestataire } from '../../lib/matchingService';
 import Header from '../../components/HeaderPresta';
+import { VILLES_MAROC } from '../../constants/villes';
+import { categories } from '../../constants/categories';
+import { SPECIALITES_MAP } from '../../constants/specialites';
+
 import { 
   User, Camera, MapPin, Instagram, Globe, Phone, Mail,
   Save, Plus, X, Image, Star, Eye, Upload, Check, 
@@ -38,24 +42,6 @@ const EQUIPE = [
   { id: 'binome', label: "J'ai un binôme", icon: Users },
 ];
 
-const CATEGORIES_PROFIL = [
-  { id: 'services-domicile',  label: 'Services à domicile' },
-  { id: 'beaute-bien-etre',   label: 'Beauté & Bien-être' },
-  { id: 'evenementiel',       label: 'Événementiel' },
-  { id: 'transport',          label: 'Transport' },
-  { id: 'digital',            label: 'Digital' },
-  { id: 'education',          label: 'Éducation' },
-];
-
-const SPECIALISATIONS_MAP = {
-  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
-  'beaute-bien-etre': ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
-  'evenementiel': ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
-  'transport': ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
-  'digital': ['Développement', 'Design', 'Marketing', 'Autre'],
-  'education': ['Cours particuliers', 'Coaching', 'Autre'],
-};
-
 // Placeholders dynamiques pour "Équipement disponible"
 const EQUIPEMENT_PLACEHOLDERS = {
   'Services à domicile': {
@@ -85,8 +71,8 @@ const EQUIPEMENT_PLACEHOLDERS = {
   _default: 'Ex : matériel professionnel, outillage spécialisé, véhicule, équipements de travail...',
 };
 
-const getEquipementPlaceholder = (categories, specialisations) => {
-  const cat = (categories || [])[0];
+const getEquipementPlaceholder = (categorie, specialisations) => {
+  const cat = (categorie || [])[0];
   const spec = (specialisations || [])[0];
   if (!cat) return EQUIPEMENT_PLACEHOLDERS._default;
   const catMap = EQUIPEMENT_PLACEHOLDERS[cat];
@@ -232,8 +218,8 @@ const SERVICES_ADDITIONNELS_MAP = {
   ],
 };
 
-const getServicesAdditionnels = (categories, specialisations) => {
-  const cat = (categories || [])[0];
+const getServicesAdditionnels = (categorie, specialisations) => {
+  const cat = (categorie || [])[0];
   const spec = (specialisations || [])[0];
   if (!cat) return SERVICES_ADDITIONNELS_MAP._default;
   const catMap = SERVICES_ADDITIONNELS_MAP[cat];
@@ -259,7 +245,7 @@ export default function PhotographeProfilPage() {
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [prestationsCategories, setPrestationsCategories] = useState([]);
+  const [prestationscategorie, setPrestationscategorie] = useState([]);
   const [autreSpecInput, setAutreSpecInput] = useState('');
 
   
@@ -301,7 +287,7 @@ export default function PhotographeProfilPage() {
       .eq('actif', true)
       .order('ordre')
       .then(({ data }) => {
-        if (data) setPrestationsCategories(data);
+        if (data) setPrestationscategorie(data);
       });
   }, []);
 
@@ -465,7 +451,7 @@ export default function PhotographeProfilPage() {
           linkedin: photoProfile?.linkedin || '',
           website: photoProfile?.site_web || '',
           specialisations: photoProfile?.specialisations || [],
-          categories: photoProfile?.categories || [],
+          categorie: photoProfile?.categorie || [],
           equipe: photoProfile?.equipe || [],
           materiel: photoProfile?.materiel || '',
           tarif_horaire_min: photoProfile?.tarif_horaire_min || '',
@@ -579,11 +565,11 @@ export default function PhotographeProfilPage() {
   };
 
   // Sauvegarde immédiate catégorie + spécialisations pour ne pas perdre la sélection en naviguant
-  const autoSaveSpecialisations = async (newCategories, newSpecialisations) => {
+  const autoSaveSpecialisations = async (newcategorie, newSpecialisations) => {
     if (!user?.id) return;
     await supabase.from('profils_prestataire').upsert({
       id: user.id,
-      categories: newCategories,
+      categorie: newcategorie,
       specialisations: newSpecialisations,
     });
   };
@@ -618,7 +604,7 @@ export default function PhotographeProfilPage() {
           facebook: profile.facebook || null,
           linkedin: profile.linkedin || null,
           site_web: profile.website || null,
-          categories: profile.categories || [],
+          categorie: profile.categorie || [],
           specialisations: profile.specialisations || [],
           equipe: profile.equipe || [],
           materiel: profile.materiel || null,
@@ -1029,6 +1015,7 @@ export default function PhotographeProfilPage() {
                     </div>
                   </div>
                   
+                  
                   {/* Badges */}
                   {verificationStatus.badges?.length > 0 && (
                     <div className="flex gap-2 mt-4 flex-wrap">
@@ -1353,16 +1340,7 @@ export default function PhotographeProfilPage() {
                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white appearance-none"
                   >
                     <option value="">Sélectionner une ville</option>
-                    {[
-                      'Casablanca','Rabat','Marrakech','Fès','Tanger','Agadir','Meknès','Oujda',
-                      'Kénitra','Tétouan','Safi','Mohammedia','Khouribga','Béni Mellal','El Jadida',
-                      'Nador','Settat','Berrechid','Khémisset','Inezgane','Ait Melloul','Taza',
-                      'Laâyoune','Dakhla','Guelmim','Taroudant','Ouarzazate','Errachidia','Ifrane',
-                      'Al Hoceima','Larache','Ksar El Kébir','Fnideq','Martil','Asilah','Essaouira',
-                      'Tiznit','Sidi Ifni','Tan-Tan','Midelt','Azrou','Figuig','Zagora','Tinghir',
-                      'Boujdour','Smara','Chefchaouen','Ouezzane','Sidi Kacem','Sidi Slimane',
-                      'Souk El Arbaa','Bouznika','Benslimane','Médiouna','Nouaceur','Salé','Témara',
-                    ].sort().map(v => (
+                    {VILLES_MAROC.sort().map(v => (
                       <option key={v} value={v}>{v}</option>
                     ))}
                   </select>
@@ -1497,14 +1475,14 @@ export default function PhotographeProfilPage() {
                 <h2 className="font-semibold text-gray-900 mb-2">Catégorie principale</h2>
                 <p className="text-sm text-gray-500 mb-4">Sélectionnez votre domaine d'activité (un seul choix)</p>
                 <div className="flex flex-wrap gap-2">
-                  {CATEGORIES_PROFIL.map(cat => {
-                    const isSelected = (profile?.categories || [])[0] === cat.id;
+                  {categories.map(cat => {
+                    const isSelected = (profile?.categorie || [])[0] === cat.id;
                     return (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => {
-                          handleProfileChange('categories', [cat.id]);
+                          handleProfileChange('categorie', [cat.id]);
                           handleProfileChange('specialisations', []);
                           autoSaveSpecialisations([cat.id], []);
                         }}
@@ -1522,14 +1500,14 @@ export default function PhotographeProfilPage() {
               </div>
 
               {/* Spécialisations (basées sur la catégorie choisie) */}
-              {(profile?.categories || []).length > 0 && SPECIALISATIONS_MAP[(profile?.categories || [])[0]] && (
+              {(profile?.categorie || []).length > 0 && SPECIALITES_MAP[(profile?.categorie || [])[0]] && (
                 <div>
                   <h2 className="font-semibold text-gray-900 mb-2">Spécialisations</h2>
                   <p className="text-sm text-gray-500 mb-4">
-                    Vos spécialisations dans <span className="font-medium text-indigo-700">{CATEGORIES_PROFIL.find(c => c.id === (profile?.categories || [])[0])?.label || (profile?.categories || [])[0]}</span>
+                    Vos spécialisations dans <span className="font-medium text-indigo-700">{categories.find(c => c.id === (profile?.categorie || [])[0])?.label || (profile?.categorie || [])[0]}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {SPECIALISATIONS_MAP[(profile?.categories || [])[0]].map(spec => {
+                    {SPECIALITES_MAP[(profile?.categorie || [])[0]].map(spec => {
                       const isSelected = (profile?.specialisations || []).includes(spec);
                       return (
                         <button
@@ -1539,7 +1517,7 @@ export default function PhotographeProfilPage() {
                             const current = profile?.specialisations || [];
                             const newSpecs = isSelected ? current.filter(s => s !== spec) : [...current, spec];
                             handleProfileChange('specialisations', newSpecs);
-                            autoSaveSpecialisations(profile?.categories || [], newSpecs);
+                            autoSaveSpecialisations(profile?.categorie || [], newSpecs);
                           }}
                           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                             isSelected
@@ -1561,7 +1539,7 @@ export default function PhotographeProfilPage() {
                             const current = profile?.specialisations || [];
                             const newSpecs = autreSelected ? current.filter(s => s !== 'Autre') : [...current, 'Autre'];
                             handleProfileChange('specialisations', newSpecs);
-                            autoSaveSpecialisations(profile?.categories || [], newSpecs);
+                            autoSaveSpecialisations(profile?.categorie || [], newSpecs);
                             if (autreSelected) setAutreSpecInput('');
                           }}
                           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
@@ -1605,7 +1583,7 @@ export default function PhotographeProfilPage() {
                             if (val && val !== 'Autre' && !(profile?.specialisations || []).includes(val)) {
                               const newSpecs = [...(profile?.specialisations || []), val];
                               handleProfileChange('specialisations', newSpecs);
-                              autoSaveSpecialisations(profile?.categories || [], newSpecs);
+                              autoSaveSpecialisations(profile?.categorie || [], newSpecs);
                             }
                             setAutreSpecInput('');
                           }}
@@ -1720,7 +1698,7 @@ export default function PhotographeProfilPage() {
 <textarea
                   value={profile?.materiel || ''}
                   onChange={(e) => handleProfileChange('materiel', e.target.value)}
-                  placeholder={getEquipementPlaceholder(profile?.categories, profile?.specialisations)}
+                  placeholder={getEquipementPlaceholder(profile?.categorie, profile?.specialisations)}
                   rows={4}
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
@@ -1731,14 +1709,14 @@ export default function PhotographeProfilPage() {
                 <h2 className="font-semibold text-gray-900 mb-2">Services additionnels</h2>
                 <p className="text-sm text-gray-500 mb-4">
                   Sélectionnez les services supplémentaires que vous proposez
-                  {(profile?.categories || [])[0] && (
+                  {(profile?.categorie || [])[0] && (
                     <span className="ml-1 text-indigo-600 font-medium">
-                      — adaptés à {(profile?.categories || [])[0]}{(profile?.specialisations || [])[0] ? ` / ${(profile?.specialisations || [])[0]}` : ''}
+                      — adaptés à {(profile?.categorie || [])[0]}{(profile?.specialisations || [])[0] ? ` / ${(profile?.specialisations || [])[0]}` : ''}
                     </span>
                   )}
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {getServicesAdditionnels(profile?.categories, profile?.specialisations).map(({ key, label }) => {
+                  {getServicesAdditionnels(profile?.categorie, profile?.specialisations).map(({ key, label }) => {
                     const isOn = profile?.services_additionnels?.[key] ?? false;
                     return (
                       <button

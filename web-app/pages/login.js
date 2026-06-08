@@ -41,7 +41,7 @@ function Login() {
       if (profile?.is_admin) {
         router.push('/admin');
       } else {
-        const targetPath = activeRole === 'prestataire' || activeRole === 'photographe' ? '/photographe/menu' : '/client/menu';
+        const targetPath =  activeRole === 'photographe' ? '/photographe/menu' : '/client/menu';
         router.push(targetPath);
       }
     };

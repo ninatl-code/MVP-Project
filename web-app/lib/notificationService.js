@@ -266,12 +266,17 @@ export const notifyRequestReview = async (clientId, reservationId,demandeId) => 
   });
 };
 
+
 /**
  * Request review notification after completed reservation
  */
-export const notifyPrestaReview = async (clientId, reservation_id, demande_id, prestaId ) => {
+export const notifyPrestaReview = async (reservation_id, demande_id, prestaId ) => {
+  console.log("=== notifyPrestaReview CALLED ===");
+  console.log("reservation_id:", reservation_id);
+  console.log("demande_id:", demande_id);
+  console.log("prestaId:", prestaId);
   return createNotification({
-    userId: clientId,
+    userId: prestaId,
     type: NOTIFICATION_TYPES.NOUVEL_AVIS,
     titre: 'Nouvel avis reçu',
     contenu: `Vous avez reçu un nouvel avis de la part d'un client. Consultez-le dès maintenant.`,
@@ -335,7 +340,7 @@ export const getNotificationLink = (notification) => {
       case 'prestation_terminee':
         return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
       case 'nouvel_avis':
-        return reservation_id ? `/photographe/reservations/${reservation_id}` : '/photographe/avis-dashboard';
+        return '/photographe/avis-dashboard';
       case 'nouveau_message':
         return '/shared/messages';
       default:

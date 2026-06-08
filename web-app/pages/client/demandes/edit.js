@@ -3,28 +3,15 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { onUpdateDemande } from '../../../lib/matchingService';
 import Header from '../../../components/HeaderParti';
+import { categories} from '../../../constants/categories';
+import { SPECIALITES_MAP } from '../../../constants/specialites';
+
 import {
   ArrowLeft, Calendar, MapPin, Clock, Users,
   Check, X, Info, Save
 } from 'lucide-react';
 
-const SPECIALITES_MAP = {
-  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
-  'beaute-bien-etre': ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
-  'evenementiel': ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
-  'transport': ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
-  'digital': ['Développement', 'Design', 'Marketing', 'Autre'],
-  'education': ['Cours particuliers', 'Coaching', 'Autre'],
-};
 
-const categories = [
-  { id: 'services-domicile', label: 'Services à domicile', icon: '🔧', description: 'Plomberie, électricité, ménage, jardinage...' },
-  { id: 'beaute-bien-etre', label: 'Beauté & Bien-être', icon: '💆', description: 'Coiffure, maquillage, massage, soins...' },
-  { id: 'evenementiel', label: 'Événementiel', icon: '🎉', description: 'Organisation de mariages, anniversaires, séminaires...' },
-  { id: 'transport', label: 'Transport', icon: '🚗', description: 'Déménagement, livraison, chauffeur...' },
-  { id: 'digital', label: 'Digital', icon: '💻', description: 'Développement web, design, marketing digital...' },
-  { id: 'education', label: 'Éducation', icon: '📚', description: 'Cours particuliers, formation, coaching...' },
-];
 
 export default function EditDemandePage() {
   const router = useRouter();

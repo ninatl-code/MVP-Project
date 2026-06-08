@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { notifyDevisAccepted, notifyDevisRefused } from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
+
 import { 
   ArrowLeft, Calendar, MapPin, Camera, 
   Star, MessageSquare, Check, X, Clock, Shield,

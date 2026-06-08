@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
+
 import { 
   FileText, Clock, Check, X, Euro, ChevronRight,
   User, Calendar, AlertCircle, Search

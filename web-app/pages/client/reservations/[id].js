@@ -3,8 +3,9 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { updatePhotographerRating } from '../../../lib/avisService';
 import { useAuth } from '../../../contexts/AuthContext';
-import { notifyReservationCancelled } from '../../../lib/notificationService';
+import { notifyReservationCancelled ,notifyPrestaReview} from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
+
 import { 
   ArrowLeft, Calendar, MapPin, Clock, Camera, 
   Phone, MessageSquare, Star, 
@@ -644,7 +645,7 @@ export default function ReservationDetailPage() {
 
       {/* Cancel modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-white/20 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
             <h2 className="text-lg font-bold text-gray-900 mb-2">
               Annuler cette réservation ?
@@ -714,6 +715,21 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
 
       // Update photographer average rating
       await updatePhotographerRating(photographeId);
+      const { data: reservationData } = await supabase
+          .from('reservations')
+          .select('demande_id')
+          .eq('id', reservationId)
+          .single();
+
+        console.log("demande_id =", reservationData?.demande_id);
+
+        await notifyPrestaReview(
+          reservationId,
+          reservationData?.demande_id,
+          photographeId
+        );
+
+        console.log("notification envoyée");
 
       onSubmit();
     } catch (error) {
@@ -725,7 +741,7 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 backdrop-blur-sm bg-white/20 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
         <h2 className="text-lg font-bold text-gray-900 mb-4">
           Laisser un avis

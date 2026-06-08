@@ -4,19 +4,13 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
+import { categories } from '../../../constants/categories';
+
 import {
   ArrowLeft, Calendar, MapPin, Clock, User, Tag,
   Banknote, FileText, Send, CheckCircle, AlertCircle, Package
 } from 'lucide-react';
 
-const CATEGORIE_LABELS = {
-  'services-domicile': 'Services à domicile',
-  'beaute-bien-etre': 'Beauté & Bien-être',
-  'evenementiel': 'Événementiel',
-  'transport': 'Transport',
-  'digital': 'Digital',
-  'education': 'Éducation',
-};
 
 const STATUT_CONFIG = {
   ouverte:  { label: 'Ouverte',  bg: '#DCFCE7', text: '#16A34A' },
@@ -134,7 +128,7 @@ export default function PhotographeDemandeDetailPage() {
                   {demande.categorie && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
                       <Tag className="w-3 h-3" />
-                      {CATEGORIE_LABELS[demande.categorie] || demande.categorie}
+                      {categories[demande.categorie] || demande.categorie}
                     </span>
                   )}
                 </div>

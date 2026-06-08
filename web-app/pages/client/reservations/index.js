@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
+
 import { 
   Calendar, MapPin, Clock, Camera, Search,
   ChevronRight, CheckCircle, XCircle, AlertCircle,

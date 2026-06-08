@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
+import { VILLES_MAROC } from '../../../constants/villes';
+
 import {
   Search, MapPin, Star, Camera, SlidersHorizontal,
   Grid, List, X, CheckCircle, ArrowLeft
@@ -22,12 +24,7 @@ const SPECIALISATIONS = [
 
 const ALL_SPECIALITES = [...SPECIALISATIONS];
 
-const VILLES_MAROC = [
-  'Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 'Agadir',
-  'Meknès', 'Oujda', 'Kénitra', 'Tétouan', 'Safi', 'El Jadida',
-  'Nador', 'Béni Mellal', 'Mohammedia', 'Khouribga', 'Laâyoune',
-  'Settat', 'Berrechid', 'Khémisset', 'Taourirt', 'Dakhla',
-];
+
 
 export default function RecherchePrestatairesPage() {
   const router = useRouter();

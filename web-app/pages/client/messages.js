@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/HeaderParti';
+
 import {
   Send, Search, MessageCircle, UserCircle,
   CheckCircle, MoreVertical, Paperclip,

@@ -4,6 +4,10 @@ import { supabase } from '../../../lib/supabaseClient';
 import { onNewDemande } from '../../../lib/matchingService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
+import { VILLES_MAROC } from '../../../constants/villes';
+import { categories } from '../../../constants/categories';
+import { SPECIALITES_MAP } from '../../../constants/specialites';
+
 import { 
   ArrowLeft, Camera, Calendar, MapPin, Euro, 
   Clock, Users, ChevronRight, Check, X, Info
@@ -17,28 +21,6 @@ const COLORS = {
   text: '#1C1C1E',
 };
 
-const VILLES_MAROC = [
-  'Agadir','Aït Melloul','Al Hoceïma','Azemmour','Azrou',
-  'Béni Mellal','Benslimane','Berkane','Berrechid','Bouznika',
-  'Casablanca','Chefchaouen','Dakhla','El Jadida','El Kelaa des Sraghna',
-  'Errachidia','Essaouira','Fès','Figuig','Guelmim',
-  'Ifrane','Inezgane','Kénitra','Khémisset','Khénifra',
-  'Khouribga','Laâyoune','Larache','Marrakech','Meknès',
-  'Midelt','Mohammedia','Nador','Ouarzazate','Oujda',
-  'Rabat','Safi','Salé','Settat','Sidi Bennour',
-  'Sidi Ifni','Sidi Kacem','Sidi Slimane','Tanger','Tan-Tan',
-  'Taounate','Taroudant','Taza','Tétouan','Tiznit',
-  'Zagora'
-];
-
-const SPECIALITES_MAP = {
-  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
-  'beaute-bien-etre': ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
-  'evenementiel': ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
-  'transport': ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
-  'digital': ['Développement', 'Design', 'Marketing', 'Autre'],
-  'education': ['Cours particuliers', 'Coaching', 'Autre'],
-};
 
 const STEPS = [
   { id: 'category', title: 'Catégorie', subtitle: 'Type de prestation' },
@@ -55,14 +37,6 @@ export default function CreateDemandePage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [userId, setUserId] = useState(null);
-  const categories = [
-    { id: 'services-domicile', label: 'Services à domicile', icon: '🔧', description: 'Plomberie, électricité, ménage, jardinage...' },
-    { id: 'beaute-bien-etre', label: 'Beauté & Bien-être', icon: '💆', description: 'Coiffure, maquillage, massage, soins...' },
-    { id: 'evenementiel', label: 'Événementiel', icon: '🎉', description: 'Organisation de mariages, anniversaires, séminaires...' },
-    { id: 'transport', label: 'Transport', icon: '🚗', description: 'Déménagement, livraison, chauffeur...' },
-    { id: 'digital', label: 'Digital', icon: '💻', description: 'Développement web, design, marketing digital...' },
-    { id: 'education', label: 'Éducation', icon: '📚', description: 'Cours particuliers, formation, coaching...' },
-  ];
 
   const [formData, setFormData] = useState({
     titre: '',

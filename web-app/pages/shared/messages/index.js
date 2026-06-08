@@ -92,7 +92,7 @@ export default function MessagesPage() {
   const fetchConversations = async () => {
     setError(null);
     try {
-      const column = activeRole === 'photographe' || activeRole === 'prestataire'
+      const column = activeRole === 'photographe'
         ? 'prestataire_id'
         : 'client_id';
 
@@ -136,7 +136,7 @@ export default function MessagesPage() {
             .limit(1)
             .single();
 
-          const isPresta = activeRole === 'photographe' || activeRole === 'prestataire';
+          const isPresta = activeRole === 'photographe' ;
           const otherParticipantId = isPresta ? conv.client_id : conv.prestataire_id;
           return {
             ...conv,
@@ -234,7 +234,7 @@ export default function MessagesPage() {
     try {
       // Find all conversation IDs between this pair (merge messages from duplicate conversations)
       const conv = selectedConversation;
-      const isPresta = activeRole === 'photographe' || activeRole === 'prestataire';
+      const isPresta = activeRole === 'photographe' ;
       const otherParticipantId = isPresta ? conv?.client_id : conv?.prestataire_id;
 
       let allConvIds = [conversationId];
@@ -378,7 +378,7 @@ export default function MessagesPage() {
       ));
 
       // Update conversation last message + increment receiver's unread count
-      const isPresta = activeRole === 'photographe' || activeRole === 'prestataire';
+      const isPresta = activeRole === 'photographe' ;
       const unreadCol = isPresta ? 'unread_count_client' : 'unread_count_prestataire';
       await supabase
         .from('conversations')
@@ -405,7 +405,7 @@ export default function MessagesPage() {
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   };
 
-  const Header = activeRole === 'photographe' || activeRole === 'prestataire' ? HeaderPresta : HeaderParti;
+  const Header = activeRole === 'photographe'  ? HeaderPresta : HeaderParti;
 
   const filteredConversations = conversations.filter(conv => {
     if (!searchQuery) return true;
@@ -486,7 +486,7 @@ export default function MessagesPage() {
             ) : (
               filteredConversations.map((conv) => {
                 const isActive = selectedConversation?.id === conv.id;
-                const isPresta = activeRole === 'photographe' || activeRole === 'prestataire';
+                const isPresta = activeRole === 'photographe' ;
                 const unread = isPresta ? (conv.unread_count_prestataire || 0) : (conv.unread_count_client || 0);
                 const initial = conv.otherParticipant?.nom?.charAt(0)?.toUpperCase() || '?';
                 return (

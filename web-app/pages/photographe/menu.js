@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
 import { motion } from "framer-motion";
 import Header from '../../components/HeaderPresta';
+
 import { useCameraSplashNavigation } from '../../components/CameraSplash';
 import { useAuth } from '../../contexts/AuthContext';
 

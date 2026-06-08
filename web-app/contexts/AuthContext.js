@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useRouter } from 'next/router';
 
 const AuthContext = createContext(undefined);
 
@@ -20,7 +21,8 @@ export const AuthProvider = ({ children }) => {
   const [availableProfiles, setAvailableProfiles] = useState([]);
   const [photographeProfile, setPhotographeProfile] = useState(null);
   const roleReady = !loading && activeRole !== null;
-
+  const router = useRouter();
+  
   useEffect(() => {
     // Skip auth initialization on server
     if (typeof window === 'undefined') {
@@ -208,11 +210,28 @@ export const AuthProvider = ({ children }) => {
 
   // Charger le profil photographe quand le profileId change
   useEffect(() => {
-    if (profileId && (activeRole === 'photographe' || activeRole === 'prestataire')) {
+    if (profileId && (activeRole === 'photographe' )) {
       loadPhotographeProfile(profileId);
     }
   }, [profileId, activeRole]);
 
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    const currentPath = window.location.pathname;
+
+    const isClientRoute = currentPath.startsWith('/client');
+    const isPhotographerRoute = currentPath.startsWith('/photographe');
+
+    if (isClientRoute && activeRole === 'photographe') {
+      router.push('/photographe');
+    }
+
+    if (isPhotographerRoute && activeRole === 'particulier') {
+      router.push('/client');
+    }
+  }, [loading, user, activeRole]);
   const value = {
     user,
     session,
@@ -229,7 +248,7 @@ export const AuthProvider = ({ children }) => {
     getActiveProfile,
     refreshProfile,
     isAuthenticated: !!session,
-    isPhotographe: activeRole === 'photographe' || activeRole === 'prestataire',
+    isPhotographe: activeRole === 'photographe',
     isParticulier: activeRole === 'particulier',
   };
 

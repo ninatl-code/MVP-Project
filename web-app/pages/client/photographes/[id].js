@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import Header from '../../../components/HeaderParti';
+
 import {
   User, MapPin, Star, Phone, Mail, Instagram, Globe,
   Facebook, Linkedin, Briefcase, ArrowLeft,

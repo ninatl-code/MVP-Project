@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
+
 import { Star, ArrowLeft, Search, Calendar } from 'lucide-react';
 
 const COLORS = {
@@ -13,16 +14,17 @@ const COLORS = {
 
 function StarRating({ note }) {
   return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map(s => (
-        <Star
-          key={s}
-          className="w-4 h-4"
-          fill={s <= note ? '#FBBF24' : 'none'}
-          stroke={s <= note ? '#FBBF24' : '#D1D5DB'}
-        />
-      ))}
-    </div>
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map(s => (
+          <Star
+            key={s}
+            className="w-4 h-4"
+            fill={s <= note ? '#FBBF24' : 'none'}
+            stroke={s <= note ? '#FBBF24' : '#D1D5DB'}
+          />
+        ))}
+      </div>
+
   );
 }
 

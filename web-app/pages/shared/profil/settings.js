@@ -55,7 +55,7 @@ export default function ProfilSettingsPage() {
     push_reservations: true,
   });
   
-  const isPhotographe = activeRole === 'photographe' || activeRole === 'prestataire';
+  const isPhotographe = activeRole === 'photographe' ;
 
   useEffect(() => {
     if (user?.id) {

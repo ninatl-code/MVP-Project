@@ -23,7 +23,7 @@ export default function AvisPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const isPhotographe = activeRole === 'photographe' || activeRole === 'prestataire';
+  const isPhotographe = activeRole === 'photographe';
 
   useEffect(() => {
     if (user?.id) {

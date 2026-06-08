@@ -3,28 +3,14 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
+import { categories } from '../../constants/categories';
+import { SPECIALITES_MAP } from '../../constants/specialites';
+
 import { 
   Package, Plus, Edit, Trash2, Clock, Briefcase, Euro,
   Check, X, Eye, EyeOff, GripVertical, Star, ArrowLeft
 } from 'lucide-react';
 
-const CATEGORIES_PACKAGES = [
-  { id: 'services-domicile', label: 'Services à domicile' },
-  { id: 'beaute-bien-etre',  label: 'Beauté & Bien-être' },
-  { id: 'evenementiel',      label: 'Événementiel' },
-  { id: 'transport',         label: 'Transport' },
-  { id: 'digital',           label: 'Digital' },
-  { id: 'education',         label: 'Éducation' },
-];
-
-const SPECIALISATIONS_MAP = {
-  'services-domicile': ['Plomberie', 'Électricité', 'Ménage', 'Bricolage', 'Autre'],
-  'beaute-bien-etre':  ['Coiffure', 'Maquillage', 'Massage', 'Soins du visage', 'Onglerie', 'Épilation', 'Autre'],
-  'evenementiel':      ['Photographe', 'Vidéaste', 'Décorateur', 'Traiteur', 'Animateur', 'DJ / Musicien', 'Organisateur d\'événements', 'Fleuriste', 'Autre'],
-  'transport':         ['Chauffeur', 'Livraison', 'Déménagement', 'Autre'],
-  'digital':           ['Développement', 'Design', 'Marketing', 'Autre'],
-  'education':         ['Cours particuliers', 'Coaching', 'Autre'],
-};
 
 export default function PackagesPage() {
   const router = useRouter();
@@ -277,7 +263,7 @@ export default function PackagesPage() {
 function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [categorie, setcategorie] = useState([]);
   const [formData, setFormData] = useState({
     nom: pkg?.titre || '',
     description: pkg?.description || '',
@@ -298,7 +284,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
       .eq('actif', true)
       .order('ordre')
       .then(({ data }) => {
-        if (data) setCategories(data.map(d => d.nom));
+        if (data) setcategorie(data.map(d => d.nom));
       });
   }, []);
 
@@ -464,14 +450,14 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Sélectionner...</option>
-              {CATEGORIES_PACKAGES.map(cat => (
+              {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.label}</option>
               ))}
             </select>
           </div>
 
           {/* Spécialité — dynamique selon catégorie */}
-          {formData.categorie && SPECIALISATIONS_MAP[formData.categorie] && (
+          {formData.categorie && SPECIALITES_MAP[formData.categorie] && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Spécialité
@@ -482,7 +468,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Sélectionner...</option>
-              {SPECIALISATIONS_MAP[formData.categorie].map(spec => (
+              {SPECIALITES_MAP[formData.categorie].map(spec => (
                 <option key={spec} value={spec}>{spec}</option>
               ))}
             </select>

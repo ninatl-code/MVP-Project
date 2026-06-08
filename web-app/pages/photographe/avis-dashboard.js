@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
+
 import { 
   Star, MessageSquare, Clock, Calendar, AlertCircle,
   CheckCircle, ChevronRight, Send, X, Loader2, TrendingUp,

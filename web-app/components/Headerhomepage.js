@@ -9,21 +9,21 @@ export default function Headerhomepage() {
       </div>
       <nav className="flex items-center space-x-6">
         <a 
-          href="#how" 
+          href="/home#how" 
           className="text-sm font-medium transition-colors hover:opacity-80"
           style={{ color: 'var(--text)' }}
         >
           Comment ça marche
         </a>
         <a 
-          href="#categories" 
+          href="home#categories" 
           className="text-sm font-medium transition-colors hover:opacity-80"
           style={{ color: 'var(--text)' }}
         >
           Prestations
         </a>
         <a 
-          href="#faq" 
+          href="/home#faq" 
           className="text-sm font-medium transition-colors hover:opacity-80"
           style={{ color: 'var(--text)' }}
         >

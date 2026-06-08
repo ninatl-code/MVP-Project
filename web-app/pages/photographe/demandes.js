@@ -5,6 +5,8 @@ import { findMatchingDemandes } from '../../lib/matchingService';
 import {notifyNewDevis} from '../../lib/notificationService';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
+import { categories } from '../../constants/categories';
+
 import {
   ClipboardList,
   MapPin,
@@ -27,15 +29,7 @@ import {
   Eye,
 } from 'lucide-react';
 
-const CATEGORIES = [
-  { value: '', label: 'Toutes les catégories' },
-  { value: 'services-domicile', label: 'Services à domicile' },
-  { value: 'beaute-bien-etre', label: 'Beauté & Bien-être' },
-  { value: 'evenementiel', label: 'Événementiel' },
-  { value: 'transport', label: 'Transport' },
-  { value: 'digital', label: 'Digital' },
-  { value: 'education', label: 'Éducation' },
-];
+
 
 const STATUT_COLORS = {
   ouverte: { bg: '#D1FAE5', text: '#065F46', label: 'Ouverte' },
@@ -107,7 +101,7 @@ function DetailModal({ demande, onClose }) {
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Catégorie</p>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#7A1600' }}>
                 <Tag className="w-3 h-3" />
-                {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
+                {categories.find(c => c.value === demande.categorie)?.label || demande.categorie}
               </span>
             </div>
           )}
@@ -770,7 +764,7 @@ export default function DemandesClients() {
                             {demande.categorie && (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: '#EDE9FE', color: '#44338A' }}>
                                 <Tag className="w-3 h-3" />
-                                {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
+                                {categories.find(c => c.value === demande.categorie)?.label || demande.categorie}
                               </span>
                             )}
                             {dejaEnvoye ? (
@@ -842,7 +836,7 @@ export default function DemandesClients() {
                 onChange={(e) => setFilterCategorie(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white appearance-none"
               >
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
@@ -890,7 +884,7 @@ export default function DemandesClients() {
                               style={{ backgroundColor: '#EDE9FE', color: '#44338A' }}
                             >
                               <Tag className="w-3 h-3" />
-                              {CATEGORIES.find(c => c.value === demande.categorie)?.label || demande.categorie}
+                              {categories.find(c => c.value === demande.categorie)?.label || demande.categorie}
                             </span>
                           )}
                           <span
