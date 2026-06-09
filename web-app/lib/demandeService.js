@@ -16,6 +16,10 @@ export const createDemande = async ({
   duree_estimee_heures,
   type_prestation = [],
   langues_souhaitees = [],
+  nb_personnes = '1',
+  monnaie = 'MAD',
+  instructions_speciales,
+  details = [],
 }) => {
   try {
     const { data, error } = await supabase
@@ -34,8 +38,12 @@ export const createDemande = async ({
         type_prestation,
         langues_souhaitees,
         statut: 'ouverte',
+        nb_personnes,
+        monnaie,
+        instructions_speciales,
+        details,
       })
-      .select()
+      .select('id')
       .single();
 
     if (error) throw error;
@@ -49,7 +57,7 @@ export const createDemande = async ({
 /**
  * Get all demandes for a client
  */
-export const getClientDemandes = async (clientId) => {
+export const getClientDemandes = async (clientId,limit=20) => {
   try {
     const { data, error } = await supabase
       .from('demandes_client')
@@ -58,7 +66,8 @@ export const getClientDemandes = async (clientId) => {
         devis(count)
       `)
       .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) throw error;
     return { data, error: null };
@@ -147,16 +156,35 @@ export const fulfillDemande = async (demandeId) => {
 /**
  * Cancel a demande
  */
-export const cancelDemande = async (demandeId, reason = '') => {
+export const cancelDemande = async (demandeId) => {
   try {
     const { data, error } = await supabase
       .from('demandes_client')
       .update({
-        statut: 'fermee',
+        statut: 'annulee',
         fermee_at: new Date().toISOString(),
       })
       .eq('id', demandeId)
-      .select()
+      .select('id', { count: 'exact' })
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error cancelling demande:', error);
+    return { data: null, error };
+  }
+};
+
+export const expireDemande = async (demandeId) => {
+  try {
+    const { data, error } = await supabase
+      .from('demandes_client')
+      .update({
+        statut: 'expire',
+        date_expiration: new Date().toISOString(),
+      })
+      .eq('id', demandeId)
       .single();
 
     if (error) throw error;
@@ -216,6 +244,22 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
   }
 };
 
+export const getStatusDemandes = async (status, limit = 100) => {
+  try {
+    const { data, error } = await supabase
+      .from('demandes_client')
+      .select('*', { count: 'exact', head: true })
+      .eq('statut', status)
+      .single()
+      .limit(limit);
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching demande:', error);
+    return { data: null, error };
+  }
+};
 /**
  * Get demande statistics for a client
  */
@@ -242,71 +286,6 @@ export const getDemandeStats = async (clientId) => {
   }
 };
 
-/**
- * Categories for service requests (Morocco marketplace)
- */
-export const DEMANDE_CATEGORIES = [
-  // Événements & Célébrations
-  { id: 'mariage', label: 'Mariage', icon: '💒' },
-  { id: 'evenement', label: 'Événement professionnel', icon: '🎉' },
-  { id: 'fete-privee', label: 'Fête privée', icon: '🎊' },
-  { id: 'traiteur', label: 'Traiteur', icon: '🍽️' },
-  { id: 'dj-musique', label: 'DJ & Musique', icon: '🎵' },
-  { id: 'decoration-evenement', label: 'Décoration événement', icon: '🎀' },
-  
-  // Photographie & Vidéo
-  { id: 'photographie', label: 'Photographie', icon: '📷' },
-  { id: 'videographie', label: 'Vidéographie', icon: '🎥' },
-  { id: 'portrait', label: 'Portrait', icon: '👤' },
-  { id: 'produit', label: 'Photo produit', icon: '📦' },
-  { id: 'immobilier', label: 'Photo immobilier', icon: '🏠' },
-  
-  // Services à domicile
-  { id: 'menage', label: 'Ménage', icon: '🧹' },
-  { id: 'plomberie', label: 'Plomberie', icon: '🔧' },
-  { id: 'electricite', label: 'Électricité', icon: '💡' },
-  { id: 'climatisation', label: 'Climatisation', icon: '❄️' },
-  { id: 'jardinage', label: 'Jardinage', icon: '🌱' },
-  { id: 'peinture', label: 'Peinture', icon: '🎨' },
-  { id: 'reparations', label: 'Réparations diverses', icon: '🔨' },
-  
-  // Construction & Rénovation
-  { id: 'maconnerie', label: 'Maçonnerie', icon: '🧱' },
-  { id: 'carrelage', label: 'Carrelage', icon: '⬜' },
-  { id: 'menuiserie', label: 'Menuiserie', icon: '🪚' },
-  { id: 'renovation', label: 'Rénovation', icon: '🏗️' },
-  
-  // Beauté & Bien-être
-  { id: 'coiffure', label: 'Coiffure', icon: '💇' },
-  { id: 'maquillage', label: 'Maquillage', icon: '💄' },
-  { id: 'massage', label: 'Massage', icon: '💆' },
-  { id: 'esthetique', label: 'Esthétique', icon: '✨' },
-  
-  // Services professionnels
-  { id: 'corporate', label: 'Services corporate', icon: '🏢' },
-  { id: 'developpement-web', label: 'Développement web', icon: '💻' },
-  { id: 'design-graphique', label: 'Design graphique', icon: '🎨' },
-  { id: 'marketing-digital', label: 'Marketing digital', icon: '📱' },
-  { id: 'redaction', label: 'Rédaction', icon: '✍️' },
-  { id: 'traduction', label: 'Traduction', icon: '🌐' },
-  { id: 'comptabilite', label: 'Comptabilité', icon: '📊' },
-  
-  // Transport & Logistique
-  { id: 'demenagement', label: 'Déménagement', icon: '📦' },
-  { id: 'transport', label: 'Transport', icon: '🚗' },
-  { id: 'livraison', label: 'Livraison', icon: '🚚' },
-  
-  // Éducation & Formation
-  { id: 'cours-particuliers', label: 'Cours particuliers', icon: '📚' },
-  { id: 'formation', label: 'Formation professionnelle', icon: '🎓' },
-  { id: 'coaching', label: 'Coaching', icon: '🎯' },
-  
-  // Autres services
-  { id: 'securite', label: 'Sécurité', icon: '🛡️' },
-  { id: 'nettoyage-auto', label: 'Nettoyage auto', icon: '🚙' },
-  { id: 'garde-enfants', label: 'Garde d\'enfants', icon: '👶' },
-  { id: 'autre', label: 'Autre', icon: '⚙️' },
-];
 
 export default {
   createDemande,
@@ -315,7 +294,7 @@ export default {
   updateDemande,
   fulfillDemande,
   cancelDemande,
+  getStatusDemandes,
   getActiveDemandesForPhotographer,
   getDemandeStats,
-  DEMANDE_CATEGORIES,
 };

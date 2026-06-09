@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
+import * as avisService from '../../lib/avisService';
 
 import { 
   Star, MessageSquare, Clock, Calendar, AlertCircle,
@@ -50,11 +51,7 @@ export default function AvisDashboardPage() {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from('reviews_presta')
-        .select('*')
-        .eq('prestataire_id', user.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await avisService.getPhotographerReviews(user.id);
 
       if (error) throw error;
 
@@ -102,13 +99,7 @@ export default function AvisDashboardPage() {
 
     setSubmitting(true);
     try {
-      await supabase
-        .from('reviews_presta')
-        .update({ 
-          reponse_prestataire: responseText.trim(),
-          date_reponse: new Date().toISOString()
-        })
-        .eq('id', selectedReview.id);
+      await avisService.replyToReview(selectedReview.id, responseText.trim());
 
       setSelectedReview(null);
       setResponseText('');

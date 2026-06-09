@@ -72,15 +72,15 @@ export default function AvisPage() {
       if (isPhotographe) {
         const { data: statsData } = await supabase
           .from('reviews_presta')
-          .select('note')
-          .eq('destinataire_id', user.id);
+          .select('rating')
+          .eq('prestataire_id', user.id);
 
         if (statsData && statsData.length > 0) {
           const total = statsData.length;
-          const moyenne = statsData.reduce((sum, a) => sum + a.note, 0) / total;
+          const moyenne = statsData.reduce((sum, a) => sum + a.rating, 0) / total;
           const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
           statsData.forEach(a => {
-            const rounded = Math.round(a.note);
+            const rounded = Math.round(a.rating);
             if (distribution[rounded] !== undefined) {
               distribution[rounded]++;
             }

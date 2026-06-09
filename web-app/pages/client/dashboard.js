@@ -49,12 +49,12 @@ export default function ClientDashboard() {
         supabase
           .from('demandes_client')
           .select('*', { count: 'exact', head: true })
-          .eq('particulier_id', profileId)
-          .eq('status', 'active'),
+          .eq('client_id', profileId)
+          .eq('statut', 'ouverte'),
         supabase
           .from('devis')
-          .select('*, demande:demandes_client!inner(particulier_id)', { count: 'exact', head: true })
-          .eq('demande.particulier_id', profileId)
+          .select('*, demande:demandes_client!inner(client_id)', { count: 'exact', head: true })
+          .eq('demande.client_id', profileId)
           .eq('statut', 'en_attente'),
         supabase
           .from('reservations')

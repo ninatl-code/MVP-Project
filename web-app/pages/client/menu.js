@@ -5,6 +5,7 @@ import Header from '../../components/HeaderParti'
 import RealTimeNotifications from '../../components/RealTimeNotifications'
 import { useCameraSplashNavigation } from '../../components/CameraSplash'
 import { useAuth } from '../../contexts/AuthContext'
+import * as DevisService from '../../lib/devisService'
 import { 
   Search, Minus, Plus, Calendar, Package, FileText, 
   Star, Clock, CheckCircle, AlertCircle, User, 
@@ -155,7 +156,7 @@ function ParticularHomeMenu() {
       const { count: avisCount } = await supabase
         .from('reviews_presta')
         .select('*', { count: 'exact', head: true })
-        .eq('auteur_id', profileId);
+        .eq('client_id', profileId);
 
       setStats({
         demandes: demandesCount || 0,
@@ -208,162 +209,6 @@ function ParticularHomeMenu() {
 
 
 
-
-
-  // Récupérer les avis existants
-  useEffect(() => {
-    const fetchExistingAvis = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: avisData, error } = await supabase
-        .from('reviews_presta')
-        .select('reservation_id, note')
-        .eq('particulier_id', user.id)
-
-      if (!error) {
-        setExistingAvis(avisData || [])
-      }
-    }
-    fetchExistingAvis()
-  }, [userId])
-
-  // Gérer l'ouverture automatique d'avis depuis HeaderParti.js
-  useEffect(() => {
-    if (router.query.openAvis && userId) {
-      const openAvisId = router.query.openAvis;
-      console.log('🔥 Ouverture avis depuis HeaderParti:', openAvisId);
-      
-      const fetchAndTriggerAvis = async () => {
-        const { data: notification, error } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('id', openAvisId)
-          .eq('user_id', userId)
-          .eq('type', 'avis')
-          .single();
-          
-        if (notification && !error) {
-          console.log('✅ Notification avis trouvée:', notification);
-          setTriggerAvisNotification(notification);
-          // Nettoyer l'URL après usage
-          router.replace('/client/menu', undefined, { shallow: true });
-        }
-      };
-      
-      fetchAndTriggerAvis();
-    }
-  }, [router.query.openAvis, userId]);
-
-  // Fonction pour vérifier si un avis existe
-  const hasAvis = (type, id) => {
-    if (type === 'reservation') {
-      return existingAvis.some(avis => avis.reservation_id === id)
-    }
-    return false
-  }
-
-  // Fonction pour soumettre un avis depuis menu.js
-  const submitRatingFromMenu = async () => {
-    if (!showRatingForm || ratingValue === 0) {
-      alert('Veuillez sélectionner une note de 1 à 5 étoiles');
-      return;
-    }
-
-    setIsSubmittingRating(true);
-
-    try {
-      // Récupérer les informations de l'entité
-      let entityData = null;
-      let annonceData = null;
-      
-      if (showRatingForm.type === 'reservation') {
-        const { data: reservationData, error: reservationError } = await supabase
-          .from('reservations')
-          .select('id, annonce_id, particulier_id')
-          .eq('id', showRatingForm.id)
-          .single();
-          
-        if (reservationError || !reservationData) {
-          alert('Impossible de trouver la réservation');
-          return;
-        }
-        entityData = reservationData;
-        
-        // Récupérer l'annonce
-        const { data: annonceResult, error: annonceError } = await supabase
-          .from('prestations_photographe')
-          .select('id, prestataire, titre')
-          .eq('id', reservationData.annonce_id)
-          .single();
-          
-        if (annonceError || !annonceResult) {
-          alert('Impossible de trouver l\'annonce associée');
-          return;
-        }
-        annonceData = annonceResult;
-      }
-
-      // Créer l'avis
-      const avisData = {
-        particulier_id: userId,
-        prestataire_id: annonceData.prestataire,
-        reservation_id: showRatingForm.type === 'reservation' ? entityData.id : null,
-        note: ratingValue,
-        commentaire: ratingComment && ratingComment.trim() ? ratingComment.trim() : null,
-        created_at: new Date().toISOString()
-      };
-
-      const { error: avisError } = await supabase
-        .from('reviews_presta')
-        .insert(avisData);
-
-      if (avisError) {
-        console.error('Erreur lors de la création de l\'avis:', avisError);
-        alert('Erreur lors de l\'envoi de votre avis: ' + avisError.message);
-        return;
-      }
-
-      // Envoyer notification au prestataire
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: annonceData.prestataire,
-          type: 'avis',
-          contenu: 'Votre annonce a reçu un avis. Vous trouverez plus de détails dans la page dédiée aux annonces',
-          lu: false,
-          annonce_id: annonceData.id,
-          reservation_id: showRatingForm.type === 'reservation' ? entityData.id : null
-        }]);
-
-      if (notificationError) {
-        console.error('Erreur lors de l\'envoi de la notification d\'avis:', notificationError);
-      }
-
-      // Rafraîchir les avis existants
-      const { data: updatedAvis, error } = await supabase
-        .from('reviews_presta')
-        .select('reservation_id, note')
-        .eq('particulier_id', userId);
-
-      if (!error) {
-        setExistingAvis(updatedAvis || []);
-      }
-
-      // Réinitialiser et fermer
-      setShowRatingForm(null);
-      setRatingValue(0);
-      setRatingComment('');
-      
-      alert(`✨ Merci pour votre avis de ${ratingValue} étoile${ratingValue > 1 ? 's' : ''} !`);
-
-    } catch (error) {
-      console.error('Erreur lors de la soumission:', error);
-      alert('Une erreur est survenue lors de l\'envoi de votre avis');
-    } finally {
-      setIsSubmittingRating(false);
-    }
-  };
 
 
 
@@ -722,33 +567,6 @@ function ParticularHomeMenu() {
     )
   }
 
-  function StatusBadge({ status }) {
-    let color = '#b7e4c7', bg = '#eafaf1', label = 'Confirmé'
-    
-    // Statuts pour les réservations
-    if (status === 'pending') { color = '#f59e0b'; bg = '#fef3c7'; label = 'En attente de paiement' }
-    if (status === 'paid') { color = '#3b82f6'; bg = '#dbeafe'; label = 'En attente confirmation du prestataire' }
-    if (status === 'confirmed') { color = '#10b981'; bg = '#d1fae5'; label = 'Confirmée' }
-    if (status === 'cancelled') { color = '#ef4444'; bg = '#fee2e2'; label = 'Annulée' }
-    if (status === 'finished' || status === 'delivered') { color = '#8b5cf6'; bg = '#ede9fe'; label = 'Terminé' }
-    
-    // Statuts pour les devis
-    if (status === 'answered') { color = '#10b981'; bg = '#d1fae5'; label = 'Réponse reçue' }
-    if (status === 'accepted') { color = '#059669'; bg = '#d1fae5'; label = 'Accepté' }
-    if (status === 'refused') { color = '#ef4444'; bg = '#fee2e2'; label = 'Refusé' }
-    
-    return (
-      <span style={{
-        background: bg,
-        color,
-        borderRadius: 8,
-        padding: '4px 14px',
-        fontWeight: 600,
-        fontSize: 15,
-        marginLeft: 12
-      }}>{label}</span>
-    )
-  }
 
   // Actions pour accepter/refuser un devis
   async function handleAcceptDevis(devis) {
@@ -1136,7 +954,7 @@ function ParticularHomeMenu() {
                     transition: 'all 0.2s'
                   }}
                   disabled={loadingDevisAction}
-                  onClick={() => handleAcceptDevis(devis)}
+                  onClick={() => DevisService.acceptDevis(devis)}
                   onMouseOver={(e) => !loadingDevisAction && (e.target.style.background = '#059669')}
                   onMouseOut={(e) => !loadingDevisAction && (e.target.style.background = '#10B981')}
                 >

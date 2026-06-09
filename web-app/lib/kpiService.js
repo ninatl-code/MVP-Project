@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import * as devisService from './devisService';
 
 /**
  * Get KPIs for a service provider
@@ -37,13 +38,7 @@ export const getPhotographerKPIs = async (photographeId, period = 'month') => {
     if (resError) throw resError;
 
     // Get devis
-    const { data: devis, error: devisError } = await supabase
-      .from('devis')
-      .select('id, montant_total, statut, created_at')
-      .eq('prestataire_id', photographeId)
-      .gte('created_at', startDateStr);
-
-    if (devisError) throw devisError;
+    const { data: devis, error: devisError } = await devisService.getPhotographeDevis(photographeId);
 
     // Calculate KPIs
     const completedReservations = reservations?.filter(r => r.statut === 'termine') || [];

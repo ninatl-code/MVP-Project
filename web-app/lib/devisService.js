@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { notifyNewDevis } from './notificationService';
+import { fulfillDemande } from './demandeService';
 
 /**
  * Create a new devis (quote) from service provider
@@ -220,16 +221,19 @@ export const acceptDevis = async (devisId) => {
 
     // Mark demande as fulfilled if exists
     if (devis.demande_id) {
-      await supabase
-        .from('demandes_client')
-        .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
-        .eq('id', devis.demande_id);
+      await fulfillDemande(devis.demande_id);
     }
 
     return { data, reservation, error: null };
   } catch (error) {
     console.error('Error accepting devis:', error);
-    return { data: null, reservation: null, error };
+    
+    const {error:notifError} = await notifyDevisAccepted (devis.prestataire_id,devisId,devis.demande_id);
+    if (notifError) {
+      console.error('Notification error:',notifError);
+    }
+
+    return { data: updatedDevis, reservation, error };
   }
 };
 
@@ -255,25 +259,33 @@ export const rejectDevis = async (devisId, reason = '') => {
     console.error('Error rejecting devis:', error);
     return { data: null, error };
   }
+    const {error:notifError} = await notifyDevisRejected (devis.prestataire_id,devisId,devis.demande_id);
 };
 
 /**
  * Cancel a devis (service provider action)
  */
-export const cancelDevis = async (devisId, reason = '') => {
+export const cancelDevis = async (devisId = null, demandeId = null) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('devis')
       .update({
         statut: 'expire',
-        raison_refus: reason,
-        updated_at: new Date().toISOString(),
+        expire_at: new Date().toISOString(),
       })
-      .eq('id', devisId)
-      .select()
-      .single();
+      .eq('statut', 'envoye')
+      .or('statut.eq.lu');
+
+    if (devisId) {
+      query = query.eq('id', devisId);
+    } else if (demandeId) {
+      query = query.in('demande_id', Array.isArray(demandeId) ? demandeId : [demandeId]);
+    }
+
+    const { data, error } = await query.select();
 
     if (error) throw error;
+
     return { data, error: null };
   } catch (error) {
     console.error('Error cancelling devis:', error);

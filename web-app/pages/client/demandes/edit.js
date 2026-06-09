@@ -5,6 +5,7 @@ import { onUpdateDemande } from '../../../lib/matchingService';
 import Header from '../../../components/HeaderParti';
 import { categories} from '../../../constants/categories';
 import { SPECIALITES_MAP } from '../../../constants/specialites';
+import * as demandeService from '../../../lib/demandeService';
 
 import {
   ArrowLeft, Calendar, MapPin, Clock, Users,
@@ -47,11 +48,7 @@ export default function EditDemandePage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
 
-      const { data, error: fetchError } = await supabase
-        .from('demandes_client')
-        .select('titre, categorie, description, date_souhaitee, ville, lieu, duree_estimee_heures, budget_max, instructions_speciales, client_id, statut, type_prestation, details')
-        .eq('id', id)
-        .single();
+      const { data, error: fetchError } = await demandeService.getDemandeById(id);
 
       if (fetchError || !data) {
         setError('Demande introuvable.');
@@ -113,16 +110,7 @@ export default function EditDemandePage() {
   const canSubmit = () =>
     formData.titre.trim() !== '' && formData.ville.trim() !== '' && formData.budget_max !== '' && formData.categorie !== '' && formData.description.trim() !== '' && formData.lieu.trim() !== '';
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canSubmit()) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const { error: updateError } = await supabase
-        .from('demandes_client')
-        .update({
-          titre: formData.titre,
+  const payload = {  titre: formData.titre,
           categorie: formData.categorie,
           description: formData.description || null,
           date_souhaitee: formData.date_souhaitee || null,
@@ -142,10 +130,16 @@ export default function EditDemandePage() {
               if (formData.niveau.trim()) d.niveau = formData.niveau.trim();
             }
             return Object.keys(d).length > 0 ? d : null;
-          })(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
+          })()
+        };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canSubmit()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const { error: updateError } = await demandeService.updateDemande(id, payload);
 
       if (updateError) throw updateError;
 
@@ -153,7 +147,7 @@ export default function EditDemandePage() {
       const newTypePrestation = formData.specialite === 'Autre'
         ? [formData.specialite_autre?.trim() || 'Autre']
         : formData.specialite ? [formData.specialite] : null;
-      onUpdateDemande(id, originalDataRef.current, {
+      demandeService.updateDemande(id, originalDataRef.current, {
         type_prestation: newTypePrestation,
         ville: formData.ville,
         date_souhaitee: formData.date_souhaitee || null,

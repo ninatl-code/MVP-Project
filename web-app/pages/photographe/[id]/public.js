@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import * as avisService from '../../lib/avisService';
 import {
   ArrowLeft, Star, MapPin, Calendar, Euro, Camera, Clock,
   MessageCircle, Heart, Share2, CheckCircle, Award, Shield,
@@ -64,15 +65,7 @@ export default function PhotographeProfilePage() {
       setPortfolio(portfolioData || []);
 
       // Fetch reviews
-      const { data: avisData } = await supabase
-        .from('reviews_presta')
-        .select(`
-          *,
-          auteur:profiles!reviews_presta_client_id_fkey(id, nom, avatar_url)
-        `)
-        .eq('prestataire_id', id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const { data: avisData } = await avisService.getPhotographerReviews(id, 10);
       
       setAvis(avisData || []);
 

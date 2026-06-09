@@ -7,6 +7,7 @@ import Header from '../../../components/HeaderParti';
 import { VILLES_MAROC } from '../../../constants/villes';
 import { categories } from '../../../constants/categories';
 import { SPECIALITES_MAP } from '../../../constants/specialites';
+import { createDemande } from '../../../lib/demandeService';
 
 import { 
   ArrowLeft, Camera, Calendar, MapPin, Euro, 
@@ -39,25 +40,21 @@ export default function CreateDemandePage() {
   const [userId, setUserId] = useState(null);
 
   const [formData, setFormData] = useState({
-    titre: '',
-    categorie: '',
-    description: '',
-    date_souhaitee: '',
-    heure_debut: '',
-    date_flexible: false,
-    ville: '',
-    lieu: '',
-    duree_estimee: '2',
-    nombre_personnes: '1',
-    budget_min: '',
-    budget_max: '',
-    exigences_specifiques: '',
-    specialite: '',
-    specialite_autre: '',
-    langues_souhaitees: [],
-    langages_dev: '',
-    matiere: '',
-    niveau: '',
+    clientId,
+    titre,
+    description,
+    categorie,
+    date_souhaitee,
+    heure_debut,
+    lieu,
+    ville,
+    budget_max,
+    duree_estimee_heures,
+    type_prestation :[],
+    langues_souhaitees :[],
+    nb_personnes : '1',
+    monnaie : 'MAD',
+    details :[],
   });
 
   // Redirect if not authenticated (instant — reads from local storage)
@@ -121,16 +118,16 @@ export default function CreateDemandePage() {
     setError(null);
     try {
       const insertPayload = {
-        client_id: resolvedId,
+        clientId: resolvedId,
         titre: formData.titre,
-        categorie: formData.categorie,
         description: formData.description || '',
+        categorie: formData.categorie,
         date_souhaitee: formData.date_souhaitee || new Date().toISOString().split('T')[0],
         heure_debut: formData.heure_debut || null,
-        ville: formData.ville,
         lieu: formData.lieu || '',
-        duree_estimee_heures: parseInt(formData.duree_estimee) || null,
+        ville: formData.ville,
         budget_max: parseFloat(formData.budget_max) || null,
+        duree_estimee_heures: parseInt(formData.duree_estimee) || null,
         type_prestation: (() => {
           const spec = formData.specialite === 'Autre'
             ? (formData.specialite_autre?.trim() || 'Autre')
@@ -139,6 +136,7 @@ export default function CreateDemandePage() {
         })(),
         langues_souhaitees: formData.langues_souhaitees?.length > 0 ? formData.langues_souhaitees : null,
         nb_personnes: parseInt(formData.nombre_personnes) || null,
+        monnaie,
         instructions_speciales: formData.exigences_specifiques || null,
         details: (() => {
           const d = {};
@@ -149,14 +147,9 @@ export default function CreateDemandePage() {
           }
           return Object.keys(d).length > 0 ? [d] : null;
         })(),
-        statut: 'ouverte',
       };
 
-      const { data: insertedData, error: insertError } = await supabase
-        .from('demandes_client')
-        .insert(insertPayload)
-        .select('id')
-        .single();
+      const { data: insertedData, error: insertError } = await createDemande(insertPayload);
 
       if (insertError) {
         console.error('Insert error:', insertError);

@@ -58,11 +58,7 @@ export default function MesDemandesPage() {
   const fetchDemandes = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('demandes_client')
-        .select('id, titre, description, categorie, statut, date_souhaitee, lieu, budget_max, created_at')
-        .eq('client_id', resolvedId)
-        .order('created_at', { ascending: false });
+      const { data, error } = await getClientDemandes(resolvedId);
 
       if (error) throw error;
       setDemandes(data || []);

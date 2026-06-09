@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { notifyRequestReview } from '../lib/notificationService'
+import * as avisService from '../lib/avisService'
 
 export default function RealTimeNotifications({ userId, triggerNotification }) {
   const [notifications, setNotifications] = useState([])
@@ -148,16 +149,7 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
       const demandeId = n.demande_id
       if (!demandeId) throw new Error('demande_id introuvable')
 
-      const { error } = await supabase
-        .from('reviews_presta')
-        .insert({
-          demande_id: demandeId,
-          client_id: userId,
-          rating,
-          comment: comment.trim() || null,
-          reservation_id: n.reservation_id || null,
-          prestataire_id: n.prestataire_id || null,
-        })
+      const { error } = await avisService.createReview({reviewerId: userId, revieweeId: n.prestataire_id, reservationId: n.reservation_id, note: rating, commentaire: comment.trim() || null, demandeId: demandeId})
 
       if (error) throw error
 

@@ -127,10 +127,7 @@ export default function DevisDetailPage() {
 
       // 2. Update demande status + refuse other pending devis
       if (devis.demande_id) {
-        await supabase
-          .from('demandes_client')
-          .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
-          .eq('id', devis.demande_id);
+        await fulfillDemande(devis.demande_id)
 
         // Refuser tous les autres devis en attente sur cette demande
         await supabase

@@ -1,4 +1,5 @@
 import { supabase } from '../../../lib/supabaseClient';
+import { expireDemande } from '../../../lib/demandeService';
 
 /**
  * Cron job to auto-expire demandes whose date has passed
@@ -36,19 +37,12 @@ export default async function handler(req, res) {
     const ids = demandes.map(d => d.id);
 
     // Mark them as expired
-    const { error: updateError } = await supabase
-      .from('demandes_client')
-      .update({ statut: 'expiree', updated_at: new Date().toISOString() })
-      .in('id', ids);
+    const { error: updateError } = await expireDemande(ids);
 
     if (updateError) throw updateError;
 
     // Also refuse pending devis on those demandes
-    const { error: devisError } = await supabase
-      .from('devis')
-      .update({ statut: 'expire', expire_at: new Date().toISOString() })
-      .in('demande_id', ids)
-      .eq('statut', 'en_attente');
+    const { error: devisError } = await cancelDevis(null, ids);
 
     if (devisError) {
       console.error('Erreur mise à jour devis:', devisError);

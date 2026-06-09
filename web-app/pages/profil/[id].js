@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import HeaderPresta from '../../components/HeaderPresta';
 import HeaderParti from '../../components/HeaderParti';
+import * as avisService from '../../lib/avisService';
 import { 
   User, Calendar, MapPin, Star, Heart, Eye, Phone, Mail,
   Clock, Award, CheckCircle, Package, MessageCircle, Camera
@@ -85,15 +86,7 @@ export default function ProfilPage() {
         setAnnonces(annoncesData || []);
 
         // Récupérer les avis pour ce prestataire (si la table existe)
-        const { data: avisData } = await supabase
-          .from('reviews_presta')
-          .select(`
-            *,
-            profiles!avis_user_id_fkey(nom, avatar_url)
-          `)
-          .eq('prestataire_id', id)
-          .order('created_at', { ascending: false })
-          .limit(10);
+        const { data: avisData } = await avisService.getPhotographerReviews(id, 10);
         
         setAvis(avisData || []);
       }

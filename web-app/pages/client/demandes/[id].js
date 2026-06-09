@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
+import {getDemandeById, cancelDemande, fulfillDemande} from '../../../lib/demandeService';
 
 import { 
   ArrowLeft, Calendar, MapPin, Euro, Clock, Users, 
@@ -49,11 +50,7 @@ export default function DemandeDetailPage() {
     setLoading(true);
     try {
       // Fetch demande
-      const { data: demandeData, error: demandeError } = await supabase
-        .from('demandes_client')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data: demandeData, error: demandeError } = await getDemandeById (id);
 
       if (demandeError) throw demandeError;
       setDemande(demandeData);
@@ -132,12 +129,7 @@ export default function DemandeDetailPage() {
     try {
       const resolvedClientId = profileId || (await supabase.auth.getSession()).data.session?.user?.id;
 
-      const { error, count } = await supabase
-        .from('demandes_client')
-        .update({ statut: 'annulee', fermee_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('client_id', resolvedClientId)
-        .select('id', { count: 'exact' });
+      const { error, count } = await cancelDemande(id)
 
       if (error) throw error;
       if (count === 0) throw new Error('Aucune ligne mise à jour. Vérifiez vos droits.');
@@ -177,10 +169,7 @@ export default function DemandeDetailPage() {
       }
 
       // 4. Passer la demande à pourvue
-      const { error: demandeError } = await supabase
-        .from('demandes_client')
-        .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
-        .eq('id', id);
+      const { error: demandeError } = await fulfillDemande(id)
 
       if (demandeError) throw demandeError;
 

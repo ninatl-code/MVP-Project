@@ -123,15 +123,7 @@ export default function PhotographerDashboard() {
       setUpcomingBookings(bookings || []);
 
       // Fetch recent matching demandes
-      const { data: demandes } = await supabase
-        .from('demandes_client')
-        .select(`
-          *,
-          client:profiles!demandes_client_client_id_fkey(nom, prenom)
-        `)
-        .eq('statut', 'ouverte')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const { data: demandes } = await getStatusDemandes('ouverte', 5);
 
       setRecentDemandes(demandes || []);
     } catch (error) {

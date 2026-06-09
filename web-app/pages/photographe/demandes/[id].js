@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
 import { categories } from '../../../constants/categories';
+import * as demandeService from '../../../lib/demandeService';
 
 import {
   ArrowLeft, Calendar, MapPin, Clock, User, Tag,
@@ -37,14 +38,7 @@ export default function PhotographeDemandeDetailPage() {
   const fetchDemande = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('demandes_client')
-        .select(`
-          *,
-          profiles!demandes_client_client_id_fkey(nom, avatar_url)
-        `)
-        .eq('id', id)
-        .single();
+      const { data, error } = await demandeService.getDemandeById(id);
 
       if (error || !data) { setNotFound(true); return; }
       setDemande(data);

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
+import * as avisService from '../../../lib/avisService';
 
 import { Star, ArrowLeft, Search, Calendar } from 'lucide-react';
 
@@ -45,11 +46,7 @@ export default function AvisListPage() {
     setLoading(true);
     try {
       // 1. Avis du client
-      const { data: avisData, error } = await supabase
-        .from('reviews_presta')
-        .select('*')
-        .eq('client_id', profileId)
-        .order('created_at', { ascending: false });
+      const { data: avisData, error } = await avisService.getClientReviews(profileId);
 
       if (error) throw error;
 

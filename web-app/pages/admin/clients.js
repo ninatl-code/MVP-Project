@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { Search, ChevronLeft, ChevronRight, User, Eye, Mail, Phone, Calendar, FileText, X } from 'lucide-react';
-
+import { getClientDemandes } from '../../lib/demandeService';
 const PAGE_SIZE = 20;
 
 export default function AdminClients() {
@@ -50,7 +50,7 @@ export default function AdminClients() {
       supabase.from('demandes_client').select('id', { count: 'exact', head: true }).eq('client_id', client.id),
       supabase.from('devis').select('id', { count: 'exact', head: true }).eq('client_id', client.id),
       supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('client_id', client.id),
-      supabase.from('demandes_client').select('id, titre, statut, budget_max, created_at').eq('client_id', client.id).order('created_at', { ascending: false }).limit(5),
+      getClientDemandes(client.id,5),
       supabase.from('reservations').select('id, statut, montant_total, date_prestation, created_at').eq('client_id', client.id).order('created_at', { ascending: false }).limit(5),
     ]);
     setDetail({ nbDemandes, nbDevis, nbReservations, demandes: demandes || [], reservations: reservations || [] });

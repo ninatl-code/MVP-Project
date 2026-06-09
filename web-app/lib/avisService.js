@@ -10,6 +10,7 @@ export const createReview = async ({
   reservationId = null,
   note,
   commentaire,
+  demandeId = null
 }) => {
   try {
     const { data, error } = await supabase
@@ -20,6 +21,7 @@ export const createReview = async ({
         reservation_id: reservationId,
         rating: note,
         comment: commentaire,
+        demande_id: demandeId
       })
       .select()
       .single();
@@ -45,7 +47,7 @@ export const getPhotographerReviews = async (photographeId, limit = 20) => {
       .from('reviews_presta')
       .select(`
         *,
-        client:profiles!reviews_presta_client_id_fkey(id, nom, avatar_url)
+        client:profiles!reviews_presta_client_id_fkey(id,nom, avatar_url)
       `)
       .eq('prestataire_id', photographeId)
       .order('created_at', { ascending: false })
@@ -59,6 +61,26 @@ export const getPhotographerReviews = async (photographeId, limit = 20) => {
   }
 };
 
+export const getReservationReviews = async (reservationId,prestataireId,single=false) => {
+  try {
+    let query = supabase
+      .from('reviews_presta')
+      .select('id, rating, comment, created_at')
+      .eq('reservation_id', reservationId)
+      .eq('prestataire_id', prestataireId)
+      .order('created_at', { ascending: false });
+
+    if (single) {
+      query = query.maybeSingle();
+    }
+    const {data, error} = await query ;
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
 /**
  * Get reviews given by a client
  */
@@ -265,7 +287,7 @@ export const replyToReview = async (reviewId, reply) => {
   try {
     const { data, error } = await supabase
       .from('reviews_presta')
-      .update({ reply, reply_at: new Date().toISOString() })
+      .update({ reponse_prestataire: reply, date_reponse: new Date().toISOString() })
       .eq('id', reviewId)
       .select()
       .single();
@@ -278,33 +300,11 @@ export const replyToReview = async (reviewId, reply) => {
   }
 };
 
-/**
- * Get review for a specific reservation
- */
-export const getReservationReview = async (reservationId, clientId) => {
-  try {
-    let query = supabase
-      .from('reviews_presta')
-      .select('id, rating, comment, created_at, prestataire_id,reservation_id');
-
-    if (reservationId) query = query.eq('reservation_id', reservationId);
-    if (clientId) query = query.eq('client_id', clientId);
-
-    const { data, error } = await query.maybeSingle();
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching reservation review:', error);
-    return { data: null, error };
-  }
-};
-
 export default {
   createReview,
   getPhotographerReviews,
   getClientReviews,
   hasReviewed,
-  getReservationReview,
   updatePhotographerRating,
   getPhotographerRatingStats,
   replyToReview,

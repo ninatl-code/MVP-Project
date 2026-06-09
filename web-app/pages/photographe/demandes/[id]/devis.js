@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../../lib/supabaseClient';
 import { useAuth } from '../../../../contexts/AuthContext';
 import Header from '../../../../components/HeaderPresta';
+import * as demandeService from '../../../../lib/demandeService';
 
 import { createDevis } from '../../../../lib/devisService';
 import { 
@@ -136,11 +137,7 @@ export default function CreateDevisPage() {
     setLoading(true);
     try {
       const [{ data, error }, { data: { user } }] = await Promise.all([
-        supabase
-          .from('demandes_client')
-          .select(`*, client:profiles!demandes_client_client_id_fkey(nom, prenom)`)
-          .eq('id', id)
-          .single(),
+        demandeService.getDemandeById(id),
         supabase.auth.getUser(),
       ]);
 

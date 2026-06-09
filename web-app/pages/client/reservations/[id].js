@@ -1,10 +1,11 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
-import { updatePhotographerRating } from '../../../lib/avisService';
+import * as avisService from '../../../lib/avisService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { notifyReservationCancelled ,notifyPrestaReview} from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
+import { STATUTS_RESERVATION } from '../../../constants/statuts';
 
 import { 
   ArrowLeft, Calendar, MapPin, Clock, Camera, 
@@ -19,12 +20,6 @@ const COLORS = {
   accent: '#130183',
 };
 
-const STATUS_CONFIG = {
-  pending:    { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le photographe doit confirmer la réservation' },
-  confirmed: { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle, description: 'Votre réservation est confirmée' },
-  completed: { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle, description: 'La prestation a été effectuée' },
-  cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle, description: 'Cette réservation a été annulée' },
-};
 
 export default function ReservationDetailPage() {
   const router = useRouter();
@@ -67,17 +62,12 @@ export default function ReservationDetailPage() {
         prestataire = profil;
       }
 
-      // Fetch existing review from reviews_presta
+      // Fetch existing review
       let existingReview = null;
       try {
         const clientId = profileId || user?.id;
         if (clientId && data.prestataire_id) {
-          const { data: reviewData } = await supabase
-            .from('reviews_presta')
-            .select('id, rating, comment, created_at')
-            .eq('reservation_id', id)
-            .eq('prestataire_id', data.prestataire_id)
-            .maybeSingle();
+          const { data: reviewData } =  await avisService.getReservationReviews (id, data.prestataire_id, true);
           existingReview = reviewData;
         }
       } catch (_) {}
@@ -202,7 +192,7 @@ export default function ReservationDetailPage() {
   }
 
   const photographe = reservation.prestataire;
-  const statusConfig = STATUS_CONFIG[reservation.statut] || STATUS_CONFIG.pending;
+  const statusConfig = STATUTS_RESERVATION[reservation.statut] || STATUTS_RESERVATION.pending;
   const StatusIcon = statusConfig.icon;
   const isUpcoming = new Date(reservation.date) > new Date();
 
@@ -701,20 +691,18 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('reviews_presta')
-        .insert({
-          prestataire_id: photographeId,
-          client_id: profileId,
-          rating: rating,
-          comment: comment,
-          reservation_id: reservationId,
-        });
+      // Create review and Update photographer average rating
+      const { error } = await avisService.createReview({
+        reviewerId: profileId,
+        revieweeId: photographeId,
+        reservationId,
+        note: rating,
+        commentaire: comment,
+        demande_id: null, // on peut aussi passer la demande_id pour plus de contexte dans la notification
+      });
 
       if (error) throw error;
 
-      // Update photographer average rating
-      await updatePhotographerRating(photographeId);
       const { data: reservationData } = await supabase
           .from('reservations')
           .select('demande_id')

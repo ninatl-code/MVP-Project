@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import Header from '../../../components/HeaderParti';
+import * as avisService from '../../../lib/avisService';
 
 import {
   User, MapPin, Star, Phone, Mail, Instagram, Globe,
@@ -29,11 +30,7 @@ export default function PhotographeClientView() {
       const [{ data: base }, { data: extra }, { data: revs }, { data: prests }] = await Promise.all([
         supabase.from('profiles').select('id, nom, email, telephone, ville, avatar_url, created_at').eq('id', userId).single(),
         supabase.from('profils_prestataire').select('*').eq('id', userId).single(),
-        supabase.from('reviews_presta')
-          .select('id, rating, comment, created_at, client:profiles!reviews_presta_client_id_fkey(nom, avatar_url)')
-          .eq('prestataire_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(5),
+        avisService.getPhotographerReviews(userId, 5),
         supabase.from('reservations')
           .select('id, titre, categorie, date, lieu, statut')
           .eq('prestataire_id', userId)

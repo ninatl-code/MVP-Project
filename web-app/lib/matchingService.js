@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { notifyNewDemande } from './notificationService';
+import { getDemandeById } from './demandeService';
 
 // ─────────────────────────────────────────────────────────
 // SCORE MATCHING
@@ -78,11 +79,7 @@ export const onNewDemande = async (demandeId, demandeData) => {
     let demande = demandeData;
 
     if (!demande.type_prestation && !demande.categorie) {
-      const { data } = await supabase
-        .from('demandes_client')
-        .select('*')
-        .eq('id', demandeId)
-        .single();
+      const { data } = await getDemandeById(demandeId);
 
       if (data) demande = data;
     }

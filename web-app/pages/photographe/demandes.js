@@ -6,6 +6,7 @@ import {notifyNewDevis} from '../../lib/notificationService';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
 import { categories } from '../../constants/categories';
+import { getStatusDemandes } from '../../lib/demandeService';
 
 import {
   ClipboardList,
@@ -544,27 +545,7 @@ export default function DemandesClients() {
     setLoading(true);
     setLoadError(null);
     try {
-      const { data, error } = await supabase
-        .from('demandes_client')
-        .select(`
-          id,
-          titre,
-          description,
-          categorie,
-          date_souhaitee,
-          lieu,
-          ville,
-          budget_max,
-          duree_estimee_heures,
-          type_prestation,
-          details,
-          statut,
-          created_at,
-          client_id,
-          profiles!demandes_client_client_id_fkey(nom, avatar_url)
-        `)
-        .eq('statut', 'ouverte')
-        .order('created_at', { ascending: false });
+      const { data, error } = await getStatusDemandes('ouverte');
 
       if (error) { setLoadError(error.message); throw error; }
       setDemandes(data || []);
