@@ -233,8 +233,8 @@ export const acceptDevis = async (devisId) => {
       console.error('Notification error:',notifError);
     }
 
-    return { data: updatedDevis, reservation, error };
-  }
+    return { data: updatedDevis, reservation, error:null,};
+  } 
 };
 
 /**
@@ -252,14 +252,18 @@ export const rejectDevis = async (devisId, reason = '') => {
       .eq('id', devisId)
       .select()
       .single();
-
+    
+    const {error:notifError} = await notifyDevisRejected (devis.prestataire_id,devisId,devis.demande_id);
+    if (notifError) {
+      console.error('Notification error:', notifError);
+    }
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
     console.error('Error rejecting devis:', error);
     return { data: null, error };
   }
-    const {error:notifError} = await notifyDevisRejected (devis.prestataire_id,devisId,devis.demande_id);
+    
 };
 
 /**
