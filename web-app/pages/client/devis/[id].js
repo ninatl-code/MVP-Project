@@ -774,7 +774,7 @@ export default function DevisDetailPage() {
               Refuser ce devis ?
             </h2>
             <p className="text-gray-600 mb-4">
-              Vous pouvez indiquer la raison de votre refus (optionnel). Le photographe sera notifié.
+              Vous pouvez indiquer la raison de votre refus (optionnel). Le prestataire sera notifié.
             </p>
             
             <textarea

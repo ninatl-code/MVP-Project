@@ -197,7 +197,7 @@ export const AuthProvider = ({ children }) => {
         console.warn('No prestataire profile found for user:', userId);
       }
     } catch (err) {
-      console.error('Error loading photographe profile:', err);
+      console.error('Error loading photoghe profile:', err);
     }
   };
 

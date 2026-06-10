@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import * as avisService from '../../lib/avisService';
+import * as messageSService from '../../lib/messageService';
 import {
   ArrowLeft, Star, MapPin, Calendar, Euro, Camera, Clock,
   MessageCircle, Heart, Share2, CheckCircle, Award, Shield,
@@ -92,12 +93,8 @@ export default function PhotographeProfilePage() {
 
     try {
       // Check existing conversation
-      const { data: existingConv } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('client_id', user.id)
-        .eq('prestataire_id', id)
-        .single();
+      const { data: existingConv } = await messageSService.getExistingConversation(user.id, id);
+
 
       if (existingConv) {
         router.push(`/shared/messages?id=${existingConv.id}`);
@@ -105,16 +102,7 @@ export default function PhotographeProfilePage() {
       }
 
       // Create new conversation
-      const { data: newConv, error } = await supabase
-        .from('conversations')
-        .insert({
-          client_id: user.id,
-          prestataire_id: id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      const { data: newConv, error } = await messageSService.createConversation(user.id, id);
 
       if (error) throw error;
       router.push(`/shared/messages?id=${newConv.id}`);
@@ -161,7 +149,7 @@ export default function PhotographeProfilePage() {
         <div className="text-center">
           <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Photographe introuvable
+            Prestataire introuvable
           </h2>
           <Link href="/client/recherche" className="text-indigo-600 hover:text-indigo-800">
             Retour à la recherche
@@ -311,7 +299,7 @@ export default function PhotographeProfilePage() {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-3">À propos</h3>
                     <p className="text-gray-700 whitespace-pre-line mb-6">
-                      {photographe.bio || "Ce photographe n'a pas encore ajouté de description."}
+                      {photographe.bio || "Ce prestataire n'a pas encore ajouté de description."}
                     </p>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t">

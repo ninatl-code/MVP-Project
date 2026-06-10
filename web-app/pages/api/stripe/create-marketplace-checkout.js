@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     
     if (!stripeAccountId) {
       return res.status(400).json({ 
-        error: "Le photographe n'a pas configuré son compte Stripe Connect" 
+        error: "Le prestataire n'a pas configuré son compte Stripe Connect" 
       });
     }
 

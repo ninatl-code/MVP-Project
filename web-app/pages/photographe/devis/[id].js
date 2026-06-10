@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
+import * as messageService from '../../../lib/messageService';
 
 import { 
   FileText, Clock, Check, X, Euro, ArrowLeft,
@@ -135,30 +136,8 @@ export default function PhotographeDevisDetailPage() {
   const startConversation = async () => {
     try {
       // Check if conversation exists
-      const { data: existing } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('client_id', devis.client_id)
-        .eq('prestataire_id', user?.id || profileId || photographeProfile?.id)
-        .single();
-
-      if (existing) {
-        router.push(`/messages/${existing.id}`);
-      } else {
-        // Create new conversation
-        const { data: newConv, error } = await supabase
-          .from('conversations')
-          .insert({
-            client_id: devis.client_id,
-            prestataire_id: user?.id || profileId || photographeProfile?.id,
-            demande_id: devis.demande_id,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        router.push(`/messages/${newConv.id}`);
-      }
+      const {data : newConv, error} = await messageService.createConversation(devis.client_id,user?.id || profileId || photographeProfile?.id,null, devis.demande_id)
+      
     } catch (error) {
       console.error('Error starting conversation:', error);
     }

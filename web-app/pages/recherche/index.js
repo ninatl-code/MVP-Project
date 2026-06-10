@@ -177,10 +177,10 @@ export default function RecherchePage() {
       <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white py-12 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            Trouvez le photographe idéal
+            Trouvez le prestataire idéal
           </h1>
           <p className="text-indigo-100 mb-8">
-            Des milliers de photographes professionnels près de chez vous
+            Des milliers de prestataires professionnels près de chez vous
           </p>
 
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
@@ -370,7 +370,7 @@ export default function RecherchePage() {
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Aucun photographe trouvé
+              Aucun prestataire trouvé
             </h2>
             <p className="text-gray-500 mb-4">
               Essayez de modifier vos critères de recherche

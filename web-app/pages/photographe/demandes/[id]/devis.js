@@ -205,7 +205,7 @@ export default function CreateDevisPage() {
     }
 
     if (!photographeProfile?.id) {
-      setError('Erreur: profil photographe non trouvé');
+      setError('Erreur: profil prestataire non trouvé');
       return;
     }
 

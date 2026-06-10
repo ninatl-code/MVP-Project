@@ -133,7 +133,7 @@ export default function PaymentSuccessPage() {
             Réservation confirmée !
           </h1>
           <p className="text-gray-600">
-            Votre paiement a été accepté. Le photographe a été notifié de votre réservation.
+            Votre paiement a été accepté. Le prestataire a été notifié de votre réservation.
           </p>
         </div>
 
@@ -228,9 +228,9 @@ export default function PaymentSuccessPage() {
                 2
               </div>
               <div>
-                <p className="font-medium text-gray-900">Confirmation du photographe</p>
+                <p className="font-medium text-gray-900">Confirmation du prestataire</p>
                 <p className="text-sm text-gray-500">
-                  Le photographe confirmera les détails de la prestation
+                  Le prestataire confirmera les détails de la prestation
                 </p>
               </div>
             </div>

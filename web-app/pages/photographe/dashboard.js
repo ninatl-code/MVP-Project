@@ -195,7 +195,7 @@ export default function PhotographerDashboard() {
       icon: MessageSquare,
       label: 'Messages',
       description: 'Conversations avec les clients',
-      href: '/photographe/messages',
+      href: '/shared/messages',
       badge: stats.unreadMessages > 0 ? stats.unreadMessages : null,
     },
     {

@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 /**
  * Create a new conversation between client and service provider
  */
-export const createConversation = async (clientId, photographeId, reservationId = null) => {
+export const createConversation = async (clientId, photographeId, reservationId = null,demandeId=null) => {
   try {
     // Check if conversation already exists
     const { data: existing } = await supabase
@@ -23,6 +23,9 @@ export const createConversation = async (clientId, photographeId, reservationId 
         client_id: clientId,
         prestataire_id: photographeId,
         reservation_id: reservationId,
+        demande_id: demandeId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -40,22 +43,31 @@ export const createConversation = async (clientId, photographeId, reservationId 
  */
 export const getUserConversations = async (userId, role = 'particulier') => {
   try {
-    const column = role === 'client' ? 'client_id' : 'prestataire_id';
+    const column = role === 'particulier' ? 'client_id' : 'prestataire_id';
 
     const { data, error } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        client:profiles!conversations_client_id_fkey(id, nom, avatar_url),
-        prestataire:profiles!conversations_prestataire_id_fkey(id, nom, avatar_url),
-        messages(
-          contenu,
-          created_at,
-          sender_id
-        )
-      `)
-      .eq(column, userId)
-      .order('updated_at', { ascending: false });
+    .from('conversations')
+    .select(`
+      *,
+      client:profiles!conversations_client_id_fkey(
+        id,
+        nom,
+        avatar_url
+      ),
+      prestataire:profils_prestataire!conversations_photographe_id_fkey(
+        id,
+        bio,
+        nom_entreprise,
+        note_moyenne
+      ),
+      messages(
+        contenu,
+        created_at,
+        sender_id
+      )
+    `)
+    .eq(column, userId)
+    .order('updated_at', { ascending: false });
 
     if (error) throw error;
 
@@ -207,6 +219,24 @@ export const getConversationById = async (conversationId) => {
       `)
       .eq('id', conversationId)
       .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching conversation:', error);
+    return { data: null, error };
+  }
+};
+
+export const getExistingConversation = async (client_id, prestataire_id) => {
+  try {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('client_id', client_id)
+      .eq('prestataire_id', prestataire_id)
+      .order('created_at', { ascending: true })
+      .limit(1);
 
     if (error) throw error;
     return { data, error: null };

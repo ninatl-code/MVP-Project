@@ -1443,7 +1443,7 @@ export default function PhotographeProfilPage() {
                     <Shield className={`w-6 h-6 ${profile?.statut_pro ? 'text-indigo-600' : 'text-gray-400'}`} />
                     <div>
                       <h4 className="font-medium text-gray-900">Professionnel</h4>
-                      <p className="text-xs text-gray-500">Je suis photographe professionnel (auto-entrepreneur, société…)</p>
+                      <p className="text-xs text-gray-500">Je suis prestataire professionnel (auto-entrepreneur, société…)</p>
                     </div>
                   </div>
                   {profile?.statut_pro && <Check className="w-5 h-5 text-indigo-600" />}

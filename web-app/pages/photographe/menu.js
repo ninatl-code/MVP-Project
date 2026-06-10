@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
 import { motion } from "framer-motion";
 import Header from '../../components/HeaderPresta';
+import * as messageService from '../../lib/messageService';
 
 import { useCameraSplashNavigation } from '../../components/CameraSplash';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1058,10 +1059,7 @@ export default function ProviderHomeMenu() {
         supabase.from('devis')
           .select('id, statut')
           .eq('prestataire_id', user.id),
-        supabase.from('conversations')
-          .select('id', { count: 'exact' })
-          .eq('prestataire_id', user.id)
-          .gt('unread_count_prestataire', 0),
+        messageService.getUnreadMessageCount(user.id), // Fonction dédiée pour compter les messages non lus
         supabase.from('matchings')
           .select('id, demandes_client!inner(statut)', { count: 'exact' })
           .eq('prestataire_id', user.id)

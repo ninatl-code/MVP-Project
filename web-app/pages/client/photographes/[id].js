@@ -218,7 +218,7 @@ export default function PhotographeClientView() {
 
                   {/* Bouton contacter */}
                   <button
-                    onClick={() => router.push(`/client/messages?prestataire=${id}`)}
+                    onClick={() => router.push(`/shared/messages?prestataire=${id}`)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-sm whitespace-nowrap"
                   >
                     <MessageSquare className="w-4 h-4" />

@@ -1,3 +1,7 @@
+import { 
+    CheckCircle, XCircle, Clock3,Eye
+} from 'lucide-react';
+
 export const STATUTS_DEVIS = {
   envoye:    { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le client doit accepter le devis' },
   accepte: { label: 'Accepté', color: 'bg-green-100 text-green-700', icon: CheckCircle, description: 'Votre devis a été accepté' },
@@ -7,7 +11,7 @@ export const STATUTS_DEVIS = {
 };
 
 export const STATUTS_RESERVATION = {
-  pending:    { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le photographe doit confirmer la réservation' },
+  pending:    { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700', icon: Clock3, description: 'Le prestataire doit confirmer la réservation' },
   confirmed: { label: 'Confirmée', color: 'bg-green-100 text-green-700', icon: CheckCircle, description: 'Votre réservation est confirmée' },
   completed: { label: 'Terminée', color: 'bg-blue-100 text-blue-700', icon: CheckCircle, description: 'La prestation a été effectuée' },
   cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-700', icon: XCircle, description: 'Cette réservation a été annulée' },
