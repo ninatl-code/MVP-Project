@@ -3,12 +3,13 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import Header from '../../../components/HeaderParti';
 import * as avisService from '../../../lib/avisService';
+import { getPhotographerPackages } from '../../../lib/packageService';
 
 import {
   User, MapPin, Star, Phone, Mail, Instagram, Globe,
   Facebook, Linkedin, Briefcase, ArrowLeft,
   CheckCircle, MessageSquare, Shield, Calendar,
-  Clock, Award, Camera, TrendingUp, Image, ChevronRight
+  Clock, Award, Camera, TrendingUp, Image, ChevronRight, Heart
 } from 'lucide-react';
 
 export default function PhotographeClientView() {
@@ -19,34 +20,45 @@ export default function PhotographeClientView() {
   const [prestations, setPrestations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('presentation');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [packages, setPackages] = useState([]);
 
-  useEffect(() => {
-    if (id) fetchAll(id);
-  }, [id]);
+
 
   const fetchAll = async (userId) => {
     setLoading(true);
     try {
-      const [{ data: base }, { data: extra }, { data: revs }, { data: prests }] = await Promise.all([
+      const [{ data: base }, { data: extra }, { data: revs }, { data: prests }, { data: packs }] = await Promise.all([
         supabase.from('profiles').select('id, nom, email, telephone, ville, avatar_url, created_at').eq('id', userId).single(),
         supabase.from('profils_prestataire').select('*').eq('id', userId).single(),
-        avisService.getPhotographerReviews(userId, 5),
+        avisService.getPhotographerReviews(userId, 20),
         supabase.from('reservations')
           .select('id, titre, categorie, date, lieu, statut')
           .eq('prestataire_id', userId)
-          .eq('statut', 'completee')
+          .eq('statut', 'completed')
           .order('date', { ascending: false })
           .limit(4),
+        getPhotographerPackages(userId, true),
       ]);
       if (base) setProfile({ ...base, ...extra });
       setReviews(revs || []);
       setPrestations(prests || []);
+      setPackages(packs || []);
+      
     } catch (err) {
       console.error('Erreur chargement profil:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (id) {
+    fetchAll(id);
+    checkFavorite(id);
+    }
+  }, [id]);
 
   const getAnciennete = () => {
     if (!profile?.created_at) return null;
@@ -56,6 +68,23 @@ export default function PhotographeClientView() {
     const years = Math.floor(diff / 12);
     return `${years} an${years > 1 ? 's' : ''}`;
   };
+
+  const checkFavorite = async (userId) => {
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { data } = await supabase
+    .from('favoris')
+    .select('id')
+    .eq('client_id', user.id)
+    .eq('prestataire_id', userId)
+    .maybeSingle();
+
+  setIsFavorite(!!data);
+};
 
   const renderStars = (rating, size = 'sm') => {
     const s = size === 'sm' ? 'w-3.5 h-3.5' : 'w-5 h-5';
@@ -70,7 +99,8 @@ export default function PhotographeClientView() {
 
   const tabs = [
     { key: 'presentation', label: 'Présentation' },
-    { key: 'avis', label: `Avis (${profile?.nb_avis || reviews.length || 0})` },
+    { key: 'avis', label: `Avis (${profile?.nb_avis || 0})` },
+    { key: 'forfaits', label: 'Forfaits'},
     { key: 'portfolio', label: 'Portfolio' },
   ];
 
@@ -107,6 +137,44 @@ export default function PhotographeClientView() {
   const anciennete = getAnciennete();
   const noteArrondie = profile.note_moyenne ? Math.round(profile.note_moyenne * 10) / 10 : null;
 
+  const toggleFavorite = async () => {
+    try {
+      setFavoriteLoading(true);
+
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert('Vous devez être connecté');
+        return;
+      }
+
+      if (isFavorite) {
+        await supabase
+          .from('favoris')
+          .delete()
+          .eq('client_id', user.id)
+          .eq('prestataire_id', id);
+
+        setIsFavorite(false);
+      } else {
+        await supabase
+          .from('favoris')
+          .insert({
+            client_id: user.id,
+            prestataire_id: id,
+          });
+
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Erreur lors de la mise à jour des favoris');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -216,7 +284,22 @@ export default function PhotographeClientView() {
                     </div>
                   </div>
 
-                  {/* Bouton contacter */}
+                  {/* Bouton contacter et favori */}
+                 <div className="flex gap-2">
+                  <button
+                    onClick={toggleFavorite}
+                    disabled={favoriteLoading}
+                    className={`flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
+                      isFavorite
+                        ? 'bg-red-50 border-red-200 text-red-500'
+                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`}
+                    />
+                  </button>
+
                   <button
                     onClick={() => router.push(`/shared/messages?prestataire=${id}`)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-sm whitespace-nowrap"
@@ -224,6 +307,7 @@ export default function PhotographeClientView() {
                     <MessageSquare className="w-4 h-4" />
                     Contacter
                   </button>
+                </div>
                 </div>
               </div>
             </div>
@@ -478,7 +562,51 @@ export default function PhotographeClientView() {
               )}
             </div>
           )}
+          
+          {activeTab === 'forfaits' && (
+            <div className="space-y-4">
+              {packages.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-400">Aucun forfait disponible</p>
+                </div>       // structure complète retournée;  
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {packages.map(p => (
+                    <div
+                      key={p.id}
+                      className="border border-gray-100 rounded-xl p-4 bg-gray-50"
+                    >
+                      <div className="flex justify-between items-start">
+                        <h2 className="font-semibold text-gray-800">
+                          {p.titre}
+                        </h2>
+                        <div className="flex items-center gap-2">
+                          <span className="text-indigo-600 font-bold">{p.prix_fixe} DH</span>
+                          <span className="text-gray-400 line-through text-sm">{p.prix_barre} DH</span>
+                        </div>
+                      </div>
 
+                      {p.description && (
+                        <p className="text-sm text-gray-600 mt-2">
+                          {p.description}
+                        </p>
+                      )}
+
+                      {p.duree_minutes && (
+                        <p className="text-xs text-gray-400 mt-2">
+                          Durée : {p.duree_minutes / 60} heures
+                        </p>
+                      )}
+
+                      <button className="mt-3 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">
+                        Réserver ce forfait
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {/* Portfolio */}
           {activeTab === 'portfolio' && (
             <div>

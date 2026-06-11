@@ -120,14 +120,14 @@ function UserProfile() {
           supabase.from('devis').select('id', { count: 'exact', head: true }).eq('client_id', uid),
           supabase.from('reviews_presta').select('id', { count: 'exact', head: true }).eq('reviewer_id', uid),
           supabase.from('reservations').select('id, created_at, statut').eq('client_id', uid).order('created_at', { ascending: false }).limit(3),
-          supabase.from('favoris').select('id, photographe_id').eq('client_id', uid)
+          supabase.from('favoris').select('id, prestataire_id').eq('client_id', uid),
         ]).then(async ([
           { count: reservationsCount },
           { count: commandesCount },
           { count: devisCount },
           { count: avisCount },
           { data: recentRes },
-          { data: favAnnonceData }
+          { data: favorisData }
         ]) => {
           setNbReservations(reservationsCount || 0);
           setNbCommandes(commandesCount || 0);
@@ -139,28 +139,31 @@ function UserProfile() {
             status: r.statut, date: r.created_at
           })));
 
-          if (favAnnonceData && favAnnonceData.length > 0) {
-            const annonceIds = favAnnonceData.map(f => f.photographe_id).filter(Boolean);
-            if (annonceIds.length > 0) {
-              const { data: annoncesData } = await supabase
-                .from('prestations_photographe')
-                .select('id, titre, photos')
-                .in('id', annonceIds);
+          if (favorisData?.length) {
+        const prestataireIds = favorisData
+          .map(f => f.prestataire_id)
+          .filter(Boolean);
 
-              setFavoriteAnnonces((annoncesData || []).map(a => {
-                const photosArray = Array.isArray(a.photos) ? a.photos : [];
-                let firstPhoto = DEFAULT_ANNONCE_IMG;
-                if (photosArray.length > 0) {
-                  const photoData = photosArray[0];
-                  if (photoData?.startsWith('data:image')) firstPhoto = photoData;
-                  else if (photoData?.length > 100) firstPhoto = `data:image/jpeg;base64,${photoData}`;
-                  else if (photoData?.startsWith('http') || photoData?.startsWith('/')) firstPhoto = photoData;
-                }
-                return { id: a.id, titre: a.titre, photo: firstPhoto };
-              }));
-            }
-          }
-        });
+        const { data: prestataires } = await supabase
+          .from('profiles')
+          .select(`
+            id,
+            nom,
+            avatar_url,
+            ville
+          `)
+          .in('id', prestataireIds);
+
+        setFavoriteAnnonces(
+          (prestataires || []).map(p => ({
+            id: p.id,
+            titre: p.nom || 'Prestataire',
+            photo: p.avatar_url || DEFAULT_ANNONCE_IMG,
+            ville: p.ville || ''
+          }))
+        );
+      }
+     });
 
       } catch (error) {
         console.error('Erreur chargement profil:', error);
@@ -801,7 +804,7 @@ function UserProfile() {
                 {favoriteAnnonces.map(a => (
                   <a
                     key={a.id}
-                    href={`/annonces/${a.id}`}
+                    href={`/client/photographes/${a.id}`}
                     className="group bg-gradient-to-br from-gray-50 to-white rounded-2xl shadow-md hover:shadow-xl overflow-hidden border border-gray-100 hover:border-pink-200 transition-all duration-300 transform hover:-translate-y-1"
                   >
                     <div className="relative overflow-hidden">

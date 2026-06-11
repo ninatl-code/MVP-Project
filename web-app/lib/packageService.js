@@ -52,7 +52,7 @@ export const getPhotographerPackages = async (photographeId, activeOnly = false)
       .eq('prestataire_id', photographeId)
       .order('prix_fixe', { ascending: true });
 
-    if (activeOnly) {
+    if (activeOnly === true) {
       query = query.eq('actif', true);
     }
 
@@ -216,19 +216,7 @@ export const duplicatePackage = async (packageId, photographeId) => {
 /**
  * Package categories
  */
-export const PACKAGE_CATEGORIES = [
-  { id: 'mariage', label: 'Mariage', icon: '💒' },
-  { id: 'portrait', label: 'Portrait', icon: '👤' },
-  { id: 'evenement', label: 'Événement', icon: '🎉' },
-  { id: 'corporate', label: 'Corporate', icon: '🏢' },
-  { id: 'produit', label: 'Produit', icon: '📦' },
-  { id: 'immobilier', label: 'Immobilier', icon: '🏠' },
-  { id: 'famille', label: 'Famille', icon: '👨‍👩‍👧‍👦' },
-  { id: 'grossesse', label: 'Grossesse / Maternité', icon: '🤰' },
-  { id: 'nouveau-ne', label: 'Nouveau-né', icon: '👶' },
-  { id: 'animalier', label: 'Animalier', icon: '🐕' },
-  { id: 'culinaire', label: 'Culinaire', icon: '🍽️' },
-];
+
 
 export default {
   createPackage,
@@ -239,5 +227,4 @@ export default {
   togglePackageStatus,
   searchPackages,
   duplicatePackage,
-  PACKAGE_CATEGORIES,
 };

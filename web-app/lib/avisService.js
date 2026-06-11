@@ -46,8 +46,7 @@ export const getPhotographerReviews = async (photographeId, limit = 20) => {
     const { data, error } = await supabase
       .from('reviews_presta')
       .select(`
-        *,
-        client:profiles!reviews_presta_client_id_fkey(id,nom, avatar_url)
+        *, client:profiles!reviews_presta_client_id_fkey(id,nom, avatar_url)
       `)
       .eq('prestataire_id', photographeId)
       .order('created_at', { ascending: false })

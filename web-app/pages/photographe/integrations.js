@@ -20,7 +20,8 @@ import {
   Link2,
   ToggleLeft,
   ToggleRight,
-  ChevronRight
+  ChevronRight,
+  
 } from 'lucide-react';
 
 // Définition des intégrations disponibles
