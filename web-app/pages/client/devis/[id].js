@@ -140,27 +140,26 @@ export default function DevisDetailPage() {
 
       // 3. Create reservation from devis data
       const demande = devis.demande;
-      const { data: reservation, error: reservationError } = await supabase
-        .from('reservations')
-        .insert({
-          client_id: devis.client_id,
-          prestataire_id: devis.prestataire_id,
-          devis_id: id,
-          demande_id: devis.demande_id || null,
+      const { data: reservation, error: reservationError } = await reservationService.createReservation({
+          clientId: devis.client_id,
+          photographe_id: devis.prestataire_id,
+          devisId: id,
+          datePrestation: demande?.date_souhaitee || new Date().toISOString().split('T')[0],
+          heureDebut: demande?.heure_debut || null,
+          duree_heures: devis.duree_prestation_heures || null,
+          montant: devis.montant_total,
+          lieu: demande?.lieu || 'À définir',
+          ville: demande?.ville || 'À définir',
+          services_inclus: devis.services_inclus || null,
+          categorie: demande?.categorie || 'À définir',
           titre: "Reservation " + demande?.titre,
           description: "Reservation " + (devis.description || ''),
-          categorie: demande?.categorie || 'À définir',
-          date: demande?.date_souhaitee || new Date().toISOString().split('T')[0],
-          lieu: demande?.lieu || 'À définir',
-          montant_total: devis.montant_total,
-          duree_heures: devis.duree_prestation_heures || null,
-          services_inclus: devis.services_inclus || null,
+          notes_client: null,
+          notes_prestataire: null,
+          demande_id: devis.demande_id || null,
           monnaie: devis.monnaie || 'MAD',
-          source: 'devis',
-          // statut defaults to 'pending' via DB default
-        })
-        .select('id')
-        .single();
+          source: 'devis'
+        });
 
       if (reservationError) {
         console.error('Reservation creation error:', reservationError);

@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import * as reservationService from  '../../../lib/reservationService';
 
 const STRIPE_PUBLIC_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY;
 
@@ -36,16 +37,7 @@ export const createCheckoutSession = async (reservationId, amount, customerEmail
 export const confirmPayment = async (reservationId, stripeSessionId) => {
   try {
     // Update reservation status
-    const { data, error } = await supabase
-      .from('reservations')
-      .update({
-        acompte_paye: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reservationId)
-      .select()
-      .single();
-
+    const { data, error } = await reservationService.upsertReservation(reservationId, { acompte_paye: true });
     if (error) throw error;
 
     // Create payment record

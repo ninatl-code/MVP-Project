@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
+import * as photographerService from  '../../../lib/photographerService';
 
 // Palette Bricool
 const COLORS = {
@@ -63,7 +64,7 @@ export default function Signup() {
           email,
           nom,
           telephone,
-          role: finalRole
+          role: finalRole,
         })
 
       if (profileError) {
@@ -72,11 +73,7 @@ export default function Signup() {
 
       // Créer le profil photographe étendu si nécessaire
       if (finalRole === 'photographe') {
-        const { error: photoProfileError } = await supabase
-          .from('profils_prestataire')
-          .insert({
-            id: data.user.id,
-          })
+        const { error: photoProfileError } = await photographerService.upsertPhotographerProfile(data.user.id, {});
 
         if (photoProfileError) {
           console.error('Erreur création profil photographe:', photoProfileError)

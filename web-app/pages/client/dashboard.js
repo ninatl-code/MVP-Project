@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderParti';
-
+import * as reservationService from  '../../../lib/reservationService';
 import { 
   Search, FileText, Calendar, MessageSquare, Star, Bell,
   User, Settings, CreditCard, HelpCircle, ChevronRight,
@@ -84,18 +84,8 @@ export default function ClientDashboard() {
       });
 
       // Fetch recent reservations for activity
-      const { data: recentReservations } = await supabase
-        .from('reservations')
-        .select(`
-          *,
-          photographe:profils_prestataire(
-            nom_entreprise,
-            profile:profiles(nom, prenom)
-          )
-        `)
-        .eq('client_id', profileId)
-        .order('created_at', { ascending: false })
-        .limit(3);
+      const { data: recentReservations } = await reservationService.getClientReservations(profileId, null, 3);
+
 
       setRecentActivity(recentReservations || []);
     } catch (error) {

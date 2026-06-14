@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { motion } from "framer-motion";
 import Header from '../../components/HeaderPresta';
 import * as messageService from '../../lib/messageService';
-
+import * as photographerService from  '../../lib/photographerService';
 import { useCameraSplashNavigation } from '../../components/CameraSplash';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -361,12 +361,7 @@ function StartupChecklist({ userId, onHide }) {
         .single();
 
       // Récupérer les données prestataire séparément
-      const { data: photoProfile } = await supabase
-        .from("profils_prestataire")
-        .select("bio, instagram, facebook, linkedin, site_web")
-        .eq("id", userId)
-        .single();
-
+      const { data: photoProfile } = await photographerService.getPhotographerProfile(userId);
       // Vérifier l'email confirmé
       const { data: { user } } = await supabase.auth.getUser();
       const emailConfirmed = user?.email_confirmed_at !== null;
@@ -1124,11 +1119,7 @@ export default function ProviderHomeMenu() {
   // Fonction pour vérifier la complétude du profil (aligné sur mobile)
   const checkProfileCompleteness = async (userId) => {
     try {
-      const { data: profilPhoto, error } = await supabase
-        .from('profils_prestataire')
-        .select('bio, specialisations, portfolio_photos, rayon_deplacement_km, tarifs_indicatifs')
-        .eq('id', userId)
-        .single();
+      const { data: profilPhoto, error } = await photographerService.getPhotographerProfile(userId);
 
       if (error && error.code !== 'PGRST116') {
         console.error('Erreur vérification profil:', error);
@@ -1415,7 +1406,7 @@ export default function ProviderHomeMenu() {
                   </p>
                   </div>
                   <p className="text-4xl font-bold" style={{ color: '#10B981' }}>
-                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(chiffreAffaires)}
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD' }).format(chiffreAffaires)}
                   </p>
                   <p className="text-xs mt-1" style={{ color: COLORS.text + '80' }}>
                     Somme des réservations confirmées
@@ -1547,7 +1538,7 @@ export default function ProviderHomeMenu() {
                   <Tag className="w-6 h-6" style={{ color: '#F59E0B' }} />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Mes Packages</h4>
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Mes forfaits</h4>
                   <p className="text-sm" style={{ color: COLORS.text + '99' }}>Offres standardisées</p>
                 </div>
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />

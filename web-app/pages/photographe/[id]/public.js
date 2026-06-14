@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import * as avisService from '../../lib/avisService';
 import * as messageSService from '../../lib/messageService';
+import * as photographerService from  '../../../lib/photographerService';
 import {
   ArrowLeft, Star, MapPin, Calendar, Euro, Camera, Clock,
   MessageCircle, Heart, Share2, CheckCircle, Award, Shield,
@@ -33,14 +34,7 @@ export default function PhotographeProfilePage() {
   const fetchPhotographe = async () => {
     try {
       // Fetch photographer profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profils_prestataire')
-        .select(`
-          *,
-          profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url, ville, email, created_at)
-        `)
-        .eq('id', id)
-        .single();
+      const { data: profileData, error: profileError } = await photographerService.getPhotographerProfile(id)
 
       if (profileError) throw profileError;
       setPhotographe(profileData);

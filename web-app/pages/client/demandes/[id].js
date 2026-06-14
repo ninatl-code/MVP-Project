@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import {getDemandeById, cancelDemande, fulfillDemande} from '../../../lib/demandeService';
+import * as reservationService from  '../../../lib/reservationService';
 
 import { 
   ArrowLeft, Calendar, MapPin, Euro, Clock, Users, 
@@ -97,11 +98,7 @@ export default function DemandeDetailPage() {
       }
 
       // Fetch reservations liées à cette demande
-      const { data: resaData } = await supabase
-        .from('reservations')
-        .select('id, statut, date, lieu, montant_total, titre, prestataire_id')
-        .eq('demande_id', id)
-        .order('created_at', { ascending: false });
+      const { data: resaData } = await reservationService.getReservationByDemandeId(id)
 
       if (resaData && resaData.length > 0) {
         const resaPrestIds = [...new Set(resaData.map(r => r.prestataire_id).filter(Boolean))];
@@ -174,13 +171,11 @@ export default function DemandeDetailPage() {
       if (demandeError) throw demandeError;
 
       // 5. Créer la réservation
-      const { data: reservation, error: reservationError } = await supabase
-        .from('reservations')
-        .insert({
-          client_id: demande.client_id,
-          prestataire_id: devisAccepte.prestataire_id,
-          devis_id: devisId,
-          demande_id: id,
+      const { data: reservation, error: reservationError } = await reservationService.createReservation({
+        client_id: demande.client_id,
+        prestataire_id: devisAccepte.prestataire_id,
+        devis_id: devisId,
+        demande_id: id,
           titre: devisAccepte.titre || demande.titre || 'Prestation photo',
           categorie: demande.categorie || 'photo',
           date: demande.date_souhaitee || new Date().toISOString().split('T')[0],

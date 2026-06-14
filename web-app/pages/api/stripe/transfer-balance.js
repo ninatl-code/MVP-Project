@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     // Transférer le solde au prestataire
     const transfer = await stripe.transfers.create({
       amount: Math.round(balanceAmount * 100), // en centimes
-      currency: "eur",
+      currency: "mad",
       destination: stripe_account_id,
       transfer_group: reservation_id,
       metadata: {

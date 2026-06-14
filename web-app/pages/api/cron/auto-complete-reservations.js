@@ -1,5 +1,5 @@
 import { supabase } from '../../../lib/supabaseClient';
-
+import * as reservationService from  '../../../lib/reservationService';
 /**
  * Cron job to auto-complete reservations after service date
  * Should be called by a scheduler (Vercel Cron, etc.)
@@ -23,12 +23,8 @@ export default async function handler(req, res) {
     // Find reservations that:
     // 1. Are in 'acompte_paye' or 'confirmed' status
     // 2. Have a service date more than 24 hours ago
-    const { data: reservations, error: fetchError } = await supabase
-      .from('reservations')
-      .select('id, date, prestataire_id, client_id')
-      .in('statut', ['confirmee', 'pending'])
-      .lt('date', oneDayAgo.toISOString());
-
+    const { data: reservations, error: fetchError } = await reservationService.getReservationByStatus("confirmed" || "pending")
+      
     if (fetchError) {
       throw fetchError;
     }
@@ -46,13 +42,7 @@ export default async function handler(req, res) {
 
       try {
         // Update reservation status to completed
-        const { error: updateError } = await supabase
-          .from('reservations')
-          .update({
-            statut: 'terminee',
-            updated_at: now.toISOString(),
-          })
-          .eq('id', reservation.id);
+        const { error: updateError } = await reservationService.completeReservation(reservation.id);
 
         if (updateError) {
           results.errors.push({

@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       line_items: [
         {
           price_data: {
-            currency: "eur",
+            currency: "mad",
             product_data: { name: `Paiement complet pour la réservation de l'annonce ${annonce_id}` },
             unit_amount: Math.round(Number(montant_acompte) * 100), // MONTANT TOTAL (pas juste acompte)
           },

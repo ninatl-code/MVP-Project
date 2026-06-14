@@ -4,6 +4,8 @@ import { supabase } from '../../../lib/supabaseClient';
 import Header from '../../../components/HeaderParti';
 import * as avisService from '../../../lib/avisService';
 import { getPhotographerPackages } from '../../../lib/packageService';
+import * as photographerService from  '../../../lib/photographerService';
+import * as reservationService from  '../../../lib/reservationService';
 
 import {
   User, MapPin, Star, Phone, Mail, Instagram, Globe,
@@ -31,15 +33,11 @@ export default function PhotographeClientView() {
     try {
       const [{ data: base }, { data: extra }, { data: revs }, { data: prests }, { data: packs }] = await Promise.all([
         supabase.from('profiles').select('id, nom, email, telephone, ville, avatar_url, created_at').eq('id', userId).single(),
-        supabase.from('profils_prestataire').select('*').eq('id', userId).single(),
+        photographerService.getPhotographerProfile(userId),
         avisService.getPhotographerReviews(userId, 20),
-        supabase.from('reservations')
-          .select('id, titre, categorie, date, lieu, statut')
-          .eq('prestataire_id', userId)
-          .eq('statut', 'completed')
-          .order('date', { ascending: false })
-          .limit(4),
-        getPhotographerPackages(userId, true),
+        reservationService.getPhotographerReservations(userId,"completed", 4),
+      getPhotographerPackages(userId, true),
+
       ]);
       if (base) setProfile({ ...base, ...extra });
       setReviews(revs || []);

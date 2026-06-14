@@ -6,6 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { notifyReservationCancelled ,notifyPrestaReview} from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
 import { STATUTS_RESERVATION } from '../../../constants/statuts';
+import * as reservationService from  '../../../lib/reservationService';
 
 import { 
   ArrowLeft, Calendar, MapPin, Clock, Camera, 
@@ -43,11 +44,7 @@ export default function ReservationDetailPage() {
     setLoading(true);
     try {
       // Fetch reservation without FK-hint joins to avoid silent failures
-      const { data, error } = await supabase
-        .from('reservations')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data, error } = await reservationService.getReservationById(id);
 
       if (error) throw error;
 
@@ -105,18 +102,7 @@ export default function ReservationDetailPage() {
   const handleCancelReservation = async () => {
     setCancelling(true);
     try {
-      const { error } = await supabase
-        .from('reservations')
-        .update({ statut: 'cancelled', annule_par: profileId, date_annulation: new Date().toISOString() })
-        .eq('id', id);
-      
-        await notifyReservationCancelled({
-        userId: reservation.prestataire_id, // le photographe doit être notifié
-        role: 'particulier',
-        reservationId: reservation.id,
-        cancelledByName: profileId,
-        demandeId: reservation.demande_id,
-      });
+      const { error } = await reservationService.cancelReservation (id, 'client', profileId);
       if (error) throw error;
       
       setReservation(prev => ({ ...prev, statut: 'cancelled' }));

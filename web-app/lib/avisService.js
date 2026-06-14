@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
-
+import * as photographerService from  './photographerService';
+import * as reservationService from  './reservationService';
 /**
  * Create a review
  * reviews_presta: id, prestataire_id, client_id, matching_id, rating, comment
@@ -123,7 +124,7 @@ export const hasReviewed = async (reviewerId, reservationId) => {
 };
 
 /**
- * Update service provider's average rating in profils_prestataire
+ * Update service provider's average rating
  */
 export const updatePhotographerRating = async (photographeId) => {
   try {
@@ -138,13 +139,7 @@ export const updatePhotographerRating = async (photographeId) => {
 
     const avgNote = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
-    const { error: updateError } = await supabase
-      .from('profils_prestataire')
-      .update({
-        note_moyenne: Math.round(avgNote * 10) / 10,
-        nb_avis: reviews.length,
-      })
-      .eq('id', photographeId);
+    const { error: updateError } = await photographerService.upsertPhotographerProfile(photographeId, { note_moyenne: Math.round(avgNote * 10) / 10, nb_avis: reviews.length }); // Refresh the photographer profile
 
     if (updateError) {
       console.error('Error updating service provider rating:', updateError);
@@ -216,16 +211,8 @@ export const getStatistiquesAvis = async (prestataire_id) => {
  */
 export const getPendingReviews = async (clientId) => {
   try {
-    const { data: reservations, error: resError } = await supabase
-      .from('reservations')
-      .select(`
-        id,
-        date,
-        prestataire_id,
-        profiles!reservations_prestataire_id_fkey(nom, avatar_url)
-      `)
-      .eq('client_id', clientId)
-      .eq('statut', 'completed');
+    const { data: reservations, error: resError } = await reservationService.getClientReservations (clientId, 'completed')
+
 
     if (resError) throw resError;
 

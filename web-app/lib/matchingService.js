@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import { notifyNewDemande } from './notificationService';
 import { getDemandeById } from './demandeService';
-
+import * as photographerService from  './photographerService';
 // ─────────────────────────────────────────────────────────
 // SCORE MATCHING
 // ─────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ export const getPhotographerProfile = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('profils_prestataire')
-      .select('*')
+      .select('*,profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url, ville, email, created_at)')
       .eq('id', userId)
       .single();
 
@@ -17,6 +17,18 @@ export const getPhotographerProfile = async (userId) => {
     console.error('Error fetching photographer profile:', error);
     return { data: null, error };
   }
+};
+
+export const getPhotographerPrice = async (userId) => {
+  const { data, error } = await supabase
+    .from('profils_prestataire')
+    .select('tarif_horaire_min')
+    .eq('id', userId)
+    .single();
+
+  if (error) throw error;
+
+  return data?.tarif_horaire_min ?? null;
 };
 
 /**
@@ -281,28 +293,6 @@ export const updateAvailabilitySettings = async (photographeId, settings) => {
   return upsertPhotographerProfile(photographeId, settings);
 };
 
-/**
- * Photographer specializations list
- */
-export const SPECIALIZATIONS = [
-  'Mariage',
-  'Portrait',
-  'Événementiel',
-  'Corporate',
-  'Produit',
-  'Immobilier',
-  'Famille',
-  'Grossesse',
-  'Nouveau-né',
-  'Animalier',
-  'Culinaire',
-  'Mode',
-  'Sport',
-  'Concert',
-  'Architecture',
-  'Nature',
-  'Voyage',
-];
 
 export default {
   getPhotographerProfile,
@@ -320,6 +310,5 @@ export default {
   removeBlockedSlot,
   getAvailabilitySettings,
   updateAvailabilitySettings,
-  SPECIALIZATIONS,
 };
 

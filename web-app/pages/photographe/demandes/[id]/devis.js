@@ -4,6 +4,7 @@ import { supabase } from '../../../../lib/supabaseClient';
 import { useAuth } from '../../../../contexts/AuthContext';
 import Header from '../../../../components/HeaderPresta';
 import * as demandeService from '../../../../lib/demandeService';
+import * as photographerService from  '../../../lib/photographerService';
 
 import { createDevis } from '../../../../lib/devisService';
 import { 
@@ -147,11 +148,7 @@ export default function CreateDevisPage() {
       // Fetch prestataire tarif_horaire_min pour suggestion de prix
       let tarif = null;
       if (user?.id) {
-        const { data: prest } = await supabase
-          .from('profils_prestataire')
-          .select('tarif_horaire_min')
-          .eq('id', user.id)
-          .single();
+        const { data: prest } = await photographerService.getPhotographerPrice(user.id);
         tarif = prest?.tarif_horaire_min || null;
       }
 

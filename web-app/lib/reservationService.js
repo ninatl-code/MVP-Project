@@ -1,7 +1,9 @@
 import { supabase } from './supabaseClient';
+import * as notificationService from  '../lib/notificationService';
+
 
 /**
- * Create a new reservation
+ * Create anew reservation
  */
 export const createReservation = async ({
   clientId,
@@ -9,13 +11,19 @@ export const createReservation = async ({
   devisId,
   datePrestation,
   heureDebut,
-  heureFin,
+  duree_heures,
   montant,
   lieu,
   ville,
-  categorie = 'photographie',
+  services_inclus,
+  categorie = "null",
   titre = 'Réservation',
-  notes,
+  description = '',
+  notes_client,
+  notes_prestataire,
+  demande_id,
+  monnaie = "MAD",
+  source = "devis"
 }) => {
   try {
     const montantAcompte = Math.round(montant * 0.3 * 100) / 100;
@@ -27,17 +35,24 @@ export const createReservation = async ({
         prestataire_id: photographe_id,
         devis_id: devisId,
         titre,
-        categorie,
+        categories: categorie,
         date: datePrestation,
         heure_debut: heureDebut,
-        heure_fin: heureFin,
+        heure_fin: heureDebut + duree_heures,
+        duree_heures,
+        services_inclus,
+        description,
         montant_total: montant,
         acompte_montant: montantAcompte,
         solde_montant: montant - montantAcompte,
         lieu: lieu || 'À définir',
         ville,
-        notes_client: notes,
-        statut: 'pending',
+        notes_client,
+        notes_prestataire,
+        demande_id,
+        statut: 'pending',  
+        monnaie,
+        source,
       })
       .select()
       .single();
@@ -53,7 +68,7 @@ export const createReservation = async ({
 /**
  * Get reservations for a client
  */
-export const getClientReservations = async (clientId, status = null) => {
+export const getClientReservations = async (clientId, status = null,limit=100) => {
   try {
     let query = supabase
       .from('reservations')
@@ -63,7 +78,8 @@ export const getClientReservations = async (clientId, status = null) => {
         devis(services_inclus, message_personnalise)
       `)
       .eq('client_id', clientId)
-      .order('date', { ascending: true });
+      .order('date', { ascending: true })
+      .limit(limit); // Limit to 100 reservations for performance
 
     if (status) {
       if (Array.isArray(status)) {
@@ -86,7 +102,7 @@ export const getClientReservations = async (clientId, status = null) => {
 /**
  * Get reservations for a service provider
  */
-export const getPhotographerReservations = async (photographeId, status = null) => {
+export const getPhotographerReservations = async (photographeId, status = null,limit=100) => {
   try {
     let query = supabase
       .from('reservations')
@@ -96,7 +112,8 @@ export const getPhotographerReservations = async (photographeId, status = null) 
         devis(services_inclus, message_personnalise)
       `)
       .eq('prestataire_id', photographeId)
-      .order('date', { ascending: true });
+      .order('date', { ascending: true })
+      .limit(limit); // Limit to 100 reservations for performance
 
     if (status) {
       if (Array.isArray(status)) {
@@ -141,6 +158,39 @@ export const getReservationById = async (reservationId) => {
   }
 };
 
+export const getReservationByStatus = async (status) => {
+  try {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*')
+      .eq('statut', status)
+      .limit(limit);
+
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching reservation:', error);
+    return { data: null, error };
+  }
+};
+
+export const getReservationByDemande = async (demandeId) => {
+  try {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*')
+      .eq('demande_id', demandeId)
+      .limit(limit);
+
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching reservation:', error);
+    return { data: null, error };
+  }
+};
 /**
  * Update reservation status
  */
@@ -177,14 +227,47 @@ export const confirmReservation = async (reservationId) => {
 /**
  * Complete reservation (after service is done)
  */
-export const completeReservation = async (reservationId) => {
-  return updateReservationStatus(reservationId, 'completed', {});
+export const completeReservation = async (
+  reservationId,
+  clientId,
+  datePrestation,
+  prestataireId
+) => {
+  try {
+    // 1. Mise à jour du statut
+    const result = await updateReservationStatus(
+      reservationId,
+      'completed',
+      {}
+    );
+
+    if (!result) {
+      throw new Error('Échec mise à jour réservation');
+    }
+
+    // 2. Notification APRES succès
+    await notificationService.NotifyReservationConfirmed(
+      reservationId,
+      clientId,
+      datePrestation,
+      prestataireId
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('completeReservation error:', error);
+    return { success: false, error };
+  }
 };
 
 /**
  * Cancel reservation
  */
-export const cancelReservation = async (reservationId, reason, cancelledBy) => {
+export const cancelReservation = async (
+  reservationId,
+  reason,
+  cancelledBy
+) => {
   try {
     const { data, error } = await supabase
       .from('reservations')
@@ -196,10 +279,21 @@ export const cancelReservation = async (reservationId, reason, cancelledBy) => {
         updated_at: new Date().toISOString(),
       })
       .eq('id', reservationId)
-      .select()
+      .select('id, prestataire_id, client_id, demande_id')
       .single();
 
     if (error) throw error;
+    if (!data) throw new Error('Réservation introuvable');
+
+    // Notification APRÈS validation
+    await notificationService.notifyReservationCancelled({
+      userId: data.prestataire_id,
+      role: 'prestataire',
+      reservationId: reservationId,
+      cancelledBy,
+      demandeId: data.demande_id,
+    });
+
     return { data, error: null };
   } catch (error) {
     console.error('Error cancelling reservation:', error);
@@ -340,6 +434,27 @@ export const getCalendarEvents = async (photographeId, startDate, endDate) => {
     return { events: [], error };
   }
 };
+
+export const upsertReservation = async (reservationId, reservationData) => {
+  try {
+    const { data, error } = await supabase
+      .from('reservations')
+      .upsert({
+        id: reservationId,
+        ...reservationData,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error upserting reservation:', error);
+    return { data: null, error };
+  }
+};
+
 
 export default {
   createReservation,

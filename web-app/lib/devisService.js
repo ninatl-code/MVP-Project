@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { notifyNewDevis } from './notificationService';
 import { fulfillDemande } from './demandeService';
+import * as reservationService from  '../../../lib/reservationService';
 
 /**
  * Create a new devis (quote) from service provider
@@ -198,20 +199,18 @@ export const acceptDevis = async (devisId) => {
     // Create reservation from accepted devis
     const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
     
-    const { data: reservation, error: resError } = await supabase
-      .from('reservations')
-      .insert({
-        client_id: devis.client_id,
-        prestataire_id: devis.prestataire_id,
-        devis_id: devisId,
-        titre: devis.titre || 'Réservation',
-        categorie: 'photographie',
-        date: new Date().toISOString().split('T')[0],
-        lieu: 'À définir',
-        montant_total: devis.montant_total,
-        acompte_montant: devis.acompte_montant || Math.round(devis.montant_total * 0.3 * 100) / 100,
-        statut: 'pending',
-      })
+    const { data: reservation, error: resError } = await reservationService.createReservation({
+      client_id: devis.client_id,
+      prestataire_id: devis.prestataire_id,
+      devis_id: devisId,
+      titre: devis.titre || 'Réservation',
+      categorie: 'photographie',
+      date: new Date().toISOString().split('T')[0],
+      lieu: 'À définir',
+      montant_total: devis.montant_total,
+      acompte_montant: devis.acompte_montant || Math.round(devis.montant_total * 0.3 * 100) / 100,
+      statut: 'pending',
+    })
       .select()
       .single();
 

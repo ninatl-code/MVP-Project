@@ -4,6 +4,7 @@ import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { Search, ChevronLeft, ChevronRight, User, Eye, Mail, Phone, Calendar, FileText, X } from 'lucide-react';
 import { getClientDemandes } from '../../lib/demandeService';
+import * as reservationService from  '../../../lib/reservationService';
 const PAGE_SIZE = 20;
 
 export default function AdminClients() {
@@ -51,7 +52,7 @@ export default function AdminClients() {
       supabase.from('devis').select('id', { count: 'exact', head: true }).eq('client_id', client.id),
       supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('client_id', client.id),
       getClientDemandes(client.id,5),
-      supabase.from('reservations').select('id, statut, montant_total, date_prestation, created_at').eq('client_id', client.id).order('created_at', { ascending: false }).limit(5),
+      reservationService.getClientReservations(client.id, null, 5),
     ]);
     setDetail({ nbDemandes, nbDevis, nbReservations, demandes: demandes || [], reservations: reservations || [] });
     setLoadingDetail(false);

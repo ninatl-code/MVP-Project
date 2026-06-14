@@ -1,5 +1,5 @@
 import { supabase } from '../../../lib/supabaseClient';
-
+import * as reservationService from  '../../../lib/reservationService';
 /**
  * Send reminder notifications for upcoming reservations
  * Should be called daily by a scheduler
@@ -25,21 +25,7 @@ export default async function handler(req, res) {
     console.log('📅 Checking reservations for:', tomorrowStart.toISOString().split('T')[0]);
 
     // Find confirmed reservations for tomorrow
-    const { data: reservations, error: fetchError } = await supabase
-      .from('reservations')
-      .select(`
-        id,
-        date,
-        heure_debut,
-        lieu,
-        prestataire_id,
-        client_id,
-        profiles!reservations_prestataire_id_fkey(nom),
-        profiles!reservations_client_id_fkey(nom)
-      `)
-      .in('statut', ['confirme', 'pending'])
-      .gte('date', tomorrowStart.toISOString())
-      .lte('date', tomorrowEnd.toISOString());
+    const { data: reservations, error: fetchError } = await reservationService.getReservationByStatus("confirmed" || "pending");
 
     if (fetchError) {
       throw fetchError;

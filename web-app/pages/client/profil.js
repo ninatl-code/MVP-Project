@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
+import * as reservationService from  '../../../lib/reservationService';
 import { 
   Mail, Phone, MapPin, Heart, Edit, Save, Calendar, Camera, LogOut, Settings,
   Bell, Shield, CreditCard, Clock, Star, MessageCircle, FileText, Eye,
@@ -119,7 +120,7 @@ function UserProfile() {
           supabase.from('commandes').select('id', { count: 'exact', head: true }).eq('particulier_id', uid),
           supabase.from('devis').select('id', { count: 'exact', head: true }).eq('client_id', uid),
           supabase.from('reviews_presta').select('id', { count: 'exact', head: true }).eq('reviewer_id', uid),
-          supabase.from('reservations').select('id, created_at, statut').eq('client_id', uid).order('created_at', { ascending: false }).limit(3),
+          reservationService.getClientReservations(uid, "completed",3),
           supabase.from('favoris').select('id, prestataire_id').eq('client_id', uid),
         ]).then(async ([
           { count: reservationsCount },

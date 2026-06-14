@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
 import { categories } from '../../constants/categories';
 import { SPECIALITES_MAP } from '../../constants/specialites';
+import * as packageService from '../../lib/packageService';
 
 import { 
   Package, Plus, Edit, Trash2, Clock, Briefcase, Euro,
@@ -40,12 +41,7 @@ export default function PackagesPage() {
     if (!id) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('packages_types')
-        .select('*')
-        .eq('prestataire_id', id)
-        .order('created_at', { ascending: false });
-
+      const { data, error } = await packageService.getPhotographerPackages (id, false);
       if (error) throw error;
       setPackages(data || []);
     } catch (error) {

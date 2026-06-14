@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-
+import * as photographerService from  './photographerService';
 /**
  * Create a new service request (demande)
  */

@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       balance: {
         available: availableBalance,
         pending: pendingBalance,
-        currency: balance.available[0]?.currency || 'eur',
+        currency: balance.available[0]?.currency || 'MAD',
       },
       requirements: {
         currentlyDue: account.requirements?.currently_due || [],

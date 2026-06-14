@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       line_items: [
         {
           price_data: {
-            currency: "eur",
+            currency: "mad",
             product_data: { 
               name: description || `Acompte - ${reservation.annonces?.titre || 'Réservation photographe'}`,
               description: `Photographe: ${reservation.profiles?.nom || 'N/A'}`,

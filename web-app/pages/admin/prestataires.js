@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
+import * as photographerService from  '../../../lib/photographerService';
 import {
   CheckCircle, XCircle, Eye, Search,
   ChevronLeft, ChevronRight, User, FileText,
@@ -73,7 +74,7 @@ export default function AdminPrestataires() {
     setActionLoading(true);
     const updates = { statut_validation: statut };
     if (statut === 'refuse' && motifRefus) updates.motif_refus = motifRefus;
-    await supabase.from('profils_prestataire').update(updates).eq('id', id);
+    await photographerService.upsertPhotographerProfile(id, updates);
     setActionLoading(false);
     setSelected(null);
     setMotifRefus('');
@@ -82,7 +83,7 @@ export default function AdminPrestataires() {
 
   const handleVerify = async (id, field, value) => {
     setActionLoading(true);
-    await supabase.from('profils_prestataire').update({ [field]: value }).eq('id', id);
+    await photographerService.upsertPhotographerProfile(id, { [field]: value });
     setSelected(prev => ({ ...prev, [field]: value }));
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
     setActionLoading(false);

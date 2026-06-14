@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
+import * as photographerService from  '../lib/photographerService';
 
 const AuthContext = createContext(undefined);
 
@@ -182,36 +183,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Charger le profil photographe détaillé
-  const loadPhotographeProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profils_prestataire')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (!error && data) {
-        setPhotographeProfile(data);
-      } else {
-        // profils_prestataire.id IS the user id — no fallback needed
-        console.warn('No prestataire profile found for user:', userId);
-      }
-    } catch (err) {
-      console.error('Error loading photoghe profile:', err);
-    }
-  };
 
   // Rafraîchir le profil photographe
   const refreshProfile = async () => {
     if (profileId) {
-      await loadPhotographeProfile(profileId);
+      await photographerService.getPhotographerProfile(profileId);
     }
   };
 
   // Charger le profil photographe quand le profileId change
   useEffect(() => {
     if (profileId && (activeRole === 'photographe' )) {
-      loadPhotographeProfile(profileId);
+      photographerService.getPhotographerProfile(profileId);
     }
   }, [profileId, activeRole]);
 

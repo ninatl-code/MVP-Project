@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { notifyRequestReview } from '../lib/notificationService'
 import * as avisService from '../lib/avisService'
+import * as reservationService from  '../lib/reservationService';
 
 export default function RealTimeNotifications({ userId, triggerNotification }) {
   const [notifications, setNotifications] = useState([])
@@ -18,13 +19,7 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
     try {
       const now = new Date()
 
-      const { data: reservations, error } = await supabase
-        .from('reservations')
-        .select('id, date, duree_heures, client_id')
-        .eq('statut', 'confirmed')
-        .not('date', 'is', null)
-        .not('duree_heures', 'is', null)
-
+      const { data: reservations, error } = await reservationService.getPhotographerReservations(photographeId, 'confirmed')
       if (error || !reservations) return
 
       const expiredIds = []
@@ -44,12 +39,9 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
 
       if (expiredIds.length === 0) return
 
-      const { data: updated, error: updateError } = await supabase
-        .from('reservations')
-        .update({ statut: 'completed' })
-        .in('id', expiredIds)
-        .select('id, client_id, prestataire_id, demande_id')
-
+      for (const id of expiredIds) {
+        const { data: updated, error: updateError } = await reservationService.completeReservation(id)
+      }
       if (updateError || !updated) return
 
       // Notifications avis
