@@ -132,13 +132,18 @@ export default function PhotographeDevisPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Mes devis</h1>
-          <p className="text-gray-600 mt-1">
-            Gérez tous vos devis envoyés
-          </p>
+      <main className="max-w-6xl mx-auto px-4 py-8">
+
+        {/* Page header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Mes devis</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              Gérez tous vos devis envoyés
+            </p>
+          </div>
         </div>
+
 
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../../lib/supabaseClient';
-import { useAuth } from '../../../contexts/AuthContext';
-import HeaderParti from '../../../components/HeaderParti';
-import HeaderPresta from '../../../components/HeaderPresta';
-import * as messageService from '../../../lib/messageService';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import HeaderParti from '../components/HeaderParti';
+import HeaderPresta from '../components/HeaderPresta';
+import * as messageService from '../lib/messageService';
 import {
   ArrowLeft, Send, Paperclip, MoreVertical, FileText,
   Phone, Info, Check, CheckCheck, MessageSquare, Search, X,

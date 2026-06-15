@@ -718,7 +718,7 @@ export default function DevisDetailPage() {
 
               <div className="space-y-2">
                 <button
-                  onClick={() => router.push(`/shared/messages?prestataire=${devis.prestataire_id}&devis=${devis.id}`)}
+                  onClick={() => router.push(`/messages?prestataire=${devis.prestataire_id}&devis=${devis.id}`)}
                   className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-5 h-5" />

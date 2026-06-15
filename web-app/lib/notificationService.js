@@ -342,7 +342,7 @@ export const getNotificationLink = (notification) => {
       case 'nouvel_avis':
         return '/photographe/avis-dashboard';
       case 'nouveau_message':
-        return '/shared/messages';
+        return '/messages';
       default:
         return '#';
     }

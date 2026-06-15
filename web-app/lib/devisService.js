@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import { notifyNewDevis } from './notificationService';
 import { fulfillDemande } from './demandeService';
-import * as reservationService from  '../../../lib/reservationService';
+import * as reservationService from  './reservationService';
 
 /**
  * Create a new devis (quote) from service provider

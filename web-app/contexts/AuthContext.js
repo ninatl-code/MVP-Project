@@ -186,16 +186,22 @@ export const AuthProvider = ({ children }) => {
 
   // Rafraîchir le profil photographe
   const refreshProfile = async () => {
-    if (profileId) {
-      await photographerService.getPhotographerProfile(profileId);
-    }
+    if (!profileId) return;
+
+    const res = await photographerService.getPhotographerProfile(profileId);
+    setPhotographeProfile(res.data);
   };
 
   // Charger le profil photographe quand le profileId change
   useEffect(() => {
-    if (profileId && (activeRole === 'photographe' )) {
-      photographerService.getPhotographerProfile(profileId);
-    }
+    const load = async () => {
+      if (!profileId || activeRole !== 'photographe') return;
+
+      const res = await photographerService.getPhotographerProfile(profileId);
+      setPhotographeProfile(res.data);
+    };
+
+    load();
   }, [profileId, activeRole]);
 
   useEffect(() => {

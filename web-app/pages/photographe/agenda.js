@@ -24,14 +24,17 @@ export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    if (photographeProfile?.id) {
-      fetchCalendarData();
-    }
-  }, [photographeProfile, currentMonth]);
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
 
-  const fetchCalendarData = async () => {
+
+
+  const fetchCalendarData = useCallback(async () => {
     setLoading(true);
     try {
       const monthStart = startOfMonth(currentMonth);
@@ -64,11 +67,17 @@ export default function AgendaPage() {
       setIndisponibilites(indisData || []);
     } catch (error) {
       console.error('Error fetching calendar data:', error);
+      setError('Impossible de charger le calendrier. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
-  };
-
+  }, [photographeProfile, currentMonth]);
+  
+  useEffect(() => {
+    if (photographeProfile?.id) {
+      fetchCalendarData();
+    }
+  }, [photographeProfile, currentMonth,fetchCalendarData]);
   const getDaysInMonth = useCallback(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -88,7 +97,7 @@ export default function AgendaPage() {
     const dayIndisponibilites = indisponibilites.filter(i => {
       const start = parseISO(i.start_datetime);
       const end = parseISO(i.end_datetime);
-      return date >= start && date <= end;
+      return date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
     });
 
     return { reservations: dayReservations, indisponibilites: dayIndisponibilites };
@@ -252,7 +261,22 @@ export default function AgendaPage() {
             )}
           </div>
         </div>
+
+        {toast && (
+          <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm animate-fade-in">
+            {toast}
+          </div>
+        )}
       </main>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Add Indispo Modal */}
       {showAddModal && (
@@ -263,6 +287,7 @@ export default function AgendaPage() {
           onSuccess={() => {
             setShowAddModal(false);
             fetchCalendarData();
+            showToast('Indisponibilité ajoutée avec succès');
           }}
         />
       )}
@@ -273,96 +298,114 @@ export default function AgendaPage() {
 function DayDetails({ date, events, photographeId, onUpdate }) {
   const router = useRouter();
   const { reservations, indisponibilites } = events;
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const handleDeleteIndispo = async (indispoId) => {
-    if (!confirm('Supprimer cette indisponibilité ?')) return;
-    
+  const handleDeleteIndispo = async () => {
+    if (!confirmDelete) return;
     try {
       const { error } = await supabase
-        .from('indisponibilites')
+        .from('blocked_slots')
         .delete()
-        .eq('id', indispoId);
-
+        .eq('id', confirmDelete);
       if (error) throw error;
+      setConfirmDelete(null);
       onUpdate();
     } catch (error) {
       console.error('Error deleting indispo:', error);
     }
   };
 
-  if (reservations.length === 0 && indisponibilites.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <CalendarIcon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-        <p className="text-gray-500 text-sm">Aucun événement ce jour</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Reservations */}
-      {reservations.map(res => (
-        <div 
-          key={res.id}
-          onClick={() => router.push(`/photographe/reservations/${res.id}`)}
-          className="p-4 bg-indigo-50 rounded-xl cursor-pointer hover:bg-indigo-100 transition-all"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-            <span className="font-medium text-indigo-900">Réservation</span>
-          </div>
-          
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-gray-600">
-              <User className="w-4 h-4" />
-              <span>{res.client?.prenom} {res.client?.nom}</span>
-            </div>
-            {res.heure_debut && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <Clock className="w-4 h-4" />
-                <span>{res.heure_debut} - {res.heure_fin || '?'}</span>
-              </div>
-            )}
-            {res.lieu && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span className="truncate">{res.lieu}</span>
-              </div>
-            )}
-          </div>
+    <>
+      {reservations.length === 0 && indisponibilites.length === 0 ? (
+        <div className="text-center py-8">
+          <CalendarIcon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+          <p className="text-gray-500 text-sm">Aucun événement ce jour</p>
         </div>
-      ))}
-
-      {/* Indisponibilites */}
-      {indisponibilites.map(indispo => (
-        <div 
-          key={indispo.id}
-          className="p-4 bg-red-50 rounded-xl"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-400"></div>
-              <span className="font-medium text-red-900">Indisponible</span>
-            </div>
-            <button
-              onClick={() => handleDeleteIndispo(indispo.id)}
-              className="p-1 text-red-400 hover:text-red-600 hover:bg-red-100 rounded"
+      ) : (
+        <div className="space-y-4">
+          {/* Reservations */}
+          {reservations.map(res => (
+            <div
+              key={res.id}
+              onClick={() => router.push(`/photographe/reservations/${res.id}`)}
+              className="p-4 bg-indigo-50 rounded-xl cursor-pointer hover:bg-indigo-100 transition-all"
             >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-          
-          {indispo.motif && (
-            <p className="text-sm text-red-700">{indispo.motif}</p>
-          )}
-          
-          <p className="text-xs text-red-500 mt-2">
-            Du {format(parseISO(indispo.start_datetime), 'dd/MM')} au {format(parseISO(indispo.end_datetime), 'dd/MM')}
-          </p>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                <span className="font-medium text-indigo-900">Réservation</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <User className="w-4 h-4" />
+                  <span>{res.client?.prenom} {res.client?.nom}</span>
+                </div>
+                {res.heure_debut && (
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Clock className="w-4 h-4" />
+                    <span>{res.heure_debut} - {res.heure_fin || '?'}</span>
+                  </div>
+                )}
+                {res.lieu && (
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <MapPin className="w-4 h-4" />
+                    <span className="truncate">{res.lieu}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Indisponibilites */}
+          {indisponibilites.map(indispo => (
+            <div key={indispo.id} className="p-4 bg-red-50 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                  <span className="font-medium text-red-900">Indisponible</span>
+                </div>
+                <button
+                  onClick={() => setConfirmDelete(indispo.id)}
+                  className="p-1 text-red-400 hover:text-red-600 hover:bg-red-100 rounded"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              {indispo.motif && (
+                <p className="text-sm text-red-700">{indispo.motif}</p>
+              )}
+              <p className="text-xs text-red-500 mt-2">
+                Du {format(parseISO(indispo.start_datetime), 'dd/MM')} au {format(parseISO(indispo.end_datetime), 'dd/MM')}
+              </p>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+
+      {/* Modale de confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="font-semibold text-gray-900 mb-2">Supprimer l'indisponibilité ?</h3>
+            <p className="text-sm text-gray-500 mb-6">Cette action est irréversible.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteIndispo}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -383,8 +426,8 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
         .from('blocked_slots')
         .insert({
           prestataire_id: photographeId,
-          start_datetime: formData.start_datetime,
-          end_datetime: formData.end_datetime,
+          start_datetime: formData.start_datetime + 'T00:00:00',
+          end_datetime: formData.end_datetime + 'T23:59:59',
           reason: formData.reason || null,
         });
 

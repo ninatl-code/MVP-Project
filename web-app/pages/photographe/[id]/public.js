@@ -91,7 +91,7 @@ export default function PhotographeProfilePage() {
 
 
       if (existingConv) {
-        router.push(`/shared/messages?id=${existingConv.id}`);
+        router.push(`/messages?id=${existingConv.id}`);
         return;
       }
 
@@ -99,7 +99,7 @@ export default function PhotographeProfilePage() {
       const { data: newConv, error } = await messageSService.createConversation(user.id, id);
 
       if (error) throw error;
-      router.push(`/shared/messages?id=${newConv.id}`);
+      router.push(`/messages?id=${newConv.id}`);
     } catch (error) {
       console.error('Error starting conversation:', error);
     }

@@ -191,7 +191,7 @@ export default function PhotographeReservationDetailPage() {
     setShowRefuseModal(false);
   };
 
-  const handleMessage = () => router.push(`/shared/messages?client=${reservation?.client_id}&reservation=${id}`);
+  const handleMessage = () => router.push(`/messages?client=${reservation?.client_id}&reservation=${id}`);
 
   const formatDate = (d) => {
     try { return d ? format(parseISO(d), 'EEEE d MMMM yyyy', { locale: fr }) : 'Non définie'; }

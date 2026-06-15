@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import Headerhomepage from '../components/Headerhomepage';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
-import * as photographerService from  '../../../lib/photographerService';
+import * as photographerService from  '../lib/photographerService';
 
 // Palette Bricool
 const COLORS = {

@@ -4,19 +4,18 @@ import { supabase } from './supabaseClient';
  * Get photographer's profile
  */
 export const getPhotographerProfile = async (userId) => {
-  try {
-    const { data, error } = await supabase
-      .from('profils_prestataire')
-      .select('*,profile:profiles!profils_prestataire_id_fkey(id, nom, avatar_url, ville, email, created_at)')
-      .eq('id', userId)
-      .single();
+  const { data, error } = await supabase
+    .from('profils_prestataire')
+    .select(`
+      *,
+      profile:profiles!profils_prestataire_id_fkey(
+        id, nom, avatar_url, ville, email, created_at
+      )
+    `)
+    .eq('id', userId)
+    .single();
 
-    if (error && error.code !== 'PGRST116') throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching photographer profile:', error);
-    return { data: null, error };
-  }
+  return { data, error };
 };
 
 export const getPhotographerPrice = async (userId) => {

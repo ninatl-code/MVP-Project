@@ -36,10 +36,11 @@ export default function PhotographeClientView() {
         photographerService.getPhotographerProfile(userId),
         avisService.getPhotographerReviews(userId, 20),
         reservationService.getPhotographerReservations(userId,"completed", 4),
-      getPhotographerPackages(userId, true),
+        getPhotographerPackages(userId, true),
 
       ]);
-      if (base) setProfile({ ...base, ...extra });
+      if (base) 
+      setProfile({ ...base, ...extra });
       setReviews(revs || []);
       setPrestations(prests || []);
       setPackages(packs || []);
@@ -82,7 +83,7 @@ export default function PhotographeClientView() {
     .maybeSingle();
 
   setIsFavorite(!!data);
-};
+  };
 
   const renderStars = (rating, size = 'sm') => {
     const s = size === 'sm' ? 'w-3.5 h-3.5' : 'w-5 h-5';
@@ -173,6 +174,8 @@ export default function PhotographeClientView() {
       setFavoriteLoading(false);
     }
   };
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -188,7 +191,7 @@ export default function PhotographeClientView() {
         </button>
 
         {/* ── Carte profil ── */}
-        <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 mb-6">
+        <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 mb-6" >
           {/* Info card */}
           <div className="bg-white px-6 pt-6 pb-6">
             <div className="flex flex-col md:flex-row md:items-start gap-4">
@@ -203,45 +206,41 @@ export default function PhotographeClientView() {
                 )}
               </div>
 
-              {/* Infos + actions */}
-              <div className="flex-1 pt-2 md:pt-16">
+              {/* Infos principales */}
+              <div className="flex-1">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-2xl font-bold text-gray-900">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-3">
                         {profile.nom_entreprise || profile.nom || 'Prestataire'}
                       </h1>
-                      {profile.statut_validation === 'valide' && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Profil approuvé
-                        </span>
-                      )}
-                      {profile.identite_verifiee && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                          <Shield className="w-3.5 h-3.5" />
-                          Identité vérifiée
-                        </span>
-                      )}
-                      {profile.entreprise_verifiee && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Entreprise vérifiée
-                        </span>
-                      )}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {profile.statut_validation === 'valide' && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Profil approuvé
+                          </span>
+                        )}
+                        {profile.identite_verifiee && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                            <Shield className="w-3.5 h-3.5"/>
+                            Identité vérifiée
+                          </span>
+                        )}
+                        {profile.entreprise_verifiee && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                                                  <CheckCircle className="w-3.5 h-3.5" />
+                                                  Entreprise vérifiée
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
+                    <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-500">
                       {profile.ville && (
                         <span className="flex items-center gap-1">
                           <MapPin className="w-4 h-4" />
                           {profile.ville}
-                        </span>
-                      )}
-                      {(profile.categories || []).length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Briefcase className="w-4 h-4" />
-                          {(profile.categories || []).join(', ')}
                         </span>
                       )}
                       {anciennete && anciennete !== 'Nouveau' && (
@@ -253,131 +252,119 @@ export default function PhotographeClientView() {
                       {anciennete === 'Nouveau' && (
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          Nouveau membre
+                           Nouveau membre
                         </span>
                       )}
+                      
                     </div>
-
-                    {/* Note + stats */}
+                      {/* Note + stats */}
                     <div className="flex flex-wrap items-center gap-4 mt-3">
-                      {noteArrondie && (
-                        <div className="flex items-center gap-1.5">
-                          {renderStars(Math.round(noteArrondie), 'md')}
-                          <span className="font-bold text-gray-900">{noteArrondie}</span>
-                          <span className="text-sm text-gray-400">({profile.nb_avis || 0} avis)</span>
-                        </div>
-                      )}
-                      {profile.nb_prestations_completees > 0 && (
-                        <span className="flex items-center gap-1 text-sm text-gray-500">
-                          <TrendingUp className="w-4 h-4 text-green-500" />
-                          {profile.nb_prestations_completees} prestation{profile.nb_prestations_completees > 1 ? 's' : ''} réalisée{profile.nb_prestations_completees > 1 ? 's' : ''}
-                        </span>
-                      )}
-                      {profile.taux_reponse > 0 && (
-                        <span className="flex items-center gap-1 text-sm text-gray-500">
-                          <Clock className="w-4 h-4 text-indigo-400" />
-                          {profile.taux_reponse}% de réponse
-                        </span>
-                      )}
-                    </div>
+                          {noteArrondie && (
+                            <div className="flex items-center gap-1.5">
+                              {renderStars(Math.round(noteArrondie), 'md')}
+                              <span className="font-bold text-gray-900">{noteArrondie}</span>
+                              <span className="text-sm text-gray-400">({profile.nb_avis || 0} avis)</span>
+                            </div>
+                          )}
+                          {profile.nb_prestations_completees > 0 && (
+                            <span className="flex items-center gap-1 text-sm text-gray-500">
+                              <TrendingUp className="w-4 h-4 text-green-500" />
+                              {profile.nb_prestations_completees} prestation{profile.nb_prestations_completees > 1 ? 's' : ''} réalisée{profile.nb_prestations_completees > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {profile.taux_reponse > 0 && (
+                            <span className="flex items-center gap-1 text-sm text-gray-500">
+                              <Clock className="w-4 h-4 text-indigo-400" />
+                              {profile.taux_reponse}% de réponse
+                            </span>
+                          )}
+                    </div>  
                   </div>
-
                   {/* Bouton contacter et favori */}
-                 <div className="flex gap-2">
-                  <button
-                    onClick={toggleFavorite}
-                    disabled={favoriteLoading}
-                    className={`flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
-                      isFavorite
-                        ? 'bg-red-50 border-red-200 text-red-500'
-                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Heart
-                      className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`}
-                    />
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={toggleFavorite}
+                      disabled={favoriteLoading}
+                      className={`flex items-center justify-center w-11 h-11 rounded-xl border transition-all ${
+                        isFavorite
+                          ? 'bg-red-50 border-red-200 text-red-500'
+                          : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Heart
+                        className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`}
+                      />
+                    </button>
 
-                  <button
-                    onClick={() => router.push(`/shared/messages?prestataire=${id}`)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-sm whitespace-nowrap"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Contacter
-                  </button>
-                </div>
-                </div>
+                    <button
+                      onClick={() => router.push(`/messages?prestataire=${id}`)}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-sm whitespace-nowrap"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Contacter
+                    </button>
+                  </div>
+                </div>            
+              </div>
+            </div>       
+            
+            <div className="flex justify-between items-start mt-4">
+            
+              <div className="flex gap-3">
+              {/* Tarif */}
+                {(profile.tarif_horaire_min || profile.tarif_horaire_max) && (
+                  <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-xl">
+                    <span className="text-sm text-indigo-600 font-semibold">
+                      {profile.tarif_horaire_min && profile.tarif_horaire_max
+                        ? `${profile.tarif_horaire_min} – ${profile.tarif_horaire_max} DH/h`
+                        : `À partir de ${profile.tarif_horaire_min || profile.tarif_horaire_max} DH/h`}
+                    </span>
+                  </div>
+                )}         
+              {/* Spécialisations */}
+                {(profile.specialisations || []).filter(s => s !== 'Autre').length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {(profile.specialisations || []).filter(s => s !== 'Autre').map(spec => (
+                      <span key={spec} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium">
+                        {spec}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            
+            {/* Réseaux sociaux */}
+              <div className="flex gap-6">
+                {(profile.instagram || profile.facebook || profile.linkedin || profile.site_web) && (
+                  <div className="flex gap-3 mt-4">
+                    {profile.instagram && (
+                      <a href={`https://instagram.com/${profile.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">
+                        <Instagram className="w-4 h-4" />
+                      </a>
+                    )}
+                    {profile.facebook && (
+                      <a href={profile.facebook.startsWith('http') ? profile.facebook : `https://facebook.com/${profile.facebook}`} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">
+                        <Facebook className="w-4 h-4" />
+                      </a>
+                    )}
+                    {profile.linkedin && (
+                      <a href={profile.linkedin.startsWith('http') ? profile.linkedin : `https://linkedin.com/in/${profile.linkedin}`} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">
+                        <Linkedin className="w-4 h-4" />
+                      </a>
+                    )}
+                    {profile.site_web && (
+                      <a href={profile.site_web} target="_blank" rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors">
+                        <Globe className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Tarif */}
-            {(profile.tarif_horaire_min || profile.tarif_horaire_max) && (
-              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-xl">
-                <span className="text-sm text-indigo-600 font-semibold">
-                  {profile.tarif_horaire_min && profile.tarif_horaire_max
-                    ? `${profile.tarif_horaire_min} – ${profile.tarif_horaire_max} DH/h`
-                    : `À partir de ${profile.tarif_horaire_min || profile.tarif_horaire_max} DH/h`}
-                </span>
-              </div>
-            )}
-
-            {/* Spécialisations */}
-            {(profile.specialisations || []).filter(s => s !== 'Autre').length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {(profile.specialisations || []).filter(s => s !== 'Autre').map(spec => (
-                  <span key={spec} className="px-3 py-1 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border border-indigo-100 rounded-full text-sm font-medium">
-                    {spec}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Réseaux sociaux */}
-            {(profile.instagram || profile.facebook || profile.linkedin || profile.site_web) && (
-              <div className="flex gap-2 mt-4">
-                {profile.instagram && (
-                  <a
-                    href={`https://instagram.com/${profile.instagram.replace('@', '')}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-80"
-                    style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
-                  >
-                    <Instagram className="w-3.5 h-3.5" />
-                    Instagram
-                  </a>
-                )}
-                {profile.facebook && (
-                  <a
-                    href={profile.facebook.startsWith('http') ? profile.facebook : `https://facebook.com/${profile.facebook}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                  >
-                    <Facebook className="w-3.5 h-3.5" />
-                    Facebook
-                  </a>
-                )}
-                {profile.linkedin && (
-                  <a
-                    href={profile.linkedin.startsWith('http') ? profile.linkedin : `https://linkedin.com/in/${profile.linkedin}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 transition-colors"
-                  >
-                    <Linkedin className="w-3.5 h-3.5" />
-                    LinkedIn
-                  </a>
-                )}
-                {profile.site_web && (
-                  <a
-                    href={profile.site_web}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
-                  >
-                    <Globe className="w-3.5 h-3.5" />
-                    Site web
-                  </a>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -420,10 +407,10 @@ export default function PhotographeClientView() {
 
         {/* ── Contenu onglets ── */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-
           {/* Présentation */}
           {activeTab === 'presentation' && (
             <div className="space-y-6">
+              {/* Bio */}
               {profile.bio && (
                 <div>
                   <h2 className="font-semibold text-gray-900 mb-2">À propos</h2>
@@ -560,7 +547,8 @@ export default function PhotographeClientView() {
               )}
             </div>
           )}
-          
+
+          {/* Forfaits */}
           {activeTab === 'forfaits' && (
             <div className="space-y-4">
               {packages.length === 0 ? (
@@ -605,6 +593,7 @@ export default function PhotographeClientView() {
               )}
             </div>
           )}
+
           {/* Portfolio */}
           {activeTab === 'portfolio' && (
             <div>

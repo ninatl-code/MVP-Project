@@ -91,7 +91,7 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo & Titre */}
         <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push("/photographe/menu")}>
-          <img src="/ServiDaba-logo.png" alt="ServiDaba" width={120} height={40} style={{ objectFit: 'contain' }} />
+          <img src="/Bricool-logo.png" alt="Bricool" width={120} height={40} style={{ objectFit: 'contain' }} />
           <span className="ml-4 text-base hidden sm:block" style={{color: 'var(--foreground)', opacity: 0.6}}>Espace artiste</span>
         </div>
         {/* Actions */}
@@ -138,7 +138,7 @@ export default function Header() {
           </IconButton>
           <NotificationsPopup router={router} userId={user?.id} />
           <div className="relative">
-            <IconButton onClick={() => router.push("/shared/messages")}
+            <IconButton onClick={() => router.push("/messages")}
               className="bg-slate-700 hover:bg-slate-800 text-white"
               tooltip="Messages">
               <MessageCircle className="w-5 h-5" />

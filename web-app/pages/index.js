@@ -5,7 +5,7 @@ import { useCameraSplashNavigation } from '../components/CameraSplash';
 
 import Headerhomepage from '../components/Headerhomepage';
 
-// Couleurs Shooty
+// Couleurs Bricool
 const COLORS = {
   primary: '#E8EAF6',
   secondary: '#5C6BC0',
@@ -370,11 +370,11 @@ export default function Homepage() {
                 Vous avez des questions ? N'hésitez pas à nous contacter.
               </p>
               <a
-                href="mailto:contact@shooty.fr"
+                href="mailto:contact@bricool.fr"
                 className="font-semibold hover:underline"
                 style={{color: COLORS.secondary}}
               >
-                contact@shooty.fr
+                contact@bricool.fr
               </a>
             </div>
             <div className="w-full md:w-1/3">
@@ -400,7 +400,7 @@ export default function Homepage() {
           </div>
           <div className="mt-8 border-t border-neutral-700 pt-4 text-center">
             <p className="text-sm text-neutral-300">
-              &copy; 2023 Wedoria. Tous droits réservés.
+              &copy; 2026 Bricool. Tous droits réservés.
             </p>
           </div>
         </div>

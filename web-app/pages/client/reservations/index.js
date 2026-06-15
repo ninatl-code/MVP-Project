@@ -244,7 +244,7 @@ export default function MesReservationsPage() {
                         key={reservation.id}
                         reservation={reservation}
                         onClick={() => router.push(`/client/reservations/${reservation.id}`)}
-                        onMessage={() => router.push(`/shared/messages?prestataire=${reservation.prestataire_id}`)}
+                        onMessage={() => router.push(`/messages?prestataire=${reservation.prestataire_id}`)}
                         onViewDemande={reservation.demande_id ? () => router.push(`/client/demandes/${reservation.demande_id}`) : null}
                       />
                     ))}

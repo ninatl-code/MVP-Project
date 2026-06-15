@@ -9,9 +9,10 @@ import * as packageService from '../../lib/packageService';
 
 import { 
   Package, Plus, Edit, Trash2, Clock, Briefcase, Euro,
-  Check, X, Eye, EyeOff, GripVertical, Star, ArrowLeft
+  Check, X, Eye, EyeOff, GripVertical, Star, ArrowLeft, ChevronLeft, FileText
 } from 'lucide-react';
 
+const ACCENT = '#130183';
 
 export default function PackagesPage() {
   const router = useRouter();
@@ -106,142 +107,143 @@ export default function PackagesPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Retour au profil */}
-        <button
-          onClick={() => router.push('/photographe/profil')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour au profil
-        </button>
 
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mes forfaits</h1>
-            <p className="text-gray-600 mt-1">
-              {packages.length} forfait(s) • {packages.filter(p => p.actif).length} actif(s)
-            </p>
-          </div>
-          
-          <button
-            onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Nouveau forfait
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          </div>
-        ) : packages.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-            <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-lg font-medium text-gray-900 mb-2">
-              Aucun forfait créé
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Créez des forfaits pour présenter vos offres aux clients
-            </p>
+        {/* Page header */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                    <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                      <ChevronLeft className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <div>
+                      <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-indigo-600" />
+                        Mes Forfaits
+                      </h1>
+                      <p className="text-xs text-gray-500">{packages.length} forfait(s) • {packages.filter(p => p.actif).length} actif(s)</p>
+                    </div>
+            </div>
             <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
-            >
-              <Plus className="w-5 h-5" />
-              Créer mon premier forfait
+                    onClick={() => setShowForm(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: ACCENT }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nouveau forfait
             </button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {packages.map((pkg, index) => (
-              <div
-                key={pkg.id}
-                className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all ${
-                  !pkg.actif ? 'opacity-60' : ''
-                }`}
+              </div>
+          
+        <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : packages.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-16 text-center">
+              <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h2 className="text-lg font-medium text-gray-900 mb-2">
+                Aucun forfait créé
+              </h2>
+              <p className="text-gray-500 mb-6">
+                Créez des forfaits pour présenter vos offres aux clients
+              </p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
               >
-                <div className="flex items-start gap-4">
-                  {/* Drag handle (visual only for now) */}
-                  <div className="pt-1 text-gray-300 cursor-grab">
-                    <GripVertical className="w-5 h-5" />
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-lg font-semibold text-gray-900">{pkg.titre}</h2>
-                      {!pkg.actif && (
-                        <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
-                          Inactif
-                        </span>
-                      )}
+                <Plus className="w-5 h-5" />
+                Créer mon premier forfait
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {packages.map((pkg, index) => (
+                <div
+                  key={pkg.id}
+                  className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all ${
+                    !pkg.actif ? 'opacity-60' : ''
+                  }`}
+                >
+                  <div className="p-4 flex items-center gap-4">
+                    {/* Drag handle (visual only for now) */}
+                    <div className="hidden sm:flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 flex-shrink-0">
+                      <GripVertical className="w-5 h-5  text-indigo-500" />
                     </div>
 
-                    <p className="text-gray-600 text-sm mb-4">{pkg.description}</p>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h2 className="text-lg font-semibold text-gray-900">{pkg.titre}</h2>
+                        {!pkg.actif && (
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
+                            Inactif
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {pkg.duree_minutes ? `${Math.round(pkg.duree_minutes / 60)}h` : '—'}
-                      </span>
-                      {pkg.services_inclus > 0 && (
+                      <p className="text-gray-600 text-sm mb-4">{pkg.description}</p>
+
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                         <span className="flex items-center gap-1">
-                          <Briefcase className="w-4 h-4" />
-                          {pkg.services_inclus} livrables
+                          <Clock className="w-4 h-4" />
+                          {pkg.duree_minutes ? `${Math.round(pkg.duree_minutes / 60)}h` : '—'}
                         </span>
-                      )}
-                      {pkg.categorie && (
-                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-xs">
-                          {pkg.categorie}
-                        </span>
+                        {pkg.services_inclus > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="w-4 h-4" />
+                            {pkg.services_inclus} livrables
+                          </span>
+                        )}
+                        {pkg.categorie && (
+                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-xs">
+                            {pkg.categorie}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Price */}
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-indigo-600">{pkg.prix_fixe} DH</p>
+                      {pkg.prix_barre && (
+                        <p className="text-sm text-gray-400 line-through">{pkg.prix_barre} DH</p>
                       )}
                     </div>
-                  </div>
 
-                  {/* Price */}
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-indigo-600">{pkg.prix_fixe} DH</p>
-                    {pkg.prix_barre && (
-                      <p className="text-sm text-gray-400 line-through">{pkg.prix_barre} DH</p>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleToggleActive(pkg.id, pkg.actif)}
-                      className={`p-2 rounded-lg transition-all ${
-                        pkg.actif 
-                          ? 'text-green-600 hover:bg-green-50'
-                          : 'text-gray-400 hover:bg-gray-100'
-                      }`}
-                      title={pkg.actif ? 'Désactiver' : 'Activer'}
-                    >
-                      {pkg.actif ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-                    </button>
-                    <button
-                      onClick={() => handleEdit(pkg)}
-                      className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                    >
-                      <Edit className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(pkg.id)}
-                      disabled={deleting === pkg.id}
-                      className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleActive(pkg.id, pkg.actif)}
+                        className={`p-2 rounded-lg transition-all ${
+                          pkg.actif 
+                            ? 'text-green-600 hover:bg-green-50'
+                            : 'text-gray-400 hover:bg-gray-100'
+                        }`}
+                        title={pkg.actif ? 'Désactiver' : 'Activer'}
+                      >
+                        {pkg.actif ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                      </button>
+                      <button
+                        onClick={() => handleEdit(pkg)}
+                        className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(pkg.id)}
+                        disabled={deleting === pkg.id}
+                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+              ))}
+            </div>
+          )}
+        </div>
 
       {/* Form Modal */}
       {showForm && (

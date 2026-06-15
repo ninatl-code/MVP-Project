@@ -153,6 +153,21 @@ export default function Factures() {
 
   const formatDate = (s) => s ? new Date(s).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
+  const StatsCard = ({ title, value, icon, color }) => (
+    <div style={{
+      background: '#fff',
+      border: '1px solid #e5e7eb',
+      borderRadius: 12,
+      padding: 20,
+      textAlign: 'center',
+      flex: 1
+    }}>
+      <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: color, marginBottom: 4 }}>{value}</div>
+      <div style={{ fontSize: 12, color: '#666' }}>{title}</div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -169,7 +184,7 @@ export default function Factures() {
       <Header />
 
       {/* Page header */}
-      <div className="bg-white border-b sticky top-0 z-10 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -194,33 +209,45 @@ export default function Factures() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { icon: <FileText className="w-4 h-4" />, value: stats.total, label: 'Factures', color: 'text-indigo-600', border: 'border-indigo-100' },
-            { icon: <Euro className="w-4 h-4" />, value: `${stats.totalAmount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} MAD`, label: 'CA total', color: 'text-emerald-600', border: 'border-emerald-100' },
-            { icon: <Calendar className="w-4 h-4" />, value: stats.thisMonth, label: 'Ce mois', color: 'text-blue-600', border: 'border-blue-100' },
-            { icon: <Users className="w-4 h-4" />, value: stats.clients, label: 'Clients', color: 'text-violet-600', border: 'border-violet-100' },
-          ].map((s, i) => (
-            <div key={i} className={`bg-white rounded-2xl p-4 border-2 ${s.border} flex flex-col gap-1`}>
-              <span className={`${s.color} mb-1`}>{s.icon}</span>
-              <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{s.label}</p>
-            </div>
-          ))}
+        {/* Statistiques */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"> 
+          <StatsCard 
+            title="Factures" 
+            value={stats.total}
+            icon="💳"
+            color="#333"
+          />
+          <StatsCard 
+            title="CA total" 
+            value={`${stats.totalAmount.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} MAD`}
+            icon="💶"
+            color="#856404"
+          />
+          <StatsCard 
+            title="Reservations ce mois" 
+            value={stats.thisMonth}
+            icon="📅"
+            color="#155724"
+          />
+          <StatsCard 
+            title="Clients" 
+            value={stats.clients}
+            icon="👥"
+            color="#155724"
+          />
         </div>
 
         {/* Search */}
-        <div className="relative">
+        <div className="relative bg-white rounded-2xl border border-gray-100 shadow-sm">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Rechercher par numéro, client ou prestation…"
+            placeholder="Rechercher une facture par client ou prestation…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-10 py-3 text-sm bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none transition"
+            className="w-full pl-11 pr-10 py-3 text-sm rounded-2xl focus:outline-none"
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -250,61 +277,62 @@ export default function Factures() {
               </button>
             )}
           </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredInvoices.map((inv) => (
-              <div key={inv.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all group">
-                <div className="p-4 flex items-center gap-4">
-                  {/* Left accent */}
-                  <div className="hidden sm:flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 flex-shrink-0">
-                    <FileText className="w-5 h-5 text-indigo-500" />
-                  </div>
+          ) : (
+          <div className="space-y-3">
+                    {filteredInvoices.map((inv) => (
+                      <div key={inv.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all group">
+                        <div className="p-4 flex items-center gap-4">
+                          {/* Left accent */}
+                          <div className="hidden sm:flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 flex-shrink-0">
+                            <FileText className="w-5 h-5 text-indigo-500" />
+                          </div>
 
-                  {/* Main info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                      <span className="font-semibold text-gray-900">{inv.num_facture || `#${inv.id.slice(0, 8)}`}</span>
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-                        <CheckCircle className="w-3 h-3" /> Émise
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 truncate">{inv.reservation?.client?.nom || <span className="text-gray-400 italic">Client inconnu</span>}</p>
-                    <p className="text-xs text-gray-400 truncate">{inv.reservation?.titre || 'Prestation libre'} · {formatDate(inv.created_at)}</p>
-                  </div>
+                          {/* Main info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                              <span className="font-semibold text-gray-900">{inv.num_facture || `#${inv.id.slice(0, 8)}`}</span>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                <CheckCircle className="w-3 h-3" /> Émise
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 truncate">{inv.reservation?.client?.nom || <span className="text-gray-400 italic">Client inconnu</span>}</p>
+                            <p className="text-xs text-gray-400 truncate">{inv.reservation?.titre || 'Prestation libre'} · {formatDate(inv.created_at)}</p>
+                          </div>
 
-                  {/* Amount */}
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xl font-extrabold text-gray-900">
-                      {(parseFloat(inv.montant_ttc) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-gray-400 font-medium">MAD TTC</p>
-                  </div>
+                          {/* Amount */}
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xl font-extrabold text-gray-900">
+                              {(parseFloat(inv.montant_ttc) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-xs text-gray-400 font-medium">MAD TTC</p>
+                          </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => { setSelectedInvoice(inv); setShowPreview(true); }}
-                      className="p-2 hover:bg-indigo-50 rounded-lg transition-colors text-gray-400 hover:text-indigo-600"
-                      title="Aperçu"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => window.print()} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600" title="Imprimer">
-                      <Printer className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {/* Always-visible eye on mobile */}
-                  <button
-                    onClick={() => { setSelectedInvoice(inv); setShowPreview(true); }}
-                    className="sm:hidden p-2 hover:bg-indigo-50 rounded-lg transition-colors text-indigo-500"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => { setSelectedInvoice(inv); setShowPreview(true); }}
+                              className="p-2 hover:bg-indigo-50 rounded-lg transition-colors text-gray-400 hover:text-indigo-600"
+                              title="Aperçu"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => window.print()} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600" title="Imprimer">
+                              <Printer className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {/* Always-visible eye on mobile */}
+                          <button
+                            onClick={() => { setSelectedInvoice(inv); setShowPreview(true); }}
+                            className="sm:hidden p-2 hover:bg-indigo-50 rounded-lg transition-colors text-indigo-500"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
           </div>
         )}
+          
 
         {/* Footer total */}
         {filteredInvoices.length > 1 && (

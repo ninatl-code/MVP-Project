@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { onNewDemande } from '../../../lib/matchingService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
+import * as demandeService from '../../../lib/demandeService';
 
 import { 
   Plus, Search, Filter, Calendar, MapPin, 
@@ -58,7 +59,7 @@ export default function MesDemandesPage() {
   const fetchDemandes = async () => {
     setLoading(true);
     try {
-      const { data, error } = await getClientDemandes(resolvedId);
+      const { data, error } = await demandeService.getClientDemandes(resolvedId);
 
       if (error) throw error;
       setDemandes(data || []);

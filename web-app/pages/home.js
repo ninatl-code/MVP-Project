@@ -5,7 +5,7 @@ import { useCameraSplashNavigation } from '../components/CameraSplash';
 
 import Headerhomepage from '../components/Headerhomepage';
 
-// Couleurs Shooty
+// Couleurs Bricool
 const COLORS = {
   primary: '#E8EAF6',
   secondary: '#5C6BC0',
@@ -174,7 +174,7 @@ export default function Homepage() {
             className="text-4xl md:text-5xl font-extrabold max-w-2xl mx-auto"
             style={{color: COLORS.text}}
           >
-            Réservez votre prestataire idéal en quelques clics
+            Créez une demande et obtenez un devis de prestataires qualifiés en quelques minutes
           </h1>
           <p 
             initial={{ opacity: 0, y: 20 }} 
@@ -182,7 +182,7 @@ export default function Homepage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-6 text-lg text-gray-600 max-w-xl mx-auto"
           >
-            Trouvez des prestataires compétents, découvrez leurs portfolios, comparez les tarifs et réservez votre prestation facilement.
+            Publiez votre besoin en quelques secondes et recevez des devis de prestataires disponibles près de chez vous. Comparez, échangez et choisissez le bon profil sans perdre de temps.
           </p>
           <div className="mt-10 flex space-x-4 justify-center">
             <button
@@ -325,9 +325,9 @@ export default function Homepage() {
               </p>
             </div>
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
-              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Les paiements sont-ils sécurisés ?</h2>
+              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : En tant que prestataire, puis-je changer de plan ?</h2>
               <p className="text-neutral-600">
-                R : Oui, tous les paiements sont traités de manière sécurisée via notre partenaire de paiement.
+                R : Oui, vous pouvez upgrader ou downgrade à tout moment.
               </p>
             </div>
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
@@ -370,11 +370,11 @@ export default function Homepage() {
                 Vous avez des questions ? N'hésitez pas à nous contacter.
               </p>
               <a
-                href="mailto:contact@shooty.fr"
+                href="mailto:contact@bricool.fr"
                 className="font-semibold hover:underline"
                 style={{color: COLORS.secondary}}
               >
-                contact@shooty.fr
+                contact@bricool.fr
               </a>
             </div>
             <div className="w-full md:w-1/3">
@@ -400,7 +400,7 @@ export default function Homepage() {
           </div>
           <div className="mt-8 border-t border-neutral-700 pt-4 text-center">
             <p className="text-sm text-neutral-300">
-              &copy; 2023 Wedoria. Tous droits réservés.
+              &copy; 2026 Bricool. Tous droits réservés.
             </p>
           </div>
         </div>

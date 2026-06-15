@@ -49,7 +49,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 
-// Palette Shooty
+// Palette BriCool
 const COLORS = {
   primary: '#E8EAF6',     
   secondary: '#5C6BC0',    
@@ -73,7 +73,7 @@ function CardContent({ className = "", children }) {
   return <div className={`p-6 ${className}`}>{children}</div>;
 }
 
-// Composant Button moderne avec couleurs Shooty
+// Composant Button moderne avec couleurs BriCool
 function Button({ className = "", children, variant = "primary", size = "md", ...props }) {
   const baseStyles = "font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center gap-2";
   
@@ -493,7 +493,7 @@ function StartupChecklist({ userId, onHide }) {
           style={{ color: COLORS.text }}
         >
           <span className="text-2xl">🚀</span>
-          Lancez votre activité Shooty
+          Lancez votre activité BriCool
         </h2>
         <p 
           className="text-sm mb-4"
@@ -1173,18 +1173,18 @@ export default function ProviderHomeMenu() {
       iconBg: '#820615'
     },
     {
-      title: "Mes annonces",
-      desc: "Créer et gérer vos annonces",
+      title: "Mon tableau de bord",
+      desc: "Gérer vos KPIs",
       icon: Images,
-      onClick: () => navigateWithSplash("/photographe/packages", "Chargement de vos annonces..."),
+      onClick: () => navigateWithSplash("/photographe/kpi/kpis", "Chargement de vos KPIs..."),
       gradient: `linear-gradient(135deg,#130183)`, // Secondary gradient
       iconBg: '#820615'
     },
     {
-      title: "Planning",
-      desc: "Visualiser votre calendrier",
+      title: "Avis Client",
+      desc: "Gérer votre réputation ",
       icon: ClipboardList,
-      onClick: () => navigateWithSplash("/photographe/calendar/calendrier", "Chargement du planning..."),
+      onClick: () => navigateWithSplash("/photographe/avis-dashboard", "Chargement des avis..."),
       gradient: COLORS.accent, // Primary to Accent
       iconBg: COLORS.accent
     },
@@ -1224,7 +1224,7 @@ export default function ProviderHomeMenu() {
                   className="text-lg"
                   style={{ color: COLORS.text + 'CC' }}
                 >
-                  Voici votre tableau de bord professionnel Shooty.
+                  Voici votre tableau de bord professionnel BriCool.
                 </p>
               </div>
             </div>
@@ -1338,31 +1338,6 @@ export default function ProviderHomeMenu() {
           {/* Statistiques principales - non cliquables */}
           <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             
-            {/* Réservations - non cliquable */}
-            <Card>
-              <CardContent className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div 
-                      className="p-2 rounded-xl"
-                      style={{ backgroundColor: '#FFFFFF' + '20' }}
-                    >
-                      <Calendar className="w-5 h-5" style={{ color: '#A10505' }} />
-                    </div>
-                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                      Réservations
-                    </p>
-                  </div>
-                  <p className="text-3xl font-bold mb-1" style={{ color: '#A10505' }}>
-                    {totalReservations}
-                  </p>
-                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
-                    En attente : <span className="font-semibold text-amber-500">{nbPending}</span>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Devis envoyés - non cliquable */}
             <Card>
               <CardContent className="flex items-center justify-between">
@@ -1372,13 +1347,13 @@ export default function ProviderHomeMenu() {
                       className="p-2 rounded-xl"
                       style={{ backgroundColor: '#FFFFFF' + '40' }}
                     >
-                      <FileText className="w-5 h-5" style={{ color: '#1B15B3' }} />
+                      <FileText className="w-5 h-5" style={{ color: '#4F46E5' }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
                       Devis envoyés
                     </p>
                   </div>
-                  <p className="text-3xl font-bold mb-1" style={{ color: '#1B15B3' }}>
+                  <p className="text-3xl font-bold mb-1" style={{ color: '#4F46E5' }}>
                     {nbDevisTotal}
                   </p>
                   <p className="text-xs" style={{ color: COLORS.text + '80' }}>
@@ -1388,7 +1363,32 @@ export default function ProviderHomeMenu() {
                 </div>
               </CardContent>
             </Card>
-          
+            
+            {/* Réservations - non cliquable */}
+            <Card>
+              <CardContent className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2 rounded-xl"
+                      style={{ backgroundColor: '#FFFFFF' + '20' }}
+                    >
+                      <Calendar className="w-5 h-5" style={{ color: '#059669' }} />
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
+                      Réservations
+                    </p>
+                  </div>
+                  <p className="text-3xl font-bold mb-1" style={{ color: '#059669' }}>
+                    {totalReservations}
+                  </p>
+                  <p className="text-xs" style={{ color: COLORS.text + '80' }}>
+                    En attente : <span className="font-semibold text-amber-500">{nbPending}</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
 
           {/* Chiffre d'affaires - seul, non cliquable */}
             <Card>
@@ -1399,13 +1399,13 @@ export default function ProviderHomeMenu() {
                       className="p-2 rounded-xl"
                       style={{ backgroundColor: '#10B98120' + '40' }}
                     >
-                      <BarChart3 className="w-5 h-5" style={{ color: '#10B981' }} />
+                      <BarChart3 className="w-5 h-5" style={{ color: '#9E2B15' }} />
                     </div>
                   <p className="text-sm font-medium" style={{ color: COLORS.text + 'CC' }}>
-                    Chiffre d'affaires total
+                    Chiffre d'affaires
                   </p>
                   </div>
-                  <p className="text-4xl font-bold" style={{ color: '#10B981' }}>
+                  <p className="text-4xl font-bold" style={{ color: '#9E2B15' }}>
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD' }).format(chiffreAffaires)}
                   </p>
                   <p className="text-xs mt-1" style={{ color: COLORS.text + '80' }}>
@@ -1425,26 +1425,7 @@ export default function ProviderHomeMenu() {
               Gestion
             </h2>
             <Card className="overflow-hidden">
-              {/* Demandes clients */}
-              <div 
-                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
-                style={{ borderColor: '#EBEBEB' }}
-                onClick={() => router.push("/photographe/demandes")}
-              >
-                <div className="p-3 rounded-xl" style={{ backgroundColor: '#EDE9FE' }}>
-                  <ClipboardList className="w-6 h-6" style={{ color: '#7C3AED' }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Demandes clients</h4>
-                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Répondre aux demandes ouvertes</p>
-                </div>
-                {demandesVues > 0 && (
-                  <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full mr-2">{demandesVues}</span>
-                )}
-                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
-              </div>
-
-              {/* Devis */}
+             {/* Devis */}
               <div
                 className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
                 style={{ borderColor: '#EBEBEB' }}
@@ -1485,6 +1466,22 @@ export default function ProviderHomeMenu() {
                 )}
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
+              
+              {/* KPIs */}
+              <div
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => navigateWithSplash("/photographe/kpi/kpis", "Chargement de votre tableau de bord...")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#FFF2F0' }}>
+                  <TrendingUp className="w-6 h-6" style={{ color: '#9E2B15' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Mon tableau de bord</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Gérer mes KPIs</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
 
               {/* Avis clients */}
               <div 
@@ -1500,7 +1497,10 @@ export default function ProviderHomeMenu() {
                 </div>
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
+
+              
             </Card>
+            
           </section>
 
           {/* Section Finances (aligné sur mobile) */}
@@ -1544,20 +1544,7 @@ export default function ProviderHomeMenu() {
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
 
-              {/* Remboursements */}
-              <div 
-                className="flex items-center gap-4 p-5 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => router.push("/photographe/remboursements")}
-              >
-                <div className="p-3 rounded-xl" style={{ backgroundColor: '#EDE9FE' }}>
-                  <Wallet className="w-6 h-6" style={{ color: '#8B5CF6' }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Remboursements</h4>
-                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Historique des paiements</p>
-                </div>
-                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
-              </div>
+
             </Card>
           </section>
 

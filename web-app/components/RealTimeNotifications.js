@@ -19,7 +19,9 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
     try {
       const now = new Date()
 
-      const { data: reservations, error } = await reservationService.getPhotographerReservations(photographeId, 'confirmed')
+      const { data: reservations, error } = await supabase
+            .from('reservations')
+            .select('*')
       if (error || !reservations) return
 
       const expiredIds = []

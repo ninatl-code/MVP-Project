@@ -27,8 +27,10 @@ const STATUS_CONFIG = {
 };
 
 export default function PhotographerReservationsPage() {
+  console.log("🔁 PAGE RESERVATIONS RENDER");
   const router = useRouter();
   const { photographeProfile } = useAuth();
+  console.log("👤 photographeProfile id:", photographeProfile?.id);
 
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,6 @@ export default function PhotographerReservationsPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [acceptedReservation, setAcceptedReservation] = useState(null);
   const [invoiceData, setInvoiceData] = useState({
-    num_facture: '',
     taux_tva: 0,
     montant_ht: 0,
     montant_tva: 0,
@@ -56,10 +57,12 @@ export default function PhotographerReservationsPage() {
      FETCH SAFE
   ========================= */
   const fetchReservations = async () => {
-    if (!photographeProfile?.id) return;
-
-    setLoading(true);
-
+    console.log("📡 fetchReservations START");
+    if (!photographeProfile?.id) {
+      setLoading(true);
+      return;
+    }
+    
     try {
       let query = supabase
         .from('reservations')
@@ -88,6 +91,7 @@ export default function PhotographerReservationsPage() {
       }
 
       const { data, error } = await query;
+      console.log("📦 SUPABASE RESULT", { data, error });
 
       if (error) throw error;
 
@@ -95,13 +99,20 @@ export default function PhotographerReservationsPage() {
     } catch (err) {
       console.error(err);
     } finally {
+      console.log("🏁 fetchReservations END");
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchReservations();
-  }, [photographeProfile?.id, filter, timeFilter]);
+  console.log("⚡ useEffect triggered", {
+    id: photographeProfile?.id,
+    filter,
+    timeFilter
+  });
+
+  fetchReservations();
+}, [photographeProfile?.id, filter, timeFilter]);
 
   /* =========================
      SEARCH FILTER SAFE
@@ -171,7 +182,6 @@ export default function PhotographerReservationsPage() {
       
       const montant = parseFloat(pendingReservation.montant_total) || 0;
       setInvoiceData({
-        num_facture: `FAC-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
         taux_tva: 0,
         montant_ht: montant,
         montant_tva: 0,
@@ -210,7 +220,7 @@ export default function PhotographerReservationsPage() {
 
   const handleRequestInfo = (r) => {
     if (!r?.client?.id) return;
-    router.push(`/shared/messages?client=${r.client.id}&reservation=${r.id}`);
+    router.push(`/messages?client=${r.client.id}&reservation=${r.id}`);
   };
 
   const updateLigne = (i, field, val) => {
@@ -252,7 +262,6 @@ export default function PhotographerReservationsPage() {
       await supabase.from('factures').insert({
         reservation_id: acceptedReservation.id,
         prestataire_id: photographeProfile?.id,
-        num_facture: invoiceData.num_facture,
         montant_ht: parseFloat(invoiceData.montant_ht) || 0,
         montant_tva: parseFloat(invoiceData.montant_tva) || 0,
         montant_ttc: parseFloat(invoiceData.montant_ttc) || 0,
@@ -369,6 +378,7 @@ export default function PhotographerReservationsPage() {
                       <ReservationCard
                         key={r.id}
                         reservation={r}
+
                         onClick={() => router.push(`/photographe/reservations/${r.id}`)}
                         onConfirm={() => openAcceptModal(r)}
                         onRefuse={() => openRefuseModal(r)}
@@ -416,11 +426,6 @@ export default function PhotographerReservationsPage() {
             </div>
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">N° Facture</label>
-                  <input value={invoiceData.num_facture} onChange={e => setInvoiceData(prev => ({ ...prev, num_facture: e.target.value }))}
-                    className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-                </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Client</label>
                   <p className="mt-1 px-3 py-2 bg-gray-50 rounded-xl text-sm text-gray-700 truncate">
