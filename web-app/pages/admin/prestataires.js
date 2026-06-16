@@ -2,17 +2,21 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
-import * as photographerService from  '../../../lib/photographerService';
+import * as photographerService from  '../../lib/photographerService';
+import { approuverPrestataire, refuserPrestataire, suspendreutilisateur, reactiverUtilisateur } from '../../lib/moderationService';
 import {
   CheckCircle, XCircle, Eye, Search,
   ChevronLeft, ChevronRight, User, FileText,
-  MapPin, Phone, Mail, AlertTriangle, X, Download
+  MapPin, Phone, Mail, AlertTriangle, X, Download, ShieldOff, ShieldCheck
 } from 'lucide-react';
 
 const STATUT = {
   en_attente: { label: 'En attente',  cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  approved:   { label: 'Approuvé',    cls: 'bg-green-100  text-green-800  border-green-200' },
   valide:     { label: 'Validé',      cls: 'bg-green-100  text-green-800  border-green-200' },
+  rejected:   { label: 'Refusé',      cls: 'bg-red-100    text-red-800    border-red-200' },
   refuse:     { label: 'Refusé',      cls: 'bg-red-100    text-red-800    border-red-200' },
+  suspended:  { label: 'Suspendu',    cls: 'bg-gray-100   text-gray-700   border-gray-200' },
   suspendu:   { label: 'Suspendu',    cls: 'bg-gray-100   text-gray-700   border-gray-200' },
 };
 
@@ -37,6 +41,7 @@ export default function AdminPrestataires() {
   const [selected, setSelected]           = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [motifRefus, setMotifRefus]       = useState('');
+  const [motifSuspension, setMotifSuspension] = useState('');
   const [previewDoc, setPreviewDoc]       = useState(null);
 
   const fetchRows = async () => {
@@ -70,14 +75,37 @@ export default function AdminPrestataires() {
 
   useEffect(() => { if (isAdmin) fetchRows(); }, [isAdmin, page, filterStatut, search]);
 
-  const handleValidation = async (id, statut) => {
+  const handleApprouver = async () => {
     setActionLoading(true);
-    const updates = { statut_validation: statut };
-    if (statut === 'refuse' && motifRefus) updates.motif_refus = motifRefus;
-    await photographerService.upsertPhotographerProfile(id, updates);
+    try { await approuverPrestataire(selected.id); } catch (e) { console.error(e); }
+    setActionLoading(false);
+    setSelected(null);
+    fetchRows();
+  };
+
+  const handleRefuser = async () => {
+    setActionLoading(true);
+    try { await refuserPrestataire(selected.id, motifRefus); } catch (e) { console.error(e); }
     setActionLoading(false);
     setSelected(null);
     setMotifRefus('');
+    fetchRows();
+  };
+
+  const handleSuspendre = async () => {
+    setActionLoading(true);
+    try { await suspendreutilisateur(selected.id, motifSuspension, 'photographe'); } catch (e) { console.error(e); }
+    setActionLoading(false);
+    setSelected(null);
+    setMotifSuspension('');
+    fetchRows();
+  };
+
+  const handleReactiver = async () => {
+    setActionLoading(true);
+    try { await reactiverUtilisateur(selected.id, 'photographe', 'approved'); } catch (e) { console.error(e); }
+    setActionLoading(false);
+    setSelected(null);
     fetchRows();
   };
 
@@ -393,20 +421,31 @@ export default function AdminPrestataires() {
             </div>
 
             {/* Actions */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 space-y-2">
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 space-y-3">
+              {/* Motif refus */}
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Motif (refus / suspension)</p>
+                <textarea
+                  value={motifRefus}
+                  onChange={e => setMotifRefus(e.target.value)}
+                  rows={2}
+                  placeholder="Ex: Pièces manquantes, profil incomplet..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
               <div className="flex gap-2">
-                {selected.statut_validation !== 'valide' && (
+                {selected.statut_validation !== 'approved' && (
                   <button
-                    onClick={() => handleValidation(selected.id, 'valide')}
+                    onClick={handleApprouver}
                     disabled={actionLoading}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
                   >
                     <CheckCircle className="w-4 h-4" /> Approuver
                   </button>
                 )}
-                {selected.statut_validation !== 'refuse' && (
+                {selected.statut_validation !== 'rejected' && (
                   <button
-                    onClick={() => handleValidation(selected.id, 'refuse')}
+                    onClick={handleRefuser}
                     disabled={actionLoading}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
                   >
@@ -414,13 +453,21 @@ export default function AdminPrestataires() {
                   </button>
                 )}
               </div>
-              {selected.statut_validation !== 'suspendu' && (
+              {selected.statut_validation === 'suspended' ? (
                 <button
-                  onClick={() => handleValidation(selected.id, 'suspendu')}
+                  onClick={handleReactiver}
                   disabled={actionLoading}
-                  className="w-full px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50 transition-colors"
                 >
-                  <AlertTriangle className="inline w-3.5 h-3.5 mr-1.5" />Suspendre le compte
+                  <ShieldCheck className="w-4 h-4" /> Réactiver le compte
+                </button>
+              ) : (
+                <button
+                  onClick={handleSuspendre}
+                  disabled={actionLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  <ShieldOff className="w-4 h-4" /> Suspendre le compte
                 </button>
               )}
             </div>

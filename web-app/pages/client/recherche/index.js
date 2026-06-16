@@ -58,7 +58,7 @@ export default function RecherchePrestatairesPage() {
       const { data, error } = await supabase
         .from('profiles')
         .select(`
-          id, nom, prenom, avatar_url, ville,
+          id, nom, prenom, avatar_url, ville, suspendu,
           profil:profils_prestataire!inner(
             bio, nom_entreprise, tarif_horaire_min, note_moyenne, nb_avis,
             specialisations, categories, identite_verifiee, statut_validation,
@@ -66,15 +66,18 @@ export default function RecherchePrestatairesPage() {
           )
         `)
         .eq('role', 'photographe')
+        .eq('suspendu', false)
         .limit(200);
 
       if (error) throw error;
 
-      let results = (data || []).map(p => ({
-        ...p.profil,
-        id: p.id,
-        profile: { id: p.id, nom: p.nom, prenom: p.prenom, avatar_url: p.avatar_url, ville: p.ville },
-      }));
+      let results = (data || [])
+        .filter(p => p.profil?.statut_validation === 'approved')
+        .map(p => ({
+          ...p.profil,
+          id: p.id,
+          profile: { id: p.id, nom: p.nom, prenom: p.prenom, avatar_url: p.avatar_url, ville: p.ville },
+        }));
 
       // Filtres
       if (filters.specialite) {

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
-import { Search, ChevronLeft, ChevronRight, Eye, Star, Trash2, X } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Eye, Star, EyeOff, X } from 'lucide-react';
+import { masquerAvis } from '../../lib/moderationService';
 
 const PAGE_SIZE = 20;
 
@@ -25,13 +26,15 @@ export default function AdminAvis() {
   const [fetching, setFetching] = useState(false);
   const [selected, setSelected] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [motifMasquage, setMotifMasquage] = useState('');
 
   const fetchRows = async () => {
     setFetching(true);
     let query = supabase
       .from('reviews_presta')
       .select(`
-        id, rating, comment, created_at,
+        id, rating, comment, created_at, visible, nonvisibility_reason,
+        client_id, prestataire_id,
         client:profiles!reviews_presta_client_id_fkey(nom, email),
         prestataire:profiles!reviews_presta_prestataire_id_fkey(nom, email)
       `, { count: 'exact' })
@@ -57,10 +60,22 @@ export default function AdminAvis() {
 
   useEffect(() => { if (isAdmin) fetchRows(); }, [isAdmin, page, search]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer définitivement cet avis ?')) return;
+  const handleMasquer = async () => {
+    if (!selected) return;
     setActionLoading(true);
-    await supabase.from('reviews_presta').delete().eq('id', id);
+    try {
+      await masquerAvis(selected.id, selected.client_id, selected.prestataire_id, motifMasquage);
+    } catch(e) { console.error(e); }
+    setActionLoading(false);
+    setMotifMasquage('');
+    setSelected(null);
+    fetchRows();
+  };
+
+  const handleRendreVisible = async () => {
+    if (!selected) return;
+    setActionLoading(true);
+    await supabase.from('reviews_presta').update({ visible: true, nonvisibility_reason: null }).eq('id', selected.id);
     setActionLoading(false);
     setSelected(null);
     fetchRows();
@@ -127,12 +142,15 @@ export default function AdminAvis() {
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => setSelected(row)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> Gérer
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {row.visible === false && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Masqué</span>}
+                      <button
+                        onClick={() => setSelected(row)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Gérer
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -197,14 +215,32 @@ export default function AdminAvis() {
             </div>
 
             {/* Actions */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4">
-              <button
-                onClick={() => handleDelete(selected.id)}
-                disabled={actionLoading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl font-medium text-sm hover:bg-red-100 disabled:opacity-50 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" /> Supprimer l'avis définitivement
-              </button>
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 space-y-2">
+              {selected.visible !== false ? (
+                <div className="space-y-2">
+                  <input
+                    value={motifMasquage}
+                    onChange={e => setMotifMasquage(e.target.value)}
+                    placeholder="Raison du masquage..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400"
+                  />
+                  <button
+                    onClick={handleMasquer}
+                    disabled={actionLoading}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl font-medium text-sm hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                  >
+                    <EyeOff className="w-4 h-4" /> Masquer l'avis
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleRendreVisible}
+                  disabled={actionLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-green-300 text-green-700 rounded-xl font-medium text-sm hover:bg-green-50 disabled:opacity-50"
+                >
+                  <Eye className="w-4 h-4" /> Rendre visible
+                </button>
+              )}
             </div>
           </div>
         </div>

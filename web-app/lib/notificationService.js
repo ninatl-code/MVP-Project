@@ -13,16 +13,28 @@ export const NOTIFICATION_TYPES = {
   DEVIS_REFUSE:           'devis_refuse',
   NOUVEL_AVIS:            'nouvel_avis',
   MESSAGE:                'nouveau_message',
+  // Moderation
+  PROFIL_APPROUVE:        'profil_approuve',
+  PROFIL_REFUSE:          'profil_refuse',
+  COMPTE_SUSPENDU:        'compte_suspendu',
+  COMPTE_REACTIVE:        'compte_reactive',
+  DEMANDE_MASQUEE:        'demande_masquee',
+  AVIS_MASQUE:            'avis_masque',
+  AVERTISSEMENT:          'avertissement',
+  SIGNALEMENT_CLOTURE:    'signalement_cloture',
 };
 
 /**
  * Create a notification
+ * Accepts both (titre/contenu) and (title/message) aliases
  */
 export const createNotification = async ({
   userId,
   type,
   titre,
   contenu,
+  title,   // alias
+  message, // alias
   reservationId = null,
   devisId = null,
   demandeId = null,
@@ -34,14 +46,14 @@ export const createNotification = async ({
       .insert({
         user_id: userId,
         type,
-        titre: titre,
-        contenu: contenu,
+        titre: titre || title,
+        contenu: contenu || message,
         lu: false,
         ...(reservationId ? { reservation_id: reservationId } : {}),
         ...(devisId ? { devis_id: devisId } : {}),
         ...(demandeId ? { demande_id: demandeId } : {}),
         ...(prestataireId ? { prestataire_id: prestataireId } : {}),
-        })
+      })
       .select()
       .single();
 

@@ -6,12 +6,13 @@ import * as avisService from '../../../lib/avisService';
 import { getPhotographerPackages } from '../../../lib/packageService';
 import * as photographerService from  '../../../lib/photographerService';
 import * as reservationService from  '../../../lib/reservationService';
+import { creerSignalement } from '../../../lib/moderationService';
 
 import {
   User, MapPin, Star, Phone, Mail, Instagram, Globe,
   Facebook, Linkedin, Briefcase, ArrowLeft,
   CheckCircle, MessageSquare, Shield, Calendar,
-  Clock, Award, Camera, TrendingUp, Image, ChevronRight, Heart
+  Clock, Award, Camera, TrendingUp, Image, ChevronRight, Heart, Flag, X
 } from 'lucide-react';
 
 export default function PhotographeClientView() {
@@ -25,6 +26,11 @@ export default function PhotographeClientView() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [packages, setPackages] = useState([]);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
 
 
@@ -175,6 +181,27 @@ export default function PhotographeClientView() {
     }
   };
 
+  const handleSignaler = async () => {
+    if (!reportReason) return;
+    setReportLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { alert('Vous devez être connecté'); return; }
+      await creerSignalement({
+        reporterId: user.id,
+        targetType: 'user',
+        targetId: id,
+        reason: reportReason,
+        description: reportDescription,
+      });
+      setReportSuccess(true);
+      setReportReason('');
+      setReportDescription('');
+      setTimeout(() => { setShowReportModal(false); setReportSuccess(false); }, 2000);
+    } catch (e) { console.error(e); }
+    setReportLoading(false);
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -294,6 +321,14 @@ export default function PhotographeClientView() {
                       <Heart
                         className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`}
                       />
+                    </button>
+
+                    <button
+                      onClick={() => setShowReportModal(true)}
+                      title="Signaler ce prestataire"
+                      className="flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 bg-white text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
+                    >
+                      <Flag className="w-4.5 h-4.5" />
                     </button>
 
                     <button
@@ -615,6 +650,67 @@ export default function PhotographeClientView() {
           )}
         </div>
       </main>
+
+      {/* Modal signalement */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowReportModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <button onClick={() => setShowReportModal(false)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100">
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+            <div className="flex items-center gap-2 mb-4">
+              <Flag className="w-5 h-5 text-red-500" />
+              <h2 className="font-bold text-gray-900">Signaler ce prestataire</h2>
+            </div>
+
+            {reportSuccess ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <CheckCircle className="w-10 h-10 text-green-500" />
+                <p className="text-green-700 font-medium">Signalement envoyé, merci.</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Raison *</label>
+                    <select
+                      value={reportReason}
+                      onChange={e => setReportReason(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-400"
+                    >
+                      <option value="">Sélectionner une raison</option>
+                      <option value="Comportement inapproprié">Comportement inapproprié</option>
+                      <option value="Contenu trompeur">Contenu trompeur</option>
+                      <option value="Arnaque ou fraude">Arnaque ou fraude</option>
+                      <option value="Spam">Spam</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Description (optionnel)</label>
+                    <textarea
+                      value={reportDescription}
+                      onChange={e => setReportDescription(e.target.value)}
+                      rows={3}
+                      placeholder="Décrivez le problème..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-400 resize-none"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleSignaler}
+                  disabled={!reportReason || reportLoading}
+                  className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  <Flag className="w-4 h-4" />
+                  {reportLoading ? 'Envoi...' : 'Envoyer le signalement'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -598,6 +598,7 @@ export default function DemandesClients() {
         // Exclure les demandes pourvues, fermées, annulées ou expirées
         .filter(d =>
           d.statut === 'ouverte' &&
+          d.actif !== false &&  // exclude hidden/suspended demandes
           (!d.date_souhaitee || normalizeDate(d.date_souhaitee) >= today)
         );
 

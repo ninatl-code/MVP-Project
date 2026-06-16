@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
-import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Euro, CalendarDays, Tag, Users, Clock, X, XCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Euro, CalendarDays, Tag, Users, Clock, X, XCircle, EyeOff } from 'lucide-react';
+import { masquerDemande } from '../../lib/moderationService';
 
 const PAGE_SIZE = 20;
 
@@ -24,6 +25,7 @@ export default function AdminDemandes() {
   const [selected, setSelected]   = useState(null);
   const [matchings, setMatchings] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [motifMasquage, setMotifMasquage] = useState('');
 
   const fetchRows = async () => {
     setFetching(true);
@@ -69,6 +71,28 @@ export default function AdminDemandes() {
   const closeDemande = async (id) => {
     setActionLoading(true);
     await supabase.from('demandes_client').update({ statut: 'fermee', fermee_at: new Date().toISOString() }).eq('id', id);
+    setActionLoading(false);
+    setSelected(null);
+    fetchRows();
+  };
+
+  const handleMasquer = async () => {
+    if (!selected) return;
+    setActionLoading(true);
+    try {
+      const clientId = selected.profiles?.id || selected.client_id;
+      await masquerDemande(selected.id, clientId, motifMasquage);
+    } catch(e) { console.error(e); }
+    setActionLoading(false);
+    setMotifMasquage('');
+    setSelected(null);
+    fetchRows();
+  };
+
+  const handleRendre = async () => {
+    if (!selected) return;
+    setActionLoading(true);
+    await supabase.from('demandes_client').update({ actif: true, suspension_reason: null }).eq('id', selected.id);
     setActionLoading(false);
     setSelected(null);
     fetchRows();
@@ -266,8 +290,8 @@ export default function AdminDemandes() {
             </div>
 
             {/* Actions */}
-            {selected.statut === 'ouverte' && (
-              <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4">
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 space-y-2">
+              {selected.statut === 'ouverte' && (
                 <button
                   onClick={() => closeDemande(selected.id)}
                   disabled={actionLoading}
@@ -275,8 +299,33 @@ export default function AdminDemandes() {
                 >
                   <XCircle className="w-4 h-4" /> Fermer la demande
                 </button>
-              </div>
-            )}
+              )}
+              {selected.actif !== false ? (
+                <div className="space-y-2">
+                  <input
+                    value={motifMasquage}
+                    onChange={e => setMotifMasquage(e.target.value)}
+                    placeholder="Raison du masquage..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400"
+                  />
+                  <button
+                    onClick={handleMasquer}
+                    disabled={actionLoading}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-orange-200 text-orange-700 rounded-xl text-sm hover:bg-orange-50 disabled:opacity-50"
+                  >
+                    <EyeOff className="w-4 h-4" /> Masquer la demande
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleRendre}
+                  disabled={actionLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50"
+                >
+                  <Eye className="w-4 h-4" /> Rendre visible
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

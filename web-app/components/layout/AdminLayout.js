@@ -2,17 +2,18 @@ import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import {
   LayoutDashboard, Users, Briefcase, FileText,
-  Calendar, Star, LogOut, Menu, X, ShieldCheck
+  Calendar, Star, LogOut, Menu, X, ShieldCheck, Flag
 } from 'lucide-react';
 import { useState } from 'react';
 
 const NAV = [
-  { label: 'Dashboard',     href: '/admin',               icon: LayoutDashboard },
-  { label: 'Prestataires',  href: '/admin/prestataires',  icon: Briefcase },
-  { label: 'Clients',       href: '/admin/clients',       icon: Users },
-  { label: 'Demandes',      href: '/admin/demandes',      icon: FileText },
-  { label: 'Réservations',  href: '/admin/reservations',  icon: Calendar },
-  { label: 'Avis',          href: '/admin/avis',          icon: Star },
+  { label: 'Dashboard',      href: '/admin',                icon: LayoutDashboard },
+  { label: 'Prestataires',   href: '/admin/prestataires',   icon: Briefcase },
+  { label: 'Clients',        href: '/admin/clients',        icon: Users },
+  { label: 'Demandes',       href: '/admin/demandes',       icon: FileText },
+  { label: 'Réservations',   href: '/admin/reservations',   icon: Calendar },
+  { label: 'Avis',           href: '/admin/avis',           icon: Star },
+  { label: 'Signalements',   href: '/admin/signalements',   icon: Flag },
 ];
 
 export default function AdminLayout({ children, title }) {
