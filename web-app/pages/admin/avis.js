@@ -4,6 +4,7 @@ import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { Search, ChevronLeft, ChevronRight, Eye, Star, EyeOff, X } from 'lucide-react';
 import { masquerAvis } from '../../lib/moderationService';
+import * as notificationService from '../../lib/notificationService';
 
 const PAGE_SIZE = 20;
 
@@ -66,6 +67,7 @@ export default function AdminAvis() {
     try {
       await masquerAvis(selected.id, selected.client_id, selected.prestataire_id, motifMasquage);
     } catch(e) { console.error(e); }
+    notificationService.notifyAvisMasque(selected.prestataire_id,selected.id, motifMasquage);
     setActionLoading(false);
     setMotifMasquage('');
     setSelected(null);

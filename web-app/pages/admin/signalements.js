@@ -4,7 +4,8 @@ import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { Search, ChevronLeft, ChevronRight, Flag, X, CheckCircle, XCircle } from 'lucide-react';
-import { cloturerSignalement } from '../../lib/moderationService';
+import { cloturerSignalement, avertirUtilisateur } from '../../lib/moderationService';
+import * as notificationService from '../../lib/notificationService';
 
 const PAGE_SIZE = 20;
 
@@ -33,6 +34,24 @@ export default function AdminSignalements() {
   const [actionLoading, setActionLoading] = useState(false);
   const [adminComment, setAdminComment] = useState('');
   const [filterStatus, setFilterStatus] = useState('open');
+  const [avertissementSeverity, setAvertissementSeverity] = useState('warning');
+
+  const resolveTargetUserId = async (targetType, targetId) => {
+    if (targetType === 'user') return targetId;
+    if (targetType === 'message') {
+      const { data } = await supabase.from('messages').select('sender_id').eq('id', targetId).single();
+      return data?.sender_id || null;
+    }
+    if (targetType === 'avis') {
+      const { data } = await supabase.from('reviews_presta').select('client_id').eq('id', targetId).single();
+      return data?.client_id || null;
+    }
+    if (targetType === 'demande') {
+      const { data } = await supabase.from('demandes_client').select('client_id').eq('id', targetId).single();
+      return data?.client_id || null;
+    }
+    return null;
+  };
 
   const fetchRows = async () => {
     setFetching(true);
@@ -62,11 +81,29 @@ export default function AdminSignalements() {
     setActionLoading(true);
     try {
       await cloturerSignalement(selected.id, selected.reporter?.id, adminComment);
+      await notificationService.notifySignalementCloture(selected.reporter?.id, adminComment, selected.id);
     } catch (e) { console.error(e); }
     setActionLoading(false);
     setAdminComment('');
     setSelected(null);
     fetchRows();
+  };
+
+  const handleAvertir = async () => {
+    if (!selected) return;
+    setActionLoading(true);
+    try {
+      const userId = await resolveTargetUserId(selected.target_type, selected.target_id);
+      if (!userId) throw new Error('Utilisateur introuvable pour ce type de cible');
+      await avertirUtilisateur(
+        userId,
+        adminComment || 'Avertissement suite à un signalement',
+        avertissementSeverity,
+        user?.id
+      );
+      notificationService.notifyAvertissement(userId, adminComment, avertissementSeverity);
+    } catch (e) { console.error(e); }
+    setActionLoading(false);
   };
 
   const handleIgnorer = async () => {
@@ -245,15 +282,29 @@ export default function AdminSignalements() {
 
               {/* Zone commentaire admin */}
               {selected.status === 'open' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Commentaire admin (optionnel)</label>
-                  <textarea
-                    value={adminComment}
-                    onChange={e => setAdminComment(e.target.value)}
-                    rows={3}
-                    placeholder="Explication de la décision..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 resize-none"
-                  />
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Commentaire admin (optionnel)</label>
+                    <textarea
+                      value={adminComment}
+                      onChange={e => setAdminComment(e.target.value)}
+                      rows={3}
+                      placeholder="Explication de la décision..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sévérité de l'avertissement</label>
+                    <select
+                      value={avertissementSeverity}
+                      onChange={e => setAvertissementSeverity(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-400"
+                    >
+                      <option value="info">ℹ️ Information</option>
+                      <option value="warning">⚠️ Avertissement</option>
+                      <option value="severe">🚨 Avertissement grave</option>
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
@@ -267,6 +318,13 @@ export default function AdminSignalements() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl font-medium text-sm hover:bg-green-100 disabled:opacity-50 transition-colors"
                 >
                   <CheckCircle className="w-4 h-4" /> Clôturer le signalement
+                </button>
+                <button
+                  onClick={handleAvertir}
+                  disabled={actionLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl font-medium text-sm hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                >
+                  <Flag className="w-4 h-4" /> Avertir l'utilisateur
                 </button>
                 <button
                   onClick={handleIgnorer}

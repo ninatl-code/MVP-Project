@@ -39,6 +39,9 @@ export const createNotification = async ({
   devisId = null,
   demandeId = null,
   prestataireId = null,
+  avisId = null,
+  avertissementId = null,
+  signalementId = null,
 }) => {
   try {
     const { data: notification, error } = await supabase
@@ -53,6 +56,9 @@ export const createNotification = async ({
         ...(devisId ? { devis_id: devisId } : {}),
         ...(demandeId ? { demande_id: demandeId } : {}),
         ...(prestataireId ? { prestataire_id: prestataireId } : {}),
+        ...(avisId ? { avis_id: avisId } : {}),
+        ...(avertissementId ? { avertissement_id: avertissementId } : {}),
+        ...(signalementId ? { signalement_id: signalementId } : {}),
       })
       .select()
       .single();
@@ -329,11 +335,92 @@ export const unsubscribeFromNotifications = (channel) => {
   }
 };
 
+  export const notifyProfilApprouve = async (photographeId) => {
+	  return createNotification({
+		userId: photographeId,
+		type: NOTIFICATION_TYPES.PROFIL_APPROUVE,
+		titre: 'Votre profil a été approuvé',
+		contenu: `Votre profil a été approuvé par nos modérateurs et est désormais visible.`,
+		prestataireId: photographeId,
+	  });
+	};
+	
+	  export const notifyProfilRefuse = async (photographeId, motif) => {
+	  return createNotification({
+		userId: photographeId,
+		type: NOTIFICATION_TYPES.PROFIL_REFUSE,
+		titre: 'Votre profil a été refusé',
+		contenu: `Votre profil n’a pas été validé. Vous pouvez le modifier et le soumettre à nouveau.`+ motif,
+		prestataireId: photographeId,
+	  });
+	};
+	
+	 export const notifyCompteSuspendu = async (user_id, motif) => {
+	  return createNotification({
+		userId: user_id,
+		type: NOTIFICATION_TYPES.COMPTE_SUSPENDU,
+		titre: 'Votre Compte a été suspendu',
+		contenu: `Votre compte a été temporairement suspendu suite à une violation des règles.` + motif,
+	  });
+	};
+	
+	export const notifyCompteReactive = async (user_id) => {
+	  return createNotification({
+		userId: user_id,
+		type: NOTIFICATION_TYPES.COMPTE_REACTIVE,
+		titre: 'Votre Compte a été réactivé',
+		contenu: `Votre compte a été réactivé. Vous pouvez à nouveau utiliser la plateforme.`,
+	  });
+	};
+	
+	export const notifyDemandeMasquee = async (client_id, demande_id, motif) => {
+	  return createNotification({
+		userId: client_id,
+		type: NOTIFICATION_TYPES.DEMANDE_MASQUEE,
+		titre: 'Votre demande a été masquée',
+		contenu: `Votre demande a été masquée et n’est plus visible publiquement.` + motif,
+		demandeId : demande_id,
+	  });
+	};
+	
+	export const notifyAvisMasque = async (photographeId, avis_id, motif) => {
+	  return createNotification({
+		userId: photographeId,
+		type: NOTIFICATION_TYPES.AVIS_MASQUE,
+		titre: 'Avis masqué',
+		contenu: `Un avis reçu a été masqué.` + motif,
+		avisId : avis_id,
+		prestataireId: photographeId,
+	  });
+	};
+	
+	export const notifyAvertissement = async (user_id, reason, avertissement_id) => {
+	  return createNotification({
+		userId: user_id,
+		type: NOTIFICATION_TYPES.AVERTISSEMENT,
+		titre: 'Avertissement',
+		contenu: `Vous avez reçu un avertissement concernant le respect des règles de la plateforme.` + reason,
+		avertissementId: avertissement_id,
+	  });
+	};
+	
+	export const notifySignalementCloture = async (user_id, admin_comment, signalement_id) => {
+	  return createNotification({
+		userId: user_id,
+		type: NOTIFICATION_TYPES.SIGNALEMENT_CLOTURE,
+		titre: 'Votre signalement a été traité',
+		contenu: `Merci pour votre signalement. Des actions ont été prises et le dossier a été clôturé par notre équipe.`,
+		signalementId : signalement_id,
+	  });
+	};
+	
+
 export const getNotificationLink = (notification) => {
     const { type } = notification;
     const demande_id = notification.demande_id;
     const devis_id = notification.devis_id;
     const reservation_id = notification.reservation_id;
+
     switch (type) {
       case 'mission_suggeree':
         return demande_id ? `/photographe/demandes/${demande_id}` : '/photographe/demandes?tab=plateforme';
@@ -355,6 +442,18 @@ export const getNotificationLink = (notification) => {
         return '/photographe/avis-dashboard';
       case 'nouveau_message':
         return '/messages';
+      case 'profil_approuve':
+        return '/photographe/profil';
+      case 'profil_refuse':
+        return '/photographe/profil';
+      case 'compte_suspendu':
+        return '/photographe/profil';
+      case 'compte_reactive':
+        return '/photographe/profil';
+      case 'demande_masquee':
+        return '/client/demandes/index';
+      case 'avis_masque':
+        return '/photographe/avis-dashboard';
       default:
         return '#';
     }

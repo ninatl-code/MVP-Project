@@ -4,6 +4,7 @@ import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Euro, CalendarDays, Tag, Users, Clock, X, XCircle, EyeOff } from 'lucide-react';
 import { masquerDemande } from '../../lib/moderationService';
+import * as notificationService from '../../lib/notificationService';
 
 const PAGE_SIZE = 20;
 
@@ -83,6 +84,7 @@ export default function AdminDemandes() {
       const clientId = selected.profiles?.id || selected.client_id;
       await masquerDemande(selected.id, clientId, motifMasquage);
     } catch(e) { console.error(e); }
+    notificationService.notifyDemandeMasquee(selected.client_id,selected.id, motifMasquage);
     setActionLoading(false);
     setMotifMasquage('');
     setSelected(null);

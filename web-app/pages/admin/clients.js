@@ -6,6 +6,7 @@ import { Search, ChevronLeft, ChevronRight, User, Eye, Mail, Phone, Calendar, Fi
 import { getClientDemandes } from '../../lib/demandeService';
 import * as reservationService from  '../../lib/reservationService';
 import { suspendreutilisateur, reactiverUtilisateur, avertirUtilisateur } from '../../lib/moderationService';
+import * as notificationService from '../../lib/notificationService';
 import { useAuth } from '../../contexts/AuthContext';
 const PAGE_SIZE = 20;
 
@@ -72,6 +73,7 @@ export default function AdminClients() {
     if (!selected) return;
     setActionLoading(true);
     try { await suspendreutilisateur(selected.id, motifSuspension, 'particulier'); } catch(e) { console.error(e); }
+    notificationService.notifyCompteSuspendu(selected.id, motifSuspension);
     setActionLoading(false);
     setMotifSuspension('');
     setSelected(null);
@@ -82,6 +84,7 @@ export default function AdminClients() {
     if (!selected) return;
     setActionLoading(true);
     try { await reactiverUtilisateur(selected.id, 'particulier'); } catch(e) { console.error(e); }
+    notificationService.notifyCompteReactive(selected.id);
     setActionLoading(false);
     setSelected(null);
     fetchRows();
@@ -91,6 +94,7 @@ export default function AdminClients() {
     if (!selected || !motifAvertissement.trim()) return;
     setActionLoading(true);
     try { await avertirUtilisateur(selected.id, motifAvertissement, severite, adminId); } catch(e) { console.error(e); }
+    notificationService.notifyAvertissement(selected.id, motifAvertissement, severite);
     setActionLoading(false);
     setMotifAvertissement('');
     setShowWarnForm(false);

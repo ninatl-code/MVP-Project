@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
 import * as photographerService from  '../../lib/photographerService';
+import * as notificationService from '../../lib/notificationService';
 import { approuverPrestataire, refuserPrestataire, suspendreutilisateur, reactiverUtilisateur } from '../../lib/moderationService';
 import {
   CheckCircle, XCircle, Eye, Search,
@@ -78,6 +79,7 @@ export default function AdminPrestataires() {
   const handleApprouver = async () => {
     setActionLoading(true);
     try { await approuverPrestataire(selected.id); } catch (e) { console.error(e); }
+    notificationService.notifyProfilApprouve(selected.id);
     setActionLoading(false);
     setSelected(null);
     fetchRows();
@@ -86,6 +88,7 @@ export default function AdminPrestataires() {
   const handleRefuser = async () => {
     setActionLoading(true);
     try { await refuserPrestataire(selected.id, motifRefus); } catch (e) { console.error(e); }
+    notificationService.notifyProfilRefuse(selected.id, motifRefus);
     setActionLoading(false);
     setSelected(null);
     setMotifRefus('');
@@ -95,6 +98,7 @@ export default function AdminPrestataires() {
   const handleSuspendre = async () => {
     setActionLoading(true);
     try { await suspendreutilisateur(selected.id, motifSuspension, 'photographe'); } catch (e) { console.error(e); }
+    notificationService.notifyCompteSuspendu(selected.id, motifSuspension);
     setActionLoading(false);
     setSelected(null);
     setMotifSuspension('');
@@ -104,6 +108,7 @@ export default function AdminPrestataires() {
   const handleReactiver = async () => {
     setActionLoading(true);
     try { await reactiverUtilisateur(selected.id, 'photographe', 'approved'); } catch (e) { console.error(e); }
+    notificationService.notifyCompteReactive(selected.id);
     setActionLoading(false);
     setSelected(null);
     fetchRows();

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { Search, ChevronLeft, ChevronRight, Eye, CalendarDays, User, X } from 'lucide-react';
+import * as notificationService from '../../lib/notificationService';
 
 const PAGE_SIZE = 20;
 
