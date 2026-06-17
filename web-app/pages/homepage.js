@@ -118,7 +118,7 @@ export default function Abonnements() {
             <div className="inline-flex bg-white rounded-full p-1 shadow-md">
               <button
                 onClick={() => setBilling("monthly")}
-                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                className={`px-6 py-2 rounded-full text-sm font-medium ${
                   billing === "monthly"
                     ? "bg-[#F6DCE8] text-[#1C1C1C]"
                     : "text-neutral-600"
@@ -128,7 +128,7 @@ export default function Abonnements() {
               </button>
               <button
                 onClick={() => setBilling("yearly")}
-                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                className={`px-6 py-2 rounded-full text-sm font-medium ${
                   billing === "yearly"
                     ? "bg-[#D4AF37] text-white"
                     : "text-neutral-600"

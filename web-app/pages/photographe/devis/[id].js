@@ -145,7 +145,7 @@ export default function PhotographeDevisDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -156,9 +156,9 @@ export default function PhotographeDevisDetailPage() {
 
   if (!devis) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-2xl mx-auto px-6 py-12 text-center">
           <p className="text-gray-500">Devis introuvable</p>
         </div>
       </div>
@@ -172,10 +172,10 @@ export default function PhotographeDevisDetailPage() {
   const displayStatus = isExpired ? 'expire' : devis.statut;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Back Button */}
         <Link 
           href="/photographe/devis"
@@ -200,7 +200,7 @@ export default function PhotographeDevisDetailPage() {
             <button
               onClick={handleConfirmReservation}
               disabled={confirming}
-              className="shrink-0 flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-all disabled:opacity-50"
+              className="shrink-0 flex items-center gap-2 px-6 py-2 bg-green-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-all disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
               {confirming ? 'Confirmation...' : 'Confirmer la réservation'}
@@ -265,18 +265,18 @@ export default function PhotographeDevisDetailPage() {
                 </p>
                 <div className="rounded-xl border border-gray-100 overflow-hidden">
                   {devis.tarif_base != null && (
-                    <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+                    <div className="flex justify-between items-center px-6 py-3 border-b border-gray-100">
                       <span className="text-sm text-gray-600">Tarif de base</span>
                       <span className="text-sm font-semibold text-gray-900">{Number(devis.tarif_base).toLocaleString('fr-FR')} MAD</span>
                     </div>
                   )}
                   {devis.frais_deplacement > 0 && (
-                    <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+                    <div className="flex justify-between items-center px-6 py-3 border-b border-gray-100">
                       <span className="text-sm text-gray-600">Frais de déplacement</span>
                       <span className="text-sm font-semibold text-gray-900">{Number(devis.frais_deplacement).toLocaleString('fr-FR')} MAD</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center px-4 py-3 bg-indigo-50">
+                  <div className="flex justify-between items-center px-6 py-3 bg-indigo-50">
                     <span className="font-bold text-gray-900">Total</span>
                     <span className="text-xl font-bold text-indigo-600">{Number(devis.montant_total).toLocaleString('fr-FR')} MAD</span>
                   </div>
@@ -289,7 +289,7 @@ export default function PhotographeDevisDetailPage() {
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <CreditCard className="w-3.5 h-3.5" />Acompte demandé
                   </p>
-                  <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-amber-50 border border-amber-100">
+                  <div className="flex items-center justify-between px-6 py-3 rounded-xl bg-amber-50 border border-amber-100">
                     <span className="text-sm text-amber-700">{devis.acompte_percent}% à la réservation</span>
                     <span className="font-bold text-amber-700">{Number(devis.acompte_montant || (devis.montant_total * devis.acompte_percent / 100)).toLocaleString('fr-FR')} MAD</span>
                   </div>
@@ -299,13 +299,13 @@ export default function PhotographeDevisDetailPage() {
               {/* Durée & validité */}
               <div className="grid grid-cols-2 gap-4 mb-5">
                 {devis.duree_prestation_heures > 0 && (
-                  <div className="px-4 py-3 rounded-xl bg-gray-50">
+                  <div className="px-6 py-3 rounded-xl bg-gray-50">
                     <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Timer className="w-3 h-3" />Durée prestation</p>
                     <p className="font-semibold text-gray-900">{devis.duree_prestation_heures}h</p>
                   </div>
                 )}
                 {devis.duree_validite_jours > 0 && (
-                  <div className="px-4 py-3 rounded-xl bg-gray-50">
+                  <div className="px-6 py-3 rounded-xl bg-gray-50">
                     <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3" />Validité</p>
                     <p className="font-semibold text-gray-900">{devis.duree_validite_jours} jours</p>
                   </div>
@@ -435,7 +435,7 @@ export default function PhotographeDevisDetailPage() {
 
               <button
                 onClick={startConversation}
-                className="w-full px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-medium hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+                className="w-full px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-medium hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
               >
                 <MessageSquare className="w-5 h-5" />
                 Contacter
@@ -451,7 +451,7 @@ export default function PhotographeDevisDetailPage() {
                   <>
                     <button
                       onClick={() => setShowCancelModal(true)}
-                      className="w-full px-4 py-2 border border-red-200 rounded-xl text-red-600 font-medium hover:bg-red-50 transition-all flex items-center justify-center gap-2"
+                      className="w-full px-6 py-2 border border-red-200 rounded-xl text-red-600 font-medium hover:bg-red-50 transition-all flex items-center justify-center gap-2"
                     >
                       <Trash2 className="w-5 h-5" />
                       Annuler ce devis
@@ -567,14 +567,14 @@ export default function PhotographeDevisDetailPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCancelModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
+                className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
               >
                 Non, garder
               </button>
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
               >
                 {cancelling ? 'Annulation...' : 'Oui, annuler'}
               </button>

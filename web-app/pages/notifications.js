@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../lib/supabaseClient';
@@ -152,7 +152,7 @@ const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center">
         <Header />
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
@@ -160,9 +160,9 @@ const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -173,7 +173,7 @@ const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+              <h1 className="text-2xl font-bold text-[#130183]">Notifications</h1>
               <p className="text-sm text-gray-500">
                 {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
               </p>
@@ -193,7 +193,7 @@ const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
             <div className="flex gap-2">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                className={`px-6 py-2 rounded-lg text-sm font-medium ${
                   filter === 'all'
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'text-gray-600 hover:bg-gray-100'
@@ -203,7 +203,7 @@ const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
               </button>
               <button
                 onClick={() => setFilter('unread')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                className={`px-6 py-2 rounded-lg text-sm font-medium ${
                   filter === 'unread'
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'text-gray-600 hover:bg-gray-100'

@@ -94,7 +94,7 @@ export default function AdminLayout({ children, title }) {
       {/* Main */}
       <div className="flex-1 lg:ml-60 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 lg:px-8 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
@@ -113,7 +113,7 @@ export default function AdminLayout({ children, title }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 px-4 lg:px-8 py-6">
+        <main className="flex-1 px-6 lg:px-8 py-6">
           {children}
         </main>
       </div>

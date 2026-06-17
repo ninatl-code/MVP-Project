@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/HeaderPresta';
@@ -101,7 +101,7 @@ export default function PhotographePublicPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex items-center justify-center py-24">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
@@ -112,9 +112,9 @@ export default function PhotographePublicPage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <div className="max-w-2xl mx-auto px-6 py-16 text-center">
           <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Profil introuvable</h2>
           <p className="text-gray-500 mb-6">Ce prestataire n'existe pas ou a supprimé son compte.</p>
@@ -171,10 +171,10 @@ export default function PhotographePublicPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8">
         {/* Bouton retour */}
         <button
           onClick={() => router.back()}
@@ -308,7 +308,7 @@ export default function PhotographePublicPage() {
               <div className="flex gap-3">
               {/* Tarif */}
                 {(profile.tarif_horaire_min || profile.tarif_horaire_max) && (
-                  <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-xl">
+                  <div className="mt-4 inline-flex items-center gap-2 px-6 py-2 bg-indigo-50 rounded-xl">
                     <span className="text-sm text-indigo-600 font-semibold">
                       {profile.tarif_horaire_min && profile.tarif_horaire_max
                         ? `${profile.tarif_horaire_min} – ${profile.tarif_horaire_max} DH/h`
@@ -389,7 +389,7 @@ export default function PhotographePublicPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+              className={`px-6 py-2 rounded-xl font-medium text-sm transition-all ${
                 activeTab === tab.key
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'

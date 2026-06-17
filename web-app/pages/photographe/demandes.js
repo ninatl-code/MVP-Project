@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { findMatchingDemandes } from '../../lib/matchingService';
@@ -155,7 +155,7 @@ function DetailModal({ demande, onClose }) {
           )}
         </div>
         <div className="px-6 pb-6">
-          <button onClick={onClose} className="w-full py-3 px-4 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm">Fermer</button>
+          <button onClick={onClose} className="w-full py-3 px-6 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm">Fermer</button>
         </div>
       </div>
     </div>
@@ -289,7 +289,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                   value={form.titre}
                   onChange={(e) => setForm({ ...form, titre: e.target.value })}
                   placeholder={`Devis – ${demande.titre || demande.categorie || 'prestation'}`}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                  className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                 />
               </div>
               <div>
@@ -299,7 +299,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                   placeholder="Détaillez la prestation proposée, les livrables, la méthodologie..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
+                  className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
                 />
               </div>
             </div>
@@ -342,7 +342,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
 
               {/* Total calculé */}
               {montantTotal > 0 && (
-                <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ backgroundColor: '#F5F3FF' }}>
+                <div className="flex items-center justify-between px-6 py-3 rounded-xl" style={{ backgroundColor: '#F5F3FF' }}>
                   <span className="text-sm font-semibold text-gray-700">Total</span>
                   <span className="text-lg font-bold" style={{ color: '#7A1600' }}>{montantTotal.toFixed(2)} MAD</span>
                 </div>
@@ -356,7 +356,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                 <select
                   value={form.acompte_percent}
                   onChange={(e) => setForm({ ...form, acompte_percent: parseInt(e.target.value) })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                  className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
                 >
                   <option value={0}>Aucun acompte</option>
                   <option value={20}>20 %</option>
@@ -381,7 +381,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                   value={form.duree_prestation_heures}
                   onChange={(e) => setForm({ ...form, duree_prestation_heures: e.target.value })}
                   placeholder="Ex : 3"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                  className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                 />
               </div>
               <div>
@@ -393,12 +393,12 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                     onChange={(e) => setForm({ ...form, newService: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addService(); } }}
                     placeholder="Ex : 50 photos retouchées, galerie en ligne..."
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="flex-1 px-6 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                   <button
                     type="button"
                     onClick={addService}
-                    className="px-4 py-2.5 rounded-xl font-semibold text-white text-sm flex items-center gap-1 shrink-0"
+                    className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm flex items-center gap-1 shrink-0"
                     style={{ backgroundColor: '#7A1600' }}
                   >
                     <Plus className="w-4 h-4" />
@@ -435,7 +435,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                   onChange={(e) => setForm({ ...form, horaires_proposes: e.target.value })}
                   rows={2}
                   placeholder="Ex : Disponible le matin à partir de 9h, samedi 14 juin ou dimanche 15 juin..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
+                  className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
                 />
               </div>
               <div>
@@ -461,7 +461,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                 <select
                   value={form.delai_validite_jours}
                   onChange={(e) => setForm({ ...form, delai_validite_jours: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                  className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-sm"
                 >
                   <option value={3}>3 jours</option>
                   <option value={7}>7 jours</option>
@@ -481,7 +481,7 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                 onChange={(e) => setForm({ ...form, message_personnalise: e.target.value })}
                 rows={4}
                 placeholder="Présentez votre approche, votre expérience pour ce type de prestation..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
+                className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
               />
             </div>
 
@@ -490,14 +490,14 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 px-4 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm"
+                className="flex-1 py-3 px-6 border border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-sm"
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 disabled={sending}
-                className="flex-1 py-3 px-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-colors text-sm"
+                className="flex-1 py-3 px-6 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-colors text-sm"
                 style={{ backgroundColor: sending ? '#9CA3AF' : '#7A1600' }}
               >
                 {sending ? <span>Envoi...</span> : <><Send className="w-4 h-4" />Envoyer le devis</>}
@@ -641,19 +641,19 @@ export default function DemandesClients() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-[#F8F9FB]">
+        <div className="max-w-5xl mx-auto px-6 py-4">
 
           {/* En-tête */}
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.push('/photographe/menu')}
-              className="p-2 rounded-xl hover:bg-gray-200 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5 text-[#130183]" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-[#130183]">
                 Demandes
               </h1>
               <p className="text-gray-500 text-sm mt-1">
@@ -773,14 +773,14 @@ export default function DemandesClients() {
                           <span className="text-xs text-gray-400 whitespace-nowrap">{timeAgo(demande.created_at)}</span>
                           <button
                             onClick={() => setDetailDemande(demande)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
+                            className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
                           >
                             <Eye className="w-4 h-4" />Voir le détail
                           </button>
                           <button
                             onClick={() => setSelectedDemande(demande)}
                             disabled={dejaEnvoye}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
+                            className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
                             style={{ backgroundColor: dejaEnvoye ? '#9CA3AF' : '#130183', cursor: dejaEnvoye ? 'default' : 'pointer' }}
                           >
                             {dejaEnvoye ? <><CheckCircle className="w-4 h-4" />Envoyé</> : <><Send className="w-4 h-4" />Envoyer un devis</>}
@@ -935,14 +935,14 @@ export default function DemandesClients() {
                         </span>
                         <button
                           onClick={() => setDetailDemande(demande)}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
+                          className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
                         >
                           <Eye className="w-4 h-4" />Voir le détail
                         </button>
                         <button
                           onClick={() => setSelectedDemande(demande)}
                           disabled={dejaEnvoye}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
+                          className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
                           style={{
                             backgroundColor: dejaEnvoye ? '#5D5E63' : '#7A1600',
                             cursor: dejaEnvoye ? 'default' : 'pointer'

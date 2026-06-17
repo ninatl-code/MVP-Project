@@ -812,7 +812,7 @@ export default function PhotographeProfilPage() {
 
   if (loading && !profile) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex flex-col items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-4"></div>
@@ -824,9 +824,9 @@ export default function PhotographeProfilPage() {
 
   if (!profile && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-2xl mx-auto px-6 py-12 text-center">
           <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
             <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">Profil non trouvé</h2>
@@ -857,10 +857,10 @@ export default function PhotographeProfilPage() {
   const profileSpecialisations = toArray(profile?.specialisations);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8">
         {/* Cover Photo */}
         <div className="relative h-15 rounded-t-2xl overflow-hidden">
           <div className="w-full h-full bg-gradient-to-r from-blue-900 to-blue-900 border-white"/>
@@ -888,7 +888,7 @@ export default function PhotographeProfilPage() {
             </div>
 
             <div className="flex-1 pt-16">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-[#130183]">
                 {profile?.nom || profile?.nom_entreprise || 'Mon profil'}
               </h1>
               <div className="flex items-center gap-4 mt-2 text-gray-500">
@@ -903,7 +903,7 @@ export default function PhotographeProfilPage() {
 
             <button
               onClick={() => { if (user) router.push(`/photographes/${user.id}`); }}
-              className="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              className="px-6 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 flex items-center gap-2"
             >
               <Eye className="w-5 h-5" />
               Aperçu public
@@ -919,7 +919,7 @@ export default function PhotographeProfilPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                className={`px-6 py-2 rounded-xl font-medium transition-all flex items-center gap-2 ${
                   activeTab === tab.key ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
                 }`}
                 style={activeTab === tab.key ? { background: COLORS.accent } : {}}
@@ -944,7 +944,7 @@ export default function PhotographeProfilPage() {
                   value={profile?.nom || ''}
                   onChange={(e) => handleProfileChange('nom', e.target.value)}
                   placeholder="Jean Dupont"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
@@ -997,7 +997,7 @@ export default function PhotographeProfilPage() {
                   onChange={(e) => handleProfileChange('bio', e.target.value)}
                   placeholder="Présentez-vous et votre expérience..."
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
               </div>
 
@@ -1079,7 +1079,7 @@ export default function PhotographeProfilPage() {
                 </div>
               </div>
 
-              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <><Save className="w-5 h-5" />Enregistrer les modifications</>}
               </button>
             </div>
@@ -1104,7 +1104,7 @@ export default function PhotographeProfilPage() {
                           handleProfileChange('specialisations', []);
                           autoSaveSpecialisations([cat.id], []);
                         }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                        className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                           isSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
                         }`}
                       >
@@ -1139,7 +1139,7 @@ export default function PhotographeProfilPage() {
                             handleProfileChange('specialisations', newSpecs);
                             autoSaveSpecialisations(profileCategories, newSpecs);
                           }}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                          className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                             isSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
                           }`}
                         >
@@ -1162,7 +1162,7 @@ export default function PhotographeProfilPage() {
                             autoSaveSpecialisations(profileCategories, newSpecs);
                             if (autreSelected) setAutreSpecInput('');
                           }}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                          className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                             autreSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
                           }`}
                         >
@@ -1192,7 +1192,7 @@ export default function PhotographeProfilPage() {
                             }
                           }}
                           placeholder="Ex: Jardinage, Baby-sitting..."
-                          className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                          className="flex-1 px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
                         />
                         <button
                           type="button"
@@ -1205,7 +1205,7 @@ export default function PhotographeProfilPage() {
                             }
                             setAutreSpecInput('');
                           }}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700"
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700"
                         >
                           Ajouter
                         </button>
@@ -1240,7 +1240,7 @@ export default function PhotographeProfilPage() {
                     value={profile?.details?.langages || ''}
                     onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), langages: e.target.value })}
                     placeholder="Ex : JavaScript, Python, React, Node.js..."
-                    className="w-full px-4 py-2.5 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                    className="w-full px-6 py-2.5 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 bg-white text-sm"
                   />
                 </div>
               )}
@@ -1250,11 +1250,11 @@ export default function PhotographeProfilPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Matière <span className="text-gray-400 font-normal">(optionnel)</span></label>
-                      <input type="text" value={profile?.details?.matiere || ''} onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), matiere: e.target.value })} placeholder="Ex : Mathématiques, Français..." className="w-full px-4 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm" />
+                      <input type="text" value={profile?.details?.matiere || ''} onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), matiere: e.target.value })} placeholder="Ex : Mathématiques, Français..." className="w-full px-6 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm" />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Niveau <span className="text-gray-400 font-normal">(optionnel)</span></label>
-                      <input type="text" value={profile?.details?.niveau || ''} onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), niveau: e.target.value })} placeholder="Ex : Collège, Lycée, Université..." className="w-full px-4 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm" />
+                      <input type="text" value={profile?.details?.niveau || ''} onChange={(e) => handleProfileChange('details', { ...(profile?.details || {}), niveau: e.target.value })} placeholder="Ex : Collège, Lycée, Université..." className="w-full px-6 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm" />
                     </div>
                   </div>
                 </div>
@@ -1294,7 +1294,7 @@ export default function PhotographeProfilPage() {
                   onChange={(e) => handleProfileChange('materiel', e.target.value)}
                   placeholder={getEquipementPlaceholder(profileCategories, profileSpecialisations)}
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
               </div>
 
@@ -1331,12 +1331,12 @@ export default function PhotographeProfilPage() {
                     onChange={(e) => handleProfileChange('services_additionnels', { ...(profile?.services_additionnels || {}), _texte_libre: e.target.value })}
                     placeholder="Ex : Installation de climatiseur, Cours de cuisine..."
                     rows={3}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none text-sm"
+                    className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none text-sm"
                   />
                 </div>
               </div>
 
-              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <><Save className="w-5 h-5" />Enregistrer</>}
               </button>
             </div>
@@ -1411,7 +1411,7 @@ export default function PhotographeProfilPage() {
               {profile?.mobile && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Frais de déplacement (MAD/km)</label>
-                  <input type="number" step="0.1" min="0" value={profile?.frais_deplacement || ''} onChange={(e) => handleProfileChange('frais_deplacement', e.target.value)} placeholder="0.50" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                  <input type="number" step="0.1" min="0" value={profile?.frais_deplacement || ''} onChange={(e) => handleProfileChange('frais_deplacement', e.target.value)} placeholder="0.50" className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
                   <p className="text-xs text-gray-500 mt-1">Laissez vide pour inclure les frais dans vos tarifs</p>
                 </div>
               )}
@@ -1466,7 +1466,7 @@ export default function PhotographeProfilPage() {
                           const current = toArray(profile?.jours_travailles);
                           handleProfileChange('jours_travailles', isActive ? current.filter(d => d !== jour) : [...current, jour]);
                         }}
-                        className={`px-4 py-2 rounded-xl border-2 text-sm font-medium capitalize transition-all ${isActive ? 'border-teal-500 bg-teal-50 text-teal-900' : 'border-gray-200 text-gray-600 hover:border-teal-300'}`}
+                        className={`px-6 py-2 rounded-xl border-2 text-sm font-medium capitalize transition-all ${isActive ? 'border-teal-500 bg-teal-50 text-teal-900' : 'border-gray-200 text-gray-600 hover:border-teal-300'}`}
                       >
                         {jour.charAt(0).toUpperCase() + jour.slice(1)}
                       </button>
@@ -1475,7 +1475,7 @@ export default function PhotographeProfilPage() {
                 </div>
               </div>
 
-              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <><Save className="w-5 h-5" />Enregistrer</>}
               </button>
             </div>
@@ -1591,7 +1591,7 @@ export default function PhotographeProfilPage() {
                                 <Eye className="w-4 h-4" /> Voir
                               </button>
                             )}
-                            <label className={`px-4 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 ${uploading === docType.type ? 'opacity-50 cursor-wait' : ''}`} style={{ background: hasDoc ? '#F3F4F6' : COLORS.accent, color: hasDoc ? COLORS.text : 'white' }}>
+                            <label className={`px-6 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 ${uploading === docType.type ? 'opacity-50 cursor-wait' : ''}`} style={{ background: hasDoc ? '#F3F4F6' : COLORS.accent, color: hasDoc ? COLORS.text : 'white' }}>
                               {uploading === docType.type ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                               <span className="text-sm font-medium">{hasDoc ? 'Remplacer' : 'Ajouter'}</span>
                               <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocumentUpload(e, docType.type)} disabled={uploading === docType.type} className="hidden" />
@@ -1623,7 +1623,7 @@ export default function PhotographeProfilPage() {
                 </button>
               </div>
 
-              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <><Save className="w-5 h-5" />Enregistrer</>}
               </button>
             </div>
@@ -1637,7 +1637,7 @@ export default function PhotographeProfilPage() {
                   <h2 className="font-semibold text-gray-900">Portfolio</h2>
                   <p className="text-sm text-gray-500">{portfolioImages.length} photo(s)</p>
                 </div>
-                <label className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium cursor-pointer hover:bg-indigo-700 flex items-center gap-2">
+                <label className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium cursor-pointer hover:bg-indigo-700 flex items-center gap-2">
                   <Upload className="w-5 h-5" />
                   Ajouter des photos
                   <input ref={portfolioInputRef} type="file" accept="image/*" multiple onChange={handlePortfolioUpload} className="hidden" />
@@ -1664,7 +1664,7 @@ export default function PhotographeProfilPage() {
               )}
 
               {portfolioImages.length > 0 && (
-                <button onClick={handleSaveProfile} disabled={saving} className="mt-6 w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                <button onClick={handleSaveProfile} disabled={saving} className="mt-6 w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
                   {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <><Save className="w-5 h-5" />Enregistrer le portfolio</>}
                 </button>
               )}
@@ -1676,31 +1676,31 @@ export default function PhotographeProfilPage() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tarif horaire de base (MAD)</label>
-                <input type="number" value={profile?.tarif_horaire_min || ''} onChange={(e) => handleProfileChange('tarif_horaire_min', e.target.value)} placeholder="80" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                <input type="number" value={profile?.tarif_horaire_min || ''} onChange={(e) => handleProfileChange('tarif_horaire_min', e.target.value)} placeholder="80" className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
                 <p className="text-sm text-gray-500 mt-1">Ce tarif sera affiché sur votre profil public</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tarif horaire maximum (MAD)</label>
-                <input type="number" value={profile?.tarif_horaire_max || ''} onChange={(e) => handleProfileChange('tarif_horaire_max', e.target.value)} placeholder="200" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                <input type="number" value={profile?.tarif_horaire_max || ''} onChange={(e) => handleProfileChange('tarif_horaire_max', e.target.value)} placeholder="200" className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
                 <p className="text-sm text-gray-500 mt-1">Fourchette haute de votre tarif horaire</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Acompte à la réservation (%)</label>
-                <input type="number" min="0" max="100" value={profile?.acompte_percent ?? 30} onChange={(e) => handleProfileChange('acompte_percent', e.target.value)} placeholder="30" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                <input type="number" min="0" max="100" value={profile?.acompte_percent ?? 30} onChange={(e) => handleProfileChange('acompte_percent', e.target.value)} placeholder="30" className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
                 <p className="text-sm text-gray-500 mt-1">Pourcentage demandé à la réservation (défaut : 30 %)</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Délai d'annulation sans frais (jours)</label>
-                <input type="number" min="0" value={profile?.delai_annulation_jours ?? 7} onChange={(e) => handleProfileChange('delai_annulation_jours', e.target.value)} placeholder="7" className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                <input type="number" min="0" value={profile?.delai_annulation_jours ?? 7} onChange={(e) => handleProfileChange('delai_annulation_jours', e.target.value)} placeholder="7" className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
                 <p className="text-sm text-gray-500 mt-1">Nombre de jours avant la prestation pour annuler sans pénalité</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Conditions d'annulation</label>
-                <textarea value={profile?.conditions_annulation || ''} onChange={(e) => handleProfileChange('conditions_annulation', e.target.value)} placeholder="Ex : Annulation gratuite jusqu'à 7 jours avant..." rows={3} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none" />
+                <textarea value={profile?.conditions_annulation || ''} onChange={(e) => handleProfileChange('conditions_annulation', e.target.value)} placeholder="Ex : Annulation gratuite jusqu'à 7 jours avant..." rows={3} className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none" />
               </div>
 
               <div>
@@ -1716,7 +1716,7 @@ export default function PhotographeProfilPage() {
                           const current = toArray(profile?.modalites_paiement);
                           handleProfileChange('modalites_paiement', isOn ? current.filter(m => m !== mode) : [...current, mode]);
                         }}
-                        className={`px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all ${isOn ? 'border-green-500 bg-green-50 text-green-900' : 'border-gray-200 text-gray-600 hover:border-green-300'}`}
+                        className={`px-6 py-2 rounded-xl border-2 text-sm font-medium transition-all ${isOn ? 'border-green-500 bg-green-50 text-green-900' : 'border-gray-200 text-gray-600 hover:border-green-300'}`}
                       >
                         {mode}
                       </button>
@@ -1728,14 +1728,14 @@ export default function PhotographeProfilPage() {
               <div className="bg-indigo-50 rounded-xl p-4">
                 <h4 className="font-medium text-indigo-900 mb-2">Forfaits personnalisés</h4>
                 <p className="text-sm text-indigo-700 mb-3">Créez des forfaits détaillés pour présenter vos différentes offres</p>
-                <button onClick={() => router.push('/photographe/packages')} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700">
+                <button onClick={() => router.push('/photographe/packages')} className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700">
                   Gérer mes forfaits
                 </button>
 
               </div>
               
 
-              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleSaveProfile} disabled={saving} className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <><Save className="w-5 h-5" />Enregistrer</>}
               </button>
             </div>
@@ -1759,7 +1759,7 @@ export default function PhotographeProfilPage() {
               <div className="flex flex-col items-center justify-center py-12 text-gray-500 gap-3">
                 <FileText className="w-16 h-16 text-gray-300" />
                 <p className="text-sm">Aperçu non disponible pour les PDF</p>
-                <a href={previewDoc.data} download={previewDoc.label} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700">
+                <a href={previewDoc.data} download={previewDoc.label} className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700">
                   Télécharger le document
                 </a>
               </div>
@@ -1802,17 +1802,17 @@ export default function PhotographeProfilPage() {
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
-                  <input type="password" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} placeholder="••••••••" required minLength={6} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                  <input type="password" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} placeholder="••••••••" required minLength={6} className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
-                  <input type="password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} placeholder="••••••••" required minLength={6} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
+                  <input type="password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} placeholder="••••••••" required minLength={6} className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setShowPasswordModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+                  <button type="button" onClick={() => setShowPasswordModal(false)} className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors">
                     Annuler
                   </button>
-                  <button type="submit" disabled={passwordLoading} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                  <button type="submit" disabled={passwordLoading} className="flex-1 px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                     {passwordLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Check className="w-5 h-5" />Confirmer</>}
                   </button>
                 </div>

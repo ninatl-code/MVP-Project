@@ -7,7 +7,7 @@ import Header from '../../../components/HeaderParti';
 import { 
   Calendar, MapPin, Clock, Camera, Search,
   ChevronRight, CheckCircle, XCircle, AlertCircle,
-  Clock3, Star, MessageSquare
+  Clock3, Star, MessageSquare, ArrowLeft
 } from 'lucide-react';
 
 const COLORS = {
@@ -140,14 +140,19 @@ export default function MesReservationsPage() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Mes réservations</h1>
-          <p className="text-gray-600 mt-1">
+          <div className="flex items-center gap-3 mb-1">
+            <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+              <ArrowLeft className="w-5 h-5 text-[#130183]" />
+            </button>
+            <h1 className="text-2xl font-bold text-[#130183]">Mes réservations</h1>
+          </div>
+          <p className="text-gray-600 mt-1 pl-11">
             {reservations.length} réservation{reservations.length > 1 ? 's' : ''} au total
           </p>
         </div>
@@ -222,7 +227,7 @@ export default function MesReservationsPage() {
             </p>
             <button
               onClick={() => router.push('/client/recherche')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium"
+              className="inline-flex items-center gap-2 px-6 py-2 rounded-xl text-white font-medium"
               style={{ backgroundColor: COLORS.accent }}
             >
               <Search className="w-5 h-5" />

@@ -140,11 +140,11 @@ export default function AdminClients() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-left text-gray-500 text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 font-semibold">Client</th>
-                <th className="px-4 py-3 font-semibold">Email</th>
-                <th className="px-4 py-3 font-semibold">Téléphone</th>
-                <th className="px-4 py-3 font-semibold">Inscrit le</th>
-                <th className="px-4 py-3 font-semibold">Détails</th>
+                <th className="px-6 py-3 font-semibold">Client</th>
+                <th className="px-6 py-3 font-semibold">Email</th>
+                <th className="px-6 py-3 font-semibold">Téléphone</th>
+                <th className="px-6 py-3 font-semibold">Inscrit le</th>
+                <th className="px-6 py-3 font-semibold">Détails</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -156,7 +156,7 @@ export default function AdminClients() {
                 <tr><td colSpan={5} className="text-center py-16 text-gray-400">Aucun client trouvé</td></tr>
               ) : rows.map(row => (
                 <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-3">
                     <div className="flex items-center gap-3">
                       {row.avatar_url
                         ? <img src={row.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
@@ -165,10 +165,10 @@ export default function AdminClients() {
                       <span className="font-medium text-gray-900">{row.nom || '—'}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{row.email}</td>
-                  <td className="px-4 py-3 text-gray-600">{row.telephone || '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-3 text-gray-600">{row.email}</td>
+                  <td className="px-6 py-3 text-gray-600">{row.telephone || '—'}</td>
+                  <td className="px-6 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
+                  <td className="px-6 py-3">
                     <div className="flex items-center gap-1.5">
                       {row.suspendu && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Suspendu</span>}
                       <button
@@ -184,7 +184,7 @@ export default function AdminClients() {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
+        <div className="px-6 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
           <span className="text-sm text-gray-500">{total} client{total !== 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
@@ -340,7 +340,7 @@ export default function AdminClients() {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setShowWarnForm(true)} className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-yellow-300 text-yellow-700 rounded-xl text-sm hover:bg-yellow-50">
+                  <button onClick={() => setShowWarnForm(true)} className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-yellow-300 text-yellow-700 rounded-xl text-sm hover:bg-yellow-50">
                     <AlertTriangle className="w-4 h-4" /> Avertir l'utilisateur
                   </button>
                 )}
@@ -354,12 +354,12 @@ export default function AdminClients() {
                       placeholder="Raison de la suspension..."
                       className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-400"
                     />
-                    <button onClick={handleSuspendre} disabled={actionLoading} className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm hover:bg-red-50 disabled:opacity-50">
+                    <button onClick={handleSuspendre} disabled={actionLoading} className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-red-200 text-red-600 rounded-xl text-sm hover:bg-red-50 disabled:opacity-50">
                       <ShieldOff className="w-4 h-4" /> Suspendre le compte
                     </button>
                   </div>
                 ) : (
-                  <button onClick={handleReactiver} disabled={actionLoading} className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50">
+                  <button onClick={handleReactiver} disabled={actionLoading} className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50">
                     <ShieldCheck className="w-4 h-4" /> Réactiver le compte
                   </button>
                 )}

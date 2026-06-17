@@ -79,7 +79,7 @@ function Button({ className = "", children, variant = "primary", size = "md", ..
   
   const sizeStyles = {
     sm: "px-3 py-2 text-sm",
-    md: "px-4 py-2.5 text-sm",
+    md: "px-6 py-2.5 text-sm",
     lg: "px-6 py-3 text-base"
   };
   
@@ -1324,7 +1324,7 @@ export default function ProviderHomeMenu() {
                   </div>
                   <button
                     onClick={() => router.push('/photographe/profil')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-white font-semibold text-sm transition-all hover:bg-amber-50"
+                    className="flex items-center gap-2 px-6 py-2 rounded-lg border-2 bg-white font-semibold text-sm transition-all hover:bg-amber-50"
                     style={{ borderColor: '#F59E0B', color: '#F59E0B' }}
                   >
                     Compléter mon profil
@@ -1405,7 +1405,7 @@ export default function ProviderHomeMenu() {
                     Chiffre d'affaires
                   </p>
                   </div>
-                  <p className="text-4xl font-bold" style={{ color: '#9E2B15' }}>
+                  <p className="text-3xl font-bold" style={{ color: '#9E2B15' }}>
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD' }).format(chiffreAffaires)}
                   </p>
                   <p className="text-xs mt-1" style={{ color: COLORS.text + '80' }}>
@@ -1482,6 +1482,24 @@ export default function ProviderHomeMenu() {
                 </div>
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
+              
+
+              {/* Agenda */}
+              <div
+                className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{ borderColor: '#EBEBEB' }}
+                onClick={() => navigateWithSplash("/photographe/agenda", "Chargement de votre agenda...")}
+              >
+                <div className="p-3 rounded-xl" style={{ backgroundColor: '#FFF7EB' }}>
+                  <Calendar className="w-6 h-6" style={{ color: '#946A15' }} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-0.5" style={{ color: COLORS.text }}>Mon agenda</h4>
+                  <p className="text-sm" style={{ color: COLORS.text + '99' }}>Gérer mon agenda</p>
+                </div>
+                <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
+              </div>
+
 
               {/* Avis clients */}
               <div 

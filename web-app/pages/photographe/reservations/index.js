@@ -11,7 +11,7 @@ import {
   ChevronRight, CheckCircle, XCircle,
   AlertCircle, Camera, MessageSquare,
   Filter, Phone, Check, X, SlidersHorizontal,
-  CalendarDays, Inbox
+  CalendarDays, Inbox, ArrowLeft
 } from 'lucide-react';
 
 /* =========================
@@ -287,16 +287,21 @@ export default function PhotographerReservationsPage() {
   }, [reservations]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
 
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mes réservations</h1>
-            <p className="text-gray-500 text-sm mt-0.5">
+            <div className="flex items-center gap-3 mb-1">
+              <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <ArrowLeft className="w-5 h-5 text-[#130183]" />
+              </button>
+              <h1 className="text-2xl font-bold text-[#130183]">Mes réservations</h1>
+            </div>
+            <p className="text-gray-500 text-sm mt-0.5 pl-11">
               {reservations.length} réservation{reservations.length !== 1 ? 's' : ''} au total
             </p>
           </div>
@@ -323,7 +328,7 @@ export default function PhotographerReservationsPage() {
               <button
                 key={key}
                 onClick={() => setTimeFilter(key)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                className={`px-6 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   timeFilter === key
                     ? 'bg-indigo-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -406,9 +411,9 @@ export default function PhotographerReservationsPage() {
               placeholder="Message pour le client (optionnel)"
             />
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowAcceptModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
+              <button onClick={() => setShowAcceptModal(false)} className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
               <button disabled={actionLoading} onClick={handleAcceptSubmit}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50">
+                className="flex-1 bg-green-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50">
                 {actionLoading ? 'En cours...' : 'Confirmer'}
               </button>
             </div>
@@ -506,11 +511,11 @@ export default function PhotographerReservationsPage() {
               </div>
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setShowInvoiceModal(false)} className="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 text-sm">
+              <button onClick={() => setShowInvoiceModal(false)} className="px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 text-sm">
                 Passer (plus tard)
               </button>
               <button disabled={actionLoading} onClick={handleInvoiceSubmit}
-                className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 text-sm">
+                className="flex-1 bg-indigo-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 text-sm">
                 {actionLoading ? 'Envoi...' : 'Envoyer la facture au client'}
               </button>
             </div>
@@ -532,9 +537,9 @@ export default function PhotographerReservationsPage() {
               placeholder="Raison du refus (optionnel)"
             />
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowRefuseModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
+              <button onClick={() => setShowRefuseModal(false)} className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
               <button disabled={actionLoading} onClick={handleRefuseSubmit}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
+                className="flex-1 bg-red-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
                 {actionLoading ? 'En cours...' : 'Confirmer le refus'}
               </button>
             </div>

@@ -74,7 +74,7 @@ export const getClientReservations = async (clientId, status = null,limit=100) =
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!reservations_prestatairep_id_fkey(id, nom, email, telephone, avatar_url),
         devis(services_inclus, message_personnalise)
       `)
       .eq('client_id', clientId)
@@ -143,7 +143,7 @@ export const getReservationById = async (reservationId) => {
       .select(`
         *,
         profiles!reservations_client_id_fkey(id, nom, email, telephone, avatar_url),
-        profiles!reservations_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!reservations_prestatairep_id_fkey(id, nom, email, telephone, avatar_url),
         devis(*),
         paiements(*)
       `)
@@ -158,7 +158,7 @@ export const getReservationById = async (reservationId) => {
   }
 };
 
-export const getReservationByStatus = async (status) => {
+export const getReservationByStatus = async (status, limit = 100) => {
   try {
     const { data, error } = await supabase
       .from('reservations')
@@ -175,7 +175,7 @@ export const getReservationByStatus = async (status) => {
   }
 };
 
-export const getReservationByDemande = async (demandeId) => {
+export const getReservationByDemande = async (demandeId, limit = 100) => {
   try {
     const { data, error } = await supabase
       .from('reservations')
@@ -314,7 +314,7 @@ export const getUpcomingReservations = async (userId, role = 'particulier') => {
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_${role === 'client' ? 'prestataire' : 'client'}_id_fkey(nom, avatar_url)
+        profiles!reservations_${role === 'client' ? 'prestatairep' : 'client'}_id_fkey(nom, avatar_url)
       `)
       .eq(column, userId)
       .gte('date', today)

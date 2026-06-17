@@ -7,7 +7,7 @@ import Header from '../../../components/HeaderPresta';
 
 import { 
   FileText, Clock, Check, X, Euro, ChevronRight,
-  User, Calendar, AlertCircle, Search
+  User, Calendar, AlertCircle, Search, ArrowLeft
 } from 'lucide-react';
 import { format, formatDistanceToNow, isAfter } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -129,16 +129,21 @@ export default function PhotographeDevisPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
 
         {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mes devis</h1>
-            <p className="text-gray-500 text-sm mt-0.5">
+            <div className="flex items-center gap-3 mb-1">
+              <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <ArrowLeft className="w-5 h-5 text-[#130183]" />
+              </button>
+              <h1 className="text-2xl font-bold text-[#130183]">Mes devis</h1>
+            </div>
+            <p className="text-gray-500 text-sm mt-0.5 pl-11">
               Gérez tous vos devis envoyés
             </p>
           </div>
@@ -186,7 +191,7 @@ export default function PhotographeDevisPage() {
                 <button
                   key={filter.key}
                   onClick={() => setActiveFilter(filter.key)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+                  className={`px-6 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                     activeFilter === filter.key
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -218,7 +223,7 @@ export default function PhotographeDevisPage() {
             </p>
             <Link
               href="/photographe/demandes"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
+              className="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium"
             >
               Voir les demandes
               <ChevronRight className="w-5 h-5" />

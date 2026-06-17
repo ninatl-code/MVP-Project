@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { onUpdateDemande } from '../../../lib/matchingService';
@@ -6,6 +6,7 @@ import Header from '../../../components/HeaderParti';
 import { categories} from '../../../constants/categories';
 import { SPECIALITES_MAP } from '../../../constants/specialites';
 import * as demandeService from '../../../lib/demandeService';
+import { VILLES_MAROC } from '../../../constants/villes';
 
 import {
   ArrowLeft, Calendar, MapPin, Clock, Users,
@@ -91,7 +92,7 @@ export default function EditDemandePage() {
         niveau: det.niveau || '',
       });
       originalDataRef.current = {
-        type_prestation: data.type_prestation || null,
+        type_prestation: data.type_prestation || '',
         ville: data.ville || null,
         date_souhaitee: data.date_souhaitee || null,
       };
@@ -121,7 +122,9 @@ export default function EditDemandePage() {
           instructions_speciales: formData.instructions_speciales || null,
           type_prestation: formData.specialite === 'Autre'
             ? [formData.specialite_autre?.trim() || 'Autre']
-            : formData.specialite ? [formData.specialite] : null,
+            : formData.specialite ? [formData.specialite?.trim()] : null,
+
+            
           details: (() => {
             const d = {};
             if (formData.specialite === 'Développement' && formData.langages_dev.trim()) d.langages = formData.langages_dev.trim();
@@ -139,6 +142,7 @@ export default function EditDemandePage() {
     setSubmitting(true);
     setError(null);
     try {
+      console.log('Payload envoyé:', payload);
       const { error: updateError } = await demandeService.updateDemande(id, payload);
 
       if (updateError) throw updateError;
@@ -146,8 +150,9 @@ export default function EditDemandePage() {
       // Recompute matching scores after update (fire and forget)
       const newTypePrestation = formData.specialite === 'Autre'
         ? [formData.specialite_autre?.trim() || 'Autre']
-        : formData.specialite ? [formData.specialite] : null;
-      demandeService.updateDemande(id, originalDataRef.current, {
+        : formData.specialite ? [formData.specialite?.trim()] : null;
+        
+      onUpdateDemande(id, originalDataRef.current, {
         type_prestation: newTypePrestation,
         ville: formData.ville,
         date_souhaitee: formData.date_souhaitee || null,
@@ -164,7 +169,7 @@ export default function EditDemandePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -175,11 +180,11 @@ export default function EditDemandePage() {
 
   if (error && !formData.titre) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-3xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-3xl mx-auto px-6 py-12 text-center">
           <p className="text-red-600 font-medium">{error}</p>
-          <button onClick={() => router.push('/client/demandes')} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl">
+          <button onClick={() => router.push('/client/demandes')} className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl">
             Retour aux demandes
           </button>
         </div>
@@ -188,16 +193,16 @@ export default function EditDemandePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-6 py-8">
         <button onClick={() => router.push(`/client/demandes/${id}`)} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
           <ArrowLeft className="w-5 h-5" />
           Retour à la demande
         </button>
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Modifier la demande</h1>
+          <h1 className="text-2xl font-bold text-[#130183]">Modifier la demande</h1>
           <p className="text-gray-500 mt-1">Mettez à jour les informations de votre demande.</p>
         </div>
 
@@ -222,46 +227,17 @@ export default function EditDemandePage() {
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Détails */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-gray-900">Détails</h2>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Titre *</label>
-              <input
-                type="text"
-                value={formData.titre}
-                onChange={(e) => update('titre', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Ex: Photographe pour mariage le 15 juin"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description <span className="text-red-500">*</span></label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => update('description', e.target.value)}
-                rows={4}
-                placeholder="Décrivez votre projet en détail..."
-                required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-              />
-            </div>
 
             {SPECIALITES_MAP[formData.categorie] && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Spécialité recherchée</label>
-                <div className="flex flex-wrap gap-2">
+              <div className="mt-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-5">Spécialité recherchée</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {SPECIALITES_MAP[formData.categorie].map(spec => (
                     <button
                       key={spec}
                       type="button"
                       onClick={() => { update('specialite', spec); if (spec !== 'Autre') update('specialite_autre', ''); }}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                      className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                         formData.specialite === spec
                           ? 'border-indigo-600 bg-indigo-600 text-white'
                           : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
@@ -277,7 +253,7 @@ export default function EditDemandePage() {
                     value={formData.specialite_autre}
                     onChange={(e) => update('specialite_autre', e.target.value)}
                     placeholder="Précisez la spécialité..."
-                    className="mt-3 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="mt-3 w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 )}
                 {formData.specialite === 'Développement' && (
@@ -288,7 +264,7 @@ export default function EditDemandePage() {
                       value={formData.langages_dev}
                       onChange={(e) => update('langages_dev', e.target.value)}
                       placeholder="Ex : JavaScript, Python, React, PHP..."
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                 )}
@@ -301,7 +277,7 @@ export default function EditDemandePage() {
                         value={formData.matiere}
                         onChange={(e) => update('matiere', e.target.value)}
                         placeholder="Ex : Mathématiques, Français..."
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -311,13 +287,46 @@ export default function EditDemandePage() {
                         value={formData.niveau}
                         onChange={(e) => update('niveau', e.target.value)}
                         placeholder="Ex : CP, 3ème, Terminale, Bac+2..."
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 )}
               </div>
             )}
+          </div>
+
+          
+
+          {/* Détails */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
+            <h2 className="text-lg font-semibold text-gray-900">Détails</h2>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Titre *</label>
+              <input
+                type="text"
+                value={formData.titre}
+                onChange={(e) => update('titre', e.target.value)}
+                className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Ex: Photographe pour mariage le 15 juin"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description <span className="text-red-500">*</span></label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => update('description', e.target.value)}
+                rows={4}
+                placeholder="Décrivez votre projet en détail..."
+                required
+                className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              />
+            </div>
+
+            
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -330,7 +339,7 @@ export default function EditDemandePage() {
                   value={formData.date_souhaitee}
                   onChange={(e) => update('date_souhaitee', e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
 
@@ -342,7 +351,7 @@ export default function EditDemandePage() {
                 <select
                   value={formData.duree_estimee}
                   onChange={(e) => update('duree_estimee', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   {[1,2,3,4,5,6,7,8,10,12].map(h => (
                     <option key={h} value={h}>{h} heure{h > 1 ? 's' : ''}</option>
@@ -357,14 +366,15 @@ export default function EditDemandePage() {
                   <MapPin className="w-4 h-4 inline mr-1" />
                   Ville de la prestation *
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.ville}
                   onChange={(e) => update('ville', e.target.value)}
-                  placeholder="Ex: Casablanca, Rabat..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   required
-                />
+                >
+                <option value="">Sélectionner une ville...</option>
+                            {VILLES_MAROC.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -377,7 +387,7 @@ export default function EditDemandePage() {
                   onChange={(e) => update('lieu', e.target.value)}
                   placeholder="Salle, adresse exacte..."
                   required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -389,7 +399,7 @@ export default function EditDemandePage() {
                 onChange={(e) => update('instructions_speciales', e.target.value)}
                 rows={3}
                 placeholder="Contraintes particulières, style souhaité..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               />
             </div>
           </div>

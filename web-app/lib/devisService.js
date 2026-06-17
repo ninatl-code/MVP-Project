@@ -92,7 +92,7 @@ export const getClientDevis = async (clientId, status = null) => {
       .from('devis')
       .select(`
         *,
-        profiles!devis_prestataire_id_fkey(id, nom, email, avatar_url),
+        profiles!devis_prestatairep_id_fkey(id, nom, email, avatar_url),
         demandes_client(titre, categorie)
       `)
       .eq('client_id', clientId)
@@ -121,18 +121,17 @@ export const getDevisForDemande = async (demandeId) => {
       .from('devis')
       .select(`
         *,
-        profiles!devis_prestataire_id_fkey(
+        profiles!devis_prestatairep_id_fkey(
           id, 
           nom, 
           email, 
-          avatar_url,
-          profils_prestataire(
+          avatar_url), profils_prestataire!devis_prestataire_id_fkey
+          (
             note_moyenne,
             nb_avis,
             specialisations,
             portfolio_photos
           )
-        )
       `)
       .eq('demande_id', demandeId)
       .order('montant_total', { ascending: true });
@@ -154,7 +153,7 @@ export const getDevisById = async (devisId) => {
       .from('devis')
       .select(`
         *,
-        profiles!devis_prestataire_id_fkey(id, nom, email, telephone, avatar_url),
+        profiles!devis_prestatairep_id_fkey(id, nom, email, telephone, avatar_url),
         profiles!devis_client_id_fkey(id, nom, email, telephone, avatar_url),
         demandes_client(*)
       `)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +6,7 @@ import Header from '../../components/HeaderPresta';
 
 import { 
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
-  Plus, X, Clock, MapPin, User, Trash2
+  Plus, X, Clock, MapPin, User, Trash2, ArrowLeft
 } from 'lucide-react';
 import { 
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -116,21 +116,26 @@ export default function AgendaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mon agenda</h1>
-            <p className="text-gray-600 mt-1">
+            <div className="flex items-center gap-3 mb-1">
+              <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <ArrowLeft className="w-5 h-5 text-[#130183]" />
+              </button>
+              <h1 className="text-2xl font-bold text-[#130183]">Mon agenda</h1>
+            </div>
+            <p className="text-gray-600 mt-1 pl-11">
               Gérez vos disponibilités et suivez vos réservations
             </p>
           </div>
           
           <button
             onClick={handleAddIndispo}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all"
+            className="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all"
           >
             <Plus className="w-5 h-5" />
             Ajouter indisponibilité
@@ -391,13 +396,13 @@ function DayDetails({ date, events, photographeId, onUpdate }) {
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50"
+                className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50"
               >
                 Annuler
               </button>
               <button
                 onClick={handleDeleteIndispo}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700"
+                className="flex-1 px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700"
               >
                 Supprimer
               </button>
@@ -463,7 +468,7 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
                 required
                 value={formData.start_datetime}
                 onChange={(e) => setFormData(prev => ({ ...prev, start_datetime: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div>
@@ -476,7 +481,7 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
                 value={formData.end_datetime}
                 onChange={(e) => setFormData(prev => ({ ...prev, end_datetime: e.target.value }))}
                 min={formData.start_datetime}
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -490,7 +495,7 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
               onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
               rows={3}
               placeholder="Ex: Vacances, Formation..."
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -498,14 +503,14 @@ function AddIndispoModal({ photographeId, selectedDate, onClose, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
+              className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50"
+              className="flex-1 px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
               {loading ? 'Ajout...' : 'Ajouter'}
             </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,12 +6,14 @@ import HeaderParti from '../components/HeaderParti';
 import HeaderPresta from '../components/HeaderPresta';
 import * as messageService from '../lib/messageService';
 import {
-  ArrowLeft, Send, Paperclip, MoreVertical, FileText,
-  Phone, Info, Check, CheckCheck, MessageSquare, Search, X,
-  MessageCircle, UserCircle, Users
+  ArrowLeft, Send, MoreVertical, FileText,
+  Check, CheckCheck, MessageSquare, Search, X,
+  MessageCircle, UserCircle, Users, ChevronRight
 } from 'lucide-react';
 
-/* ── Helpers avatar ── */
+/* ─────────────────────────────────────────────
+   Helpers avatar
+───────────────────────────────────────────── */
 const initialsFromName = (name = '') => {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 0) return 'U';
@@ -28,8 +30,8 @@ const svgAvatarDataUrl = (name = '') => {
   const initials = initialsFromName(name);
   const bg = stringToColor(name || 'user');
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
-    <rect width='100%' height='100%' fill='${bg}' rx='20'/>
-    <text x='50%' y='50%' dy='.06em' text-anchor='middle' font-family='system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial' font-size='46' fill='white'>${initials}</text>
+    <rect width='100%' height='100%' fill='${bg}' rx='64'/>
+    <text x='50%' y='54%' dy='.06em' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-size='46' fill='white'>${initials}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
@@ -39,7 +41,9 @@ const getAvatarSrc = (profile) => {
   return null;
 };
 
-/* ── Renders message text with devis references as clickable links ── */
+/* ─────────────────────────────────────────────
+   MessageContent — liens devis cliquables
+───────────────────────────────────────────── */
 function MessageContent({ contenu, isOwn }) {
   if (!contenu) return null;
   const devisRefRegex = /\[Devis: (.+?) — (\/client\/devis\/[^\]]+)\]/g;
@@ -48,9 +52,17 @@ function MessageContent({ contenu, isOwn }) {
   while ((match = devisRefRegex.exec(contenu)) !== null) {
     if (match.index > last) parts.push(contenu.slice(last, match.index));
     parts.push(
-      <a key={match.index} href={match[2]}
-        className={`inline-flex items-center gap-1 underline font-medium text-sm mt-1 ${isOwn ? 'text-indigo-100 hover:text-white' : 'text-indigo-600 hover:text-indigo-800'}`}>
-        <FileText className="w-3.5 h-3.5" />{match[1]}
+      <a
+        key={match.index}
+        href={match[2]}
+        className={`inline-flex items-center gap-1.5 underline-offset-2 underline font-medium text-xs mt-1.5 px-2 py-1 rounded-md ${
+          isOwn
+            ? 'bg-white/20 text-white hover:bg-white/30'
+            : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+        } transition-colors`}
+      >
+        <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+        {match[1]}
       </a>
     );
     last = match.index + match[0].length;
@@ -59,6 +71,28 @@ function MessageContent({ contenu, isOwn }) {
   return <p className="text-sm leading-relaxed whitespace-pre-wrap">{parts}</p>;
 }
 
+/* ─────────────────────────────────────────────
+   Skeleton loader for conversations
+───────────────────────────────────────────── */
+function ConversationSkeleton() {
+  return (
+    <div className="space-y-1 p-2">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex items-center gap-3 p-3 rounded-xl">
+          <div className="w-11 h-11 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 bg-gray-200 rounded-full animate-pulse w-2/3" />
+            <div className="h-2.5 bg-gray-100 rounded-full animate-pulse w-4/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Page principale
+───────────────────────────────────────────── */
 export default function MessagesPage() {
   const router = useRouter();
   const { user, activeRole, profileId } = useAuth();
@@ -72,7 +106,9 @@ export default function MessagesPage() {
   const [devisContext, setDevisContext] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isTyping] = useState(false); // placeholder for future typing indicator
   const messagesContainerRef = useRef(null);
+  const textareaRef = useRef(null);
   const channelRef = useRef(null);
 
   useEffect(() => {
@@ -83,6 +119,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!selectedConversation) return;
+    setMessages([]);
     const loadMessages = async () => {
       const { data, error } = await messageService.getConversationMessages(selectedConversation.id);
       if (!error && data) setMessages(data);
@@ -98,7 +135,9 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!router.isReady || !router.query.devis) return;
     const fetchDevisContext = async () => {
-      const { data } = await supabase.from('devis').select('id, titre, montant_total').eq('id', router.query.devis).single();
+      const { data } = await supabase
+        .from('devis').select('id, titre, montant_total')
+        .eq('id', router.query.devis).single();
       if (data) setDevisContext(data);
     };
     fetchDevisContext();
@@ -109,6 +148,14 @@ export default function MessagesPage() {
     if (!el) return;
     requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
   }, [messages.length]);
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    if (!showProfileMenu) return;
+    const close = () => setShowProfileMenu(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [showProfileMenu]);
 
   const fetchConversations = async () => {
     setError(null);
@@ -125,7 +172,9 @@ export default function MessagesPage() {
 
       let profileMap = {};
       if (profileIds.size > 0) {
-        const { data: profilesData } = await supabase.from('profiles').select('id, nom, avatar_url').in('id', Array.from(profileIds));
+        const { data: profilesData } = await supabase
+          .from('profiles').select('id, nom, avatar_url')
+          .in('id', Array.from(profileIds));
         (profilesData || []).forEach(p => { profileMap[p.id] = p; });
       }
 
@@ -183,7 +232,9 @@ export default function MessagesPage() {
           if (convCreateError) {
             setError(`Impossible de créer la conversation : ${convCreateError.message}`);
           } else if (newConv) {
-            const { data: prestaProfile } = await supabase.from('profiles').select('id, nom, avatar_url').eq('id', prestataireId).single();
+            const { data: prestaProfile } = await supabase
+              .from('profiles').select('id, nom, avatar_url')
+              .eq('id', prestataireId).single();
             const displayName = prestaProfile?.nom || 'Utilisateur';
             const newEnriched = {
               ...newConv, lastMessage: null,
@@ -206,8 +257,8 @@ export default function MessagesPage() {
   };
 
   const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedConversation) return;
+    e?.preventDefault();
+    if (!newMessage.trim() || !selectedConversation || sending) return;
     setSending(true);
     const baseContenu = newMessage.trim();
     const contenu = devisContext
@@ -220,12 +271,26 @@ export default function MessagesPage() {
       receiverId,
       content: contenu,
     });
-    if (!error && data) { setMessages(prev => [...prev, data]); setNewMessage(''); }
+    if (!error && data) {
+      setMessages(prev => [...prev, data]);
+      setNewMessage('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '48px';
+      }
+    }
     setSending(false);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e);
+    }
+  };
+
+  const handleTextareaInput = (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
   };
 
   const formatTime = (dateString) => {
@@ -234,6 +299,7 @@ export default function MessagesPage() {
     if (diff < 60000) return "À l'instant";
     if (diff < 3600000) return `${Math.floor(diff / 60000)} min`;
     if (diff < 86400000) return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if (diff < 604800000) return date.toLocaleDateString('fr-FR', { weekday: 'short' });
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   };
 
@@ -253,12 +319,25 @@ export default function MessagesPage() {
 
   /* ── Loading ── */
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FB] flex flex-col">
       <Header />
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-400">Chargement des messages…</p>
+      <div className="max-w-6xl mx-auto w-full px-6 py-6">
+        <div className="flex gap-6" style={{ height: '85vh' }}>
+          {/* Sidebar skeleton */}
+          <div className="w-80 flex-shrink-0 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-100">
+              <div className="h-6 bg-gray-200 rounded-full animate-pulse w-40 mb-3" />
+              <div className="h-9 bg-gray-100 rounded-xl animate-pulse" />
+            </div>
+            <ConversationSkeleton />
+          </div>
+          {/* Chat skeleton */}
+          <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-10 h-10 border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-gray-400">Chargement…</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -266,17 +345,19 @@ export default function MessagesPage() {
 
   /* ── Error ── */
   if (error) return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FB] flex flex-col">
       <Header />
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-sm w-full bg-white rounded-2xl shadow-sm border border-red-100 p-8 text-center">
           <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <MessageSquare className="w-7 h-7 text-red-400" />
           </div>
-          <p className="text-gray-900 font-semibold mb-1">Erreur de chargement</p>
+          <p className="text-gray-900 font-semibold mb-1">Impossible de charger</p>
           <p className="text-sm text-gray-500 mb-5">{error}</p>
-          <button onClick={() => { setError(null); setLoading(true); fetchConversations(); }}
-            className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors">
+          <button
+            onClick={() => { setError(null); setLoading(true); fetchConversations(); }}
+            className="w-full px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
+          >
             Réessayer
           </button>
         </div>
@@ -286,279 +367,410 @@ export default function MessagesPage() {
 
   /* ── Main ── */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100">
+    <div className="min-h-screen bg-[#F8F9FB] flex flex-col">
       <Header />
 
-      {/* ── Page header gradient ── */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-violet-800 text-white shadow-xl">
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <button onClick={() => router.back()} className="flex items-center gap-1 text-indigo-200 hover:text-white text-sm mb-2 transition-colors">
-                <ArrowLeft className="w-4 h-4" /> Retour
-              </button>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <div className="p-2 bg-white/10 rounded-lg">
-                  <MessageCircle className="w-7 h-7" />
-                </div>
-                Messagerie
-              </h1>
-              <p className="text-indigo-200 mt-1">Vos conversations avec les prestataires</p>
+      {/* ── Top bar ── */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 sm:px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+              aria-label="Retour"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-indigo-600" />
+              <h1 className="text-base font-semibold text-gray-900">Messagerie</h1>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3 text-center">
-                <div className="text-xl font-bold">{conversations.length}</div>
-                <div className="text-indigo-200 text-xs">Conversations</div>
-              </div>
-              {unreadTotal > 0 && (
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3 text-center">
-                  <div className="text-xl font-bold">{unreadTotal}</div>
-                  <div className="text-indigo-200 text-xs">Non lus</div>
-                </div>
-              )}
-            </div>
+          </div>
+          <div className="flex items-center gap-3 text-sm text-gray-500">
+            <span className="hidden sm:inline">{conversations.length} conversation{conversations.length > 1 ? 's' : ''}</span>
+            {unreadTotal > 0 && (
+              <span className="bg-indigo-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                {unreadTotal} non lu{unreadTotal > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Grid layout ── */}
-      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* ── Layout ── */}
+      <div className="flex-1 max-w-6xl mx-auto w-full px-6 sm:px-6 py-5">
+        <div className="flex gap-4 sm:gap-5" style={{ height: 'calc(100vh - 130px)' }}>
 
-        {/* ── SIDEBAR ── */}
-        <div className={`${selectedConversation ? 'hidden md:flex md:flex-col' : 'flex flex-col'} md:col-span-1 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden`}>
-          {/* Sidebar header — fixe */}
-          <div className="flex-shrink-0 bg-gradient-to-r from-gray-50 to-slate-50 p-5 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <Users className="w-5 h-5 text-gray-600" /> Conversations
-              </h2>
-              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
-                {filteredConversations.length}
-              </span>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Rechercher..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm text-sm"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Liste conversations — scroll indépendant */}
-          <div className="overflow-y-auto divide-y divide-gray-100" style={{ maxHeight: 'calc(80vh - 160px)' }}>
-            {filteredConversations.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">{searchQuery ? 'Aucun résultat' : 'Aucune conversation'}</p>
-              </div>
-            ) : (
-              filteredConversations.map((conv) => {
-                const isActive = selectedConversation?.id === conv.id;
-                const isPresta = activeRole === 'photographe';
-                const unread = ((isPresta ? conv.unread_count_prestataire : conv.unread_count_client) || 0) > 0;
-                const preview = (conv.lastMessage?.contenu?.replace(/\[Devis:.*?\]/g, '📄 Devis joint') || 'Démarrer la conversation');
-
-                return (
-                  <div
-                    key={conv.id}
-                    onClick={() => setSelectedConversation(conv)}
-                    className={`p-4 cursor-pointer transition-all duration-200 ${
-                      isActive
-                        ? 'bg-indigo-50 border-l-4 border-l-indigo-600'
-                        : unread
-                          ? 'bg-blue-50 border-l-4 border-l-blue-500 hover:bg-blue-100'
-                          : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="relative flex-shrink-0">
-                        <img src={conv.photoUrl} alt={conv.displayName} className="w-11 h-11 rounded-full object-cover border-2 border-white shadow" />
-                        {unread && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-sm font-semibold truncate ${unread ? 'text-gray-900' : 'text-gray-700'}`}>
-                            {conv.displayName}
-                          </span>
-                          <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
-                            {conv.lastMessage && formatTime(conv.lastMessage.created_at)}
-                          </span>
-                        </div>
-                        <p className={`text-xs truncate ${unread ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
-                          {preview.slice(0, 50)}{preview.length > 50 ? '…' : ''}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* ── CHAT AREA ── */}
-        <div className={`${!selectedConversation ? 'hidden md:block' : 'block'} md:col-span-2`}>
-          {selectedConversation ? (
-            <div className="flex flex-col bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden" style={{ height: '80vh' }}>
-
-              {/* Chat header — fixe */}
-              <div className="flex-shrink-0 bg-gradient-to-r from-gray-50 to-slate-50 p-5 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setSelectedConversation(null)} className="md:hidden p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                      <ArrowLeft className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <img src={selectedConversation.photoUrl} alt={selectedConversation.displayName} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg" />
-                    <div>
-                      <h2 className="font-bold text-lg text-gray-800">{selectedConversation.displayName}</h2>
-                      <span className="text-xs text-green-600 flex items-center gap-1">
-                        <span className="w-2 h-2 bg-green-500 rounded-full inline-block" /> En ligne
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <button onClick={() => setShowProfileMenu(v => !v)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    {showProfileMenu && (
-                      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[160px]">
-                        <button
-                          onClick={() => { router.push(`/client/photographes/${selectedConversation.otherParticipant?.id}`); setShowProfileMenu(false); }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <UserCircle className="w-4 h-4" /> Voir le profil
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Messages — scroll indépendant */}
-              <div
-                ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-5 space-y-4"
-                style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)', overscrollBehavior: 'contain' }}
-              >
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                    <MessageCircle className="w-12 h-12 mb-3 opacity-20" />
-                    <p className="text-sm font-medium">Commencez la conversation</p>
-                    <p className="text-xs mt-1">Envoyez le premier message !</p>
-                  </div>
-                ) : (
-                  messages.map((message, index) => {
-                    const isOwn = message.sender_id === profileId || message.sender_id === user?.id;
-                    const prevMsg = messages[index - 1];
-                    const nextMsg = messages[index + 1];
-                    const showDateSep = !prevMsg ||
-                      new Date(message.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString();
-                    const isLastInGroup = !nextMsg || nextMsg.sender_id !== message.sender_id;
-                    const showAvatar = !isOwn && (!prevMsg || prevMsg.sender_id !== message.sender_id);
-
-                    return (
-                      <div key={message.id}>
-                        {showDateSep && (
-                          <div className="flex items-center gap-3 my-5">
-                            <div className="flex-1 h-px bg-gray-200" />
-                            <span className="text-xs text-gray-400 font-medium whitespace-nowrap bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm">
-                              {new Date(message.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                            </span>
-                            <div className="flex-1 h-px bg-gray-200" />
-                          </div>
-                        )}
-                        <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} items-end gap-2`}>
-                          {!isOwn && (
-                            <div className={`flex-shrink-0 ${showAvatar ? 'visible' : 'invisible'}`}>
-                              <img src={selectedConversation.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm" />
-                            </div>
-                          )}
-                          <div className={`max-w-[72%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
-                            <div className={`px-4 py-3 rounded-2xl shadow-sm ${
-                              isOwn
-                                ? 'bg-indigo-600 text-white rounded-br-sm'
-                                : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'
-                            }`}>
-                              <MessageContent contenu={message.contenu} isOwn={isOwn} />
-                            </div>
-                            {isLastInGroup && (
-                              <div className={`flex items-center gap-1 px-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                                <span className="text-xs text-gray-400">{formatTime(message.created_at)}</span>
-                                {isOwn && (
-                                  message.lu
-                                    ? <CheckCheck className="w-3.5 h-3.5 text-indigo-400" />
-                                    : <Check className="w-3.5 h-3.5 text-gray-300" />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
+          {/* ── SIDEBAR ── */}
+          <aside
+            className={`
+              ${selectedConversation ? 'hidden md:flex' : 'flex'} 
+              flex-col w-full md:w-72 lg:w-80 flex-shrink-0
+              bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden
+            `}
+          >
+            {/* Sidebar header */}
+            <div className="p-4 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-400" />
+                  Conversations
+                </h2>
+                {filteredConversations.length > 0 && (
+                  <span className="text-xs text-gray-400 tabular-nums">{filteredConversations.length}</span>
                 )}
               </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Rechercher…"
+                  className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all text-sm outline-none"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
 
-              {/* Devis banner — fixe */}
-              {devisContext && (
-                <div className="flex-shrink-0 bg-gradient-to-r from-indigo-50 to-purple-50 border-t border-indigo-100 px-4 py-2.5 flex items-center gap-3">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-4 h-4 text-indigo-600" />
+            {/* Conversation list */}
+            <div className="flex-1 overflow-y-auto">
+              {filteredConversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <MessageCircle className="w-5 h-5 text-gray-400" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-indigo-400 font-medium">Devis lié</p>
-                    <button type="button" onClick={() => router.push(`/client/devis/${devisContext.id}`)}
-                      className="text-sm font-semibold text-indigo-700 hover:text-indigo-900 truncate block text-left leading-tight">
-                      {devisContext.titre || `Devis #${devisContext.id.slice(0, 8)}`}
-                      {devisContext.montant_total && (
-                        <span className="ml-2 font-normal text-indigo-400">{Number(devisContext.montant_total).toLocaleString('fr-FR')} MAD</span>
+                  <p className="text-sm font-medium text-gray-500">
+                    {searchQuery ? 'Aucun résultat' : 'Aucune conversation'}
+                  </p>
+                  {!searchQuery && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Contactez un prestataire depuis son profil
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <ul className="p-2 space-y-0.5">
+                  {filteredConversations.map((conv) => {
+                    const isActive = selectedConversation?.id === conv.id;
+                    const isPresta = activeRole === 'photographe';
+                    const unreadCount = (isPresta ? conv.unread_count_prestataire : conv.unread_count_client) || 0;
+                    const hasUnread = unreadCount > 0;
+                    const preview = conv.lastMessage?.contenu?.replace(/\[Devis:.*?\]/g, '📄 Devis joint')
+                      || 'Démarrer la conversation';
+
+                    return (
+                      <li key={conv.id}>
+                        <button
+                          onClick={() => setSelectedConversation(conv)}
+                          className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-150 group ${
+                            isActive
+                              ? 'bg-indigo-50 ring-1 ring-indigo-200'
+                              : hasUnread
+                                ? 'bg-blue-50 hover:bg-blue-100'
+                                : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          {/* Avatar */}
+                          <div className="relative flex-shrink-0">
+                            <img
+                              src={conv.photoUrl}
+                              alt={conv.displayName}
+                              className="w-11 h-11 rounded-full object-cover"
+                            />
+                            {hasUnread && (
+                              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-white" />
+                            )}
+                          </div>
+
+                          {/* Text */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-1 mb-0.5">
+                              <span className={`text-sm truncate ${hasUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                                {conv.displayName}
+                              </span>
+                              {conv.lastMessage && (
+                                <span className="text-[11px] text-gray-400 flex-shrink-0 tabular-nums">
+                                  {formatTime(conv.lastMessage.created_at)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between gap-1">
+                              <p className={`text-xs truncate ${hasUnread ? 'text-gray-700' : 'text-gray-400'}`}>
+                                {preview.slice(0, 55)}{preview.length > 55 ? '…' : ''}
+                              </p>
+                              {hasUnread && (
+                                <span className="flex-shrink-0 w-4 h-4 bg-indigo-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                  {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-all ${isActive ? 'text-indigo-400' : 'text-gray-300 group-hover:text-gray-400'}`} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </aside>
+
+          {/* ── CHAT AREA ── */}
+          <main className={`${!selectedConversation ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-w-0`}>
+            {selectedConversation ? (
+              <>
+                {/* Chat header */}
+                <header className="flex-shrink-0 border-b border-gray-100 px-6 py-3">
+                  <div className="flex items-center gap-3">
+                    {/* Mobile back */}
+                    <button
+                      onClick={() => setSelectedConversation(null)}
+                      className="md:hidden -ml-1 p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-500"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                    </button>
+
+                    {/* Avatar + name */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="relative flex-shrink-0">
+                        <img
+                          src={selectedConversation.photoUrl}
+                          alt={selectedConversation.displayName}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="text-sm font-semibold text-gray-900 truncate leading-tight">
+                          {selectedConversation.displayName}
+                        </h2>
+                        <span className="text-xs text-green-500 font-medium">En ligne</span>
+                      </div>
+                    </div>
+
+                    {/* Menu */}
+                    <div className="relative flex-shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowProfileMenu(v => !v); }}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                        aria-label="Options"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      {showProfileMenu && (
+                        <div className="absolute right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50 min-w-[160px]" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => {
+                              router.push(`/client/photographes/${selectedConversation.otherParticipant?.id}`);
+                              setShowProfileMenu(false);
+                            }}
+                            className="w-full px-6 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 rounded-lg mx-1"
+                            style={{ width: 'calc(100% - 8px)' }}
+                          >
+                            <UserCircle className="w-4 h-4 text-gray-400" />
+                            Voir le profil
+                          </button>
+                        </div>
                       )}
+                    </div>
+                  </div>
+                </header>
+
+                {/* Messages */}
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto px-6 py-5 space-y-1"
+                  style={{ background: '#f8f9fb', overscrollBehavior: 'contain' }}
+                >
+                  {messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
+                        <MessageCircle className="w-8 h-8 text-indigo-300" />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-600 mb-1">Commencez à écrire</p>
+                      <p className="text-xs text-gray-400">Envoyez le premier message à {selectedConversation.displayName}</p>
+                    </div>
+                  ) : (
+                    messages.map((message, index) => {
+                      const isOwn = message.sender_id === profileId || message.sender_id === user?.id;
+                      const prevMsg = messages[index - 1];
+                      const nextMsg = messages[index + 1];
+                      const showDateSep = !prevMsg ||
+                        new Date(message.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString();
+                      const isGroupStart = !prevMsg || prevMsg.sender_id !== message.sender_id;
+                      const isGroupEnd = !nextMsg || nextMsg.sender_id !== message.sender_id;
+
+                      return (
+                        <div key={message.id}>
+                          {showDateSep && (
+                            <div className="flex items-center gap-3 my-4">
+                              <div className="flex-1 h-px bg-gray-200" />
+                              <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap bg-white border border-gray-200 px-3 py-1 rounded-full shadow-sm">
+                                {new Date(message.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                              </span>
+                              <div className="flex-1 h-px bg-gray-200" />
+                            </div>
+                          )}
+
+                          <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} items-end gap-2 ${isGroupStart ? 'mt-3' : 'mt-0.5'}`}>
+                            {/* Other's avatar */}
+                            {!isOwn && (
+                              <div className="flex-shrink-0 w-7 h-7">
+                                {isGroupEnd ? (
+                                  <img
+                                    src={selectedConversation.photoUrl}
+                                    alt=""
+                                    className="w-7 h-7 rounded-full object-cover"
+                                  />
+                                ) : null}
+                              </div>
+                            )}
+
+                            <div className={`max-w-[70%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
+                              {/* Bubble */}
+                              <div className={`
+                                px-6 py-2.5 shadow-sm
+                                ${isOwn
+                                  ? `bg-indigo-600 text-white ${isGroupStart ? 'rounded-t-2xl' : 'rounded-t-lg'} rounded-bl-2xl ${isGroupEnd ? 'rounded-br-sm' : 'rounded-br-lg'}`
+                                  : `bg-white border border-gray-200 text-gray-800 ${isGroupStart ? 'rounded-t-2xl' : 'rounded-t-lg'} rounded-br-2xl ${isGroupEnd ? 'rounded-bl-sm' : 'rounded-bl-lg'}`
+                                }
+                              `}>
+                                <MessageContent contenu={message.contenu} isOwn={isOwn} />
+                              </div>
+
+                              {/* Timestamp + read status */}
+                              {isGroupEnd && (
+                                <div className={`flex items-center gap-1 px-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                                  <span className="text-[11px] text-gray-400 tabular-nums">{formatTime(message.created_at)}</span>
+                                  {isOwn && (
+                                    message.lu
+                                      ? <CheckCheck className="w-3.5 h-3.5 text-indigo-400" />
+                                      : <Check className="w-3.5 h-3.5 text-gray-300" />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Typing indicator placeholder */}
+                  {isTyping && (
+                    <div className="flex items-end gap-2 mt-2">
+                      <img src={selectedConversation.photoUrl} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                      <div className="bg-white border border-gray-200 px-6 py-3 rounded-2xl rounded-bl-sm shadow-sm">
+                        <div className="flex gap-1 items-center h-4">
+                          {[0, 1, 2].map(i => (
+                            <span
+                              key={i}
+                              className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: `${i * 0.15}s`, animationDuration: '0.8s' }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Devis banner */}
+                {devisContext && (
+                  <div className="flex-shrink-0 bg-indigo-50 border-t border-indigo-100 px-6 py-2.5 flex items-center gap-3">
+                    <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wide mb-0.5">Devis lié</p>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/client/devis/${devisContext.id}`)}
+                        className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 truncate block text-left leading-tight transition-colors"
+                      >
+                        {devisContext.titre || `Devis #${devisContext.id.slice(0, 8)}`}
+                        {devisContext.montant_total && (
+                          <span className="ml-2 font-normal text-indigo-400">
+                            {Number(devisContext.montant_total).toLocaleString('fr-FR')} MAD
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDevisContext(null)}
+                      className="p-1.5 hover:bg-indigo-100 rounded-lg transition-colors text-indigo-400 hover:text-indigo-600 flex-shrink-0"
+                      aria-label="Retirer le devis lié"
+                    >
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <button type="button" onClick={() => setDevisContext(null)}
-                    className="p-1.5 hover:bg-indigo-100 rounded-lg transition-colors text-indigo-400 hover:text-indigo-600 flex-shrink-0">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+                )}
 
-              {/* Input — fixe en bas */}
-              <form onSubmit={handleSendMessage} className="flex-shrink-0 p-4 border-t border-gray-200 bg-white space-y-2">
-                <div className="flex items-end gap-2">
-                  <textarea
-                    value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={devisContext ? 'Votre message à propos du devis…' : 'Tapez votre message...'}
-                    rows={1}
-                    className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-all text-sm"
-                    style={{ minHeight: '48px', maxHeight: '120px' }}
-                    onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newMessage.trim() || sending}
-                    className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
+                {/* Input area */}
+                <div className="flex-shrink-0 border-t border-gray-100 px-6 py-3 bg-white">
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      ref={textareaRef}
+                      value={newMessage}
+                      onChange={e => setNewMessage(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onInput={handleTextareaInput}
+                      placeholder={
+                        devisContext
+                          ? `Message à propos de « ${devisContext.titre || 'ce devis'} »…`
+                          : `Message à ${selectedConversation.displayName}…`
+                      }
+                      rows={1}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-all text-sm outline-none placeholder:text-gray-400"
+                      style={{ minHeight: '44px', maxHeight: '120px' }}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim() || sending}
+                      className={`
+                        flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all
+                        ${newMessage.trim() && !sending
+                          ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-indigo-200 hover:shadow-md'
+                          : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                        }
+                      `}
+                      aria-label="Envoyer"
+                    >
+                      {sending
+                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        : <Send className="w-4 h-4" />
+                      }
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-400 text-center mt-2 select-none">
+                    Entrée pour envoyer · Shift+Entrée pour un saut de ligne
+                  </p>
                 </div>
-                <p className="text-xs text-gray-400 text-center select-none">
-                  Entrée pour envoyer · Shift+Entrée pour sauter une ligne
+              </>
+            ) : (
+              /* Empty state */
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <div className="w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mb-5">
+                  <MessageCircle className="w-10 h-10 text-indigo-300" />
+                </div>
+                <h3 className="text-base font-semibold text-gray-700 mb-1">Sélectionnez une conversation</h3>
+                <p className="text-sm text-gray-400 max-w-xs">
+                  Choisissez une conversation dans la liste ou contactez un prestataire depuis son profil.
                 </p>
-              </form>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-xl border border-slate-200 text-gray-400" style={{ height: '80vh' }}>
-              <MessageCircle className="w-16 h-16 mb-4 opacity-20" />
-              <p className="font-medium">Sélectionnez une conversation</p>
-              <p className="text-sm mt-1">ou contactez un prestataire depuis son profil</p>
-            </div>
-          )}
+              </div>
+            )}
+          </main>
+
         </div>
       </div>
     </div>

@@ -1,11 +1,11 @@
-import { useEffect, useState, useMemo } from 'react';
+﻿import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useRouter } from 'next/router';
 import HeaderPresta from '../../../components/HeaderPresta';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   FileText, Download, Eye, Search, Calendar, Euro,
-  CheckCircle, XCircle, ChevronLeft, Printer, Mail,
+  CheckCircle, XCircle, ArrowLeft, Printer, Mail,
   Plus, Trash2, X, TrendingUp, Users, RefreshCw
 } from 'lucide-react';
 
@@ -119,6 +119,7 @@ function RingKpi({ label, pct: p, detail, badge, badgeColor }) {
         </span>
       )}
     </div>
+  
   );
 }
 
@@ -205,7 +206,7 @@ export default function KPIs() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <HeaderPresta />
       <div className="flex justify-center items-center py-24">
         <div className="animate-spin h-7 w-7 border-b-2 border-[#534AB7] rounded-full" />
@@ -214,20 +215,20 @@ export default function KPIs() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <HeaderPresta />
 
 
 
         {/* ── Page header ───────────────────────────────────── */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
+                <ArrowLeft className="w-5 h-5 text-[#130183]" />
               </button>
             
-              <h1 className="text-xl font-medium text-gray-900 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-[#130183] flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-indigo-600" />
                 Tableau de bord
               </h1>
@@ -254,7 +255,7 @@ export default function KPIs() {
 
         {/* ── CA ────────────────────────────────────────────── */}
 
-      <main className="max-w-5xl mx-auto px-4 py-8 flex flex-col gap-8">
+      <main className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-8">
         <section>
           <p className="text-[11px] font-medium text-gray-400 uppercase tracking-[0.06em] mb-3">Chiffre d'affaires</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

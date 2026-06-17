@@ -262,7 +262,7 @@ export default function CreateDevisPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -273,13 +273,13 @@ export default function CreateDevisPage() {
 
   if (!demande) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-4xl mx-auto px-6 py-12 text-center">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Demande introuvable</h2>
           <button
             onClick={() => router.push('/photographe/demandes')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium"
           >
             Retour aux demandes
           </button>
@@ -289,10 +289,10 @@ export default function CreateDevisPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8">
         {/* Back button */}
         <button
           onClick={() => router.back()}
@@ -308,7 +308,7 @@ export default function CreateDevisPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-6">
                 <FileText className="w-6 h-6 text-indigo-600" />
-                <h1 className="text-xl font-bold text-gray-900">Créer un devis</h1>
+                <h1 className="text-xl font-bold text-[#130183]">Créer un devis</h1>
               </div>
 
               <div className="space-y-6">
@@ -322,7 +322,7 @@ export default function CreateDevisPage() {
                     value={formData.titre}
                     onChange={(e) => updateFormData('titre', e.target.value)}
                     placeholder="Ex: Reportage photo mariage"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
 
@@ -336,7 +336,7 @@ export default function CreateDevisPage() {
                     onChange={(e) => updateFormData('description', e.target.value)}
                     placeholder="Décrivez votre prestation, votre approche, ce que le client peut attendre..."
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                    className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                   />
                 </div>
 
@@ -350,7 +350,7 @@ export default function CreateDevisPage() {
                     onChange={(e) => updateFormData('prestations_incluses', e.target.value)}
                     placeholder="- 4 heures de shooting&#10;- 100 photos retouchées&#10;- Livraison en galerie en ligne&#10;- ..."
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                    className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Utilisez des tirets (-) pour chaque élément inclus
@@ -424,7 +424,7 @@ export default function CreateDevisPage() {
                   <select
                     value={formData.validite_jours}
                     onChange={(e) => updateFormData('validite_jours', parseInt(e.target.value))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     <option value={7}>7 jours</option>
                     <option value={14}>14 jours</option>

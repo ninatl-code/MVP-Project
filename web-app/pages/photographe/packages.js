@@ -104,20 +104,20 @@ export default function PackagesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
 
         {/* Page header */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
                     <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                      <ChevronLeft className="w-5 h-5 text-gray-600" />
+                      <ArrowLeft className="w-5 h-5 text-[#130183]" />
                     </button>
                     <div>
-                      <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-indigo-600" />
+                      <h1 className="text-2xl font-bold text-[#130183] flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-[#130183]" />
                         Mes Forfaits
                       </h1>
                       <p className="text-xs text-gray-500">{packages.length} forfait(s) • {packages.filter(p => p.actif).length} actif(s)</p>
@@ -125,7 +125,7 @@ export default function PackagesPage() {
             </div>
             <button
                     onClick={() => setShowForm(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
+                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
                     style={{ backgroundColor: ACCENT }}
                   >
                     <Plus className="w-4 h-4" />
@@ -150,7 +150,7 @@ export default function PackagesPage() {
               </p>
               <button
                 onClick={() => setShowForm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
+                className="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium"
               >
                 <Plus className="w-5 h-5" />
                 Créer mon premier forfait
@@ -358,7 +358,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
               value={formData.nom}
               onChange={(e) => updateFormData('nom', e.target.value)}
               placeholder="Ex: Forfait Essentiel, Pack Standard..."
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -371,7 +371,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
               onChange={(e) => updateFormData('description', e.target.value)}
               placeholder="Décrivez ce qui est inclus dans ce forfait..."
               rows={3}
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+              className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
             />
           </div>
 
@@ -386,7 +386,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                 value={formData.prix}
                 onChange={(e) => updateFormData('prix', e.target.value)}
                 placeholder="150"
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div>
@@ -398,7 +398,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                 value={formData.prix_barre}
                 onChange={(e) => updateFormData('prix_barre', e.target.value)}
                 placeholder="200"
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -417,7 +417,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                 onChange={(e) =>
                   updateFormData('duree_heures', parseInt(e.target.value, 10) || 1)
                 }
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div>
@@ -430,7 +430,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                 value={formData.services_inclus}
                 onChange={(e) => updateFormData('services_inclus', e.target.value)}
                 placeholder="Ex: 3 rapports, 5 livrables..."
-                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -445,7 +445,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                 updateFormData('categorie', e.target.value);
                 updateFormData('specialite', '');
               }}
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Sélectionner...</option>
               {categories.map(cat => (
@@ -463,7 +463,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             <select
               value={formData.specialite}
               onChange={(e) => updateFormData('specialite', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-6 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Sélectionner...</option>
               {SPECIALITES_MAP[formData.categorie].map(spec => (
@@ -484,7 +484,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                 value={formData.details?.langages || ''}
                 onChange={(e) => updateFormData('details', { ...formData.details, langages: e.target.value })}
                 placeholder="Ex : JavaScript, Python, React..."
-                className="w-full px-4 py-2 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 bg-white text-sm"
+                className="w-full px-6 py-2 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 bg-white text-sm"
               />
             </div>
           )}
@@ -501,7 +501,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                     value={formData.details?.matiere || ''}
                     onChange={(e) => updateFormData('details', { ...formData.details, matiere: e.target.value })}
                     placeholder="Ex : Mathématiques..."
-                    className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                    className="w-full px-6 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                   />
                 </div>
                 <div>
@@ -513,7 +513,7 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
                     value={formData.details?.niveau || ''}
                     onChange={(e) => updateFormData('details', { ...formData.details, niveau: e.target.value })}
                     placeholder="Ex : Lycée, Université..."
-                    className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                    className="w-full px-6 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                   />
                 </div>
               </div>
@@ -542,14 +542,14 @@ function PackageFormModal({ photographeId, package: pkg, onClose, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
+              className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

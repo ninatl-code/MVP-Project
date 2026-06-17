@@ -136,7 +136,7 @@ export default function CreateDemandePage() {
         })(),
         langues_souhaitees: formData.langues_souhaitees?.length > 0 ? formData.langues_souhaitees : null,
         nb_personnes: parseInt(formData.nombre_personnes) || null,
-        monnaie,
+        monnaie : formData.monnaie,
         instructions_speciales: formData.exigences_specifiques || null,
         details: (() => {
           const d = {};
@@ -256,7 +256,7 @@ export default function CreateDemandePage() {
                   updateFormData('specialite', spec);
                   if (spec !== 'Autre') updateFormData('specialite_autre', '');
                 }}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                   formData.specialite === spec
                     ? 'border-indigo-600 bg-indigo-600 text-white'
                     : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
@@ -272,7 +272,7 @@ export default function CreateDemandePage() {
               value={formData.specialite_autre}
               onChange={(e) => updateFormData('specialite_autre', e.target.value)}
               placeholder="Précisez la spécialité recherchée..."
-              className="mt-3 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="mt-3 w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           )}
           {formData.specialite === 'Développement' && (
@@ -283,7 +283,7 @@ export default function CreateDemandePage() {
                 value={formData.langages_dev}
                 onChange={(e) => updateFormData('langages_dev', e.target.value)}
                 placeholder="Ex : JavaScript, Python, React, PHP..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
           )}
@@ -296,7 +296,7 @@ export default function CreateDemandePage() {
                   value={formData.matiere}
                   onChange={(e) => updateFormData('matiere', e.target.value)}
                   placeholder="Ex : Mathématiques, Français..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
               <div>
@@ -306,7 +306,7 @@ export default function CreateDemandePage() {
                   value={formData.niveau}
                   onChange={(e) => updateFormData('niveau', e.target.value)}
                   placeholder="Ex : CP, 3ème, Terminale, Bac+2..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -323,7 +323,7 @@ export default function CreateDemandePage() {
           value={formData.titre}
           onChange={(e) => updateFormData('titre', e.target.value)}
           placeholder="Ex: Photographe pour mariage le 15 juin"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
       </div>
 
@@ -337,7 +337,7 @@ export default function CreateDemandePage() {
           placeholder="Décrivez votre projet en détail..."
           rows={4}
           required
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+          className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
       </div>
 
@@ -352,7 +352,7 @@ export default function CreateDemandePage() {
             value={formData.date_souhaitee}
             onChange={(e) => updateFormData('date_souhaitee', e.target.value)}
             min={new Date().toISOString().split('T')[0]}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
           <label className="flex items-center gap-2 mt-2 text-sm text-gray-600">
             <input
@@ -374,7 +374,7 @@ export default function CreateDemandePage() {
             type="time"
             value={formData.heure_debut}
             onChange={(e) => updateFormData('heure_debut', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
 
@@ -386,7 +386,7 @@ export default function CreateDemandePage() {
           <select
             value={formData.ville}
             onChange={(e) => updateFormData('ville', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+            className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
           >
             <option value="">Sélectionner une ville...</option>
             {VILLES_MAROC.map(v => <option key={v} value={v}>{v}</option>)}
@@ -403,7 +403,7 @@ export default function CreateDemandePage() {
             onChange={(e) => updateFormData('lieu', e.target.value)}
             placeholder="Ex: Salle des fêtes Al Amal, 12 rue Hassan II..."
             required
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -417,7 +417,7 @@ export default function CreateDemandePage() {
           <select
             value={formData.duree_estimee}
             onChange={(e) => updateFormData('duree_estimee', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           >
             {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((h) => (
               <option key={h} value={h}>{h} heure{h > 1 ? 's' : ''}</option>
@@ -434,7 +434,7 @@ export default function CreateDemandePage() {
             <select
               value={formData.nombre_personnes}
               onChange={(e) => updateFormData('nombre_personnes', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 30, 50, 100].map((n) => (
                 <option key={n} value={n}>{n} personne{n > 1 ? 's' : ''}</option>
@@ -454,7 +454,7 @@ export default function CreateDemandePage() {
           onChange={(e) => updateFormData('exigences_specifiques', e.target.value)}
           placeholder="Ex: Style de photos souhaité, équipements particuliers, contraintes..."
           rows={3}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+          className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
       </div>
 
@@ -476,7 +476,7 @@ export default function CreateDemandePage() {
                     : [...formData.langues_souhaitees, lang];
                   updateFormData('langues_souhaitees', next);
                 }}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
+                className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                   selected
                     ? 'border-indigo-600 bg-indigo-600 text-white'
                     : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
@@ -572,7 +572,7 @@ export default function CreateDemandePage() {
                 updateFormData('budget_min', range.min.toString());
                 updateFormData('budget_max', range.max.toString());
               }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
                 formData.budget_min === range.min.toString() && formData.budget_max === range.max.toString()
                   ? 'bg-indigo-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -760,10 +760,10 @@ export default function CreateDemandePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-6 py-8">
         {/* Back button */}
         <button
           onClick={handleBack}

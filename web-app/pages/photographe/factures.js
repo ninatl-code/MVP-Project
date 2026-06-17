@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/HeaderPresta';
 
 import {
   FileText, Download, Eye, Search, Calendar, Euro,
-  CheckCircle, XCircle, ChevronLeft, Printer, Mail,
+  CheckCircle, XCircle, ArrowLeft, Printer, Mail,
   Plus, Trash2, X, TrendingUp, Users, RefreshCw
 } from 'lucide-react';
 
@@ -170,9 +170,9 @@ export default function Factures() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="flex items-center justify-center py-32">
+        <div style={{ minHeight: "100vh" }} className="flex items-center justify-center">
           <RefreshCw className="w-8 h-8 animate-spin text-indigo-500" />
         </div>
       </div>
@@ -180,19 +180,19 @@ export default function Factures() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
 
       {/* Page header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5 text-[#130183]" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-600" />
+              <h1 className="text-2xl font-bold text-[#130183] flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#130183]" />
                 Mes Factures
               </h1>
               <p className="text-xs text-gray-500">{stats.total} facture{stats.total !== 1 ? 's' : ''} au total</p>
@@ -200,7 +200,7 @@ export default function Factures() {
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-6 py-2 rounded-xl text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity"
             style={{ backgroundColor: ACCENT }}
           >
             <Plus className="w-4 h-4" />
@@ -468,7 +468,7 @@ export default function Factures() {
             </form>
 
             <div className="px-5 py-4 border-t bg-gray-50 flex gap-3 justify-end">
-              <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 border rounded-xl text-sm hover:bg-gray-100 transition-colors">
+              <button type="button" onClick={() => setShowCreate(false)} className="px-6 py-2 border rounded-xl text-sm hover:bg-gray-100 transition-colors">
                 Annuler
               </button>
               <button
@@ -520,19 +520,19 @@ export default function Factures() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">Description</th>
-                        <th className="text-right px-4 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">Qté</th>
-                        <th className="text-right px-4 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">P.U.</th>
-                        <th className="text-right px-4 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">Total</th>
+                        <th className="text-left px-6 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">Description</th>
+                        <th className="text-right px-6 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">Qté</th>
+                        <th className="text-right px-6 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">P.U.</th>
+                        <th className="text-right px-6 py-2.5 text-xs text-gray-400 font-semibold uppercase tracking-wide">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedInvoice.facture.map((l, i) => (
                         <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                          <td className="px-4 py-2.5 text-gray-700">{l.description}</td>
-                          <td className="px-4 py-2.5 text-right text-gray-500">{l.quantite}</td>
-                          <td className="px-4 py-2.5 text-right text-gray-500">{l.prix_unitaire} MAD</td>
-                          <td className="px-4 py-2.5 text-right font-semibold text-gray-800">{(parseFloat(l.total) || 0).toFixed(2)} MAD</td>
+                          <td className="px-6 py-2.5 text-gray-700">{l.description}</td>
+                          <td className="px-6 py-2.5 text-right text-gray-500">{l.quantite}</td>
+                          <td className="px-6 py-2.5 text-right text-gray-500">{l.prix_unitaire} MAD</td>
+                          <td className="px-6 py-2.5 text-right font-semibold text-gray-800">{(parseFloat(l.total) || 0).toFixed(2)} MAD</td>
                         </tr>
                       ))}
                     </tbody>
@@ -542,15 +542,15 @@ export default function Factures() {
 
               {/* Totals */}
               <div className="rounded-xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
-                <div className="flex justify-between px-4 py-2.5 text-sm">
+                <div className="flex justify-between px-6 py-2.5 text-sm">
                   <span className="text-gray-500">Montant HT</span>
                   <span className="text-gray-700 font-medium">{(parseFloat(selectedInvoice.montant_ht) || 0).toFixed(2)} MAD</span>
                 </div>
-                <div className="flex justify-between px-4 py-2.5 text-sm">
+                <div className="flex justify-between px-6 py-2.5 text-sm">
                   <span className="text-gray-500">TVA</span>
                   <span className="text-gray-700 font-medium">{(parseFloat(selectedInvoice.montant_tva) || 0).toFixed(2)} MAD</span>
                 </div>
-                <div className="flex justify-between px-4 py-3 font-bold" style={{ background: `linear-gradient(135deg, ${ACCENT}10, #5C6BC015)` }}>
+                <div className="flex justify-between px-6 py-3 font-bold" style={{ background: `linear-gradient(135deg, ${ACCENT}10, #5C6BC015)` }}>
                   <span className="text-gray-800">Total TTC</span>
                   <span className="text-xl" style={{ color: ACCENT }}>{(parseFloat(selectedInvoice.montant_ttc) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} MAD</span>
                 </div>
@@ -558,7 +558,7 @@ export default function Factures() {
             </div>
 
             <div className="px-5 py-4 border-t bg-gray-50/80 flex gap-3 justify-end">
-              <button onClick={() => window.print()} className="px-4 py-2 border border-gray-200 bg-white rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
+              <button onClick={() => window.print()} className="px-6 py-2 border border-gray-200 bg-white rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
                 <Printer className="w-4 h-4" /> Imprimer
               </button>
               <button

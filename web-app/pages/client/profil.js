@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../lib/supabaseClient";
-import * as reservationService from  '../../../lib/reservationService';
+import * as reservationService from  '../../lib/reservationService';
+import { VILLES_MAROC } from '../../constants/villes';
 import { 
   Mail, Phone, MapPin, Heart, Edit, Save, Calendar, Camera, LogOut, Settings,
   Bell, Shield, CreditCard, Clock, Star, MessageCircle, FileText, Eye,
@@ -304,7 +305,7 @@ function UserProfile() {
               <Heart className="w-8 h-8 animate-bounce" style={{ color: COLORS.primary }} />
             </div>
           </div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: COLORS.text }}>Chargement de votre profil</h2>
+          <h2 className="text-lg md:text-xl font-semibold mb-2" style={{ color: COLORS.text }}>Chargement de votre profil</h2>
           <p className="text-gray-600">Préparation de vos informations personnelles...</p>
         </div>
       </div>
@@ -317,7 +318,7 @@ function UserProfile() {
       <div className="min-h-screen" style={{ background: COLORS.background }}>
         {/* Header Moderne */}
         <div className="shadow-lg" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fb 100%)' }}>
-          <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="max-w-5xl mx-auto px-4 py-6">
             <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
               {/* Photo de profil */}
               <div className="relative">
@@ -325,10 +326,10 @@ function UserProfile() {
                   <img
                     src={editMode ? photoEdit : user.avatar}
                     alt={user.name}
-                    className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl object-cover"
+                    className="w-24 h-24 md:w-28 md:h-28 rounded-2xl border-4 border-white shadow-xl object-cover"
                   />
                 ) : (
-                  <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-bold" style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)` }}>
+                  <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl border-4 border-white shadow-xl flex items-center justify-center text-white text-5xl font-bold" style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)` }}>
                     {user.name ? user.name[0].toUpperCase() : <User className="w-12 h-12" />}
                   </div>
                 )}
@@ -348,12 +349,12 @@ function UserProfile() {
               {/* Informations utilisateur */}
               <div className="flex-1 text-center lg:text-left">
                 <div className="space-y-3">
-                  <h1 className="text-4xl font-bold" style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  <h1 className="text-2xl md:text-3xl font-semibold" style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     {user.name || "Nouveau profil"}
                   </h1>
                   <div className="flex items-center justify-center lg:justify-start gap-2 text-gray-600">
                     <MapPin className="w-5 h-5" style={{ color: COLORS.primary }} />
-                    <span className="text-lg">{user.city || "Ville non renseignée"}</span>
+                    <span className="text-sm md:text-base">{user.city || "Ville non renseignée"}</span>
                   </div>
                 </div>
 
@@ -361,7 +362,7 @@ function UserProfile() {
                 <div className="mt-6 flex flex-col sm:flex-row gap-3">
                   {!editMode ? (
                     <button
-                      className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm rounded-xl text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
                       style={{ background: COLORS.primary }}
                       onMouseEnter={(e) => e.target.style.background = '#5048E5'}
                       onMouseLeave={(e) => e.target.style.background = COLORS.primary}
@@ -375,7 +376,7 @@ function UserProfile() {
                       <div className="flex gap-3">
                         <button
                           disabled={saving}
-                          className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white transition-all duration-200 shadow-lg font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm rounded-xl text-white transition-all duration-200 shadow-lg font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                           style={{ background: '#10B981' }}
                           onClick={handleSaveProfile}
                         >
@@ -386,7 +387,7 @@ function UserProfile() {
                           )}
                         </button>
                         <button
-                          className="px-6 py-3 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all duration-200 font-medium"
+                          className="px-4 py-2.5 text-sm rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all duration-200 font-medium"
                           onClick={() => { setEditMode(false); setSaveMsg(""); }}
                         >
                           Annuler
@@ -400,15 +401,15 @@ function UserProfile() {
                       )}
                     </div>
                   )}
-                  <button
-                    className="px-6 py-3 rounded-xl bg-white transition-all duration-200 font-medium"
+                  {/*<button
+                    className="px-4 py-2.5 text-sm rounded-xl bg-white transition-all duration-200 font-medium"
                     style={{ color: COLORS.primary, border: `2px solid ${COLORS.primary}20` }}
                     onMouseEnter={(e) => e.target.style.background = `${COLORS.primary}10`}
                     onMouseLeave={(e) => e.target.style.background = 'white'}
                     onClick={() => router.push('/client/menu')}
                   >
                     Accéder au menu
-                  </button>
+                  </button>*/}
                 </div>
               </div>
             </div>
@@ -418,12 +419,12 @@ function UserProfile() {
         {/* Main */}
         <div className="max-w-5xl mx-auto px-6 py-10 space-y-10">
           {/* About Section Moderne */}
-          <section className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+          <section className="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-100">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: COLORS.primary }}>
                 <Heart className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+              <h2 className="text-lg md:text-xl font-semibold" style={{ color: COLORS.text }}>
                 À propos de moi
               </h2>
             </div>
@@ -459,12 +460,12 @@ function UserProfile() {
 
           {/* Informations Personnelles Modernisées */}
           <div className="grid lg:grid-cols-2 gap-8">
-            <section className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+            <section className="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: COLORS.primary }}>
                   <Mail className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+                <h2 className="text-lg md:text-xl font-semibold" style={{ color: COLORS.text }}>
                   Informations de contact
                 </h2>
               </div>
@@ -472,31 +473,31 @@ function UserProfile() {
               <div className="space-y-6">
                 {!editMode ? (
                   <>
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${COLORS.primary}20` }}>
                         <Mail className="w-6 h-6" style={{ color: COLORS.primary }} />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500 font-medium">Email</p>
-                        <p className="text-gray-800 font-semibold">{user.email || 'Non renseigné'}</p>
+                        <p className="text-xs text-gray-500 font-medium">Email</p>
+                        <p className="text-sm text-gray-800 font-medium">{user.email || 'Non renseigné'}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${COLORS.secondary}40` }}>
                         <Phone className="w-6 h-6" style={{ color: '#F59E0B' }} />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500 font-medium">Téléphone</p>
-                        <p className="text-gray-800 font-semibold">{user.phone || 'Non renseigné'}</p>
+                        <p className="text-xs text-gray-500 font-medium">Téléphone</p>
+                        <p className="text-sm text-gray-800 font-medium">{user.phone || 'Non renseigné'}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${COLORS.accent}30` }}>
-                        <MapPin className="w-6 h-6" style={{ color: COLORS.accent }} />
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${COLORS.secondary}40` }}>
+                        <Phone className="w-6 h-6" style={{ color: '#F59E0B' }} />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500 font-medium">Ville</p>
-                        <p className="text-gray-800 font-semibold">{user.city || 'Non renseigné'}</p>
+                        <p className="text-xs text-gray-500 font-medium">Ville</p>
+                        <p className="text-sm text-gray-800 font-medium">{user.city || 'Non renseigné'}</p>
                       </div>
                     </div>
                   </>
@@ -508,7 +509,7 @@ function UserProfile() {
                       </label>
                       <input
                         type="text"
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
                         onFocus={(e) => e.target.style.borderColor = COLORS.primary}
                         onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
                         value={nomEdit}
@@ -522,7 +523,7 @@ function UserProfile() {
                       </label>
                       <input
                         type="email"
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
                         onFocus={(e) => e.target.style.borderColor = COLORS.primary}
                         onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
                         value={emailEdit}
@@ -536,7 +537,7 @@ function UserProfile() {
                       </label>
                       <input
                         type="tel"
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
                         onFocus={(e) => e.target.style.borderColor = COLORS.primary}
                         onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
                         value={phoneEdit}
@@ -549,15 +550,20 @@ function UserProfile() {
                         <MapPin className="w-4 h-4" style={{ color: COLORS.accent }} /> Ville
                       </label>
                       <select
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 border-2 border-gray-200 rounded-xl transition-all"
                         onFocus={(e) => e.target.style.borderColor = COLORS.primary}
                         onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
                         value={villeEdit}
                         onChange={e => setVilleEdit(e.target.value)}
                       >
                         <option value="">Sélectionner une ville</option>
-                        {villesList.map(v => (
-                          <option key={v.id} value={v.ville}>{v.ville}</option>
+                        {VILLES_MAROC
+                        .slice()
+                        .sort()
+                        .map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -567,12 +573,12 @@ function UserProfile() {
             </section>
             
             {/* Card Statistiques rapides */}
-            <section className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+            <section className="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: COLORS.secondary }}>
                   <Calendar className="w-5 h-5" style={{ color: '#92400E' }} />
                 </div>
-                <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+                <h2 className="text-lg md:text-xl font-semibold" style={{ color: COLORS.text }}>
                   Activité récente
                 </h2>
               </div>
@@ -590,7 +596,7 @@ function UserProfile() {
               
               <div className="mt-6 pt-6 border-t border-gray-100">
                 <button
-                  className="w-full text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                  className="w-full text-white px-4 py-2.5 text-sm rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                   style={{ background: COLORS.primary }}
                   onMouseEnter={(e) => e.target.style.background = '#5048E5'}
                   onMouseLeave={(e) => e.target.style.background = COLORS.primary}
@@ -603,19 +609,19 @@ function UserProfile() {
           </div>
 
           {/* Section Paramètres améliorée */}
-          <section className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+          {/*<section className="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-100">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
                 <Settings className="w-5 h-5 text-gray-500" />
               </div>
-              <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+              <h2 className="text-lg md:text-xl font-semibold" style={{ color: COLORS.text }}>
                 Paramètres
               </h2>
             </div>
             
             <div className="space-y-4">
               {/* Notifications */}
-              <div className="p-4 rounded-xl border border-gray-200 hover:border-indigo-300 transition-all">
+              {/*<div className="p-4 rounded-xl border border-gray-200 hover:border-indigo-300 transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -623,7 +629,7 @@ function UserProfile() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">Notifications</p>
-                      <p className="text-sm text-gray-500">Gérez vos préférences</p>
+                      <p className="text-xs text-gray-500">Gérez vos préférences</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -660,7 +666,7 @@ function UserProfile() {
               </div>
 
               {/* Sécurité */}
-              <div 
+             {/* <div 
                 className="p-4 rounded-xl border border-gray-200 hover:border-green-300 transition-all cursor-pointer"
                 onClick={() => router.push('/client/securite')}
               >
@@ -671,7 +677,7 @@ function UserProfile() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">Sécurité</p>
-                      <p className="text-sm text-gray-500">Mot de passe, 2FA</p>
+                      <p className="text-xs text-gray-500">Mot de passe, 2FA</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -679,7 +685,7 @@ function UserProfile() {
               </div>
 
               {/* Confidentialité */}
-              <div 
+              {/*<div 
                 className="p-4 rounded-xl border border-gray-200 hover:border-purple-300 transition-all cursor-pointer"
                 onClick={() => router.push('/client/confidentialite')}
               >
@@ -690,7 +696,7 @@ function UserProfile() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">Confidentialité</p>
-                      <p className="text-sm text-gray-500">Visibilité du profil, données</p>
+                      <p className="text-xs text-gray-500">Visibilité du profil, données</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -698,7 +704,7 @@ function UserProfile() {
               </div>
 
               {/* Aide & Support */}
-              <div 
+              {/*<div 
                 className="p-4 rounded-xl border border-gray-200 hover:border-blue-300 transition-all cursor-pointer"
                 onClick={() => router.push('/support')}
               >
@@ -709,7 +715,7 @@ function UserProfile() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">Aide & Support</p>
-                      <p className="text-sm text-gray-500">Centre d'aide, contacter le support</p>
+                      <p className="text-xs text-gray-500">Centre d'aide, contacter le support</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -717,7 +723,7 @@ function UserProfile() {
               </div>
 
               {/* Déconnexion */}
-              <button
+              {/*<button
                 onClick={async () => {
                   if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
                     await supabase.auth.signOut();
@@ -732,7 +738,7 @@ function UserProfile() {
                   </div>
                   <div className="text-left">
                     <p className="font-semibold text-red-600">Se déconnecter</p>
-                    <p className="text-sm text-gray-500">Vous pourrez vous reconnecter à tout moment</p>
+                    <p className="text-xs text-gray-500">Vous pourrez vous reconnecter à tout moment</p>
                   </div>
                 </div>
                 <span className="text-gray-400 group-hover:text-red-500 transition-colors">→</span>
@@ -742,12 +748,12 @@ function UserProfile() {
 
           {/* Activité récente */}
           {recentActivity.length > 0 && (
-            <section className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+            <section className="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `${COLORS.primary}20` }}>
                   <Clock className="w-5 h-5" style={{ color: COLORS.primary }} />
                 </div>
-                <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+                <h2 className="text-lg md:text-xl font-semibold" style={{ color: COLORS.text }}>
                   Activité récente
                 </h2>
               </div>
@@ -756,7 +762,7 @@ function UserProfile() {
                 {recentActivity.map((activity, index) => (
                   <div 
                     key={activity.id || index}
-                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all cursor-pointer"
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all cursor-pointer"
                     onClick={() => router.push(`/client/reservations/${activity.id}`)}
                   >
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -772,7 +778,7 @@ function UserProfile() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{activity.title}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         {new Date(activity.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                       </p>
                     </div>
@@ -785,13 +791,13 @@ function UserProfile() {
 
           {/* Section Favoris Moderne */}
           {favoriteAnnonces.length > 0 ? (
-            <section id="favoris" className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100 scroll-mt-20">
+            <section id="favoris" className="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-100 scroll-mt-20">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: COLORS.accent }}>
                   <Heart className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold" style={{ color: COLORS.text }}>
+                  <h2 className="text-lg md:text-xl font-semibold" style={{ color: COLORS.text }}>
                     Mes prestataires favoris
                   </h2>
                   <p className="text-gray-500">Vos prestataires préférés pour vos projets</p>
@@ -826,7 +832,7 @@ function UserProfile() {
                         {a.titre}
                       </h2>
                       <div className="mt-3 flex items-center justify-between">
-                        <span className="text-sm text-gray-500 font-medium">Voir les détails</span>
+                        <span className="text-xs text-gray-500 font-medium">Voir les détails</span>
                         <div className="w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-200" style={{ background: `${COLORS.primary}20` }}>
                           <span className="text-xs" style={{ color: COLORS.primary }}>→</span>
                         </div>
@@ -845,12 +851,12 @@ function UserProfile() {
                   onMouseLeave={(e) => e.target.style.color = COLORS.primary}
                 >
                   Voir tous mes favoris
-                  <span className="text-lg">→</span>
+                  <span className="text-sm md:text-base">→</span>
                 </a>
               </div>
             </section>
           ) : (
-            <section id="favoris" className="bg-white rounded-3xl shadow-lg p-8 border border-gray-100 text-center scroll-mt-20">
+            <section id="favoris" className="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-100 text-center scroll-mt-20">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Heart className="w-8 h-8 text-gray-400" />
               </div>
@@ -861,8 +867,8 @@ function UserProfile() {
                 Découvrez nos prestataires talentueux et ajoutez-les à vos favoris en cliquant sur le cœur.
               </p>
               <a
-                href="/annonces"
-                className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                href="/client/recherche"
+                className="inline-flex items-center gap-2 text-white px-4 py-2.5 text-sm rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                 style={{ background: COLORS.primary }}
                 onMouseEnter={(e) => e.target.style.background = '#5048E5'}
                 onMouseLeave={(e) => e.target.style.background = COLORS.primary}

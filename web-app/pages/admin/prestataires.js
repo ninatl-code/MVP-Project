@@ -147,7 +147,7 @@ export default function AdminPrestataires() {
             <button
               key={val}
               onClick={() => { setFilterStatut(val); setPage(0); }}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+              className={`px-6 py-2.5 rounded-xl text-sm font-medium border transition-all ${
                 filterStatut === val
                   ? 'bg-[#130183] text-white border-[#130183]'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
@@ -165,13 +165,13 @@ export default function AdminPrestataires() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-left text-gray-500 text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 font-semibold">Prestataire</th>
-                <th className="px-4 py-3 font-semibold">Catégorie</th>
-                <th className="px-4 py-3 font-semibold">Statut</th>
-                <th className="px-4 py-3 font-semibold">Docs</th>
-                <th className="px-4 py-3 font-semibold">Note</th>
-                <th className="px-4 py-3 font-semibold">Inscrit le</th>
-                <th className="px-4 py-3 font-semibold">Détails</th>
+                <th className="px-6 py-3 font-semibold">Prestataire</th>
+                <th className="px-6 py-3 font-semibold">Catégorie</th>
+                <th className="px-6 py-3 font-semibold">Statut</th>
+                <th className="px-6 py-3 font-semibold">Docs</th>
+                <th className="px-6 py-3 font-semibold">Note</th>
+                <th className="px-6 py-3 font-semibold">Inscrit le</th>
+                <th className="px-6 py-3 font-semibold">Détails</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -186,7 +186,7 @@ export default function AdminPrestataires() {
                 const docsCount = DOCS.filter(d => row[d.column]).length;
                 return (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         {row.profiles?.avatar_url
                           ? <img src={row.profiles.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
@@ -198,22 +198,22 @@ export default function AdminPrestataires() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{(row.categories || [])[0] || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3 text-gray-600">{(row.categories || [])[0] || '—'}</td>
+                    <td className="px-6 py-3">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${s.cls}`}>
                         {s.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <span className={`text-xs font-semibold ${docsCount === 0 ? 'text-red-500' : docsCount < 3 ? 'text-yellow-600' : 'text-green-600'}`}>
                         {docsCount}/{DOCS.length}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
+                    <td className="px-6 py-3 text-gray-600 text-xs">
                       {row.note_moyenne ? `${Number(row.note_moyenne).toFixed(1)} ★ (${row.nb_avis})` : '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-6 py-3">
                       <button
                         onClick={() => { setSelected(row); setMotifRefus(''); }}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors"
@@ -229,7 +229,7 @@ export default function AdminPrestataires() {
         </div>
 
         {/* Pagination */}
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
+        <div className="px-6 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
           <span className="text-sm text-gray-500">{total} prestataire{total !== 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
@@ -443,7 +443,7 @@ export default function AdminPrestataires() {
                   <button
                     onClick={handleApprouver}
                     disabled={actionLoading}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
                   >
                     <CheckCircle className="w-4 h-4" /> Approuver
                   </button>
@@ -452,7 +452,7 @@ export default function AdminPrestataires() {
                   <button
                     onClick={handleRefuser}
                     disabled={actionLoading}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-xl font-medium text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
                   >
                     <XCircle className="w-4 h-4" /> Refuser
                   </button>
@@ -462,7 +462,7 @@ export default function AdminPrestataires() {
                 <button
                   onClick={handleReactiver}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50 transition-colors"
                 >
                   <ShieldCheck className="w-4 h-4" /> Réactiver le compte
                 </button>
@@ -470,7 +470,7 @@ export default function AdminPrestataires() {
                 <button
                   onClick={handleSuspendre}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
                 >
                   <ShieldOff className="w-4 h-4" /> Suspendre le compte
                 </button>
@@ -484,7 +484,7 @@ export default function AdminPrestataires() {
       {previewDoc && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setPreviewDoc(null)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
               <h2 className="font-semibold text-gray-900 text-sm">{previewDoc.label}</h2>
               <div className="flex items-center gap-2">
                 <a
@@ -507,7 +507,7 @@ export default function AdminPrestataires() {
                 <iframe src={previewDoc.src} className="w-full h-[65vh] rounded-lg" title={previewDoc.label} />
               ) : (
                 <a href={previewDoc.src} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700">
+                  className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm hover:bg-indigo-700">
                   <FileText className="w-4 h-4" /> Ouvrir le document
                 </a>
               )}

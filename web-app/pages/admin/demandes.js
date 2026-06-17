@@ -125,7 +125,7 @@ export default function AdminDemandes() {
         <div className="flex gap-2 flex-wrap">
           {[['all','Toutes'], ['ouverte','Ouvertes'], ['acceptee','Acceptées'], ['fermee','Fermées'], ['annulee','Annulées']].map(([val, lbl]) => (
             <button key={val} onClick={() => { setFilter(val); setPage(0); }}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+              className={`px-6 py-2.5 rounded-xl text-sm font-medium border transition-all ${
                 filterStatut === val ? 'bg-[#130183] text-white border-[#130183]' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
               }`}>{lbl}</button>
           ))}
@@ -138,14 +138,14 @@ export default function AdminDemandes() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-left text-gray-500 text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 font-semibold">Titre</th>
-                <th className="px-4 py-3 font-semibold">Client</th>
-                <th className="px-4 py-3 font-semibold">Catégorie</th>
-                <th className="px-4 py-3 font-semibold">Budget</th>
-                <th className="px-4 py-3 font-semibold">Statut</th>
-                <th className="px-4 py-3 font-semibold">Date souhaitée</th>
-                <th className="px-4 py-3 font-semibold">Créée le</th>
-                <th className="px-4 py-3 font-semibold">Détails</th>
+                <th className="px-6 py-3 font-semibold">Titre</th>
+                <th className="px-6 py-3 font-semibold">Client</th>
+                <th className="px-6 py-3 font-semibold">Catégorie</th>
+                <th className="px-6 py-3 font-semibold">Budget</th>
+                <th className="px-6 py-3 font-semibold">Statut</th>
+                <th className="px-6 py-3 font-semibold">Date souhaitée</th>
+                <th className="px-6 py-3 font-semibold">Créée le</th>
+                <th className="px-6 py-3 font-semibold">Détails</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -159,25 +159,25 @@ export default function AdminDemandes() {
                 const s = STATUT[row.statut] || STATUT.ouverte;
                 return (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px] truncate">{row.titre || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3 font-medium text-gray-900 max-w-[180px] truncate">{row.titre || '—'}</td>
+                    <td className="px-6 py-3">
                       <div>
                         <p className="font-medium text-gray-900">{row.profiles?.nom || '—'}</p>
                         <p className="text-xs text-gray-400">{row.profiles?.email}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{row.categorie || row.type_prestation || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
+                    <td className="px-6 py-3 text-gray-600 text-xs">{row.categorie || row.type_prestation || '—'}</td>
+                    <td className="px-6 py-3 text-gray-600 text-xs">
                       {row.budget_max ? `Max ${row.budget_max} MAD` : '—'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${s.cls}`}>{s.label}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">
+                    <td className="px-6 py-3 text-gray-400 text-xs">
                       {row.date_souhaitee ? new Date(row.date_souhaitee).toLocaleDateString('fr-FR') : '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-6 py-3">
                       <button onClick={() => openDetail(row)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors">
                         <Eye className="w-3.5 h-3.5" /> Voir
@@ -189,7 +189,7 @@ export default function AdminDemandes() {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
+        <div className="px-6 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
           <span className="text-sm text-gray-500">{total} demande{total !== 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
@@ -297,7 +297,7 @@ export default function AdminDemandes() {
                 <button
                   onClick={() => closeDemande(selected.id)}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
                 >
                   <XCircle className="w-4 h-4" /> Fermer la demande
                 </button>
@@ -313,7 +313,7 @@ export default function AdminDemandes() {
                   <button
                     onClick={handleMasquer}
                     disabled={actionLoading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-orange-200 text-orange-700 rounded-xl text-sm hover:bg-orange-50 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-orange-200 text-orange-700 rounded-xl text-sm hover:bg-orange-50 disabled:opacity-50"
                   >
                     <EyeOff className="w-4 h-4" /> Masquer la demande
                   </button>
@@ -322,7 +322,7 @@ export default function AdminDemandes() {
                 <button
                   onClick={handleRendre}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-green-300 text-green-700 rounded-xl text-sm hover:bg-green-50 disabled:opacity-50"
                 >
                   <Eye className="w-4 h-4" /> Rendre visible
                 </button>

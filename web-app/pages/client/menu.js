@@ -879,7 +879,7 @@ function ParticularHomeMenu() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-4 pb-4">
+            <div className="px-6 pb-4">
               <div className="text-center mb-4">
                 <div className="flex justify-center gap-2 mb-2">
                   {[1, 2, 3, 4, 5].map(star => (
@@ -903,8 +903,8 @@ function ParticularHomeMenu() {
                 <div className="text-right text-xs text-gray-400 mt-1">{ratingComment.length}/200</div>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => { setShowRatingForm(null); setRatingValue(0); setRatingComment(''); }} disabled={isSubmittingRating} className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">Annuler</button>
-                <button onClick={submitRatingFromMenu} disabled={isSubmittingRating || ratingValue === 0} className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium ${ratingValue === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white'}`}>
+                <button onClick={() => { setShowRatingForm(null); setRatingValue(0); setRatingComment(''); }} disabled={isSubmittingRating} className="flex-1 px-6 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">Annuler</button>
+                <button onClick={submitRatingFromMenu} disabled={isSubmittingRating || ratingValue === 0} className={`flex-1 px-6 py-2 rounded-lg text-sm font-medium ${ratingValue === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white'}`}>
                   {isSubmittingRating ? 'Envoi...' : '✨ Publier'}
                 </button>
               </div>
@@ -933,7 +933,7 @@ function ParticularHomeMenu() {
           {hasMultipleProfiles && (
             <button
               onClick={() => setShowSwitchModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all mb-6"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all mb-6"
               style={{ background: COLORS.primary, border: `1px solid ${COLORS.secondary}`, color: COLORS.accent }}
             >
               <RefreshCcw className="w-5 h-5" />
@@ -942,7 +942,7 @@ function ParticularHomeMenu() {
           )}
 
           {/* Stats */}
-          <div className="flex justify-between items-center px-4 py-3 rounded-xl mb-8" style={{ background: COLORS.secondary }}>
+          <div className="flex justify-between items-center px-6 py-3 rounded-xl mb-8" style={{ background: COLORS.secondary }}>
             <div className="text-center flex-1 border-r border-white/30">
               <p className="text-2xl font-bold text-white">{stats.demandes}</p>
               <p className="text-xs text-white/80">Demandes</p>

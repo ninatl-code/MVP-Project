@@ -5,11 +5,12 @@ import { onNewDemande } from '../../../lib/matchingService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import * as demandeService from '../../../lib/demandeService';
+import {getDemandeById, cancelDemande, fulfillDemande, reactivateDemande} from '../../../lib/demandeService';
 
 import { 
   Plus, Search, Filter, Calendar, MapPin, 
   Clock, ChevronRight, FileText, Eye,
-  CheckCircle, XCircle, AlertCircle, Copy
+  CheckCircle, XCircle, AlertCircle, Copy, ArrowLeft, RefreshCw, Trash2
 } from 'lucide-react';
 
 const COLORS = {
@@ -37,6 +38,12 @@ export default function MesDemandesPage() {
   const [resolvedId, setResolvedId] = useState(null);
   const [selected, setSelected] = useState([]);
   const [duplicating, setDuplicating] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showReactivateModal, setShowReactivateModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+  const [reactivating, setReactivating] = useState(false);
+  const [reactivateError, setReactivateError] = useState(null);
 
   // Résoudre l'ID via getSession() (cache local, pas de requête réseau)
   useEffect(() => {
@@ -56,19 +63,20 @@ export default function MesDemandesPage() {
     if (resolvedId) fetchDemandes();
   }, [resolvedId]);
 
-  const fetchDemandes = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await demandeService.getClientDemandes(resolvedId);
-
-      if (error) throw error;
-      setDemandes(data || []);
-    } catch (error) {
-      console.error('Error fetching demandes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchDemandes = async () => {
+  if (!resolvedId) return; // ← guard
+  setLoading(true);
+  try {
+    const { data, error } = await demandeService.getClientDemandes(resolvedId);
+    if (error) throw error;
+    setDemandes(Array.isArray(data) ? data : []); // ← sécurisé
+  } catch (error) {
+    console.error('Error fetching demandes:', error);
+    setDemandes([]); // ← évite de laisser un état invalide
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Filtrage 100% client-side — pas de re-fetch réseau
   const filteredDemandes = demandes.filter(d => {
@@ -113,6 +121,48 @@ export default function MesDemandesPage() {
     }
   };
 
+  const handleCancelDemande = async (id) => {
+      setCancelling(true);
+      setCancelError(null);
+      try {
+        const resolvedClientId = profileId || (await supabase.auth.getSession()).data.session?.user?.id;
+  
+        const { error, count } = await cancelDemande(id)
+  
+        if (error) throw error;
+        if (count === 0) throw new Error('Aucune ligne mise à jour. Vérifiez vos droits.');
+  
+        setDemandes(prev => ({ ...prev, statut: 'annulee' }));
+        setShowCancelModal(false);
+      } catch (error) {
+        console.error('Error cancelling demande:', error);
+        setCancelError(error.message || 'Une erreur est survenue. Réessayez.');
+      } finally {
+        setCancelling(false);
+      }
+    };
+  
+  const handleReactivateDemande = async (id) => {
+      setReactivating(true);
+      setReactivateError(null);
+      try {
+        const resolvedClientId = profileId || (await supabase.auth.getSession()).data.session?.user?.id;
+  
+        const { error, count } = await reactivateDemande(id)
+  
+        if (error) throw error;
+        if (count === 0) throw new Error('Aucune ligne mise à jour. Vérifiez vos droits.');
+  
+        setDemandes(prev => ({ ...prev, statut: 'ouverte' }));
+        setShowReactivateModal(false);
+      } catch (error) {
+        console.error('Error reactivating demande:', error);
+        setReactivateError(error.message || 'Une erreur est survenue. Réessayez.');
+      } finally {
+        setReactivating(false);
+      }
+    };
+
   const toggleSelect = (id) => {
     setSelected(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
@@ -140,15 +190,20 @@ export default function MesDemandesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mes demandes</h1>
-            <p className="text-gray-600 mt-1">
+            <div className="flex items-center gap-3 mb-1">
+              <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <ArrowLeft className="w-5 h-5 text-[#130183]" />
+              </button>
+              <h1 className="text-2xl font-bold text-[#130183]">Mes demandes</h1>
+            </div>
+            <p className="text-gray-600 mt-1 pl-11">
               {demandes.length} demande{demandes.length > 1 ? 's' : ''} au total
             </p>
           </div>
@@ -158,15 +213,36 @@ export default function MesDemandesPage() {
               <button
                 onClick={() => handleDuplicate(selected)}
                 disabled={duplicating}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-indigo-300 text-indigo-700 font-medium hover:bg-indigo-50 transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl border border-indigo-300 text-indigo-700 font-medium hover:bg-indigo-50 transition-all disabled:opacity-50"
               >
                 <Copy className="w-4 h-4" />
                 Dupliquer ({selected.length})
               </button>
             )}
+            {selected.length > 0  && selected.some(id => demandes.find(d => d.id === id && d.statut === 'ouverte')) && (
+              <button
+                onClick={() => handleCancelDemande(selected)}
+                disabled={cancelling}
+                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl border border-red-300 text-red-700 font-medium hover:bg-red-50 transition-all disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Annuler ({selected.length})
+              </button>
+            )}
+
+            {selected.length > 0 && selected.some(id => demandes.find(d => d.id === id && d.statut === 'annulee')) && (
+              <button
+                onClick={() => handleReactivateDemande(selected)}
+                disabled={reactivating}
+                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl border border-green-300 text-green-700 font-medium hover:bg-green-50 transition-all disabled:opacity-50"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Réactiver ({selected.length})
+              </button>
+            )}
             <button
               onClick={() => router.push('/client/demandes/create')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium transition-all"
+            className="inline-flex items-center gap-2 px-6 py-2 rounded-xl text-white font-medium transition-all"
               style={{ backgroundColor: COLORS.accent }}
             >
               <Plus className="w-5 h-5" />
@@ -196,7 +272,7 @@ export default function MesDemandesPage() {
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`px-6 py-2 rounded-xl text-sm font-medium transition-all ${
                     filter === status
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -227,7 +303,7 @@ export default function MesDemandesPage() {
             </p>
             <button
               onClick={() => router.push('/client/demandes/create')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium"
+              className="inline-flex items-center gap-2 px-6 py-2 rounded-xl text-white font-medium"
               style={{ backgroundColor: COLORS.accent }}
             >
               <Plus className="w-5 h-5" />

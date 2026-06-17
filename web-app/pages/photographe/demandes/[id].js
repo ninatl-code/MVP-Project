@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
@@ -66,7 +66,7 @@ export default function PhotographeDemandeDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
@@ -77,9 +77,9 @@ export default function PhotographeDemandeDetailPage() {
 
   if (notFound || !demande) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <div className="max-w-2xl mx-auto px-6 py-20 text-center">
           <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">Demande introuvable</p>
           <Link href="/photographe/demandes" className="inline-flex items-center gap-2 mt-4 text-indigo-600 font-medium hover:underline">
@@ -95,9 +95,9 @@ export default function PhotographeDemandeDetailPage() {
   const isOpen = demande.statut === 'ouverte';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-6 py-8">
         {/* Retour */}
         <button
           onClick={() => router.back()}
@@ -139,7 +139,7 @@ export default function PhotographeDemandeDetailPage() {
               {isOpen && (
                 <div className="shrink-0">
                   {dejaEnvoye ? (
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 text-green-700 text-sm font-semibold">
+                    <div className="flex items-center gap-2 px-6 py-2 rounded-xl bg-green-50 text-green-700 text-sm font-semibold">
                       <CheckCircle className="w-4 h-4" />Devis envoyé
                     </div>
                   ) : (

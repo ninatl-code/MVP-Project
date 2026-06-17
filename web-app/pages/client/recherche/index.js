@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -125,10 +125,10 @@ export default function RecherchePrestatairesPage() {
   const activeFiltersCount = Object.values(filters).filter(v => v && v !== false).length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Page header */}
         <div className="mb-8">
           <button
@@ -172,7 +172,7 @@ export default function RecherchePrestatairesPage() {
 
             <button
               onClick={() => setShowFilters(v => !v)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-6 py-2 rounded-lg border text-sm font-medium transition-all ${
                 showFilters || activeFiltersCount > 0
                   ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50'

@@ -203,7 +203,7 @@ export default function PhotographeReservationDetailPage() {
      STATES UI
   ========================= */
   if (loading) return (
-    <div className="min-h-screen bg-gray-50"><Header />
+    <div className="min-h-screen bg-[#F8F9FB]"><Header />
       <div className="flex justify-center items-center py-20">
         <div className="animate-spin h-8 w-8 border-b-2 border-indigo-600 rounded-full" />
       </div>
@@ -211,11 +211,11 @@ export default function PhotographeReservationDetailPage() {
   );
 
   if (!reservation) return (
-    <div className="min-h-screen bg-gray-50"><Header />
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+    <div className="min-h-screen bg-[#F8F9FB]"><Header />
+      <div className="max-w-4xl mx-auto px-6 py-12 text-center">
         <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-gray-900 mb-2">Réservation introuvable</h2>
-        <button onClick={() => router.push('/photographe/reservations')} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium">
+        <button onClick={() => router.push('/photographe/reservations')} className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium">
           Retour aux réservations
         </button>
       </div>
@@ -228,9 +228,9 @@ export default function PhotographeReservationDetailPage() {
   const sc = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
 
         <Link href="/photographe/reservations" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
           <ArrowLeft className="w-5 h-5" /> Retour aux réservations
@@ -442,7 +442,7 @@ export default function PhotographeReservationDetailPage() {
                 {client.email && <a href={`mailto:${client.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"><Mail className="w-4 h-4" />{client.email}</a>}
                 {client.telephone && <a href={`tel:${client.telephone}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"><Phone className="w-4 h-4" />{client.telephone}</a>}
               </div>
-              <button onClick={handleMessage} className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 flex items-center justify-center gap-2">
+              <button onClick={handleMessage} className="w-full px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 flex items-center justify-center gap-2">
                 <MessageSquare className="w-5 h-5" /> Envoyer un message
               </button>
             </div>
@@ -518,9 +518,9 @@ export default function PhotographeReservationDetailPage() {
             <textarea value={acceptComment} onChange={(e) => setAcceptComment(e.target.value)}
               className="w-full border border-gray-200 p-3 rounded-xl resize-none focus:ring-2 focus:ring-green-500 text-sm" rows={3} placeholder="Message pour le client (optionnel)" />
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowAcceptModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
+              <button onClick={() => setShowAcceptModal(false)} className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
               <button disabled={actionLoading} onClick={handleConfirmSubmit}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50">
+                className="flex-1 bg-green-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-green-700 disabled:opacity-50">
                 {actionLoading ? 'En cours...' : 'Confirmer'}
               </button>
             </div>
@@ -537,9 +537,9 @@ export default function PhotographeReservationDetailPage() {
             <textarea value={refuseReason} onChange={(e) => setRefuseReason(e.target.value)}
               className="w-full border border-gray-200 p-3 rounded-xl resize-none focus:ring-2 focus:ring-red-500 text-sm" rows={3} placeholder="Raison du refus (optionnel)" />
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowRefuseModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
+              <button onClick={() => setShowRefuseModal(false)} className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Annuler</button>
               <button disabled={actionLoading} onClick={handleRefuse}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
+                className="flex-1 bg-red-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
                 {actionLoading ? 'En cours...' : 'Confirmer le refus'}
               </button>
             </div>
@@ -556,9 +556,9 @@ export default function PhotographeReservationDetailPage() {
             <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
               className="w-full border border-gray-200 p-3 rounded-xl resize-none focus:ring-2 focus:ring-red-500 text-sm" rows={3} placeholder="Motif de l'annulation (obligatoire)" />
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowCancelModal(false)} className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Retour</button>
+              <button onClick={() => setShowCancelModal(false)} className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50">Retour</button>
               <button disabled={actionLoading || !cancelReason.trim()} onClick={handleCancel}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
+                className="flex-1 bg-red-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50">
                 {actionLoading ? 'Annulation...' : "Confirmer l'annulation"}
               </button>
             </div>

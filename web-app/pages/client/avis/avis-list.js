@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -96,20 +96,20 @@ export default function AvisListPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => router.push('/client/menu')}
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+            <ArrowLeft className="w-5 h-5 text-[#130183]" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mes avis</h1>
+            <h1 className="text-2xl font-bold text-[#130183]">Mes avis</h1>
             <p className="text-gray-500 text-sm mt-0.5">{avis.length} avis donnés</p>
           </div>
         </div>

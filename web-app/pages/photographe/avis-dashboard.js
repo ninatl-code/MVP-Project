@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,7 +8,7 @@ import * as avisService from '../../lib/avisService';
 import { 
   Star, MessageSquare, Clock, Calendar, AlertCircle,
   CheckCircle, ChevronRight, Send, X, Loader2, TrendingUp,
-  ThumbsUp, ThumbsDown, Filter, Search
+  ThumbsUp, ThumbsDown, Filter, Search, ArrowLeft
 } from 'lucide-react';
 
 const COLORS = {
@@ -149,7 +149,7 @@ export default function AvisDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin" style={{ color: COLORS.accent }} />
@@ -161,15 +161,20 @@ export default function AvisDashboardPage() {
   const filteredReviews = getFilteredReviews();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: COLORS.text }}>Mes Avis Clients</h1>
-            <p className="text-gray-500 mt-1">Gérez et répondez aux avis de vos clients</p>
+            <div className="flex items-center gap-3 mb-1">
+              <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <ArrowLeft className="w-5 h-5 text-[#130183]" />
+              </button>
+              <h1 className="text-2xl font-bold text-[#130183]">Mes Avis Clients</h1>
+            </div>
+            <p className="text-gray-500 mt-1 pl-11">Gérez et répondez aux avis de vos clients</p>
           </div>
         </div>
 
@@ -276,7 +281,7 @@ export default function AvisDashboardPage() {
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
                   filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -284,7 +289,7 @@ export default function AvisDashboardPage() {
               </button>
               <button
                 onClick={() => setFilter('pending')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
                   filter === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -292,7 +297,7 @@ export default function AvisDashboardPage() {
               </button>
               <button
                 onClick={() => setFilter('responded')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
                   filter === 'responded' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -402,7 +407,7 @@ export default function AvisDashboardPage() {
                           setSelectedReview(review);
                           setResponseText('');
                         }}
-                        className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-all"
+                        className="flex items-center gap-2 px-6 py-2 text-white rounded-lg transition-all"
                         style={{ background: COLORS.accent }}
                       >
                         <Send className="w-4 h-4" />
@@ -456,7 +461,7 @@ export default function AvisDashboardPage() {
                 onChange={(e) => setResponseText(e.target.value)}
                 placeholder="Remerciez le client et montrez que vous prenez en compte son avis..."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
               />
               <p className="text-xs text-gray-400 mt-2">
                 Votre réponse sera visible publiquement
@@ -466,14 +471,14 @@ export default function AvisDashboardPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setSelectedReview(null)}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all font-medium"
+                className="flex-1 px-6 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all font-medium"
               >
                 Annuler
               </button>
               <button
                 onClick={handleSubmitResponse}
                 disabled={!responseText.trim() || submitting}
-                className="flex-1 px-4 py-3 text-white rounded-xl transition-all font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 text-white rounded-xl transition-all font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{ background: COLORS.accent }}
               >
                 {submitting ? (

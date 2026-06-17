@@ -142,7 +142,7 @@ export default function AdminSignalements() {
         <select
           value={filterStatus}
           onChange={e => { setFilterStatus(e.target.value); setPage(0); }}
-          className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-500"
+          className="px-6 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-500"
         >
           <option value="open">Ouverts</option>
           <option value="closed">Clôturés</option>
@@ -157,12 +157,12 @@ export default function AdminSignalements() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-left text-gray-500 text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 font-semibold">Auteur</th>
-                <th className="px-4 py-3 font-semibold">Cible</th>
-                <th className="px-4 py-3 font-semibold">Raison</th>
-                <th className="px-4 py-3 font-semibold">Statut</th>
-                <th className="px-4 py-3 font-semibold">Date</th>
-                <th className="px-4 py-3 font-semibold">Actions</th>
+                <th className="px-6 py-3 font-semibold">Auteur</th>
+                <th className="px-6 py-3 font-semibold">Cible</th>
+                <th className="px-6 py-3 font-semibold">Raison</th>
+                <th className="px-6 py-3 font-semibold">Statut</th>
+                <th className="px-6 py-3 font-semibold">Date</th>
+                <th className="px-6 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -176,26 +176,26 @@ export default function AdminSignalements() {
                 const statusCfg = STATUS_LABELS[row.status] || STATUS_LABELS.open;
                 return (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <p className="font-medium text-gray-900">{row.reporter?.nom || '—'}</p>
                       <p className="text-xs text-gray-400">{row.reporter?.email}</p>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                         {TARGET_LABELS[row.target_type] || row.target_type}
                       </span>
                       <p className="text-xs text-gray-400 mt-0.5 font-mono">{row.target_id?.slice(0, 8)}…</p>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[160px]">
+                    <td className="px-6 py-3 text-gray-600 max-w-[160px]">
                       <p className="truncate text-xs">{row.reason || '—'}</p>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusCfg.className}`}>
                         {statusCfg.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-6 py-3">
                       <button
                         onClick={() => { setSelected(row); setAdminComment(row.admin_comment || ''); }}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
@@ -209,7 +209,7 @@ export default function AdminSignalements() {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
+        <div className="px-6 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
           <span className="text-sm text-gray-500">{total} signalement{total !== 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
@@ -259,14 +259,14 @@ export default function AdminSignalements() {
               {/* Raison */}
               <div className="space-y-1">
                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Raison</h2>
-                <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3 font-medium">{selected.reason || '—'}</p>
+                <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-6 py-3 font-medium">{selected.reason || '—'}</p>
               </div>
 
               {/* Description */}
               {selected.description && (
                 <div className="space-y-1">
                   <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Description</h2>
-                  <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3 leading-relaxed whitespace-pre-line">{selected.description}</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-6 py-3 leading-relaxed whitespace-pre-line">{selected.description}</p>
                 </div>
               )}
 
@@ -274,7 +274,7 @@ export default function AdminSignalements() {
               {selected.admin_comment && selected.status !== 'open' && (
                 <div className="space-y-1">
                   <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Décision admin</h2>
-                  <p className="text-sm text-gray-700 bg-yellow-50 border border-yellow-100 rounded-xl px-4 py-3 italic">{selected.admin_comment}</p>
+                  <p className="text-sm text-gray-700 bg-yellow-50 border border-yellow-100 rounded-xl px-6 py-3 italic">{selected.admin_comment}</p>
                 </div>
               )}
 
@@ -315,21 +315,21 @@ export default function AdminSignalements() {
                 <button
                   onClick={handleCloturer}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl font-medium text-sm hover:bg-green-100 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl font-medium text-sm hover:bg-green-100 disabled:opacity-50 transition-colors"
                 >
                   <CheckCircle className="w-4 h-4" /> Clôturer le signalement
                 </button>
                 <button
                   onClick={handleAvertir}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl font-medium text-sm hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl font-medium text-sm hover:bg-orange-100 disabled:opacity-50 transition-colors"
                 >
                   <Flag className="w-4 h-4" /> Avertir l'utilisateur
                 </button>
                 <button
                   onClick={handleIgnorer}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 disabled:opacity-50"
                 >
                   <XCircle className="w-4 h-4" /> Ignorer
                 </button>

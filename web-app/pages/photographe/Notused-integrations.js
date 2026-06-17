@@ -274,7 +274,7 @@ export default function Integrations() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => router.back()}
@@ -293,7 +293,7 @@ export default function Integrations() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Stats Banner */}
         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white mb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -304,11 +304,11 @@ export default function Integrations() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-white/20 rounded-lg px-4 py-2 text-center">
+              <div className="bg-white/20 rounded-lg px-6 py-2 text-center">
                 <p className="text-2xl font-bold">{connectedCount}</p>
                 <p className="text-xs text-white/80">Connectées</p>
               </div>
-              <div className="bg-white/20 rounded-lg px-4 py-2 text-center">
+              <div className="bg-white/20 rounded-lg px-6 py-2 text-center">
                 <p className="text-2xl font-bold">{AVAILABLE_INTEGRATIONS.length}</p>
                 <p className="text-xs text-white/80">Disponibles</p>
               </div>
@@ -325,7 +325,7 @@ export default function Integrations() {
                 <button
                   key={type.id}
                   onClick={() => setSelectedType(type.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+                  className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
                     selectedType === type.id
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -461,7 +461,7 @@ export default function Integrations() {
                     <button
                       onClick={() => toggleIntegration(config.provider, false)}
                       disabled={isConnecting}
-                      className="w-full py-2 px-4 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-2 px-6 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
                       style={{ 
                         backgroundColor: config.color, 
                         color: 'white',
@@ -499,7 +499,7 @@ export default function Integrations() {
                 Si vous utilisez un outil qui n'est pas encore disponible, faites-le nous savoir ! 
                 Nous ajoutons régulièrement de nouvelles intégrations.
               </p>
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2">
+              <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2">
                 Suggérer une intégration
                 <ExternalLink className="w-4 h-4" />
               </button>

@@ -89,7 +89,7 @@ export default function AdminReservations() {
             ['annulee', 'Annulées'],
           ].map(([val, lbl]) => (
             <button key={val} onClick={() => { setFilter(val); setPage(0); }}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+              className={`px-6 py-2.5 rounded-xl text-sm font-medium border transition-all ${
                 filterStatut === val ? 'bg-[#130183] text-white border-[#130183]' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
               }`}>{lbl}</button>
           ))}
@@ -102,13 +102,13 @@ export default function AdminReservations() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-left text-gray-500 text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 font-semibold">Client</th>
-                <th className="px-4 py-3 font-semibold">Prestataire</th>
-                <th className="px-4 py-3 font-semibold">Montant</th>
-                <th className="px-4 py-3 font-semibold">Statut</th>
-                <th className="px-4 py-3 font-semibold">Date prestation</th>
-                <th className="px-4 py-3 font-semibold">Créée le</th>
-                <th className="px-4 py-3 font-semibold">Détails</th>
+                <th className="px-6 py-3 font-semibold">Client</th>
+                <th className="px-6 py-3 font-semibold">Prestataire</th>
+                <th className="px-6 py-3 font-semibold">Montant</th>
+                <th className="px-6 py-3 font-semibold">Statut</th>
+                <th className="px-6 py-3 font-semibold">Date prestation</th>
+                <th className="px-6 py-3 font-semibold">Créée le</th>
+                <th className="px-6 py-3 font-semibold">Détails</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -122,7 +122,7 @@ export default function AdminReservations() {
                 const s = STATUT[row.statut] || { label: row.statut, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
                 return (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                           <User className="w-3.5 h-3.5 text-blue-500" />
@@ -133,19 +133,19 @@ export default function AdminReservations() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <div>
                         <p className="font-medium text-gray-900 text-xs">{row['profiles!reservations_prestataire_id_fkey']?.nom || '—'}</p>
                         <p className="text-xs text-gray-400">{row.categorie || row.ville}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-gray-900 text-sm">
+                    <td className="px-6 py-3 font-semibold text-gray-900 text-sm">
                       {row.montant_total ? `${Number(row.montant_total).toLocaleString('fr-FR')} MAD` : '—'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${s.cls}`}>{s.label}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
+                    <td className="px-6 py-3 text-gray-600 text-xs">
                       {row.date ? (
                         <div className="flex items-center gap-1">
                           <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
@@ -153,8 +153,8 @@ export default function AdminReservations() {
                         </div>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="px-6 py-3">
                       <button onClick={() => setSelected(row)}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors">
                         <Eye className="w-3.5 h-3.5" /> Voir
@@ -166,7 +166,7 @@ export default function AdminReservations() {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
+        <div className="px-6 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
           <span className="text-sm text-gray-500">{total} réservation{total !== 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}

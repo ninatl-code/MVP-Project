@@ -248,7 +248,7 @@ export default function DevisDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -259,15 +259,15 @@ export default function DevisDetailPage() {
 
   if (!devis) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-4xl mx-auto px-6 py-12 text-center">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Devis introuvable</h2>
           <p className="text-gray-600 mb-6">Ce devis n'existe pas ou a été supprimé.</p>
           <button
             onClick={() => router.push('/client/demandes')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium"
           >
             Retour aux demandes
           </button>
@@ -284,10 +284,10 @@ export default function DevisDetailPage() {
   const canRespond = ['en_attente', 'envoye', 'lu'].includes(devis.statut);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Back button */}
         <button
           onClick={() => router.back()}
@@ -312,7 +312,7 @@ export default function DevisDetailPage() {
                       {statusConfig.label}
                     </span>
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-900">
+                  <h1 className="text-2xl font-bold text-[#130183]">
                     {devis.titre || demande?.titre || 'Devis prestataire'}
                   </h1>
                   <p className="text-sm text-gray-400 mt-1">Reçu le {formatDate(devis.created_at)}</p>
@@ -719,14 +719,14 @@ export default function DevisDetailPage() {
               <div className="space-y-2">
                 <button
                   onClick={() => router.push(`/messages?prestataire=${devis.prestataire_id}&devis=${devis.id}`)}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                  className="w-full px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-5 h-5" />
                   Contacter
                 </button>
                 <button
                   onClick={() => router.push(`/client/photographes/${devis.prestataire_id}`)}
-                  className="w-full px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
+                  className="w-full px-6 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
                 >
                   Voir le profil complet
                 </button>
@@ -781,20 +781,20 @@ export default function DevisDetailPage() {
               onChange={(e) => setRefuseReason(e.target.value)}
               placeholder="Raison du refus (optionnel)..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none mb-4"
+              className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none mb-4"
             />
 
             <div className="flex gap-3">
               <button
                 onClick={() => setShowRefuseModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
+                className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
               >
                 Annuler
               </button>
               <button
                 onClick={handleRefuse}
                 disabled={refusing}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
               >
                 {refusing ? 'Refus en cours...' : 'Confirmer le refus'}
               </button>

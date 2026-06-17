@@ -93,11 +93,11 @@ export const getDemandeById = async (demandeId) => {
           statut,
           message_personnalise,
           created_at,
-          profiles!devis_prestataire_id_fkey(id, nom, avatar_url)
+          profiles!devis_prestatairep_id_fkey(id, nom, avatar_url)
         )
       `)
       .eq('id', demandeId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return { data, error: null };
@@ -176,6 +176,26 @@ export const cancelDemande = async (demandeId) => {
   }
 };
 
+export const reactivateDemande = async (demandeId) => {
+  try {
+    const { data, error } = await supabase
+      .from('demandes_client')
+      .update({
+        statut: 'ouverte',
+        fermee_at: null,
+      })
+      .eq('id', demandeId)
+      .select('id', { count: 'exact' })
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error reactivating demande:', error);
+    return { data: null, error };
+  }
+};
+
 export const expireDemande = async (demandeId) => {
   try {
     const { data, error } = await supabase
@@ -190,7 +210,7 @@ export const expireDemande = async (demandeId) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error cancelling demande:', error);
+    console.error('Error expiring demande:', error);
     return { data: null, error };
   }
 };

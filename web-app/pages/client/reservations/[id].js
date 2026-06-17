@@ -149,7 +149,7 @@ export default function ReservationDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -160,15 +160,15 @@ export default function ReservationDetailPage() {
 
   if (!reservation) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-4xl mx-auto px-6 py-12 text-center">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Réservation introuvable</h2>
           <p className="text-gray-600 mb-6">Cette réservation n'existe pas ou a été supprimée.</p>
           <button
             onClick={() => router.push('/client/reservations')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium"
           >
             Retour aux réservations
           </button>
@@ -183,10 +183,10 @@ export default function ReservationDetailPage() {
   const isUpcoming = new Date(reservation.date) > new Date();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Back button */}
         <button
           onClick={() => router.push('/client/reservations')}
@@ -518,7 +518,7 @@ export default function ReservationDetailPage() {
                     <p className="text-gray-500 mb-4">Partagez votre expérience avec ce prestataire</p>
                     <button
                       onClick={() => setShowReviewModal(true)}
-                      className="px-4 py-2 bg-yellow-500 text-white rounded-xl font-medium hover:bg-yellow-600 transition-all"
+                      className="px-6 py-2 bg-yellow-500 text-white rounded-xl font-medium hover:bg-yellow-600 transition-all"
                     >
                       Laisser un avis
                     </button>
@@ -557,7 +557,7 @@ export default function ReservationDetailPage() {
               <div className="space-y-2">
                 <button
                   onClick={() => router.push(`/messages?prestataire=${reservation.prestataire_id}`)}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                  className="w-full px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-5 h-5" />
                   Envoyer un message
@@ -566,7 +566,7 @@ export default function ReservationDetailPage() {
                 {photographe?.telephone && (
                   <a
                     href={`tel:${photographe.telephone}`}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                    className="w-full px-6 py-2 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                   >
                     <Phone className="w-5 h-5" />
                     Appeler
@@ -575,7 +575,7 @@ export default function ReservationDetailPage() {
 
                 <button
                   onClick={() => router.push(`/client/photographes/${reservation.prestataire_id}`)}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                  className="w-full px-6 py-2 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                 >
                   <ExternalLink className="w-5 h-5" />
                   Voir le profil
@@ -589,7 +589,7 @@ export default function ReservationDetailPage() {
                 <h2 className="font-semibold text-gray-900 mb-4">Actions</h2>
                 <button
                   onClick={() => setShowCancelModal(true)}
-                  className="w-full px-4 py-2 border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-all"
+                  className="w-full px-6 py-2 border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-all"
                 >
                   Annuler la réservation
                 </button>
@@ -633,14 +633,14 @@ export default function ReservationDetailPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCancelModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
+                className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
               >
                 Retour
               </button>
               <button
                 onClick={handleCancelReservation}
                 disabled={cancelling}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
               >
                 {cancelling ? 'Annulation...' : 'Confirmer l\'annulation'}
               </button>
@@ -753,21 +753,21 @@ function ReviewModal({ reservationId, photographeId, onClose, onSubmit }) {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Partagez votre expérience..."
             rows={4}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+            className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
           />
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
+            className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={rating === 0 || submitting}
-            className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-xl font-medium hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-6 py-2 bg-yellow-500 text-white rounded-xl font-medium hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Publication...' : 'Publier mon avis'}
           </button>

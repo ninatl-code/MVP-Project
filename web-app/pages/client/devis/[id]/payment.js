@@ -133,7 +133,7 @@ export default function DevisPaymentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -144,14 +144,14 @@ export default function DevisPaymentPage() {
 
   if (!devis) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F8F9FB]">
         <Header />
-        <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-4xl mx-auto px-6 py-12 text-center">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">Devis introuvable</h2>
           <button
             onClick={() => router.push('/client/demandes')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium"
           >
             Retour aux demandes
           </button>
@@ -167,10 +167,10 @@ export default function DevisPaymentPage() {
   const remainingAmount = devis.montant - depositAmount;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8">
         {/* Back button */}
         <button
           onClick={() => router.push(`/client/devis/${id}`)}
@@ -189,7 +189,7 @@ export default function DevisPaymentPage() {
                   <CreditCard className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Paiement de l'acompte</h1>
+                  <h1 className="text-xl font-bold text-[#130183]">Paiement de l'acompte</h1>
                   <p className="text-sm text-gray-500">Sécurisé par Stripe</p>
                 </div>
               </div>

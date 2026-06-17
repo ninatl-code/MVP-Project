@@ -111,12 +111,12 @@ export default function AdminAvis() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-left text-gray-500 text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 font-semibold">Client</th>
-                <th className="px-4 py-3 font-semibold">Prestataire</th>
-                <th className="px-4 py-3 font-semibold">Note</th>
-                <th className="px-4 py-3 font-semibold">Commentaire</th>
-                <th className="px-4 py-3 font-semibold">Date</th>
-                <th className="px-4 py-3 font-semibold">Actions</th>
+                <th className="px-6 py-3 font-semibold">Client</th>
+                <th className="px-6 py-3 font-semibold">Prestataire</th>
+                <th className="px-6 py-3 font-semibold">Note</th>
+                <th className="px-6 py-3 font-semibold">Commentaire</th>
+                <th className="px-6 py-3 font-semibold">Date</th>
+                <th className="px-6 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -128,22 +128,22 @@ export default function AdminAvis() {
                 <tr><td colSpan={6} className="text-center py-16 text-gray-400">Aucun avis trouvé</td></tr>
               ) : rows.map(row => (
                 <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-3">
                     <p className="font-medium text-gray-900">{row.client?.nom || '—'}</p>
                     <p className="text-xs text-gray-400">{row.client?.email}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-3">
                     <p className="font-medium text-gray-900">{row.prestataire?.nom || '—'}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-3">
                     <StarRating rating={row.rating} />
                     <span className="text-xs text-gray-400 mt-0.5 block">{row.rating}/5</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 max-w-[200px]">
+                  <td className="px-6 py-3 text-gray-600 max-w-[200px]">
                     <p className="truncate text-xs">{row.comment || '—'}</p>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
+                  <td className="px-6 py-3">
                     <div className="flex items-center gap-1.5">
                       {row.visible === false && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Masqué</span>}
                       <button
@@ -159,7 +159,7 @@ export default function AdminAvis() {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
+        <div className="px-6 py-3 flex items-center justify-between border-t border-gray-100 bg-gray-50/50">
           <span className="text-sm text-gray-500">{total} avis</span>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
@@ -229,7 +229,7 @@ export default function AdminAvis() {
                   <button
                     onClick={handleMasquer}
                     disabled={actionLoading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl font-medium text-sm hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl font-medium text-sm hover:bg-orange-100 disabled:opacity-50 transition-colors"
                   >
                     <EyeOff className="w-4 h-4" /> Masquer l'avis
                   </button>
@@ -238,7 +238,7 @@ export default function AdminAvis() {
                 <button
                   onClick={handleRendreVisible}
                   disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-green-300 text-green-700 rounded-xl font-medium text-sm hover:bg-green-50 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2.5 border border-green-300 text-green-700 rounded-xl font-medium text-sm hover:bg-green-50 disabled:opacity-50"
                 >
                   <Eye className="w-4 h-4" /> Rendre visible
                 </button>

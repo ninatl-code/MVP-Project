@@ -131,7 +131,7 @@ export default function PhotographeProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -139,7 +139,7 @@ export default function PhotographeProfilePage() {
 
   if (!photographe) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center">
         <div className="text-center">
           <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
@@ -154,7 +154,7 @@ export default function PhotographeProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8F9FB]">
       {/* Cover Image */}
       <div className="h-64 md:h-80 bg-gradient-to-br from-indigo-600 to-purple-700 relative">
         {photographe.photo_couverture && (
@@ -182,7 +182,7 @@ export default function PhotographeProfilePage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 -mt-20 relative z-10 pb-12">
+      <div className="max-w-6xl mx-auto px-6 -mt-20 relative z-10 pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -275,7 +275,7 @@ export default function PhotographeProfilePage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex-1 px-4 py-4 text-sm font-medium border-b-2 transition ${
+                      className={`flex-1 px-6 py-4 text-sm font-medium border-b-2 transition ${
                         activeTab === tab.id
                           ? 'border-indigo-600 text-indigo-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
