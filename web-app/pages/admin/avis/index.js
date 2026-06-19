@@ -67,7 +67,6 @@ export default function AdminAvis() {
     try {
       await masquerAvis(selected.id, selected.client_id, selected.prestataire_id, motifMasquage);
     } catch(e) { console.error(e); }
-    notificationService.notifyAvisMasque(selected.prestataire_id,selected.id, motifMasquage);
     setActionLoading(false);
     setMotifMasquage('');
     setSelected(null);

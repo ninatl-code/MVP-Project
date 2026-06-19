@@ -74,8 +74,7 @@ export const getClientReservations = async (clientId, status = null,limit=100) =
       .from('reservations')
       .select(`
         *,
-        profiles!reservations_prestatairep_id_fkey(id, nom, email, telephone, avatar_url),
-        devis(services_inclus, message_personnalise)
+        profiles!reservations_prestatairep_id_fkey(id, nom, email, telephone, avatar_url)
       `)
       .eq('client_id', clientId)
       .order('date', { ascending: true })
@@ -246,7 +245,7 @@ export const completeReservation = async (
     }
 
     // 2. Notification APRES succès
-    await notificationService.NotifyReservationConfirmed(
+    await notificationService.notifyReservationConfirmed(
       reservationId,
       clientId,
       datePrestation,

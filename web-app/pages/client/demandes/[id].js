@@ -6,11 +6,10 @@ import Header from '../../../components/HeaderParti';
 import {getDemandeById, cancelDemande, fulfillDemande, reactivateDemande} from '../../../lib/demandeService';
 import {getDevisForDemande} from '../../../lib/devisService';
 import * as reservationService from  '../../../lib/reservationService';
-
 import { 
   ArrowLeft, Calendar, MapPin, Euro, Clock, Users, 
   Edit, Trash2, Eye, Check, X, MessageSquare, 
-  ChevronRight, Star, Camera, AlertCircle, Share2,RefreshCw 
+  ChevronRight, Star, Camera, AlertCircle, Share2,RefreshCw, FileText, ShieldUser
 } from 'lucide-react';
 
 const COLORS = {
@@ -236,11 +235,12 @@ export default function DemandeDetailPage() {
 
   const getCategoryIcon = (category) => {
     const icons = {
-      'mariage': '💒', 'portrait': '👤', 'evenement': '🎉', 'corporate': '🏢',
-      'produit': '📦', 'immobilier': '🏠', 'famille': '👨‍👩‍👧‍👦', 'grossesse': '🤰',
-      'nouveau-ne': '👶', 'animalier': '🐕', 'culinaire': '🍽️',
+    'evenementiel': '🎉',
+    'digital': '💻',
+    'transport': '🚗',
+    'services-domicile': '🏠',
     };
-    return icons[category?.toLowerCase()] || '📷';
+    return icons[category?.toLowerCase()] || '🚀';
   };
 
   if (loading) {
@@ -446,7 +446,7 @@ export default function DemandeDetailPage() {
                   </button>
                   <button
                     onClick={() => setActiveTab('matchings')}
-                    className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
+                    ShieldUser className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
                       activeTab === 'matchings'
                         ? 'text-indigo-600 border-b-2 border-indigo-600'
                         : 'text-gray-500 hover:text-gray-700'
@@ -460,7 +460,7 @@ export default function DemandeDetailPage() {
                   {activeTab === 'devis' ? (
                     devis.length === 0 ? (
                       <div className="text-center py-8">
-                        <Camera className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                         <h2 className="text-lg font-medium text-gray-900 mb-2">
                           Aucun devis pour le moment
                         </h2>
@@ -486,7 +486,9 @@ export default function DemandeDetailPage() {
                     reservations.length === 0 ? (
                       <div className="text-center py-8">
                         <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500">Aucune réservation liée à cette demande.</p>
+                        <h2 className="text-lg font-medium text-gray-900 mb-2">
+                          Aucune réservation pour le moment
+                        </h2>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -540,6 +542,7 @@ export default function DemandeDetailPage() {
                     )
                   ) : (
                     <div className="text-center py-8">
+                      <ShieldUser className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500">
                         Fonctionnalité de suggestions à venir
                       </p>
@@ -616,14 +619,14 @@ export default function DemandeDetailPage() {
                   onClick={() => { setShowCancelModal(false); setCancelError(null); }}
                   className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
                 >
-                  Annuler
+                  Retour
                 </button>
                 <button
                   onClick={handleCancelDemande}
                   disabled={cancelling}
                   className="flex-1 px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
                 >
-                  {cancelling ? 'Suppression...' : 'Confirmer'}
+                  {cancelling ? 'Annulation...' : 'Confirmer'}
                 </button>
               </div>
             </div>
@@ -650,12 +653,12 @@ export default function DemandeDetailPage() {
                   onClick={() => { setShowReactivateModal(false); setReactivateError(null); }}
                   className="flex-1 px-6 py-2 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
                 >
-                  Réactiver
+                  Retour
                 </button>
                 <button
                   onClick={handleReactivateDemande}
                   disabled={reactivating}
-                  className="flex-1 px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 disabled:opacity-50"
+                  className="flex-1 px-6 py-2 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50"
                 >
                   {reactivating ? 'Réactivation...' : 'Confirmer'}
                 </button>
@@ -699,7 +702,7 @@ function DevisCard({ devis, onAccept, onView, onContact, demandeStatus }) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <Camera className="w-6 h-6 text-indigo-600" />
+            <ShieldUser className="w-6 h-6 text-indigo-600" />
           )}
         </div>
 

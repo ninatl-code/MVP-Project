@@ -383,7 +383,17 @@ export const unsubscribeFromNotifications = (channel) => {
 	  });
 	};
 	
-	export const notifyAvisMasque = async (photographeId, avis_id, motif) => {
+  	
+	export const notifyDemandeReactive = async (client_id, demande_id) => {
+	  return createNotification({
+		userId: client_id,
+		type: NOTIFICATION_TYPES.DEMANDE_ACTIVEE,
+		titre: 'Votre demande a été réactivée',
+		contenu: `Votre demande a été réactivée et est à nouveau visible publiquement.`,
+		demandeId : demande_id,
+	  });
+	};
+	export const notifyAvisMasquePresta = async (photographeId, avis_id, motif) => {
 	  return createNotification({
 		userId: photographeId,
 		type: NOTIFICATION_TYPES.AVIS_MASQUE,
@@ -393,18 +403,29 @@ export const unsubscribeFromNotifications = (channel) => {
 		prestataireId: photographeId,
 	  });
 	};
+
+  export const notifyAvisMasqueClient = async (clientId, avis_id, motif) => {
+	  return createNotification({
+		userId: clientId,
+		type: NOTIFICATION_TYPES.AVIS_MASQUE,
+		titre: 'Votre avis a été masqué',
+		contenu: `Votre avis a été masqué par notre équipe.` + motif,
+		avisId : avis_id,
+		prestataireId: photographeId,
+	  });
+	};
 	
-	export const notifyAvertissement = async (user_id, reason, avertissement_id) => {
+	export const notifyAvertissement = async (user_id, reason,avertissement_id) => {
 	  return createNotification({
 		userId: user_id,
 		type: NOTIFICATION_TYPES.AVERTISSEMENT,
-		titre: 'Avertissement',
+		titre: `⚠️ Avertissement'}`,
 		contenu: `Vous avez reçu un avertissement concernant le respect des règles de la plateforme.` + reason,
 		avertissementId: avertissement_id,
 	  });
 	};
 	
-	export const notifySignalementCloture = async (user_id, admin_comment, signalement_id) => {
+	export const notifySignalementCloture = async (user_id, signalement_id) => {
 	  return createNotification({
 		userId: user_id,
 		type: NOTIFICATION_TYPES.SIGNALEMENT_CLOTURE,

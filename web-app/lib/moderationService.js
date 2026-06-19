@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { createNotification, NOTIFICATION_TYPES } from './notificationService';
+import * as notificationService from './notificationService';
 
 // ─────────────────────────────────────────────────────────
 // VALIDATE PRESTATAIRE PROFILE
@@ -17,12 +17,8 @@ export const approuverPrestataire = async (prestataireId) => {
 
   if (error) throw error;
 
-  await createNotification({
-    userId: prestataireId,
-    type: NOTIFICATION_TYPES.PROFIL_APPROUVE,
-    titre: '✅ Profil approuvé',
-    contenu: 'Félicitations ! Votre profil a été validé. Vous êtes maintenant visible dans les recherches.',
-  });
+  await notificationService.notifyProfilApprouve(prestataireId);
+
 };
 
 // ─────────────────────────────────────────────────────────
@@ -41,14 +37,8 @@ export const refuserPrestataire = async (prestataireId, motif) => {
 
   if (error) throw error;
 
-  await createNotification({
-    userId: prestataireId,
-    type: NOTIFICATION_TYPES.PROFIL_REFUSE,
-    titre: '❌ Profil non validé',
-    contenu: motif
-      ? `Votre profil n'a pas été validé. Raison : ${motif}`
-      : "Votre profil n'a pas été validé par notre équipe.",
-  });
+  await 
+  notificationService.notifyProfilRefuse(prestataireId, motif);
 };
 
 // ─────────────────────────────────────────────────────────
@@ -57,7 +47,7 @@ export const refuserPrestataire = async (prestataireId, motif) => {
 export const suspendreutilisateur = async (userId, raison, role) => {
   const { error } = await supabase
     .from('profiles')
-    .update({ suspendu: true, suspension_reason: raison || null })
+    .update({ suspendu: true, suspension_reason: raison || null , date_suspension: new Date().toISOString()})
     .eq('id', userId);
 
   if (error) throw error;
@@ -78,14 +68,7 @@ export const suspendreutilisateur = async (userId, raison, role) => {
       .eq('client_id', userId);
   }
 
-  await createNotification({
-    userId,
-    type: NOTIFICATION_TYPES.COMPTE_SUSPENDU,
-    titre: '⚠️ Compte suspendu',
-    contenu: raison
-      ? `Votre compte a été suspendu. Raison : ${raison}`
-      : 'Votre compte a été suspendu par notre équipe.',
-  });
+  await   notificationService.notifyCompteSuspendu(userId, raison);
 };
 
 // ─────────────────────────────────────────────────────────
@@ -113,13 +96,8 @@ export const reactiverUtilisateur = async (userId, role, previousValidation = 'a
       .eq('client_id', userId)
       .eq('statut', 'ouverte'); // only reactivate open ones
   }
+  await notificationService.notifyCompteReactive (userId);
 
-  await createNotification({
-    userId,
-    type: NOTIFICATION_TYPES.COMPTE_REACTIVE,
-    titre: '✅ Compte réactivé',
-    contenu: 'Votre compte a été réactivé. Vous pouvez à nouveau utiliser la plateforme.',
-  });
 };
 
 // ─────────────────────────────────────────────────────────
@@ -128,20 +106,26 @@ export const reactiverUtilisateur = async (userId, role, previousValidation = 'a
 export const masquerDemande = async (demandeId, clientId, raison) => {
   const { error } = await supabase
     .from('demandes_client')
-    .update({ actif: false, suspension_reason: raison || null })
+    .update({ actif: false, suspension_reason: raison || null, date_suspension: new Date().toISOString() })
     .eq('id', demandeId);
 
   if (error) throw error;
 
-  await createNotification({
-    userId: clientId,
-    type: NOTIFICATION_TYPES.DEMANDE_MASQUEE,
-    titre: '🚫 Demande masquée',
-    contenu: raison
-      ? `Votre demande a été masquée. Raison : ${raison}`
-      : 'Votre demande a été masquée par notre équipe.',
-    demandeId,
-  });
+  await notificationService.notifyDemandeMasquee(clientId, demandeId, raison);
+};
+
+// ─────────────────────────────────────────────────────────
+// REACTIVER DEMANDE
+// ─────────────────────────────────────────────────────────
+export const reactiverDemande = async (demandeId, clientId) => {
+  const { error } = await supabase
+    .from('demandes_client')
+    .update({ actif: true, suspension_reason: null })
+    .eq('id', demandeId);
+
+  if (error) throw error;
+
+  await notificationService.notifyDemandeReactive(clientId, demandeId);
 };
 
 // ─────────────────────────────────────────────────────────
@@ -156,22 +140,14 @@ export const masquerAvis = async (avisId, auteurId, prestataireId, raison) => {
   if (error) throw error;
 
   await Promise.all([
-    createNotification({
-      userId: auteurId,
-      type: NOTIFICATION_TYPES.AVIS_MASQUE,
-      titre: '🚫 Avis masqué',
-      contenu: raison
-        ? `Votre avis a été masqué. Raison : ${raison}`
-        : 'Votre avis a été masqué par notre équipe.',
-    }),
-    createNotification({
-      userId: prestataireId,
-      type: NOTIFICATION_TYPES.AVIS_MASQUE,
-      titre: '🚫 Un avis a été masqué',
-      contenu: "Un avis sur votre profil a été masqué par notre équipe de modération.",
-    }),
+    
+    notificationService.notifyAvisMasqueClient(auteurId, avisId, raison),
+    
+    notificationService.notifyAvisMasquePresta(prestataireId, avisId, raison),
+
   ]);
 };
+
 
 // ─────────────────────────────────────────────────────────
 // WARN USER
@@ -184,13 +160,8 @@ export const avertirUtilisateur = async (userId, raison, severity = 'warning', a
   if (error) throw error;
 
   const labels = { info: 'ℹ️ Information', warning: '⚠️ Avertissement', severe: '🚨 Avertissement grave' };
-
-  await createNotification({
-    userId,
-    type: NOTIFICATION_TYPES.AVERTISSEMENT,
-    titre: labels[severity] || '⚠️ Avertissement',
-    contenu: raison,
-  });
+  const avertissementId = (await supabase.from('avertissements').select('id').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single()).data.id;
+  await notificationService.notifyAvertissement(userId, raison, avertissementId);
 };
 
 // ─────────────────────────────────────────────────────────
@@ -208,14 +179,8 @@ export const cloturerSignalement = async (signalementId, reporterId, adminCommen
 
   if (error) throw error;
 
-  await createNotification({
-    userId: reporterId,
-    type: NOTIFICATION_TYPES.SIGNALEMENT_CLOTURE,
-    titre: '✅ Signalement traité',
-    contenu: adminComment
-      ? `Votre signalement a été traité. Réponse de l'équipe : ${adminComment}`
-      : 'Votre signalement a été traité par notre équipe.',
-  });
+  await notificationService.notifySignalementCloture(reporterId, signalementId); 
+
 };
 
 // ─────────────────────────────────────────────────────────

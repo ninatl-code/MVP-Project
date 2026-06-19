@@ -63,9 +63,9 @@ export default function AdminDashboard() {
   );
 
   const cards = [
-    { label: 'Clients inscrits',        value: stats?.totalClients ?? '—',           icon: Users,        color: 'text-blue-600',   bg: 'bg-blue-50',    href: '/admin/clients' },
-    { label: 'Prestataires',            value: stats?.totalPrestataires ?? '—',       icon: Briefcase,    color: 'text-indigo-600', bg: 'bg-indigo-50',  href: '/admin/prestataires' },
-    { label: 'En attente validation',   value: stats?.prestatairesEnAttente ?? '—',   icon: Clock,        color: 'text-yellow-600', bg: 'bg-yellow-50',  href: '/admin/prestataires', alert: stats?.prestatairesEnAttente > 0 },
+    { label: 'Clients inscrits',        value: stats?.totalClients ?? '—',           icon: Users,        color: 'text-blue-600',   bg: 'bg-blue-50',    href: '/admin/client' },
+    { label: 'Prestataires',            value: stats?.totalPrestataires ?? '—',       icon: Briefcase,    color: 'text-indigo-600', bg: 'bg-indigo-50',  href: '/admin/prestataire' },
+    { label: 'En attente validation',   value: stats?.prestatairesEnAttente ?? '—',   icon: Clock,        color: 'text-yellow-600', bg: 'bg-yellow-50',  href: '/admin/prestataire', alert: stats?.prestatairesEnAttente > 0 },
     { label: 'Demandes clients',        value: stats?.totalDemandes ?? '—',           icon: FileText,     color: 'text-green-600',  bg: 'bg-green-50',   href: '/admin/demandes' },
     { label: 'Réservations',            value: stats?.totalReservations ?? '—',       icon: Calendar,     color: 'text-purple-600', bg: 'bg-purple-50',  href: '/admin/reservations' },
     { label: 'Avis signalés',           value: stats?.avisSignales ?? '—',            icon: AlertCircle,  color: 'text-red-600',    bg: 'bg-red-50',     href: '/admin/avis', alert: stats?.avisSignales > 0 },
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
               <Clock className="w-4 h-4 text-yellow-600" />
               <h2 className="font-semibold text-gray-900 text-sm">Prestataires en attente</h2>
             </div>
-            <button onClick={() => router.push('/admin/prestataires')} className="text-xs text-indigo-600 hover:underline">Voir tout</button>
+            <button onClick={() => router.push('/admin/prestataire')} className="text-xs text-indigo-600 hover:underline">Voir tout</button>
           </div>
           <div className="divide-y divide-gray-50">
             {recent.prestataires.length === 0 ? (

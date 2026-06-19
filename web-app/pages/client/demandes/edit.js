@@ -412,9 +412,13 @@ export default function EditDemandePage() {
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">DH</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.budget_max}
-                  onChange={(e) => update('budget_max', e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    update('budget_max', value);
+                  }}
                   placeholder="500"
                   min="0"
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"

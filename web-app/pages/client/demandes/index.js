@@ -44,6 +44,7 @@ export default function MesDemandesPage() {
   const [cancelError, setCancelError] = useState(null);
   const [reactivating, setReactivating] = useState(false);
   const [reactivateError, setReactivateError] = useState(null);
+  const [targetId, setTargetId] = useState(null);
 
   // Résoudre l'ID via getSession() (cache local, pas de requête réseau)
   useEffect(() => {
@@ -66,10 +67,11 @@ export default function MesDemandesPage() {
 const fetchDemandes = async () => {
   if (!resolvedId) return; // ← guard
   setLoading(true);
+  console.log('resolvedId:', resolvedId);
   try {
     const { data, error } = await demandeService.getClientDemandes(resolvedId);
     if (error) throw error;
-    setDemandes(Array.isArray(data) ? data : []); // ← sécurisé
+    setDemandes(Array.isArray(data) ? data : []); // ← sécurise contre un format inattendu
   } catch (error) {
     console.error('Error fetching demandes:', error);
     setDemandes([]); // ← évite de laisser un état invalide
@@ -121,19 +123,21 @@ const fetchDemandes = async () => {
     }
   };
 
-  const handleCancelDemande = async (id) => {
+  const handleCancelDemande = async (targetId ) => {
       setCancelling(true);
       setCancelError(null);
       try {
         const resolvedClientId = profileId || (await supabase.auth.getSession()).data.session?.user?.id;
   
-        const { error, count } = await cancelDemande(id)
+        const { error, count } = await cancelDemande(targetId)
   
         if (error) throw error;
         if (count === 0) throw new Error('Aucune ligne mise à jour. Vérifiez vos droits.');
   
-        setDemandes(prev => ({ ...prev, statut: 'annulee' }));
+        setDemandes(prev => prev.map(d => d.id === targetId ? { ...d, statut: 'annulee' } : d));
+        setSelected(prev => prev.filter(x => x !== targetId));
         setShowCancelModal(false);
+        setTargetId(null);
       } catch (error) {
         console.error('Error cancelling demande:', error);
         setCancelError(error.message || 'Une erreur est survenue. Réessayez.');
@@ -142,19 +146,21 @@ const fetchDemandes = async () => {
       }
     };
   
-  const handleReactivateDemande = async (id) => {
+  const handleReactivateDemande = async (targetId ) => {
       setReactivating(true);
       setReactivateError(null);
       try {
         const resolvedClientId = profileId || (await supabase.auth.getSession()).data.session?.user?.id;
   
-        const { error, count } = await reactivateDemande(id)
+        const { error, count } = await reactivateDemande(targetId)
   
         if (error) throw error;
         if (count === 0) throw new Error('Aucune ligne mise à jour. Vérifiez vos droits.');
   
-        setDemandes(prev => ({ ...prev, statut: 'ouverte' }));
+        setDemandes(prev => prev.map(d => d.id === targetId ? { ...d, statut: 'ouverte' } : d));
+        setSelected(prev => prev.filter(x => x !== targetId));
         setShowReactivateModal(false);
+        setTargetId(null);
       } catch (error) {
         console.error('Error reactivating demande:', error);
         setReactivateError(error.message || 'Une erreur est survenue. Réessayez.');
@@ -220,19 +226,25 @@ const fetchDemandes = async () => {
               </button>
             )}
             {selected.length > 0  && selected.some(id => demandes.find(d => d.id === id && d.statut === 'ouverte')) && (
-              <button
-                onClick={() => handleCancelDemande(selected)}
-                disabled={cancelling}
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl border border-red-300 text-red-700 font-medium hover:bg-red-50 transition-all disabled:opacity-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Annuler ({selected.length})
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setTargetId(selected); setShowCancelModal(true); }}
+                  disabled={cancelling}
+                  className="inline-flex items-center gap-2 px-6 py-2 rounded-xl border border-red-300 text-red-700 font-medium hover:bg-red-50 transition-all disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Annuler ({selected.length})
+                  
+                </button>
+           
+              </div>
+
+
             )}
 
             {selected.length > 0 && selected.some(id => demandes.find(d => d.id === id && d.statut === 'annulee')) && (
               <button
-                onClick={() => handleReactivateDemande(selected)}
+                onClick={() =>  { setTargetId(selected); setShowReactivateModal(true); }} 
                 disabled={reactivating}
                 className="inline-flex items-center gap-2 px-6 py-2 rounded-xl border border-green-300 text-green-700 font-medium hover:bg-green-50 transition-all disabled:opacity-50"
               >
@@ -293,9 +305,9 @@ const fetchDemandes = async () => {
         ) : filteredDemandes.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h2 className="text-lg font-medium text-gray-900 mb-2">
               Aucune demande trouvée
-            </h3>
+            </h2>
             <p className="text-gray-500 mb-6">
               {filter !== 'all' 
                 ? 'Aucune demande ne correspond à ce filtre.'
@@ -414,23 +426,73 @@ const fetchDemandes = async () => {
           </div>
         )}
       </main>
+      {/* Modal Annulation */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Annuler la demande</h2>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir annuler {targetId?.length > 1 ? `ces ${targetId.length} demandes` : 'cette demande'} ? 
+              Les prestataires ne pourront plus y répondre.
+            </p>
+            {cancelError && <p className="text-red-600 text-sm mb-4">{cancelError}</p>}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowCancelModal(false); setTargetId(null); }}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                Retour
+              </button>
+              <button
+                onClick={() => targetId.forEach(id => handleCancelDemande(id))}
+                disabled={cancelling}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {cancelling ? 'Annulation...' : 'Confirmer l\'annulation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Réactivation */}
+      {showReactivateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Réactiver la demande</h2>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir réactiver {targetId?.length > 1 ? `ces ${targetId.length} demandes` : 'cette demande'} ?
+              Elle redeviendra visible pour les prestataires.
+            </p>
+            {reactivateError && <p className="text-red-600 text-sm mb-4">{reactivateError}</p>}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowReactivateModal(false); setTargetId(null); }}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                Retour
+              </button>
+              <button
+                onClick={() => targetId.forEach(id => handleReactivateDemande(id))}
+                disabled={reactivating}
+                className="px-4 py-2 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50"
+              >
+                {reactivating ? 'Réactivation...' : 'Confirmer la réactivation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function getCategoryIcon(category) {
   const icons = {
-    'mariage': '💒',
-    'portrait': '👤',
-    'evenement': '🎉',
-    'corporate': '🏢',
-    'produit': '📦',
-    'immobilier': '🏠',
-    'famille': '👨‍👩‍👧‍👦',
-    'grossesse': '🤰',
-    'nouveau-ne': '👶',
-    'animalier': '🐕',
-    'culinaire': '🍽️',
+    'evenementiel': '🎉',
+    'digital': '💻',
+    'transport': '🚗',
+    'services-domicile': '🏠',
   };
   return icons[category?.toLowerCase()] || '📷';
 }

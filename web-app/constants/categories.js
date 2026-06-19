@@ -2,7 +2,7 @@ export const categories = [
   {
     id: 'services-domicile',
     label: 'Services à domicile',
-    icon: '🔧',
+    icon: '🏠',
     description: 'Plomberie, électricité, ménage, jardinage...'
   },
   {

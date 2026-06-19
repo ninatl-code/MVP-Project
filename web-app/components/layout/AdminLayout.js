@@ -8,8 +8,8 @@ import { useState } from 'react';
 
 const NAV = [
   { label: 'Dashboard',      href: '/admin',                icon: LayoutDashboard },
-  { label: 'Prestataires',   href: '/admin/prestataires',   icon: Briefcase },
-  { label: 'Clients',        href: '/admin/clients',        icon: Users },
+  { label: 'Prestataires',   href: '/admin/prestataire',   icon: Briefcase },
+  { label: 'Clients',        href: '/admin/client',        icon: Users },
   { label: 'Demandes',       href: '/admin/demandes',       icon: FileText },
   { label: 'Réservations',   href: '/admin/reservations',   icon: Calendar },
   { label: 'Avis',           href: '/admin/avis',           icon: Star },

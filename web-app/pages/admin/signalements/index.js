@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { useAdminGuard } from '../../hooks/useAdminGuard';
-import { useAuth } from '../../contexts/AuthContext';
-import AdminLayout from '../../components/layout/AdminLayout';
+import { supabase } from '../../../lib/supabaseClient';
+import { useAdminGuard } from '../../../hooks/useAdminGuard';
+import { useAuth } from '../../../contexts/AuthContext';
+import AdminLayout from '../../../components/layout/AdminLayout';
 import { Search, ChevronLeft, ChevronRight, Flag, X, CheckCircle, XCircle } from 'lucide-react';
-import { cloturerSignalement, avertirUtilisateur } from '../../lib/moderationService';
-import * as notificationService from '../../lib/notificationService';
+import { cloturerSignalement, avertirUtilisateur } from '../../../lib/moderationService';
 
 const PAGE_SIZE = 20;
 
@@ -81,7 +80,6 @@ export default function AdminSignalements() {
     setActionLoading(true);
     try {
       await cloturerSignalement(selected.id, selected.reporter?.id, adminComment);
-      await notificationService.notifySignalementCloture(selected.reporter?.id, adminComment, selected.id);
     } catch (e) { console.error(e); }
     setActionLoading(false);
     setAdminComment('');
@@ -101,7 +99,6 @@ export default function AdminSignalements() {
         avertissementSeverity,
         user?.id
       );
-      notificationService.notifyAvertissement(userId, adminComment, avertissementSeverity);
     } catch (e) { console.error(e); }
     setActionLoading(false);
   };
