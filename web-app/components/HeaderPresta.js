@@ -39,6 +39,7 @@ export default function Header() {
   const [nbUnread, setNbUnread] = useState(0);
   const router = useRouter();
   
+  
   const { user, profileId, availableProfiles, switchProfile, loading: authLoading } = useAuth();
   const hasMultipleProfiles = availableProfiles?.length > 1;
   // Profile data already loaded by AuthContext — no extra DB call needed
@@ -186,6 +187,7 @@ function NotificationsPopup({ router, userId }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { activeRole } = useAuth();
 
   useEffect(() => {
     if (!userId) return;
@@ -267,7 +269,8 @@ function NotificationsPopup({ router, userId }) {
                 <div
                   key={notif.id}
                   onClick={() => {
-                    const link = getNotificationLink(notif);
+
+                    const link = getNotificationLink(notif, activeRole );
 
                     if (!link) return;
 

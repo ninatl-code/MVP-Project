@@ -160,6 +160,7 @@ const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
   }
 
   return (
+    
     <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       <div className="max-w-4xl mx-auto px-6 py-8">
@@ -289,7 +290,7 @@ const Header = activeRole === 'photographe' ? HeaderPresta : HeaderParti;
 
                   {/* Content */}
                   <Link
-                    href={getNotificationLink(notification)}
+                    href={getNotificationLink(notification, activeRole)}
                     onClick={() => {
                       if (!notification.lu) {
                         markAsRead([notification.id]);

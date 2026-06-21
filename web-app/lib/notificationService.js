@@ -1,4 +1,5 @@
 ﻿import { supabase } from './supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Canonical notification types
@@ -436,11 +437,12 @@ export const unsubscribeFromNotifications = (channel) => {
 	};
 	
 
-export const getNotificationLink = (notification) => {
+export const getNotificationLink = (notification, activeRole) => {
     const { type } = notification;
     const demande_id = notification.demande_id;
     const devis_id = notification.devis_id;
     const reservation_id = notification.reservation_id;
+    const isPhotographe = activeRole === 'photographe';
 
     switch (type) {
       case 'mission_suggeree':
@@ -468,7 +470,7 @@ export const getNotificationLink = (notification) => {
       case 'profil_refuse':
         return '/photographe/profil';
       case 'compte_suspendu':
-        return '/photographe/profil';
+        return isPhotographe? '/photographe/profil' : '/client/profil';
       case 'compte_reactive':
         return '/photographe/profil';
       case 'demande_masquee':

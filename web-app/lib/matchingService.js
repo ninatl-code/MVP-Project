@@ -87,7 +87,7 @@ export const onNewDemande = async (demandeId, demandeData) => {
     const { data: prestataires } = await supabase
       .from('profils_prestataire')
       .select('id, specialisations')
-      .eq('statut_validation', 'approved');  // only visible/approved profiles
+      .eq('statut_validation', 'valide');  // only visible/valide profiles
 
     if (!prestataires?.length) return { error: null };
 
@@ -220,7 +220,7 @@ export const onNewPrestataire = async (prestataireId, prestataireData) => {
       .from('demandes_client')
       .select('*')
       .eq('statut', 'ouverte')
-      .eq('actif', true);  // exclude hidden/suspended demandes
+      //.eq('actif', true);  // exclude hidden/suspended demandes
 
     if (!demandes?.length) return { error: null };
 

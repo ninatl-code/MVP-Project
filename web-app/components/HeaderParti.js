@@ -182,6 +182,7 @@ function NotificationsPopup({ router, userId }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { activeRole } = useAuth();
 
   useEffect(() => {
     if (!userId) return;
@@ -265,7 +266,7 @@ function NotificationsPopup({ router, userId }) {
                 <div
                   key={notif.id}
                   onClick={() => {
-                    const link = getNotificationLink(notif);
+                    const link = getNotificationLink(notif,activeRole);
                     if (!link) return;
                     setOpen(false);
                     router.push(link);

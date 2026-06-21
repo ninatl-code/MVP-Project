@@ -6,7 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import { VILLES_MAROC } from '../../../constants/villes';
 import { categories } from '../../../constants/categories';
-import { SPECIALITES_MAP } from '../../../constants/specialites';
+import { SPECIALITES_MAP, TEMPLATES_PAR_SPECIALITE  } from '../../../constants/specialites';
 import { createDemande } from '../../../lib/demandeService';
 
 import { 
@@ -253,8 +253,22 @@ export default function CreateDemandePage() {
                 key={spec}
                 type="button"
                 onClick={() => {
-                  updateFormData('specialite', spec);
-                  if (spec !== 'Autre') updateFormData('specialite_autre', '');
+                updateFormData('specialite', spec);
+                if (spec !== 'Autre') updateFormData('specialite_autre', '');
+                // Pré-remplissage automatique si template disponible
+                  const template = TEMPLATES_PAR_SPECIALITE[spec];
+                  if (template) {
+                    // On pré-remplit seulement si le champ est vide ou contient un ancien template
+                    if (!formData.titre || Object.values(TEMPLATES_PAR_SPECIALITE).some(t => t.titre === formData.titre)) {
+                      updateFormData('titre', template.titre);
+                    }
+                    if (!formData.description || Object.values(TEMPLATES_PAR_SPECIALITE).some(t => t.description === formData.description)) {
+                      updateFormData('description', template.description);
+                    }
+                    if (!formData.exigences_specifiques || Object.values(TEMPLATES_PAR_SPECIALITE).some(t => t.exigences === formData.exigences_specifiques)) {
+                      updateFormData('exigences_specifiques', template.exigences);
+                    }
+                  }
                 }}
                 className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                   formData.specialite === spec
@@ -325,6 +339,12 @@ export default function CreateDemandePage() {
           placeholder="Ex: Photographe pour mariage le 15 juin"
           className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         />
+        {TEMPLATES_PAR_SPECIALITE[formData.specialite] && (
+          <p className="text-xs text-indigo-500 mt-1 flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            Pré-rempli selon votre spécialité — modifiez librement
+          </p>
+        )}
       </div>
 
       <div>
@@ -339,6 +359,12 @@ export default function CreateDemandePage() {
           required
           className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
+        {TEMPLATES_PAR_SPECIALITE[formData.specialite] && (
+          <p className="text-xs text-indigo-500 mt-1 flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            Pré-rempli selon votre spécialité — modifiez librement
+          </p>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -456,6 +482,12 @@ export default function CreateDemandePage() {
           rows={3}
           className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
+        {TEMPLATES_PAR_SPECIALITE[formData.specialite] && (
+          <p className="text-xs text-indigo-500 mt-1 flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            Pré-rempli selon votre spécialité — modifiez librement
+          </p>
+        )}
       </div>
 
       {/* Langues souhaitées */}

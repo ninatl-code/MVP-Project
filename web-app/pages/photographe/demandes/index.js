@@ -1,12 +1,12 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../lib/supabaseClient';
-import { findMatchingDemandes } from '../../lib/matchingService';
-import {notifyNewDevis} from '../../lib/notificationService';
-import { useAuth } from '../../contexts/AuthContext';
-import Header from '../../components/HeaderPresta';
-import { categories } from '../../constants/categories';
-import { getStatusDemandes } from '../../lib/demandeService';
+import { supabase } from '../../../lib/supabaseClient';
+import { findMatchingDemandes } from '../../../lib/matchingService';
+import {notifyNewDevis} from '../../../lib/notificationService';
+import { useAuth } from '../../../contexts/AuthContext';
+import Header from '../../../components/HeaderPresta';
+import { categories } from '../../../constants/categories';
+import { getActiveDemandesForPhotographer } from '../../../lib/demandeService';
 
 import {
   ClipboardList,
@@ -539,14 +539,16 @@ export default function DemandesClients() {
     loadDemandes();
     loadDevisEnvoyes();
     loadMatchings();
-  }, [user, authLoading]);
+  }, [user, authLoading, filterCategorie]);
 
   const loadDemandes = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const { data, error } = await getStatusDemandes('ouverte');
-
+      const filters = {
+        ...(filterCategorie ? { categorie: filterCategorie } : {}),
+      };
+      const { data, error } = await getActiveDemandesForPhotographer(user.id, filters);
       if (error) { setLoadError(error.message); throw error; }
       setDemandes(data || []);
     } catch (err) {
@@ -772,7 +774,7 @@ export default function DemandesClients() {
                         <div className="flex flex-col items-end gap-3 shrink-0">
                           <span className="text-xs text-gray-400 whitespace-nowrap">{timeAgo(demande.created_at)}</span>
                           <button
-                            onClick={() => setDetailDemande(demande)}
+                            onClick={() => router.push(`/photographe/demandes/${demande.id}`)}
                             className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
                           >
                             <Eye className="w-4 h-4" />Voir le détail
@@ -934,7 +936,7 @@ export default function DemandesClients() {
                           {timeAgo(demande.created_at)}
                         </span>
                         <button
-                          onClick={() => setDetailDemande(demande)}
+                          onClick={() => router.push(`/photographe/demandes/${demande.id}`)}
                           className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
                         >
                           <Eye className="w-4 h-4" />Voir le détail

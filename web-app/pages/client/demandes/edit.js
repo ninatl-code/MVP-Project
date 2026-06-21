@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { onUpdateDemande } from '../../../lib/matchingService';
 import Header from '../../../components/HeaderParti';
 import { categories} from '../../../constants/categories';
-import { SPECIALITES_MAP } from '../../../constants/specialites';
+import { SPECIALITES_MAP, TEMPLATES_PAR_SPECIALITE } from '../../../constants/specialites';
 import * as demandeService from '../../../lib/demandeService';
 import { VILLES_MAROC } from '../../../constants/villes';
 
@@ -236,7 +236,21 @@ export default function EditDemandePage() {
                     <button
                       key={spec}
                       type="button"
-                      onClick={() => { update('specialite', spec); if (spec !== 'Autre') update('specialite_autre', ''); }}
+                      onClick={() => { update('specialite', spec); if (spec !== 'Autre') update('specialite_autre', ''); 
+                        const template = TEMPLATES_PAR_SPECIALITE[spec];
+                        if (template) {
+                          if (!formData.titre || Object.values(TEMPLATES_PAR_SPECIALITE).some(t => t.titre === formData.titre)) {
+                            update('titre', template.titre);
+                          }
+                          if (!formData.description || Object.values(TEMPLATES_PAR_SPECIALITE).some(t => t.description === formData.description)) {
+                            update('description', template.description);
+                          }
+                          if (!formData.instructions_speciales || Object.values(TEMPLATES_PAR_SPECIALITE).some(t => t.exigences === formData.instructions_speciales)) {
+                            update('instruction_speciales', template.exigences);
+                          }
+                        }
+                      }}
+                      
                       className={`px-6 py-2 rounded-xl text-sm font-medium transition-all border-2 ${
                         formData.specialite === spec
                           ? 'border-indigo-600 bg-indigo-600 text-white'
@@ -312,6 +326,12 @@ export default function EditDemandePage() {
                 placeholder="Ex: Photographe pour mariage le 15 juin"
                 required
               />
+              {TEMPLATES_PAR_SPECIALITE[formData.specialite] && (
+                <p className="text-xs text-indigo-500 mt-1 flex items-center gap-1">
+                  <Info className="w-3 h-3" />
+                  Pré-rempli selon votre spécialité — modifiez librement
+                </p>
+              )}
             </div>
 
             <div>
@@ -324,6 +344,12 @@ export default function EditDemandePage() {
                 required
                 className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               />
+              {TEMPLATES_PAR_SPECIALITE[formData.specialite] && (
+                <p className="text-xs text-indigo-500 mt-1 flex items-center gap-1">
+                  <Info className="w-3 h-3" />
+                  Pré-rempli selon votre spécialité — modifiez librement
+                </p>
+              )}
             </div>
 
             
@@ -393,14 +419,20 @@ export default function EditDemandePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Instructions spécifiques (optionnel)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Exigences specifiques  (optionnel)</label>
               <textarea
                 value={formData.instructions_speciales}
-                onChange={(e) => update('instructions_speciales', e.target.value)}
+                onChange={(e) => update('instruction_speciales', e.target.value)}
                 rows={3}
                 placeholder="Contraintes particulières, style souhaité..."
                 className="w-full px-6 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               />
+              {TEMPLATES_PAR_SPECIALITE[formData.specialite] && (
+                <p className="text-xs text-indigo-500 mt-1 flex items-center gap-1">
+                  <Info className="w-3 h-3" />
+                  Pré-rempli selon votre spécialité — modifiez librement
+                </p>
+              )}
             </div>
           </div>
 

@@ -57,18 +57,15 @@ export default function RecherchePrestatairesPage() {
 
       const { data, error } = await supabase
         .from('profils_prestataire')
-        .select(`*,profil:profils_prestataire!inner(*)`)
-        .eq('profil.suspendu', false)
-        .limit(200);
+        .select(`*,profil:profiles!profils_prestataire_id_fkey(*)`)
+        .eq('statut_validation', 'valide')
 
       if (error) throw error;
 
       let results = (data || [])
-        .filter(p => p.profil?.statut_validation === 'valide')
+        .filter(p => p.profil?.suspendu === false)
         .map(p => ({
-          ...p.profil,
-          id: p.id,
-          profil: { id: p.id, nom: p.nom, prenom: p.prenom, avatar_url: p.avatar_url, ville: p.ville },
+          ...p, profil: p.profil,
         }));
 
       // Filtres
@@ -81,7 +78,7 @@ export default function RecherchePrestatairesPage() {
       if (filters.ville) {
         const v = filters.ville.toLowerCase();
         results = results.filter(p =>
-          p.profile?.ville?.toLowerCase().includes(v)
+          p.profil?.ville?.toLowerCase().includes(v)
         );
       }
       if (filters.prixMin) {
@@ -305,14 +302,14 @@ export default function RecherchePrestatairesPage() {
 
 function getVerificationPct(p) {
   const checks = [
-    !!(p.nom_entreprise || p.profile?.nom),
+    !!(p.nom_entreprise || p.profil?.nom),
     !!p.bio,
-    !!p.profile?.avatar_url,
+    !!p.profil?.avatar_url,
     !!p.tarif_horaire_min,
     p.specialisations?.length > 0,
     p.portfolio_photos?.length > 0,
     p.identite_verifiee === true,
-    p.statut_validation === 'approved',
+    p.statut_validation === 'valide',
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
@@ -344,7 +341,7 @@ function StarRating({ note }) {
 }
 
 function PrestaireCard({ prestataire: p, router }) {
-  const nom = p.nom_entreprise || `${p.profile?.prenom || ''} ${p.profile?.nom || ''}`.trim() || 'Prestataire';
+  const nom = p.nom_entreprise || `${p.profil?.prenom || ''} ${p.profil?.nom || ''}`.trim() || 'Prestataire';
   const verifPct = getVerificationPct(p);
 
   return (
@@ -354,8 +351,8 @@ function PrestaireCard({ prestataire: p, router }) {
     >
       {/* Avatar / cover */}
       <div className="h-40 bg-indigo-50 flex items-center justify-center">
-        {p.profile?.avatar_url ? (
-          <img src={p.profile.avatar_url} alt={nom} className="w-full h-full object-cover" />
+        {p.profil?.avatar_url ? (
+          <img src={p.profil.avatar_url} alt={nom} className="w-full h-full object-cover" />
         ) : (
           <Camera className="w-12 h-12 text-indigo-200" />
         )}
@@ -370,9 +367,9 @@ function PrestaireCard({ prestataire: p, router }) {
         </div>
 
         {/* Ville */}
-        {p.profile?.ville && (
+        {p.profil?.ville && (
           <p className="flex items-center gap-1 text-xs text-gray-500 mb-2">
-            <MapPin className="w-3 h-3" />{p.profile.ville}
+            <MapPin className="w-3 h-3" />{p.profil.ville}
           </p>
         )}
 
@@ -417,7 +414,7 @@ function PrestaireCard({ prestataire: p, router }) {
 }
 
 function PrestaireRow({ prestataire: p, router }) {
-  const nom = p.nom_entreprise || `${p.profile?.prenom || ''} ${p.profile?.nom || ''}`.trim() || 'Prestataire';
+  const nom = p.nom_entreprise || `${p.profil?.prenom || ''} ${p.profil?.nom || ''}`.trim() || 'Prestataire';
   const verifPct = getVerificationPct(p);
 
   return (
@@ -426,8 +423,8 @@ function PrestaireRow({ prestataire: p, router }) {
       className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all cursor-pointer flex items-center gap-4"
     >
       <div className="w-16 h-16 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
-        {p.profile?.avatar_url ? (
-          <img src={p.profile.avatar_url} alt={nom} className="w-full h-full object-cover" />
+        {p.profil?.avatar_url ? (
+          <img src={p.profil.avatar_url} alt={nom} className="w-full h-full object-cover" />
         ) : (
           <Camera className="w-8 h-8 text-indigo-200" />
         )}
@@ -441,9 +438,9 @@ function PrestaireRow({ prestataire: p, router }) {
         {p.categories?.length > 0 && (
           <p className="text-xs font-medium text-indigo-600 mb-0.5">{p.categories[0]}</p>
         )}
-        {p.profile?.ville && (
+        {p.profil?.ville && (
           <p className="flex items-center gap-1 text-xs text-gray-400 mb-1">
-            <MapPin className="w-3 h-3" />{p.profile.ville}
+            <MapPin className="w-3 h-3" />{p.profil.ville}
           </p>
         )}
         <div className="mb-1.5">

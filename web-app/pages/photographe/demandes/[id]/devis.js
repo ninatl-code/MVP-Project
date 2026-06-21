@@ -4,8 +4,8 @@ import { supabase } from '../../../../lib/supabaseClient';
 import { useAuth } from '../../../../contexts/AuthContext';
 import Header from '../../../../components/HeaderPresta';
 import * as demandeService from '../../../../lib/demandeService';
-import * as photographerService from  '../../../lib/photographerService';
-
+import * as photographerService from  '../../../../lib/photographerService';
+import {getDevisTemplate}  from  '../../../../constants/specialites';
 import { createDevis } from '../../../../lib/devisService';
 import { 
   ArrowLeft, Calendar, MapPin, Euro, Clock, Users,
@@ -33,7 +33,7 @@ export default function CreateDevisPage() {
 
   // Génère les valeurs pré-remplies selon la demande + profil prestataire
   const buildPrefill = (data, tarif) => {
-    const duree = parseFloat(data.duree_estimee) || 3;
+    const duree = parseFloat(data.duree_estimee_heures) || 3;
     const cat = (data.categorie || '').toLowerCase();
     const lieu = data.lieu || data.ville || '';
     const dateStr = data.date_souhaitee
@@ -57,55 +57,10 @@ export default function CreateDevisPage() {
     const description = descParts.join('\n');
 
     // Prestations incluses selon catégorie
-    const prestationsMap = {
-      'services-domicile': [
-        '- Diagnostic sur place et devis',
-        '- Intervention selon la demande (plomberie, électricité, ménage, bricolage)',
-        '- Déplacement inclus ou facturé selon zone',
-        '- Vérification et test après intervention',
-      ],
-
-      'beaute-bien-etre': [
-        `- Prestation de ${duree}h selon le service choisi`,
-        '- Conseils personnalisés (style, soin, etc.)',
-        '- Utilisation de produits adaptés',
-        '- Résultat soigné et professionnel',
-      ],
-
-      'evenementiel': [
-        `- Couverture complète de l’événement (${duree}h)`,
-        '- Capture des moments clés (ambiance, invités, temps forts)',
-        '- Gestion discrète et professionnelle sur place',
-        '- Livraison des contenus (photos/vidéos) en ligne',
-      ],
-
-      'transport': [
-        '- Prise en charge ponctuelle ou régulière',
-        '- Transport de personnes ou de marchandises',
-        '- Respect des horaires et itinéraires',
-        '- Assistance selon le type de service (livraison, déménagement, etc.)',
-      ],
-
-      'digital': [
-        '- Analyse des besoins et cahier des charges',
-        '- Réalisation (développement, design ou marketing)',
-        '- Optimisation et corrections',
-        '- Livraison du projet et accompagnement',
-      ],
-
-      'education': [
-        `- Session de ${duree}h (cours ou coaching)`,
-        '- Contenu adapté au niveau de l’apprenant',
-        '- Exercices pratiques et suivi',
-        '- Conseils pour progression autonome',
-      ],
-    };
-    const catKey = Object.keys(prestationsMap).find(k => cat.includes(k));
-    const prestations_incluses = (prestationsMap[catKey] || [
-      `- Prestation de ${duree}h`,
-      '- Achat de matériel',
-      '- Déplacement sur place',
-    ]).join('\n');
+    const specialite = Array.isArray(data.type_prestation)
+      ? data.type_prestation[0] || ''
+      : data.type_prestation || '';
+    const prestations_incluses = getDevisTemplate(specialite, data.categorie, duree, data);
 
     // Montant : budget_max du client, ou tarif horaire × durée
     let montant = '';
@@ -223,7 +178,7 @@ export default function CreateDevisPage() {
         frais_deplacement: 0,
         message_personnalise: formData.description,
         date_expiration: formData.validite_jours,
-        duree_prestation_heures: demande.duree_estimee || null,
+        duree_prestation_heures: demande.duree_estimee_heures || null,
         titre: formData.titre,
         description: formData.prestations_incluses,
       });
@@ -486,10 +441,10 @@ export default function CreateDevisPage() {
                   <MapPin className="w-4 h-4 text-indigo-600" />
                   <span>{demande.lieu || 'Non précisé'}</span>
                 </div>
-                {demande.duree_estimee && (
+                {demande.duree_estimee_heures && (
                   <div className="flex items-center gap-2 text-gray-600">
                     <Clock className="w-4 h-4 text-indigo-600" />
-                    <span>{demande.duree_estimee}h estimées</span>
+                    <span>{demande.duree_estimee_heures}h estimées</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-gray-600">
