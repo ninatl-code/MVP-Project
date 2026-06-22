@@ -324,20 +324,6 @@ export default function ReservationDetailPage() {
                   )}
                 </div>
 
-                {/* Services inclus */}
-                {reservation.devis.services_inclus && reservation.devis.services_inclus.length > 0 && (
-                  <div className="mb-5">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Services inclus</p>
-                    <ul className="space-y-1">
-                      {reservation.devis.services_inclus.map((s, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          {typeof s === 'object' ? (s.nom || s.label || JSON.stringify(s)) : s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
 
                 {/* Options supplémentaires */}
                 {reservation.devis.options_supplementaires && reservation.devis.options_supplementaires.length > 0 && (

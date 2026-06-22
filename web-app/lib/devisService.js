@@ -18,6 +18,8 @@ export const createDevis = async ({
   duree_prestation_heures,
   titre,
   description,
+  acompte_percent = 0,
+  acompte_montant = 0,
 }) => {
   try {
     const montant_total = tarif_base + frais_deplacement;
@@ -35,9 +37,13 @@ export const createDevis = async ({
         options_supplementaires,
         montant_total,
         message_personnalise,
-        date_expiration,
+        date_expiration: typeof date_expiration === 'number'
+        ? new Date(Date.now() + date_expiration * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        : date_expiration,
         duree_prestation_heures,
         statut: 'envoye',
+        acompte_percent,
+        acompte_montant,
       })
       .select()
       .single();
@@ -207,7 +213,7 @@ export const acceptDevis = async (devisId) => {
       date: new Date().toISOString().split('T')[0],
       lieu: 'À définir',
       montant_total: devis.montant_total,
-      acompte_montant: devis.acompte_montant || Math.round(devis.montant_total * 0.3 * 100) / 100,
+      acompte_montant: devis.acompte_montant || 0,
       statut: 'pending',
     })
       .select()
@@ -275,8 +281,7 @@ export const cancelDevis = async (devisId = null, demandeId = null) => {
         statut: 'expire',
         expire_at: new Date().toISOString(),
       })
-      .eq('statut', 'envoye')
-      .or('statut.eq.lu');
+      .in('statut', ['envoye', 'lu']);
 
     if (devisId) {
       query = query.eq('id', devisId);

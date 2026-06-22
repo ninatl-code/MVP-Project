@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
 import * as messageService from '../../../lib/messageService';
+import {cancelDevis} from '../../../lib/devisService';
 
 import { 
   FileText, Clock, Check, X, Euro, ArrowLeft,
@@ -16,8 +17,13 @@ import { format, formatDistanceToNow, isAfter } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const STATUS_CONFIG = {
-  'en_attente': { 
-    label: 'En attente', 
+  'envoye': { 
+    label: 'Envoyé', 
+    color: 'bg-yellow-100 text-yellow-700',
+    icon: Clock 
+  },
+  'lu': { 
+    label: 'Lu', 
     color: 'bg-yellow-100 text-yellow-700',
     icon: Clock 
   },
@@ -35,11 +41,6 @@ const STATUS_CONFIG = {
     label: 'Expiré', 
     color: 'bg-gray-100 text-gray-600',
     icon: AlertCircle 
-  },
-  'annule': { 
-    label: 'Annulé', 
-    color: 'bg-gray-100 text-gray-600',
-    icon: X 
   },
 };
 
@@ -75,8 +76,8 @@ export default function PhotographeDevisDetailPage() {
         .single();
 
       if (error) throw error;
-      // Normalize 'envoye' → 'en_attente'
-      const normalized = { ...data, statut: data.statut === 'envoye' ? 'en_attente' : data.statut };
+      // Normalize 'envoye' → 'lu'
+      const normalized = { ...data, statut: data.statut === 'envoye' ? 'lu' : data.statut };
       setDevis(normalized);
 
       // Si accepté, chercher la réservation pending associée
@@ -118,14 +119,12 @@ export default function PhotographeDevisDetailPage() {
   const handleCancel = async () => {
     setCancelling(true);
     try {
-      const { error } = await supabase
-        .from('devis')
-        .update({ statut: 'annule' })
-        .eq('id', id);
+      const { error } = await cancelDevis(id);
 
       if (error) throw error;
       setShowCancelModal(false);
-      fetchDevis();
+      const prestataireId = user?.id || profileId || photographeProfile?.id;
+      fetchDevis(prestataireId);
     } catch (error) {
       console.error('Error cancelling devis:', error);
     } finally {
@@ -165,9 +164,9 @@ export default function PhotographeDevisDetailPage() {
     );
   }
 
-  const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG['en_attente'];
+  const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG['envoye'];
   const StatusIcon = statusConfig.icon;
-  const isExpired = devis.statut === 'en_attente' && devis.date_expiration && 
+  const isExpired = (devis.statut === 'envoye' || devis.statut === 'lu') && devis.date_expiration && 
     isAfter(new Date(), new Date(devis.date_expiration));
   const displayStatus = isExpired ? 'expire' : devis.statut;
 
@@ -230,7 +229,7 @@ export default function PhotographeDevisDetailPage() {
                 <span>
                   Créé le {format(new Date(devis.created_at), 'dd MMM yyyy', { locale: fr })}
                 </span>
-                {devis.date_expiration && displayStatus === 'en_attente' && (
+                {devis.date_expiration && (displayStatus === 'envoye' || displayStatus === 'lu') && (
                   <span className="text-yellow-600">
                     Expire {formatDistanceToNow(new Date(devis.date_expiration), { addSuffix: true, locale: fr })}
                   </span>
@@ -312,21 +311,7 @@ export default function PhotographeDevisDetailPage() {
                 )}
               </div>
 
-              {/* Services inclus */}
-              {devis.services_inclus?.length > 0 && (
-                <div className="mb-5">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5" />Services inclus
-                  </p>
-                  <ul className="space-y-1.5">
-                    {devis.services_inclus.map((s, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                        <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />{s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+
 
               {/* Horaires proposés */}
               {devis.horaires_proposes?.detail && (
@@ -447,7 +432,7 @@ export default function PhotographeDevisDetailPage() {
               <h2 className="font-semibold text-gray-900 mb-4">Actions</h2>
               
               <div className="space-y-3">
-                {displayStatus === 'en_attente' && (
+                {(displayStatus === 'envoye' || displayStatus === 'lu') && (
                   <>
                     <button
                       onClick={() => setShowCancelModal(true)}
@@ -555,8 +540,8 @@ export default function PhotographeDevisDetailPage() {
 
       {/* Cancel Modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-white/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-2">
               Annuler ce devis ?
             </h2>

@@ -2,8 +2,9 @@
 import { useRouter } from 'next/router';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
-import { notifyDevisAccepted, notifyDevisRefused } from '../../../lib/notificationService';
+import { notifyDevisAccepted, notifyDevisRejected } from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
+import {fulfillDemande} from '../../../lib/demandeService';
 
 import { 
   ArrowLeft, Calendar, MapPin, Camera, 
@@ -150,7 +151,6 @@ export default function DevisDetailPage() {
           montant: devis.montant_total,
           lieu: demande?.lieu || 'À définir',
           ville: demande?.ville || 'À définir',
-          services_inclus: devis.services_inclus || null,
           categorie: demande?.categorie || 'À définir',
           titre: "Reservation " + demande?.titre,
           description: "Reservation " + (devis.description || ''),
@@ -202,7 +202,7 @@ export default function DevisDetailPage() {
 
       // Notify photographer
       if (devis.prestataire_id) {
-        notifyDevisRefused(devis.prestataire_id, id, devis.demande_id);
+        notifyDevisRejected(devis.prestataire_id, id, devis.demande_id);
       }
     } catch (error) {
       console.error('Error refusing devis:', error);
@@ -325,7 +325,7 @@ export default function DevisDetailPage() {
                         ? `Expiré : la durée de validité du devis et la date de la demande (${formatDate(devis.demande?.date_souhaitee)}) sont toutes deux dépassées.`
                         : devisValExpired
                         ? 'Expiré : la durée de validité fixée par le prestataire est dépassée.'
-                        : `Expiré : la date souhaitée de la demande (${formatDate(devis.demande?.date_souhaitee)}) est passée.`}
+                        : `Expiré`}
                     </p>
                   )}
                   {['en_attente', 'lu'].includes(devis.statut) && daysLeft !== null && (
@@ -414,32 +414,6 @@ export default function DevisDetailPage() {
               </div>
             )}
 
-            {/* ── Services inclus ── */}
-            {devis.services_inclus && (Array.isArray(devis.services_inclus) ? devis.services_inclus.length > 0 : Object.keys(devis.services_inclus).length > 0) && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <ListChecks className="w-5 h-5 text-green-500" />
-                  Services inclus
-                </h2>
-                <ul className="space-y-2">
-                  {Array.isArray(devis.services_inclus)
-                    ? devis.services_inclus.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                          <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span>{item}</span>
-                        </li>
-                      ))
-                    : Object.entries(devis.services_inclus).map(([k, v]) => (
-                        <li key={k} className="flex items-start gap-2 text-sm text-gray-700">
-                          <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span><span className="font-medium capitalize">{k}</span>{v && v !== true ? ` : ${v}` : ''}</span>
-                        </li>
-                      ))
-                  }
-                </ul>
-              </div>
-            )}
-
             {/* ── Options supplémentaires ── */}
             {devis.options_supplementaires && Object.keys(devis.options_supplementaires).length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -448,20 +422,28 @@ export default function DevisDetailPage() {
                   Options supplémentaires
                 </h2>
                 <ul className="space-y-2">
-                  {Array.isArray(devis.options_supplementaires)
-                    ? devis.options_supplementaires.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                          <Check className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                          <span>{item}</span>
+                {Array.isArray(devis.options_supplementaires)
+                  ? devis.options_supplementaires.map((item, i) => {
+                      // item peut être une string ou { label, montant }
+                      const label = typeof item === 'object' ? item.label : item;
+                      const montant = typeof item === 'object' ? item.montant : null;
+                      return (
+                        <li key={i} className="flex items-start justify-between gap-2 text-sm text-gray-700">
+                          <span className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                            {label}
+                          </span>
+                          {montant && <span className="font-medium text-gray-900">{montant} DH</span>}
                         </li>
-                      ))
-                    : Object.entries(devis.options_supplementaires).map(([k, v]) => (
-                        <li key={k} className="flex items-start gap-2 text-sm text-gray-700">
-                          <Check className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
-                          <span><span className="font-medium capitalize">{k}</span>{v && v !== true ? ` : ${v}` : ''}</span>
-                        </li>
-                      ))
-                  }
+                      );
+                    })
+                  : Object.entries(devis.options_supplementaires).map(([k, v]) => (
+                      <li key={k} className="flex items-start gap-2 text-sm text-gray-700">
+                        <Check className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span><span className="font-medium capitalize">{k}</span>{v && v !== true ? ` : ${v}` : ''}</span>
+                      </li>
+                    ))
+                }
                 </ul>
               </div>
             )}
@@ -767,7 +749,7 @@ export default function DevisDetailPage() {
 
       {/* Refuse modal */}
       {showRefuseModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-white/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
             <h2 className="text-lg font-bold text-gray-900 mb-2">
               Refuser ce devis ?

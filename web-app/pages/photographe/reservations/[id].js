@@ -90,7 +90,7 @@ export default function PhotographeReservationDetailPage() {
           devis:devis_id (
             id, montant_total, message_personnalise,
             tarif_base, frais_deplacement,
-            services_inclus, modalites_paiement
+            modalites_paiement
           ),
           demande:demandes_client!reservations_demande_id_fkey(
             id, titre, description, categorie
@@ -309,29 +309,6 @@ export default function PhotographeReservationDetailPage() {
                   <div className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                     <p className="text-xs font-semibold text-indigo-500 uppercase mb-1">Votre message</p>
                     <p className="text-sm text-indigo-700 italic">"{devis.message_personnalise}"</p>
-                  </div>
-                )}
-                {devis.services_inclus && (Array.isArray(devis.services_inclus) ? devis.services_inclus.length > 0 : Object.keys(devis.services_inclus).length > 0) && (
-                  <div className="mb-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                      <ListChecks className="w-4 h-4 text-green-500" /> Services inclus
-                    </p>
-                    <ul className="space-y-1.5">
-                      {Array.isArray(devis.services_inclus)
-                        ? devis.services_inclus.map((s, i) => (
-                            <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                              {typeof s === 'object' ? (s.nom || s.label || JSON.stringify(s)) : s}
-                            </li>
-                          ))
-                        : Object.entries(devis.services_inclus).map(([k, v]) => (
-                            <li key={k} className="flex items-center gap-2 text-sm text-gray-600">
-                              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                              <span className="font-medium capitalize">{k}</span>{v && v !== true ? ` : ${v}` : ''}
-                            </li>
-                          ))
-                      }
-                    </ul>
                   </div>
                 )}
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">

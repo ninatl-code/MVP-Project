@@ -170,7 +170,6 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
     frais_deplacement: '',
     acompte_percent: 0,
     duree_prestation_heures: demande.duree_estimee_heures || '',
-    services_inclus: [],
     newService: '',
     horaires_proposes: '',
     modalites_paiement: [],
@@ -179,19 +178,11 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
   });
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+  const [devisStatuts, setDevisStatuts] = useState({});
 
   const montantTotal = (parseFloat(form.tarif_base) || 0) + (parseFloat(form.frais_deplacement) || 0);
   const acompteMontant = form.acompte_percent > 0 ? (montantTotal * form.acompte_percent / 100) : 0;
 
-  const addService = () => {
-    const val = form.newService.trim();
-    if (!val) return;
-    setForm({ ...form, services_inclus: [...form.services_inclus, val], newService: '' });
-  };
-
-  const removeService = (idx) => {
-    setForm({ ...form, services_inclus: form.services_inclus.filter((_, i) => i !== idx) });
-  };
 
   const toggleModalite = (m) => {
     setForm(prev => ({
@@ -219,7 +210,6 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
         acompte_percent: form.acompte_percent || null,
         acompte_montant: acompteMontant > 0 ? acompteMontant : null,
         duree_prestation_heures: parseFloat(form.duree_prestation_heures) || 0,
-        services_inclus: form.services_inclus.length > 0 ? form.services_inclus : null,
         horaires_proposes: form.horaires_proposes.trim() ? { detail: form.horaires_proposes.trim() } : null,
         modalites_paiement: form.modalites_paiement.length > 0 ? form.modalites_paiement : null,
         message_personnalise: form.message_personnalise || null,
@@ -384,43 +374,6 @@ function DevisModal({ demande, photographeId, onClose, onSuccess }) {
                   className="w-full px-6 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Services inclus</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={form.newService}
-                    onChange={(e) => setForm({ ...form, newService: e.target.value })}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addService(); } }}
-                    placeholder="Ex : 50 photos retouchées, galerie en ligne..."
-                    className="flex-1 px-6 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={addService}
-                    className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm flex items-center gap-1 shrink-0"
-                    style={{ backgroundColor: '#7A1600' }}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Ajouter
-                  </button>
-                </div>
-                {form.services_inclus.length > 0 && (
-                  <ul className="space-y-1.5">
-                    {form.services_inclus.map((s, i) => (
-                      <li key={i} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 text-sm">
-                        <span className="flex items-center gap-2 text-gray-700">
-                          <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                          {s}
-                        </span>
-                        <button type="button" onClick={() => removeService(i)} className="text-gray-400 hover:text-red-500 transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
             </div>
 
             <hr className="border-gray-100" />
@@ -557,14 +510,24 @@ export default function DemandesClients() {
       setLoading(false);
     }
   };
+  const [devisStatuts, setDevisStatuts] = useState({}); // { demande_id: { statut, updated_at, id } }
 
   const loadDevisEnvoyes = async () => {
     if (!user) return;
     const { data } = await supabase
       .from('devis')
-      .select('demande_id')
-      .eq('prestataire_id', user.id);
+      .select('demande_id, statut, updated_at, id')
+      .eq('prestataire_id', user.id)
+      .order('created_at', { ascending: false });
+
     setDevisEnvoyes(new Set((data || []).map((d) => d.demande_id)));
+
+    // Map demande_id → devis le plus récent
+    const map = {};
+    (data || []).forEach(d => {
+      if (!map[d.demande_id]) map[d.demande_id] = d;
+    });
+    setDevisStatuts(map);
   };
 
   const loadMatchings = async () => {
@@ -779,14 +742,50 @@ export default function DemandesClients() {
                           >
                             <Eye className="w-4 h-4" />Voir le détail
                           </button>
-                          <button
-                            onClick={() => setSelectedDemande(demande)}
-                            disabled={dejaEnvoye}
-                            className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
-                            style={{ backgroundColor: dejaEnvoye ? '#9CA3AF' : '#130183', cursor: dejaEnvoye ? 'default' : 'pointer' }}
-                          >
-                            {dejaEnvoye ? <><CheckCircle className="w-4 h-4" />Envoyé</> : <><Send className="w-4 h-4" />Envoyer un devis</>}
-                          </button>
+                          {(() => {
+                            const devisInfo = devisStatuts[demande.id];
+                            const devisStatut = devisInfo?.statut;
+                            const isExpireOuRefuse = devisStatut === 'expire' || devisStatut === 'refuse';
+                            const dateStatut = devisInfo?.updated_at
+                              ? new Date(devisInfo.updated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+                              : null;
+
+                            if (dejaEnvoye && !isExpireOuRefuse) {
+                              return (
+                                <span className="px-2.5 py-2 rounded-xl text-xs font-medium bg-green-100 text-green-700 flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" />Devis envoyé
+                                </span>
+                              );
+                            }
+
+                            if (isExpireOuRefuse) {
+                              return (
+                                <div className="flex flex-col items-end gap-1.5">
+                                  <span className="text-xs text-gray-400 text-right">
+                                    Devis {devisStatut === 'expire' ? 'expiré' : 'refusé'}
+                                    {dateStatut ? ` le ${dateStatut}` : ''}
+                                  </span>
+                                  <button
+                                    onClick={() => router.push(`/photographe/demandes/${demande.id}/devis`)}
+                                    className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-xs font-semibold text-white transition-colors"
+                                    style={{ backgroundColor: '#130183' }}
+                                  >
+                                    <Send className="w-4 h-4" />Renvoyer un devis
+                                  </button>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <button
+                                onClick={() => router.push(`/photographe/demandes/${demande.id}/devis`)}
+                                className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
+                                style={{ backgroundColor: '#130183' }}
+                              >
+                                <Send className="w-4 h-4" />Envoyer un devis
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -941,21 +940,50 @@ export default function DemandesClients() {
                         >
                           <Eye className="w-4 h-4" />Voir le détail
                         </button>
-                        <button
-                          onClick={() => setSelectedDemande(demande)}
-                          disabled={dejaEnvoye}
-                          className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
-                          style={{
-                            backgroundColor: dejaEnvoye ? '#5D5E63' : '#7A1600',
-                            cursor: dejaEnvoye ? 'default' : 'pointer'
-                          }}
-                        >
-                          {dejaEnvoye ? (
-                            <><CheckCircle className="w-4 h-4" />Envoyé</>
-                          ) : (
-                            <><Send className="w-4 h-4" />Envoyer un devis</>
-                          )}
-                        </button>
+                        {(() => {
+                          const devisInfo = devisStatuts[demande.id];
+                          const devisStatut = devisInfo?.statut; // ✅ renommé pour éviter le conflit
+                          const isExpireOuRefuse = devisStatut === 'expire' || devisStatut === 'refuse';
+                          const dateStatut = devisInfo?.updated_at
+                            ? new Date(devisInfo.updated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+                            : null;
+
+                          if (dejaEnvoye && !isExpireOuRefuse) {
+                            return (
+                              <span className="px-2.5 py-2 rounded-xl text-xs font-medium bg-green-100 text-green-700 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />Devis envoyé
+                              </span>
+                            );
+                          }
+
+                          if (isExpireOuRefuse) {
+                            return (
+                              <div className="flex flex-col items-end gap-1.5">
+                                <span className="text-xs text-gray-400 text-right">
+                                  Devis {devisStatut === 'expire' ? 'expiré' : 'refusé'}
+                                  {dateStatut ? ` le ${dateStatut}` : ''}
+                                </span>
+                                <button
+                                  onClick={() => router.push(`/photographe/demandes/${demande.id}/devis`)}
+                                  className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-xs font-semibold text-white transition-colors"
+                                  style={{ backgroundColor: '#7A1600' }}
+                                >
+                                  <Send className="w-4 h-4" />Renvoyer un devis
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <button
+                              onClick={() => router.push(`/photographe/demandes/${demande.id}/devis`)}
+                              className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
+                              style={{ backgroundColor: '#7A1600' }}
+                            >
+                              <Send className="w-4 h-4" />Envoyer un devis
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

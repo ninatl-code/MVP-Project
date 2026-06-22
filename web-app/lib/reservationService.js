@@ -15,7 +15,6 @@ export const createReservation = async ({
   montant,
   lieu,
   ville,
-  services_inclus,
   categorie = "null",
   titre = 'Réservation',
   description = '',
@@ -40,7 +39,6 @@ export const createReservation = async ({
         heure_debut: heureDebut,
         heure_fin: heureDebut + duree_heures,
         duree_heures,
-        services_inclus,
         description,
         montant_total: montant,
         acompte_montant: montantAcompte,
@@ -108,7 +106,7 @@ export const getPhotographerReservations = async (photographeId, status = null,l
       .select(`
         *,
         profiles!reservations_client_id_fkey(id, nom, email, telephone, avatar_url),
-        devis(services_inclus, message_personnalise)
+        devis(message_personnalise)
       `)
       .eq('prestataire_id', photographeId)
       .order('date', { ascending: true })

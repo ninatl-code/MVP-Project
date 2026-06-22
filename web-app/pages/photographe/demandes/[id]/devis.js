@@ -7,15 +7,16 @@ import * as demandeService from '../../../../lib/demandeService';
 import * as photographerService from  '../../../../lib/photographerService';
 import {getDevisTemplate}  from  '../../../../constants/specialites';
 import { createDevis } from '../../../../lib/devisService';
+import { categories } from '../../../../constants/categories';
 import { 
   ArrowLeft, Calendar, MapPin, Euro, Clock, Users,
-  Plus, Minus, Check, Send, Info, FileText
+  Plus, Minus, Check, Send, Info, FileText, Percent
 } from 'lucide-react';
 
 export default function CreateDevisPage() {
   const router = useRouter();
   const { id } = router.query; // demande_id
-  const { photographeProfile } = useAuth();
+  const { photographeProfile, user } = useAuth();
   
   const [demande, setDemande] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,9 +27,11 @@ export default function CreateDevisPage() {
     titre: '',
     description: '',
     montant: '',
+    acompte_percent: 0,
     validite_jours: 30,
     prestations_incluses: '',
     details: [{ label: '', montant: '' }],
+    acompte_montant: 0,
   });
 
   // Génère les valeurs pré-remplies selon la demande + profil prestataire
@@ -169,25 +172,37 @@ export default function CreateDevisPage() {
         d => d.label && d.montant
       );
 
-      const devis = await createDevis({
-        photographeId: photographeProfile.id,
+      const prestataireId = photographeProfile?.id || user?.id;
+
+      if (!prestataireId) {
+        setError('Erreur: profil prestataire non trouvé');
+        return;
+      }
+      const { data: devis, error: devisError } = await createDevis({
+        photographeId: prestataireId,
         clientId: demande.client_id,
         demandeId: id,
         tarif_base: parseFloat(formData.montant),
         options_supplementaires: validDetails,
         frais_deplacement: 0,
         message_personnalise: formData.description,
-        date_expiration: formData.validite_jours,
+        date_expiration: new Date(Date.now() + formData.validite_jours * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         duree_prestation_heures: demande.duree_estimee_heures || null,
         titre: formData.titre,
         description: formData.prestations_incluses,
+        acompte_percent: formData.acompte_percent ? parseFloat(formData.acompte_percent) : 0,
+        acompte_montant: Math.round(calculateTotal() * (formData.acompte_percent ? parseFloat(formData.acompte_percent) : 0) / 100),
       });
+      console.log('devis:', devis);
+      console.log('devisError:', devisError);
 
-      if (!devis) {
+      if (devisError || !devis) {
         throw new Error('Création du devis impossible');
       }
 
-
+      console.log('photographeProfile:', photographeProfile);
+      console.log('user:', user);
+      console.log('demande.client_id:', demande?.client_id);
       router.push(`/photographe/devis/${devis.id}?success=true`);
     } catch (err) {
       console.error('Error creating devis:', err);
@@ -204,15 +219,6 @@ export default function CreateDevisPage() {
       month: 'long',
       year: 'numeric',
     });
-  };
-
-  const getCategoryIcon = (category) => {
-    const icons = {
-      'mariage': '💒', 'portrait': '👤', 'evenement': '🎉', 'corporate': '🏢',
-      'produit': '📦', 'immobilier': '🏠', 'famille': '👨‍👩‍👧‍👦', 'grossesse': '🤰',
-      'nouveau-ne': '👶', 'animalier': '🐕', 'culinaire': '🍽️',
-    };
-    return icons[category?.toLowerCase()] || '📷';
   };
 
   if (loading) {
@@ -327,10 +333,13 @@ export default function CreateDevisPage() {
                           placeholder="Ex: Shooting 4h"
                           className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
-                        <input
-                          type="number"
+                        <input 
+                          type="text"
+                          inputMode="numeric"
                           value={detail.montant}
-                          onChange={(e) => updateDetailLine(index, 'montant', e.target.value)}
+                          onChange={(e) => {updateDetailLine(index, 'montant', e.target.value)
+                            const value = e.target.value.replace(/\D/g, '');}
+                          }
                           placeholder=" DH"
                           className="w-24 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
@@ -342,6 +351,7 @@ export default function CreateDevisPage() {
                             <Minus className="w-5 h-5" />
                           </button>
                         )}
+
                       </div>
                     ))}
                   </div>
@@ -362,10 +372,34 @@ export default function CreateDevisPage() {
                   <div className="relative">
                     <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={formData.montant}
-                      onChange={(e) => updateFormData('montant', e.target.value)}
+                      onChange={(e) => {updateFormData('montant', e.target.value)
+                        const value = e.target.value.replace(/\D/g, '');
+                      }}
                       placeholder="500"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg font-semibold"
+                    />
+                  </div>
+                </div>
+
+                {/* Total acompte */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Acompte (%) *
+                  </label>
+                  <div className="relative">
+                    <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.acompte_percent}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        updateFormData('acompte_percent', value);
+                      }}
+                      placeholder="0"
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg font-semibold"
                     />
                   </div>
@@ -420,10 +454,12 @@ export default function CreateDevisPage() {
           {/* Sidebar - Demande info */}
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">La demande</h3>
+              <h2 className="font-semibold text-gray-900 mb-4">La demande</h2>
               
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">{getCategoryIcon(demande.categorie)}</span>
+                <span className="text-3xl">
+                  {categories.find(c => c.id === demande.categorie)?.icon || '📋'}
+                </span>
                 <div>
                   <p className="font-medium text-gray-900">{demande.titre}</p>
                   <p className="text-sm text-gray-500">
@@ -487,7 +523,7 @@ export default function CreateDevisPage() {
               </p>
               {formData.montant && (
                 <p className="text-xs text-gray-500 mt-2">
-                  Acompte client: {Math.round(parseFloat(formData.montant) * 0.3)} DH (30%)
+                  Acompte client: {Math.round(parseFloat(formData.montant) * (parseFloat(formData.acompte_percent) || 0) / 100)} DH ({parseFloat(formData.acompte_percent) || 0}%)
                 </p>
               )}
             </div>

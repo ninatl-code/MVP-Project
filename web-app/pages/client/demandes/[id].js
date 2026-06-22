@@ -203,7 +203,6 @@ export default function DemandeDetailPage() {
           ville: demande.ville || null,
           montant_total: devisAccepte.montant_total,
           duree_heures: devisAccepte.duree_prestation_heures || null,
-          services_inclus: devisAccepte.services_inclus || null,
           monnaie: devisAccepte.monnaie || 'MAD',
           source: 'devis',
         })
