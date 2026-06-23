@@ -5,6 +5,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { notifyDevisAccepted, notifyDevisRejected } from '../../../lib/notificationService';
 import Header from '../../../components/HeaderParti';
 import {fulfillDemande} from '../../../lib/demandeService';
+import * as reservationService from '../../../lib/reservationService';
 
 import { 
   ArrowLeft, Calendar, MapPin, Camera, 
@@ -277,7 +278,6 @@ export default function DevisDetailPage() {
   }
 
   const photographe = devis.prestataire;
-  const profile = devis.prestataire;
   const demande = devis.demande;
   const statusConfig = STATUS_CONFIG[devis.statut] || STATUS_CONFIG.en_attente;
   const { devisValExpired, demandeExpired, daysLeft } = getExpirationInfo();
@@ -729,6 +729,17 @@ export default function DevisDetailPage() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* réponse devis */}
+            {devis.statut == 'refuse' && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <h2 className="font-semibold text-gray-900 mb-4">Votre réponse</h2>         
+                  <div className="mb-4 p-4 bg-green-50 rounded-xl border border-green-100">         
+                    <p className="text-sm text-gray-400 mt-1">Répondu le {formatDate(devis.refuse_at)}</p>         
+                    <p className="text-sm font-medium text-green-800 mb-2">{devis.raison_refus || 'Pas de réponse fournie'}</p>
+                  </div>
+                </div>
             )}
 
             {/* Help */}

@@ -34,11 +34,10 @@ export const createReservation = async ({
         prestataire_id: photographe_id,
         devis_id: devisId,
         titre,
-        categories: categorie,
+        categorie: categorie,
         date: datePrestation,
         heure_debut: heureDebut,
-        heure_fin: heureDebut + duree_heures,
-        duree_heures,
+        duree_heures: duree_heures,
         description,
         montant_total: montant,
         acompte_montant: montantAcompte,
@@ -137,13 +136,7 @@ export const getReservationById = async (reservationId) => {
   try {
     const { data, error } = await supabase
       .from('reservations')
-      .select(`
-        *,
-        profiles!reservations_client_id_fkey(id, nom, email, telephone, avatar_url),
-        profiles!reservations_prestatairep_id_fkey(id, nom, email, telephone, avatar_url),
-        devis(*),
-        paiements(*)
-      `)
+      .select('*')
       .eq('id', reservationId)
       .single();
 

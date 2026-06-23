@@ -24,42 +24,41 @@ const STATUS_CONFIG = {
 };
 
 
+  
 
 export default function PhotographeReservationDetailPage() {
+
   const generateInvoicePDF = async (factureData) => {
   const element = document.getElementById('invoice');
 
-    if (!element) {
-      console.error("Element #invoice introuvable");
-      return null;
-    }
+  if (!element) {
+    console.error("Element #invoice introuvable");
+    return null;
+  }
 
-    const worker = html2pdf().from(element).outputPdf();
+  const worker = html2pdf().from(element).outputPdf();
+  const pdf = await worker;
+  const blob = pdf.output('blob');
 
-    const pdf = await worker;
-    const blob = pdf.output('blob');
-
-    const filePath = `factures/${factureData.id}.pdf`;
-
-    const { error: uploadError } = await supabase.storage
+  const filePath = `factures/${factureData.id}.pdf`;
+  const { error: uploadError } = await supabase.storage
       .from('factures')
       .upload(filePath, blob, {
         contentType: 'application/pdf',
         upsert: true,
       });
 
-    if (uploadError) throw uploadError;
+  if (uploadError) throw uploadError;
 
-    const { data } = supabase.storage
+  const { data } = supabase.storage
       .from('factures')
       .getPublicUrl(filePath);
 
-    return data.publicUrl;
+  return data.publicUrl;
   };
   const router = useRouter();
   const { id } = router.query;
-  const { photographeProfile } = useAuth();
-
+  const { photographeProfile, profileId } = useAuth();
   const [reservation, setReservation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -71,9 +70,29 @@ export default function PhotographeReservationDetailPage() {
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [facture, setFacture] = useState(null);
 
+  
+  const reservationDate = safeDate(reservation?.date);
+  const isPastDate = reservationDate ? isPast(reservationDate) : false;
+
+  const status = reservation?.statut;
+  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+
+  const canConfirm = ['pending', 'en_attente'].includes(status);
+  const canRefuse  = ['pending', 'en_attente'].includes(status);
+  const canCancel  = ['pending', 'en_attente', 'confirmee', 'en_cours'].includes(status);
+  const canComplete = status === 'confirmee' && isPastDate;
+
+
+  useEffect(() => {
+    if (router.isReady && id) {
+      fetchReservation();
+    }
+  }, [id, photographeProfile?.id, router.isReady ]);
+
   /* =========================
      FETCH SAFE
   ========================= */
+
   const fetchReservation = async () => {
     if (!id || !photographeProfile?.id) return;
 
@@ -121,10 +140,6 @@ export default function PhotographeReservationDetailPage() {
     }
   };
 
-  useEffect(() => {
-    fetchReservation();
-  }, [id, photographeProfile?.id]);
-
   /* =========================
      HELPERS
   ========================= */
@@ -135,17 +150,6 @@ export default function PhotographeReservationDetailPage() {
       return null;
     }
   };
-
-  const reservationDate = safeDate(reservation?.date);
-  const isPastDate = reservationDate ? isPast(reservationDate) : false;
-
-  const status = reservation?.statut;
-  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-
-  const canConfirm = ['pending', 'en_attente'].includes(status);
-  const canRefuse  = ['pending', 'en_attente'].includes(status);
-  const canCancel  = ['pending', 'en_attente', 'confirmee', 'en_cours'].includes(status);
-  const canComplete = status === 'confirmee' && isPastDate;
 
   /* =========================
      ACTIONS
@@ -203,7 +207,8 @@ export default function PhotographeReservationDetailPage() {
      STATES UI
   ========================= */
   if (loading) return (
-    <div className="min-h-screen bg-[#F8F9FB]"><Header />
+    <div className="min-h-screen bg-[#F8F9FB]">
+      <Header />
       <div className="flex justify-center items-center py-20">
         <div className="animate-spin h-8 w-8 border-b-2 border-indigo-600 rounded-full" />
       </div>
@@ -211,7 +216,8 @@ export default function PhotographeReservationDetailPage() {
   );
 
   if (!reservation) return (
-    <div className="min-h-screen bg-[#F8F9FB]"><Header />
+    <div className="min-h-screen bg-[#F8F9FB]">
+      <Header />
       <div className="max-w-4xl mx-auto px-6 py-12 text-center">
         <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-gray-900 mb-2">Réservation introuvable</h2>
@@ -231,7 +237,7 @@ export default function PhotographeReservationDetailPage() {
     <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
       <main className="max-w-6xl mx-auto px-6 py-8">
-
+        
         <Link href="/photographe/reservations" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
           <ArrowLeft className="w-5 h-5" /> Retour aux réservations
         </Link>

@@ -3,14 +3,13 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAdminGuard } from '../../../hooks/useAdminGuard';
 import { useAuth } from '../../../contexts/AuthContext';
 import AdminLayout from '../../../components/layout/AdminLayout';
-import { Search, ChevronLeft, ChevronRight, Flag, X, CheckCircle, XCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Flag, X, CheckCircle, XCircle, ExternalLink, AlertTriangle, Star, Shield } from 'lucide-react';
 import { cloturerSignalement, avertirUtilisateur } from '../../../lib/moderationService';
-
 const PAGE_SIZE = 20;
 
 const STATUS_LABELS = {
-  open: { label: 'Ouvert', className: 'bg-red-100 text-red-700' },
-  closed: { label: 'Clôturé', className: 'bg-green-100 text-green-700' },
+  open: { label: 'Ouvert', className: 'bg-green-100 text-green-700' },
+  closed: { label: 'Clôturé', className: 'bg-blue-100 text-blue-700' },
   dismissed: { label: 'Ignoré', className: 'bg-gray-100 text-gray-500' },
 };
 
@@ -32,8 +31,43 @@ export default function AdminSignalements() {
   const [selected, setSelected] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [adminComment, setAdminComment] = useState('');
-  const [filterStatus, setFilterStatus] = useState('open');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [avertissementSeverity, setAvertissementSeverity] = useState('warning');
+  const [targetHistory, setTargetHistory] = useState([]);
+  const [targetPreview, setTargetPreview] = useState(null);
+  const [showAvertirModal, setShowAvertirModal] = useState(false);
+  const [avertirMessage, setAvertirMessage] = useState('');
+  const [showCloturerModal, setShowCloturerModal] = useState(false);
+  const [cloturerComment, setCloturerComment] = useState('');
+
+
+  const loadTargetPreview = async (targetType, targetId) => {
+    if (targetType === 'avis') {
+      const { data } = await supabase
+        .from('reviews_presta')
+        .select('comment, rating, created_at')
+        .eq('id', targetId).single();
+      setTargetPreview(data ? { type: 'avis', ...data } : null);
+    } else if (targetType === 'message') {
+      const { data } = await supabase
+        .from('messages')
+        .select('contenu, created_at')
+        .eq('id', targetId).single();
+      setTargetPreview(data ? { type: 'message', ...data } : null);
+    } else {
+      setTargetPreview(null);
+    }
+  };
+  
+  const loadTargetHistory = async (targetId) => {
+    const { data } = await supabase
+      .from('signalements')
+      .select('id, reason, status, created_at, reporter:profiles!signalements_reporter_id_fkey(nom)')
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    setTargetHistory(data || []);
+  };
 
   const resolveTargetUserId = async (targetType, targetId) => {
     if (targetType === 'user') return targetId;
@@ -79,28 +113,53 @@ export default function AdminSignalements() {
     if (!selected) return;
     setActionLoading(true);
     try {
-      await cloturerSignalement(selected.id, selected.reporter?.id, adminComment);
-    } catch (e) { console.error(e); }
-    setActionLoading(false);
-    setAdminComment('');
-    setSelected(null);
-    fetchRows();
+      await supabase
+        .from('signalements')
+        .update({
+          status: 'closed',
+          admin_comment: cloturerComment.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selected.id);
+
+      // Mettre à jour la ligne dans la liste sans la retirer
+      setRows(prev => prev.map(r =>
+        r.id === selected.id
+          ? { ...r, status: 'closed', admin_comment: cloturerComment.trim() || null }
+          : r
+      ));
+      setSelected(prev => ({ ...prev, status: 'closed', admin_comment: cloturerComment.trim() || null }));
+      setShowCloturerModal(false);
+      setCloturerComment('');
+    } catch (e) {
+      console.error(e);
+      alert(`Erreur : ${e.message}`);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleAvertir = async () => {
-    if (!selected) return;
+    if (!selected || !avertirMessage.trim()) return;
     setActionLoading(true);
     try {
       const userId = await resolveTargetUserId(selected.target_type, selected.target_id);
-      if (!userId) throw new Error('Utilisateur introuvable pour ce type de cible');
+      if (!userId) throw new Error('Utilisateur introuvable');
+      const adminUser = (await supabase.auth.getUser()).data.user;
       await avertirUtilisateur(
         userId,
-        adminComment || 'Avertissement suite à un signalement',
+        avertirMessage.trim(),
         avertissementSeverity,
-        user?.id
+        adminUser?.id
       );
-    } catch (e) { console.error(e); }
-    setActionLoading(false);
+      setShowAvertirModal(false);
+      setAvertirMessage('');
+    } catch (e) {
+      console.error(e);
+      alert(`Erreur : ${e.message}`);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleIgnorer = async () => {
@@ -122,6 +181,8 @@ export default function AdminSignalements() {
     </div>
   );
 
+
+
   return (
     <AdminLayout title="Signalements">
       {/* Filtres */}
@@ -141,10 +202,10 @@ export default function AdminSignalements() {
           onChange={e => { setFilterStatus(e.target.value); setPage(0); }}
           className="px-6 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-500"
         >
+          <option value="all">Tous</option>
           <option value="open">Ouverts</option>
           <option value="closed">Clôturés</option>
-          <option value="dismissed">Ignorés</option>
-          <option value="all">Tous</option>
+          <option value="dismissed">Ignorés</option> 
         </select>
       </div>
 
@@ -194,7 +255,7 @@ export default function AdminSignalements() {
                     <td className="px-6 py-3 text-gray-400 text-xs">{new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
                     <td className="px-6 py-3">
                       <button
-                        onClick={() => { setSelected(row); setAdminComment(row.admin_comment || ''); }}
+                        onClick={() => { setSelected(row); setAdminComment(row.admin_comment || ''); loadTargetHistory(row.target_id); loadTargetPreview(row.target_type, row.target_id);}}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
                       >
                         <Flag className="w-3.5 h-3.5" /> Voir
@@ -237,7 +298,7 @@ export default function AdminSignalements() {
             <div className="flex-1 px-6 py-5 space-y-5 overflow-y-auto">
               {/* Rapporteur */}
               <div className="bg-blue-50 rounded-xl p-4">
-                <p className="text-xs text-blue-500 font-semibold uppercase mb-1">Rapporteur</p>
+                <p className="text-xs text-blue-500 font-semibold uppercase mb-1">Signalé par</p>
                 <p className="font-bold text-sm text-gray-900">{selected.reporter?.nom || '—'}</p>
                 <p className="text-xs text-gray-500">{selected.reporter?.email}</p>
               </div>
@@ -250,14 +311,83 @@ export default function AdminSignalements() {
                     {TARGET_LABELS[selected.target_type] || selected.target_type}
                   </span>
                   <span className="text-xs text-gray-500 font-mono">{selected.target_id}</span>
+                  {selected.target_type === 'user' && (
+                  <div className="ml-auto flex gap-2">
+                    <a
+                      href={`/client/photographes/${selected.target_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" /> Voir profil public
+                    </a>
+                    <a
+                      href={`/admin/prestataire/${selected.target_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 border border-gray-200 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      <Shield className="w-3.5 h-3.5" /> Fiche admin
+                    </a>
+                  </div>
+                )}
                 </div>
               </div>
+
+              {/* Bloc à ajouter dans le panneau, après la section "Cible signalée" */}
+              {targetHistory.length > 0 && (
+                <div className="space-y-2">
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                    Historique ({targetHistory.length} signalement{targetHistory.length > 1 ? 's' : ''} au total)
+                  </h2>
+                  <div className="space-y-1.5">
+                    {targetHistory.map(h => (
+                      <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs border ${
+                        h.id === selected.id ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-100'
+                      }`}>
+                        <span className={`px-1.5 py-0.5 rounded-full font-medium ${(STATUS_LABELS[h.status] || STATUS_LABELS.open).className}`}>
+                          {(STATUS_LABELS[h.status] || STATUS_LABELS.open).label}
+                        </span>
+                        <span className="text-gray-600 truncate flex-1">{h.reason}</span>
+                        <span className="text-gray-400 flex-shrink-0">par {h.reporter?.nom || '?'}</span>
+                        <span className="text-gray-400 flex-shrink-0">{new Date(h.created_at).toLocaleDateString('fr-FR')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Raison */}
               <div className="space-y-1">
                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Raison</h2>
                 <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-6 py-3 font-medium">{selected.reason || '—'}</p>
               </div>
+
+              {/* Bloc à ajouter après "Raison" */}
+              {targetPreview && (
+                <div className="space-y-1">
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Contenu signalé
+                  </h2>
+                  <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                    {targetPreview.type === 'avis' && (
+                      <>
+                        <div className="flex items-center gap-1 mb-1">
+                          {[1,2,3,4,5].map(i => (
+                            <Star key={i} className={`w-3 h-3 ${i <= targetPreview.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                          ))}
+                        </div>
+                        <p className="text-sm text-gray-700 italic">"{targetPreview.comment}"</p>
+                      </>
+                    )}
+                    {targetPreview.type === 'message' && (
+                      <p className="text-sm text-gray-700 italic">"{targetPreview.contenu}"</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1">{new Date(targetPreview.created_at).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               {selected.description && (
@@ -310,14 +440,14 @@ export default function AdminSignalements() {
             {selected.status === 'open' && (
               <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 space-y-2">
                 <button
-                  onClick={handleCloturer}
+                  onClick={() => setShowCloturerModal(true)}
                   disabled={actionLoading}
                   className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl font-medium text-sm hover:bg-green-100 disabled:opacity-50 transition-colors"
                 >
                   <CheckCircle className="w-4 h-4" /> Clôturer le signalement
                 </button>
                 <button
-                  onClick={handleAvertir}
+                  onClick={() => setShowAvertirModal(true)}
                   disabled={actionLoading}
                   className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl font-medium text-sm hover:bg-orange-100 disabled:opacity-50 transition-colors"
                 >
@@ -333,6 +463,140 @@ export default function AdminSignalements() {
               </div>
             )}
           </div>
+          {showAvertirModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setShowAvertirModal(false)} />
+              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                
+                {/* Header */}
+                <button
+                  onClick={() => setShowAvertirModal(false)}
+                  className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <Flag className="w-4 h-4 text-orange-600" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-gray-900">Avertir l'utilisateur</h2>
+                    <p className="text-xs text-gray-400">Cette action sera visible par l'utilisateur</p>
+                  </div>
+                </div>
+
+                {/* Sévérité */}
+                <div className="mb-4">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Sévérité
+                  </label>
+                  <select
+                    value={avertissementSeverity}
+                    onChange={e => setAvertissementSeverity(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                  >
+                    <option value="info">ℹ️ Information</option>
+                    <option value="warning">⚠️ Avertissement</option>
+                    <option value="severe">🚨 Avertissement grave</option>
+                  </select>
+                </div>
+
+                {/* Message */}
+                <div className="mb-5">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Message envoyé à l'utilisateur *
+                  </label>
+                  <textarea
+                    value={avertirMessage}
+                    onChange={e => setAvertirMessage(e.target.value)}
+                    rows={4}
+                    placeholder="Ex : Votre comportement ne respecte pas les conditions d'utilisation..."
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none resize-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{avertirMessage.length} caractère{avertirMessage.length > 1 ? 's' : ''}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowAvertirModal(false); setAvertirMessage(''); }}
+                    className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleAvertir}
+                    disabled={!avertirMessage.trim() || actionLoading}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                  >
+                    {actionLoading
+                      ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <><Flag className="w-4 h-4" /> Envoyer l'avertissement</>
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {showCloturerModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setShowCloturerModal(false)} />
+              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+
+                {/* Header */}
+                <button
+                  onClick={() => setShowCloturerModal(false)}
+                  className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-gray-900">Clôturer le signalement</h2>
+                    <p className="text-xs text-gray-400">Le statut passera à "Clôturé"</p>
+                  </div>
+                </div>
+
+                {/* Commentaire */}
+                <div className="mb-5">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Commentaire admin (optionnel)
+                  </label>
+                  <textarea
+                    value={cloturerComment}
+                    onChange={e => setCloturerComment(e.target.value)}
+                    rows={4}
+                    placeholder="Ex : Signalement traité, aucune violation constatée..."
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-400 focus:outline-none resize-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">{cloturerComment.length} caractère{cloturerComment.length > 1 ? 's' : ''}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowCloturerModal(false); setCloturerComment(''); }}
+                    className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleCloturer}
+                    disabled={actionLoading}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  >
+                    {actionLoading
+                      ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <><CheckCircle className="w-4 h-4" /> Confirmer la clôture</>
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </AdminLayout>

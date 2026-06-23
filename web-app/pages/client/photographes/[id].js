@@ -31,8 +31,19 @@ export default function PhotographeClientView() {
   const [reportDescription, setReportDescription] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [hasReported, setHasReported] = useState(false);
 
-
+  const checkHasReported = async (userId) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('signalements')
+      .select('id')
+      .eq('reporter_id', user.id)  // ← adapter au nom exact de votre colonne
+      .eq('target_id', userId)      // ← idem
+      .maybeSingle();
+    setHasReported(!!data);
+  };
 
   const fetchAll = async (userId) => {
     setLoading(true);
@@ -60,8 +71,9 @@ export default function PhotographeClientView() {
 
   useEffect(() => {
     if (id) {
-    fetchAll(id);
-    checkFavorite(id);
+      fetchAll(id);
+      checkFavorite(id);
+      checkHasReported(id); // ← ajouter
     }
   }, [id]);
 
@@ -180,13 +192,17 @@ export default function PhotographeClientView() {
       setFavoriteLoading(false);
     }
   };
-
+  
   const handleSignaler = async () => {
     if (!reportReason) return;
     setReportLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { alert('Vous devez être connecté'); return; }
+      if (!user) {
+        alert('Vous devez être connecté');
+        setReportLoading(false); // ← manquait
+        return;                  // ← manquait
+      }
       await creerSignalement({
         reporterId: user.id,
         targetType: 'user',
@@ -195,12 +211,19 @@ export default function PhotographeClientView() {
         description: reportDescription,
       });
       setReportSuccess(true);
+      setHasReported(true); 
       setReportReason('');
       setReportDescription('');
       setTimeout(() => { setShowReportModal(false); setReportSuccess(false); }, 2000);
-    } catch (e) { console.error(e); }
-    setReportLoading(false);
+    } catch (e) {
+      console.error('Erreur signalement:', e);
+      alert(`Erreur : ${e.message}`); // ← pour voir ce qui plante
+    } finally {
+      setReportLoading(false); // ← déplacé ici pour couvrir tous les cas
+    }
   };
+
+
 
 
   return (
@@ -325,10 +348,15 @@ export default function PhotographeClientView() {
 
                     <button
                       onClick={() => setShowReportModal(true)}
-                      title="Signaler ce prestataire"
-                      className="flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 bg-white text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
+                      title={hasReported ? 'Vous avez déjà signalé ce prestataire' : 'Signaler ce prestataire'}
+                      className="relative flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 bg-white text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
                     >
-                      <Flag className="w-4.5 h-4.5" />
+                      <Flag className={`w-4.5 h-4.5 ${hasReported ? 'text-red-500 fill-red-500' : ''}`} />
+                      {hasReported && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                          <span className="text-white text-[9px] font-bold">!</span>
+                        </span>
+                      )}
                     </button>
 
                     <button

@@ -225,8 +225,22 @@ export default function MessagesPage() {
         const { data: existingConvs } = await messageService.getExistingConversation(profileId, prestataireId);
         const existingConv = existingConvs?.[0];
         if (existingConv) {
-          const found = enriched.find(c => c.id === existingConv.id) || existingConv;
+          const found = enriched.find(c => c.id === existingConv.id);
+          if (found) {
           setSelectedConversation(found);
+          } else {
+            // La conv existe en base mais pas encore dans enriched → l'ajouter
+            setConversations(prev => {
+              const all = [existingConv, ...prev];
+              const seen = new Map();
+              for (const c of all) {
+                const key = `${c.client_id}__${c.prestataire_id}`;
+                if (!seen.has(key)) seen.set(key, c);
+              }
+              return Array.from(seen.values());
+            });
+            setSelectedConversation(existingConv);
+          }
         } else {
           const { data: newConv, error: convCreateError } = await messageService.createConversation(profileId, prestataireId);
           if (convCreateError) {
@@ -244,7 +258,15 @@ export default function MessagesPage() {
               displayName,
               photoUrl: getAvatarSrc(prestaProfile) || svgAvatarDataUrl(displayName),
             };
-            setConversations(prev => [newEnriched, ...prev]);
+            setConversations(prev => {
+              const all = [newEnriched, ...prev];
+              const seen = new Map();
+              for (const c of all) {
+                const key = `${c.client_id}__${c.prestataire_id}`;
+                if (!seen.has(key)) seen.set(key, c);
+              }
+              return Array.from(seen.values());
+            });
             setSelectedConversation(newEnriched);
           }
         }

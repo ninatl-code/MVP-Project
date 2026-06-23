@@ -34,63 +34,67 @@ export default function ReservationDetailPage() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [facture, setFacture] = useState(null);
 
+
   useEffect(() => {
-    if (id) {
+    if (router.isReady && id) {
       fetchReservation();
     }
-  }, [id]);
+  }, [id, router.isReady]);
 
   const fetchReservation = async () => {
     setLoading(true);
     try {
       // Fetch reservation without FK-hint joins to avoid silent failures
-      const { data, error } = await reservationService.getReservationById(id);
+      const { data: reservationdata, error: reservationError } = await reservationService.getReservationById(id);
 
-      if (error) throw error;
-
+      if (reservationError) {
+        console.error('Erreur reservation:', reservationError);
+        throw reservationError;
+      }
       // Fetch prestataire profile separately
       let prestataire = null;
-      if (data.prestataire_id) {
-        const { data: profil } = await supabase
+      if (reservationdata.prestataire_id) {
+        const { data: prestData } = await supabase
           .from('profiles')
           .select('id, nom, avatar_url')
-          .eq('id', data.prestataire_id)
+          .eq('id', reservationdata.prestataire_id)
           .single();
-        prestataire = profil;
+        prestataire = prestData;
       }
 
       // Fetch existing review
       let existingReview = null;
       try {
         const clientId = profileId || user?.id;
-        if (clientId && data.prestataire_id) {
-          const { data: reviewData } =  await avisService.getReservationReviews (id, data.prestataire_id, true);
-          existingReview = reviewData;
+        if (clientId && reservationdata.prestataire_id) {
+          const { data: reviewData, error } =  await avisService.getReservationReviews (id, reservationdata.prestataire_id, true);
+          if (!error) {
+            existingReview = reviewData;
+          }
         }
       } catch (_) {}
       
 
       // Fetch linked devis if exists
       let devis = null;
-      if (data.devis_id) {
+      if (reservationdata.devis_id) {
         const { data: devisData } = await supabase
           .from('devis')
           .select('*')
-          .eq('id', data.devis_id)
+          .eq('id', reservationdata.devis_id)
           .single();
         devis = devisData;
       }
 
-      setReservation({ ...data, prestataire, existingReview, devis });
+      setReservation({ ...reservationdata, prestataire, existingReview, devis });
 
       // Fetch linked invoice
       try {
-        const { data: factureData } = await supabase
-          .from('factures')
-          .select('*')
-          .eq('reservation_id', id)
-          .maybeSingle();
-        setFacture(factureData || null);
+        const { data: factureData, error } = await reservationService.getReservationById(id);
+
+        if (!error) {
+          setFacture(factureData || null);
+        }
       } catch (_) {}
     } catch (error) {
       console.error('Error fetching reservation:', error);
@@ -102,7 +106,8 @@ export default function ReservationDetailPage() {
   const handleCancelReservation = async () => {
     setCancelling(true);
     try {
-      const { error } = await reservationService.cancelReservation (id, 'client', profileId);
+      const { error } = await 
+      reservationService.cancelReservation (id, 'client', profileId);
       if (error) throw error;
       
       setReservation(prev => ({ ...prev, statut: 'cancelled' }));

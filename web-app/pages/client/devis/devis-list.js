@@ -247,7 +247,7 @@ export default function DevisListPage() {
                         ? `Ce devis a expiré : la durée de validité et la date de la demande${dateLabel ? ` (${dateLabel})` : ''} sont toutes deux dépassées.`
                         : devisValExp
                         ? 'Ce devis a expiré : la durée de validité fixée par le prestataire est dépassée.'
-                        : `Ce devis a expiré car la date souhaitée de la demande${dateLabel ? ` (${dateLabel})` : ''} est passée.`;
+                        : `Ce devis a expiré car la date souhaitée de la demande est passée ou il a été annulé par le prestataire.`;
                       return (
                         <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
                           <Clock className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
