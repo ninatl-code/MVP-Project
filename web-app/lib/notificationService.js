@@ -452,7 +452,7 @@ export const getNotificationLink = (notification, activeRole) => {
       case 'devis_accepte':
         return reservation_id ? `/photographe/reservations/${reservation_id}` : `/photographe/devis/${devis_id}`;
       case 'devis_refuse':
-        return devis_id ? `/photographe/devis/${devis_id}` : '/photographe/devis';
+        return !devis_id ? '/photographe/devis' : `/photographe/devis/${devis_id}` ;
       case 'reservation_confirmee':
         return reservation_id ? `/client/reservations/${reservation_id}` : '/client/reservations';
       case 'reservation_annulee':

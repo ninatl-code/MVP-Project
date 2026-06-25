@@ -139,6 +139,18 @@ export default function Factures() {
         montant_tva: parseFloat(totalTVA.toFixed(2)),
         montant_ttc: parseFloat(totalTTC.toFixed(2)),
         facture: form.lignes.filter(l => l.description.trim()),
+        // ✅ nouveaux champs — à ajouter dans ta table si tu veux les persister
+        emetteur_nom: form.emetteur_nom || null,
+        emetteur_adresse: form.emetteur_adresse || null,
+        emetteur_tel: form.emetteur_tel || null,
+        emetteur_ice: form.emetteur_ice || null,
+        destinataire_nom: form.destinataire_nom || null,
+        destinataire_email: form.destinataire_email || null,
+        destinataire_adresse: form.destinataire_adresse || null,
+        logo_preview: form.logo_preview || null,
+        date_echeance: form.date_echeance || null,
+        notes: form.notes || null,
+        // sinon ils servent juste pour l'aperçu/impression
       };
       const { error } = await supabase.from('factures').insert(payload);
       if (error) throw error;
@@ -352,25 +364,45 @@ export default function Factures() {
 
       {/* ── CREATE MODAL ── */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
-          <div className="bg-white w-full md:rounded-2xl md:max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <h2 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                <Plus className="w-5 h-5 text-indigo-600" /> Nouvelle facture
-              </h2>
-              <button onClick={() => setShowCreate(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-500" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-0 md:p-4">
+          <div className="bg-white w-full md:rounded-2xl md:max-w-3xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b flex items-center justify-between" style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #5C6BC0 100%)` }}>
+              <div>
+                <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-0.5">Nouvelle facture</p>
+                <h3 className="font-bold text-white text-lg">{form.num_facture}</h3>
+              </div>
+              <button onClick={() => setShowCreate(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit} className="overflow-y-auto flex-1 p-5 space-y-5">
-              {/* Reservation selector */}
+            <form onSubmit={handleCreateSubmit} className="overflow-y-auto flex-1 p-6 space-y-6">
+
+              {/* ── SECTION 1 : Réservation liée ── */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Réservation liée <span className="text-gray-400">(optionnel)</span></label>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Réservation liée</p>
                 <select
                   value={form.reservation_id}
-                  onChange={(e) => setForm(p => ({ ...p, reservation_id: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  onChange={(e) => {
+                    const resId = e.target.value;
+                    const res = reservations.find(r => r.id === resId);
+                    setForm(prev => ({
+                      ...prev,
+                      reservation_id: resId,
+                      // Pré-remplissage si réservation choisie
+                      destinataire_nom: res?.client?.nom || prev.destinataire_nom || '',
+                      destinataire_email: res?.client?.email || prev.destinataire_email || '',
+                      lignes: res ? [{
+                        description: res.titre || 'Prestation',
+                        quantite: 1,
+                        prix_unitaire: res.montant_total || 0,
+                        total: res.montant_total || 0,
+                      }] : prev.lignes,
+                    }));
+                  }}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
                 >
                   <option value="">— Facture libre (sans réservation) —</option>
                   {reservations.map(r => (
@@ -381,100 +413,265 @@ export default function Factures() {
                 </select>
               </div>
 
-              {/* Num + TVA */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">N° facture</label>
-                  <input
-                    type="text"
-                    value={form.num_facture}
-                    onChange={(e) => setForm(p => ({ ...p, num_facture: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">TVA (%)</label>
-                  <input
-                    type="number"
-                    min="0" max="100" step="0.1"
-                    value={form.taux_tva}
-                    onChange={(e) => setForm(p => ({ ...p, taux_tva: parseFloat(e.target.value) || 0 }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Lignes */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">Lignes de facture</label>
-                  <button type="button" onClick={addLigne} className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-medium">
-                    <Plus className="w-3 h-3" /> Ajouter
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {form.lignes.map((l, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-center">
+              {/* ── SECTION 2 : En-tête facture ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Émetteur */}
+                <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Votre entreprise</p>
+                  <div>
+                    {/* Logo upload */}
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Logo (optionnel)</label>
+                    <div
+                      className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                      onClick={() => document.getElementById('logo-upload').click()}
+                    >
+                      {form.logo_preview ? (
+                        <img src={form.logo_preview} alt="Logo" className="h-12 mx-auto object-contain" />
+                      ) : (
+                        <div>
+                          <div className="w-8 h-8 bg-gray-200 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                            <Plus className="w-4 h-4 text-gray-400" />
+                          </div>
+                          <p className="text-xs text-gray-400">Cliquer pour ajouter un logo</p>
+                        </div>
+                      )}
+                      <input
+                        id="logo-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setForm(prev => ({ ...prev, logo_preview: ev.target.result }));
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Nom / Raison sociale</label>
+                    <input
+                      type="text"
+                      placeholder="Votre nom ou entreprise"
+                      value={form.emetteur_nom || ''}
+                      onChange={e => setForm(p => ({ ...p, emetteur_nom: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Adresse</label>
+                    <textarea
+                      placeholder="Adresse complète"
+                      value={form.emetteur_adresse || ''}
+                      onChange={e => setForm(p => ({ ...p, emetteur_adresse: e.target.value }))}
+                      rows={2}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Téléphone</label>
                       <input
                         type="text"
-                        placeholder="Description"
-                        value={l.description}
-                        onChange={(e) => updateLigne(i, 'description', e.target.value)}
-                        className="col-span-5 border rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        placeholder="+212..."
+                        value={form.emetteur_tel || ''}
+                        onChange={e => setForm(p => ({ ...p, emetteur_tel: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
-                      <input
-                        type="number" min="1" placeholder="Qté"
-                        value={l.quantite}
-                        onChange={(e) => updateLigne(i, 'quantite', parseFloat(e.target.value) || 0)}
-                        className="col-span-2 border rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                      <input
-                        type="number" min="0" step="0.01" placeholder="P.U."
-                        value={l.prix_unitaire}
-                        onChange={(e) => updateLigne(i, 'prix_unitaire', parseFloat(e.target.value) || 0)}
-                        className="col-span-3 border rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                      <p className="col-span-1 text-right text-sm font-medium text-gray-700 truncate">{(parseFloat(l.total) || 0).toFixed(0)}</p>
-                      {form.lignes.length > 1 && (
-                        <button type="button" onClick={() => removeLigne(i)} className="col-span-1 flex justify-center text-red-400 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
-                  ))}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">ICE / Identifiant</label>
+                      <input
+                        type="text"
+                        placeholder="N° fiscal"
+                        value={form.emetteur_ice || ''}
+                        onChange={e => setForm(p => ({ ...p, emetteur_ice: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Destinataire */}
+                <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Destinataire (client)</p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Nom / Entreprise</label>
+                    <input
+                      type="text"
+                      placeholder="Nom du client"
+                      value={form.destinataire_nom || ''}
+                      onChange={e => setForm(p => ({ ...p, destinataire_nom: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                    <input
+                      type="email"
+                      placeholder="client@email.com"
+                      value={form.destinataire_email || ''}
+                      onChange={e => setForm(p => ({ ...p, destinataire_email: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Adresse</label>
+                    <textarea
+                      placeholder="Adresse du client"
+                      value={form.destinataire_adresse || ''}
+                      onChange={e => setForm(p => ({ ...p, destinataire_adresse: e.target.value }))}
+                      rows={2}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">N° Facture</label>
+                      <input
+                        type="text"
+                        value={form.num_facture}
+                        onChange={e => setForm(p => ({ ...p, num_facture: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Date d'échéance</label>
+                      <input
+                        type="date"
+                        value={form.date_echeance || ''}
+                        onChange={e => setForm(p => ({ ...p, date_echeance: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Totals */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-1">
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Montant HT</span>
-                  <span className="font-medium">{totalHT.toFixed(2)} MAD</span>
+              {/* ── SECTION 3 : Lignes ── */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Prestations</p>
+                  <button type="button" onClick={addLigne} className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-medium">
+                    <Plus className="w-3 h-3" /> Ajouter une ligne
+                  </button>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>TVA ({form.taux_tva}%)</span>
-                  <span className="font-medium">{totalTVA.toFixed(2)} MAD</span>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 text-xs text-gray-500 font-semibold">Description</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-gray-500 font-semibold w-16">Qté</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-gray-500 font-semibold w-28">P.U. (MAD)</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-gray-500 font-semibold w-24">Total</th>
+                        <th className="w-8" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.lignes.map((l, i) => (
+                        <tr key={i} className="border-t border-gray-100">
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              placeholder="Description de la prestation"
+                              value={l.description}
+                              onChange={e => updateLigne(i, 'description', e.target.value)}
+                              className="w-full border-0 focus:outline-none bg-transparent text-sm"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number" min="1"
+                              value={l.quantite}
+                              onChange={e => updateLigne(i, 'quantite', parseFloat(e.target.value) || 0)}
+                              className="w-full border-0 focus:outline-none bg-transparent text-sm text-right"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number" min="0" step="0.01"
+                              value={l.prix_unitaire}
+                              onChange={e => updateLigne(i, 'prix_unitaire', parseFloat(e.target.value) || 0)}
+                              className="w-full border-0 focus:outline-none bg-transparent text-sm text-right"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold text-gray-800">
+                            {(parseFloat(l.total) || 0).toFixed(2)}
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            {form.lignes.length > 1 && (
+                              <button type="button" onClick={() => removeLigne(i)} className="text-red-400 hover:text-red-600">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="flex justify-between text-base font-bold text-gray-900 pt-1 border-t mt-1">
-                  <span>Total TTC</span>
-                  <span className="text-green-600">{totalTTC.toFixed(2)} MAD</span>
+              </div>
+
+              {/* ── SECTION 4 : Totaux + TVA ── */}
+              <div className="flex justify-end">
+                <div className="w-72 bg-gray-50 rounded-2xl p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Montant HT</span>
+                    <span className="font-medium">{totalHT.toFixed(2)} MAD</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">TVA</span>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={form.taux_tva}
+                        onChange={e => setForm(p => ({ ...p, taux_tva: parseFloat(e.target.value) || 0 }))}
+                        className="border border-gray-200 rounded-lg px-2 py-0.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                      >
+                        <option value={0}>0%</option>
+                        <option value={7}>7%</option>
+                        <option value={10}>10%</option>
+                        <option value={14}>14%</option>
+                        <option value={20}>20%</option>
+                      </select>
+                      <span className="font-medium">{totalTVA.toFixed(2)} MAD</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2 flex justify-between font-bold text-base">
+                    <span>Total TTC</span>
+                    <span style={{ color: ACCENT }}>{totalTTC.toFixed(2)} MAD</span>
+                  </div>
                 </div>
+              </div>
+
+              {/* ── SECTION 5 : Notes ── */}
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes / Conditions de paiement</label>
+                <textarea
+                  placeholder="Ex : Paiement par virement sous 30 jours. RIB : ..."
+                  value={form.notes || ''}
+                  onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                />
               </div>
 
               {createError && (
-                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createError}</p>
+                <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{createError}</p>
               )}
             </form>
 
-            <div className="px-5 py-4 border-t bg-gray-50 flex gap-3 justify-end">
-              <button type="button" onClick={() => setShowCreate(false)} className="px-6 py-2 border rounded-xl text-sm hover:bg-gray-100 transition-colors">
+            <div className="px-6 py-4 border-t bg-gray-50 flex gap-3 justify-end">
+              <button type="button" onClick={() => setShowCreate(false)} className="px-6 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-100 transition-colors">
                 Annuler
               </button>
               <button
                 onClick={handleCreateSubmit}
                 disabled={saving}
-                className="px-5 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-60 transition-opacity flex items-center gap-2"
+                className="px-6 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-60 transition-opacity flex items-center gap-2"
                 style={{ backgroundColor: ACCENT }}
               >
                 {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

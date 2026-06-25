@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import {getNotificationLink} from '../lib/notificationService';
-import { Bell, LogOut, MessageCircle, Menu, Zap, Star, Check, BarChart3, RefreshCcw, User } from "lucide-react";
+import { Bell, LogOut, MessageCircle, Menu, Zap, Star, Check, BarChart3, RefreshCcw, User, X } from "lucide-react";
 
 // Palette Shooty
 const COLORS = {

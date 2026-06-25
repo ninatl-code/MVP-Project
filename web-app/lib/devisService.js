@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient';
 import { notifyNewDevis } from './notificationService';
 import { fulfillDemande } from './demandeService';
 import * as reservationService from  './reservationService';
+import { notifyDevisAccepted, notifyDevisRejected } from './notificationService';
 
 /**
  * Create a new devis (quote) from service provider
@@ -179,7 +180,7 @@ export const getDevisById = async (devisId) => {
  */
 export const acceptDevis = async (devisId) => {
   try {
-    // Get devis details first
+    // 1. Récupérer le devis
     const { data: devis, error: devisError } = await supabase
       .from('devis')
       .select('*')
@@ -188,7 +189,7 @@ export const acceptDevis = async (devisId) => {
 
     if (devisError) throw devisError;
 
-    // Update devis status
+    // 2. Mettre à jour le statut
     const { data, error } = await supabase
       .from('devis')
       .update({
@@ -201,49 +202,43 @@ export const acceptDevis = async (devisId) => {
 
     if (error) throw error;
 
-    // Create reservation from accepted devis
-    const reservationNumber = `RES-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-    
+    // 3. Créer la réservation
     const { data: reservation, error: resError } = await reservationService.createReservation({
       client_id: devis.client_id,
       prestataire_id: devis.prestataire_id,
       devis_id: devisId,
       titre: devis.titre || 'Réservation',
-      categorie: 'photographie',
+      categorie: devis.categorie || 'general',
       date: new Date().toISOString().split('T')[0],
       lieu: 'À définir',
       montant_total: devis.montant_total,
       acompte_montant: devis.acompte_montant || 0,
       statut: 'pending',
-    })
-      .select()
-      .single();
+    });
 
     if (resError) {
-      console.error('Error creating reservation:', resError);
+      console.error('Erreur création réservation:', resError);
     }
 
-    // Mark demande as fulfilled if exists
+    // 4. Marquer la demande comme pourvue
     if (devis.demande_id) {
       await fulfillDemande(devis.demande_id);
     }
 
-    return { data, reservation, error: null };
+    // 5. Notifier le prestataire ✅ dans le try, pas le catch
+    await notifyDevisAccepted(devis.prestataire_id, devisId, devis.demande_id);
+
+    return { data, reservation: reservation || null, error: null };
+
   } catch (error) {
     console.error('Error accepting devis:', error);
-    
-    const {error:notifError} = await notifyDevisAccepted (devis.prestataire_id,devisId,devis.demande_id);
-    if (notifError) {
-      console.error('Notification error:',notifError);
-    }
-
-    return { data: updatedDevis, reservation, error:null,};
-  } 
+    return { data: null, reservation: null, error };
+  }
 };
-
 /**
  * Reject a devis (client action)
  */
+
 export const rejectDevis = async (devisId, reason = '') => {
   try {
     const { data, error } = await supabase
@@ -256,18 +251,17 @@ export const rejectDevis = async (devisId, reason = '') => {
       .eq('id', devisId)
       .select()
       .single();
-    
-    const {error:notifError} = await notifyDevisRejected (devis.prestataire_id,devisId,devis.demande_id);
-    if (notifError) {
-      console.error('Notification error:', notifError);
-    }
-    if (error) throw error;
+
+    if (error) throw error; // ✅ check d'erreur en premier
+
+    // ✅ utilise data (le devis retourné) pas devis
+    await notifyDevisRejected(data.prestataire_id, devisId, data.demande_id);
+
     return { data, error: null };
   } catch (error) {
     console.error('Error rejecting devis:', error);
     return { data: null, error };
   }
-    
 };
 
 /**
