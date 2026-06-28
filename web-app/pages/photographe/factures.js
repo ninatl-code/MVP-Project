@@ -2,6 +2,8 @@
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/HeaderPresta';
+import { generateFacturePDF } from '@/lib/generateFacturePDF';
+
 
 import {
   FileText, Download, Eye, Search, Calendar, Euro,
@@ -34,6 +36,7 @@ export default function Factures() {
   const [reservations, setReservations] = useState([]);
   const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [prestataire, setPrestataire] = useState({})
 
   const [form, setForm] = useState({
     reservation_id: '',
@@ -72,21 +75,56 @@ export default function Factures() {
   const fetchReservations = useCallback(async (uid) => {
     const { data } = await supabase
       .from('reservations')
-      .select(`id, titre, date, statut, client:profiles!reservations_client_id_fkey(nom, email)`)
+      .select(`id, titre, date, statut, montant_total, client:profiles!reservations_client_id_fkey(nom, email, adresse, telephone)`)
       .eq('prestataire_id', uid)
       .in('statut', ['confirmed', 'completed'])
       .order('date', { ascending: false });
     setReservations(data || []);
   }, []);
 
+  const fetchPrestataire = useCallback(async (uid) => {
+    const [{ data: profil }, { data: profilPresta }] = await Promise.all([
+      supabase.from('profiles').select('adresse, telephone').eq('id', uid).single(),
+      supabase.from('profils_prestataire').select('nom_entreprise, logo, siret').eq('id', uid).single(),
+    ]);
+
+    // Convertir le logo en base64 pour garantir l'affichage en impression
+    let logoBase64 = null;
+    if (profilPresta?.logo) {
+      try {
+        const response = await fetch(profilPresta.logo);
+        const blob = await response.blob();
+        logoBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('Logo non chargeable', e);
+        logoBase64 = profilPresta.logo; // fallback URL directe
+      }
+    }
+
+    setPrestataire({
+      nom: profilPresta?.nom_entreprise || profil?.nom || '',
+      logo: logoBase64,
+      ice: profilPresta?.siret || '',
+      adresse: profil?.adresse || '',
+      tel: profil?.telephone || '',
+    });
+  }, []);
+
   useEffect(() => {
+    
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push('/login'); return; }
       setUserId(user.id);
       fetchInvoices(user.id);
       fetchReservations(user.id);
+      fetchPrestataire(user.id); 
     });
-  }, [fetchInvoices, fetchReservations, router]);
+    
+  }, [fetchInvoices, fetchReservations, fetchPrestataire, router]);
 
   useEffect(() => {
     if (!searchTerm) { setFilteredInvoices(invoices); return; }
@@ -117,11 +155,20 @@ export default function Factures() {
   const totalTTC = totalHT + totalTVA;
 
   const openCreate = () => {
-    setForm({ reservation_id: '', num_facture: generateNumFacture(), taux_tva: 20, lignes: [emptyLigne()] });
+    setForm({
+      reservation_id: '',
+      num_facture: generateNumFacture(),
+      taux_tva: 20,
+      lignes: [emptyLigne()],
+      emetteur_nom: prestataire.nom,
+      emetteur_adresse: prestataire.adresse,
+      emetteur_tel: prestataire.tel,
+      emetteur_ice: prestataire.ice,
+      logo_preview: prestataire.logo,
+    });
     setCreateError(null);
     setShowCreate(true);
   };
-
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!form.lignes.some(l => l.description.trim())) {
@@ -328,7 +375,7 @@ export default function Factures() {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button onClick={() => window.print()} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600" title="Imprimer">
+                            <button onClick={() => generateFacturePDF(inv, prestataire)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600" title="Imprimer">
                               <Printer className="w-4 h-4" />
                             </button>
                           </div>
@@ -535,7 +582,7 @@ export default function Factures() {
                         type="text"
                         value={form.num_facture}
                         onChange={e => setForm(p => ({ ...p, num_facture: e.target.value }))}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-white outline-none"
                         required
                       />
                     </div>
@@ -543,7 +590,7 @@ export default function Factures() {
                       <label className="block text-xs font-medium text-gray-600 mb-1">Date d'échéance</label>
                       <input
                         type="date"
-                        value={form.date_echeance || ''}
+                        value={form.date_echeance || new Date().toISOString().split('T')[0]}
                         onChange={e => setForm(p => ({ ...p, date_echeance: e.target.value }))}
                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
@@ -690,7 +737,7 @@ export default function Factures() {
             <div className="px-6 py-5 flex items-center justify-between" style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #5C6BC0 100%)` }}>
               <div>
                 <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-0.5">Aperçu facture</p>
-                <h2 className="font-bold text-white text-lg">{selectedInvoice.num_facture || `#${selectedInvoice.id?.slice(0, 8)}`}</h2>
+                <h3 className="font-bold text-white text-lg">{selectedInvoice.num_facture || `#${selectedInvoice.id?.slice(0, 8)}`}</h3>
               </div>
               <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                 <X className="w-5 h-5 text-white" />
@@ -755,7 +802,7 @@ export default function Factures() {
             </div>
 
             <div className="px-5 py-4 border-t bg-gray-50/80 flex gap-3 justify-end">
-              <button onClick={() => window.print()} className="px-6 py-2 border border-gray-200 bg-white rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
+              <button onClick={() => generateFacturePDF(selectedInvoice, prestataire)} className="px-6 py-2 border border-gray-200 bg-white rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
                 <Printer className="w-4 h-4" /> Imprimer
               </button>
               <button
