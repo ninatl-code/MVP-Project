@@ -7,6 +7,7 @@ import { notifyReservationCancelled ,notifyPrestaReview} from '../../../lib/noti
 import Header from '../../../components/HeaderParti';
 import { STATUTS_RESERVATION } from '../../../constants/statuts';
 import * as reservationService from  '../../../lib/reservationService';
+import { generateFacturePDF } from '../../../lib/generateFacturePDF';
 
 import { 
   ArrowLeft, Calendar, MapPin, Clock, Camera, 
@@ -33,6 +34,7 @@ export default function ReservationDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [facture, setFacture] = useState(null);
+  const [prestataireInfo, setPrestataireInfo] = useState({});
 
 
   useEffect(() => {
@@ -88,14 +90,38 @@ export default function ReservationDetailPage() {
 
       setReservation({ ...reservationdata, prestataire, existingReview, devis });
 
-      // Fetch linked invoice
+    // Fetch linked invoice (la vraie facture, liée par reservation_id)
       try {
-        const { data: factureData, error } = await reservationService.getReservationById(id);
+        const { data: factureData, error } = await supabase
+          .from('factures')
+          .select('*')
+          .eq('reservation_id', id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
         if (!error) {
           setFacture(factureData || null);
         }
       } catch (_) {}
+
+    // Fetch infos complètes du prestataire pour générer le PDF
+    if (reservationdata.prestataire_id) {
+      try {
+        const [{ data: profil }, { data: profilPresta }] = await Promise.all([
+          supabase.from('profiles').select('adresse, telephone').eq('id', reservationdata.prestataire_id).single(),
+          supabase.from('profils_prestataire').select('nom_entreprise, logo, siret').eq('id', reservationdata.prestataire_id).single(),
+        ]);
+
+        setPrestataireInfo({
+          nom: profilPresta?.nom_entreprise || prestataire?.nom || '',
+          logo: profilPresta?.logo || null,
+          ice: profilPresta?.siret || '',
+          adresse: profil?.adresse || '',
+          tel: profil?.telephone || '',
+        });
+      } catch (_) {}
+    }
     } catch (error) {
       console.error('Error fetching reservation:', error);
     } finally {
@@ -429,10 +455,19 @@ export default function ReservationDetailPage() {
             {/* Facture section */}
             {facture && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  Facture
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    Facture
+                  </h2>
+                  <button
+                    onClick={() => generateFacturePDF(facture, prestataireInfo)}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-all"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Télécharger le PDF
+                  </button>
+                </div>
                 <div className="bg-green-50 rounded-xl border border-green-100 p-4 mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">N° Facture</p>
@@ -440,6 +475,7 @@ export default function ReservationDetailPage() {
                   </div>
                   <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">Émise</span>
                 </div>
+
                 {Array.isArray(facture.facture) && facture.facture.length > 0 && (
                   <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
                     <table className="w-full text-sm">

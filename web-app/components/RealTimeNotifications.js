@@ -15,45 +15,58 @@ export default function RealTimeNotifications({ userId, triggerNotification }) {
   // -----------------------------
   // 1. EXPIRATION LOGIC (OPTIMISÉE)
   // -----------------------------
-  const checkAndUpdateExpiredReservations = useCallback(async () => {
-    try {
-      const now = new Date()
+const checkAndUpdateExpiredReservations = useCallback(async () => {
+  try {
+    const now = new Date()
 
-      const { data: reservations, error } = await supabase
-            .from('reservations')
-            .select('*')
-      if (error || !reservations) return
+    const { data: reservations, error } = await supabase
+      .from('reservations')
+      .select('*')
+    if (error || !reservations) return
 
-      const expiredIds = []
+    const expiredReservations = []
 
-      for (const r of reservations) {
-        const start = new Date(r.date)
-        if (isNaN(start.getTime())) continue
+    for (const r of reservations) {
+      const start = new Date(r.date)
+      if (isNaN(start.getTime())) continue
 
-        const end = new Date(
-          start.getTime() + r.duree_heures * 3600 * 1000
-        )
+      const end = new Date(
+        start.getTime() + r.duree_heures * 3600 * 1000
+      )
 
-        if (now >= end) {
-          expiredIds.push(r.id)
-        }
+      if (now >= end) {
+        expiredReservations.push(r) // on garde l'objet complet, pas juste l'id
       }
-
-      if (expiredIds.length === 0) return
-
-      for (const id of expiredIds) {
-        const { data: updated, error: updateError } = await reservationService.completeReservation(id)
-      }
-      if (updateError || !updated) return
-
-      // Notifications avis
-      for (const r of updated) {
-        await notifyRequestReview(r.client_id, r.id, r.demande_id)
-      }
-    } catch (err) {
-      console.error('checkAndUpdateExpiredReservations error:', err)
     }
-  }, [])
+
+    if (expiredReservations.length === 0) return
+
+    const completedReservations = []
+
+    for (const r of expiredReservations) {
+      const { success, error: completeError } = await reservationService.completeReservation(
+        r.id,
+        r.client_id,
+        r.date,
+        r.prestataire_id
+      )
+
+      if (!success) {
+        console.error(`Échec completion réservation ${r.id}:`, completeError)
+        continue // on passe à la suivante, on n'arrête pas tout
+      }
+
+      completedReservations.push(r)
+    }
+
+    // Notifications avis, uniquement pour celles qui ont réussi
+    for (const r of completedReservations) {
+      await notifyRequestReview(r.client_id, r.id, r.demande_id)
+    }
+  } catch (err) {
+    console.error('checkAndUpdateExpiredReservations error:', err)
+  }
+}, [])
 
   // -----------------------------
   // 2. FETCH INITIAL NOTIFICATIONS
