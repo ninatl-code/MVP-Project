@@ -52,17 +52,6 @@ export default async function handler(req, res) {
           continue;
         }
 
-        // Create notification for client to leave review
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: reservation.client_id,
-            type: 'avis',
-            titre: 'Donnez votre avis',
-            contenu: 'Votre seance photo est terminee. Partagez votre experience !',
-            reservation_id: reservation.id,
-            lu: false,
-          });
 
         // Notify photographer
         await supabase

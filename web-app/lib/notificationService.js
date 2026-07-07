@@ -34,8 +34,8 @@ export const createNotification = async ({
   type,
   titre,
   contenu,
-  title,   // alias
-  message, // alias
+  title,
+  message,
   reservationId = null,
   devisId = null,
   demandeId = null,
@@ -45,6 +45,21 @@ export const createNotification = async ({
   signalementId = null,
 }) => {
   try {
+    // Anti-duplication : si un couple (user, type, reservation) existe déjà, on ne recrée pas
+    if (userId && type && reservationId) {
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('type', type)
+        .eq('reservation_id', reservationId)
+        .maybeSingle();
+
+      if (existing) {
+        return { data: existing, error: null }; // déjà envoyée, on ne duplique pas
+      }
+    }
+
     const { data: notification, error } = await supabase
       .from('notifications')
       .insert({
@@ -274,14 +289,14 @@ export const notifyReservationCancelled = async ({userId,role, reservationId, ca
 /**
  * Request review notification after completed reservation
  */
-export const notifyRequestReview = async (clientId, reservationId,demandeId) => {
+export const notifyRequestReview = async (clientId, reservationId, demandeId) => {
   return createNotification({
     userId: clientId,
     type: NOTIFICATION_TYPES.PRESTATION_TERMINEE,
     titre: 'Donnez votre avis',
     contenu: `Comment s'est passée votre dernière prestation ? Laissez un avis !`,
-    reservation_id : reservationId,
-    demandeId : demandeId,
+    reservationId: reservationId, // camelCase, cohérent avec createNotification
+    demandeId: demandeId,
   });
 };
 

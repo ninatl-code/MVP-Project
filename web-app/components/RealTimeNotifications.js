@@ -22,44 +22,37 @@ const checkAndUpdateExpiredReservations = useCallback(async () => {
     const { data: reservations, error } = await supabase
       .from('reservations')
       .select('*')
+      .eq('statut', 'confirmee') // <-- ne prendre que les réservations actives
     if (error || !reservations) return
 
     const expiredReservations = []
-
     for (const r of reservations) {
       const start = new Date(r.date)
       if (isNaN(start.getTime())) continue
-
-      const end = new Date(
-        start.getTime() + r.duree_heures * 3600 * 1000
-      )
-
-      if (now >= end) {
-        expiredReservations.push(r) // on garde l'objet complet, pas juste l'id
-      }
+      const end = new Date(start.getTime() + r.duree_heures * 3600 * 1000)
+      if (now >= end) expiredReservations.push(r)
     }
 
     if (expiredReservations.length === 0) return
 
     const completedReservations = []
-
     for (const r of expiredReservations) {
-      const { success, error: completeError } = await reservationService.completeReservation(
-        r.id,
-        r.client_id,
-        r.date,
-        r.prestataire_id
-      )
+      const { success, alreadyCompleted, error: completeError } =
+        await reservationService.completeReservation(
+          r.id, r.client_id, r.date, r.prestataire_id
+        )
 
       if (!success) {
         console.error(`Échec completion réservation ${r.id}:`, completeError)
-        continue // on passe à la suivante, on n'arrête pas tout
+        continue
       }
 
-      completedReservations.push(r)
+      // On ne notifie QUE si c'est cet appel qui vient de faire la transition
+      if (!alreadyCompleted) {
+        completedReservations.push(r)
+      }
     }
 
-    // Notifications avis, uniquement pour celles qui ont réussi
     for (const r of completedReservations) {
       await notifyRequestReview(r.client_id, r.id, r.demande_id)
     }

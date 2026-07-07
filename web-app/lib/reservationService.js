@@ -224,26 +224,39 @@ export const completeReservation = async (
   prestataireId
 ) => {
   try {
-    // 1. Mise à jour du statut
-    const result = await updateReservationStatus(
+    // 1. Vérifier le statut actuel AVANT toute mise à jour
+    const { data: current, error: fetchError } = await getReservationById(reservationId);
+
+    if (fetchError || !current) {
+      throw new Error('Réservation introuvable');
+    }
+
+    if (current.statut === 'completed') {
+      // Déjà traitée précédemment : pas de notification renvoyée
+      return { success: true, alreadyCompleted: true };
+    }
+
+    // 2. Mise à jour du statut
+    const { data, error: updateError } = await updateReservationStatus(
       reservationId,
       'completed',
       {}
     );
 
-    if (!result) {
+    if (updateError || !data) {
       throw new Error('Échec mise à jour réservation');
     }
 
-    // 2. Notification APRES succès
+    // 3. Notification uniquement si c'est une vraie transition
     await notificationService.notifyReservationConfirmed(
-      reservationId,
       clientId,
       datePrestation,
+      reservationId,
+      demandeId,
       prestataireId
     );
 
-    return { success: true };
+    return { success: true, alreadyCompleted: false };
   } catch (error) {
     console.error('completeReservation error:', error);
     return { success: false, error };
