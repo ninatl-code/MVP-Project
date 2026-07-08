@@ -658,7 +658,7 @@ export default function DevisDetailPage() {
           {/* Sidebar - Photographer info */}
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="font-semibold text-gray-900 mb-4">Le photographe</h2>
+              <h2 className="font-semibold text-gray-900 mb-4">Le prestataire</h2>
               
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 rounded-xl bg-indigo-100 flex items-center justify-center overflow-hidden">

@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import AdminLayout from '../../components/layout/AdminLayout';
 
-import { Users, Briefcase, FileText, Calendar, Star, AlertCircle, Clock, ArrowRight, Flag } from 'lucide-react';
+import { Users, Briefcase, FileText, Calendar, Star, AlertCircle, Clock, ArrowRight, Flag, LifeBuoy } from 'lucide-react';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -24,6 +24,7 @@ export default function AdminDashboard() {
         { count: totalReservations },
         { count: avisSignales },
         { count: signalementsOuverts },
+        { count: ticketsOuverts },
       ] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'particulier'),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'photographe'),
@@ -32,8 +33,9 @@ export default function AdminDashboard() {
         supabase.from('reservations').select('id', { count: 'exact', head: true }),
         supabase.from('reviews_presta').select('id', { count: 'exact', head: true }).eq('reported', true),
         supabase.from('signalements').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+        supabase.from('support_tickets').select('id', { count: 'exact', head: true }).eq('statut', 'ouvert'),
       ]);
-      setStats({ totalClients, totalPrestataires, prestatairesEnAttente, totalDemandes, totalReservations, avisSignales, signalementsOuverts });
+      setStats({ totalClients, totalPrestataires, prestatairesEnAttente, totalDemandes, totalReservations, avisSignales, signalementsOuverts, ticketsOuverts});
     };
 
     const fetchRecent = async () => {
@@ -70,6 +72,7 @@ export default function AdminDashboard() {
     { label: 'Réservations',            value: stats?.totalReservations ?? '—',       icon: Calendar,     color: 'text-purple-600', bg: 'bg-purple-50',  href: '/admin/reservations' },
     { label: 'Avis signalés',           value: stats?.avisSignales ?? '—',            icon: AlertCircle,  color: 'text-red-600',    bg: 'bg-red-50',     href: '/admin/avis', alert: stats?.avisSignales > 0 },
     { label: 'Signalements ouverts',    value: stats?.signalementsOuverts ?? '—',     icon: Flag,         color: 'text-orange-600', bg: 'bg-orange-50',  href: '/admin/signalements', alert: stats?.signalementsOuverts > 0 },
+    { label: 'Tickets ouverts',         value: stats?.ticketsOuverts ?? '—',          icon: LifeBuoy,     color: 'text-teal-600',   bg: 'bg-teal-50',    href: '/admin/tickets', alert: stats?.ticketsOuverts > 0 },
   ];
 
   return (

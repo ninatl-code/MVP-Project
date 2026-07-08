@@ -14,6 +14,7 @@ const NAV = [
   { label: 'Réservations',   href: '/admin/reservations',   icon: Calendar },
   { label: 'Avis',           href: '/admin/avis',           icon: Star },
   { label: 'Signalements',   href: '/admin/signalements',   icon: Flag },
+  { label: 'Tickets',        href: '/admin/tickets',        icon: Flag },
 ];
 
 export default function AdminLayout({ children, title }) {
