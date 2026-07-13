@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderPresta';
+import * as messageService from '../../../lib/messageService';
 
 import { notifyReservationConfirmed, notifyReservationCancelled } from '../../../lib/notificationService';
 import {
@@ -299,8 +300,30 @@ export default function PhotographeReservationDetailPage() {
     });
   };
 
+  const startConversation = async () => {
+    try {
+      const prestataireId = reservation?.prestataire_id;
 
-  const handleMessage = () => router.push(`/messages?client=${reservation?.client_id}&reservation=${id}`);
+      const { data: conversation, error } = await messageService.createConversation(
+        reservation?.client_id,
+        prestataireId,
+        reservation?.id,
+        reservation?.devis_id
+      );
+
+      if (error) {
+        console.error('Error starting conversation:', error);
+        return;
+      }
+
+      if (conversation?.id) {
+        router.push(`/messages?id=${conversation.id}`);
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+    }
+  };
+
 
   const formatDate = (d) => {
     try { return d ? format(parseISO(d), 'EEEE d MMMM yyyy', { locale: fr }) : 'Non définie'; }
@@ -530,7 +553,7 @@ export default function PhotographeReservationDetailPage() {
                 {client.email && <a href={`mailto:${client.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"><Mail className="w-4 h-4" />{client.email}</a>}
                 {client.telephone && <a href={`tel:${client.telephone}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600"><Phone className="w-4 h-4" />{client.telephone}</a>}
               </div>
-              <button onClick={handleMessage} className="w-full px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 flex items-center justify-center gap-2">
+              <button onClick={startConversation} className="w-full px-6 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 flex items-center justify-center gap-2">
                 <MessageSquare className="w-5 h-5" /> Envoyer un message
               </button>
             </div>
@@ -562,7 +585,7 @@ export default function PhotographeReservationDetailPage() {
                     <X className="w-5 h-5" /> Refuser
                   </button>
                 )}
-                <button onClick={handleMessage}
+                <button onClick={startConversation}
                   className="w-full border border-indigo-200 text-indigo-600 py-2.5 rounded-xl font-medium hover:bg-indigo-50 flex items-center justify-center gap-2">
                   <MessageSquare className="w-5 h-5" /> Demander des infos
                 </button>

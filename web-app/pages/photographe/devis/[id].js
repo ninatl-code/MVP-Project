@@ -134,9 +134,23 @@ export default function PhotographeDevisDetailPage() {
 
   const startConversation = async () => {
     try {
-      // Check if conversation exists
-      const {data : newConv, error} = await messageService.createConversation(devis.client_id,user?.id || profileId || photographeProfile?.id,null, devis.demande_id)
-      
+      const prestataireId = user?.id || profileId || photographeProfile?.id;
+
+      const { data: conversation, error } = await messageService.createConversation(
+        devis.client_id,
+        prestataireId,
+        null,
+        devis.demande_id
+      );
+
+      if (error) {
+        console.error('Error starting conversation:', error);
+        return;
+      }
+
+      if (conversation?.id) {
+        router.push(`/messages?id=${conversation.id}`);
+      }
     } catch (error) {
       console.error('Error starting conversation:', error);
     }

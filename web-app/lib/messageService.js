@@ -3,15 +3,21 @@ import { supabase } from './supabaseClient';
 /**
  * Create a new conversation between client and service provider
  */
-export const createConversation = async (clientId, photographeId, reservationId = null,demandeId=null) => {
+export const createConversation = async (clientId, photographeId, reservationId = null, demandeId = null) => {
   try {
-    // Check if conversation already exists
-    const { data: existing } = await supabase
+    // Check if conversation already exists (prend la première si plusieurs doublons existent)
+    const { data: existing, error: fetchError } = await supabase
       .from('conversations')
       .select('id')
       .eq('client_id', clientId)
       .eq('prestataire_id', photographeId)
-      .single();
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error checking existing conversation:', fetchError);
+    }
 
     if (existing) {
       return { data: existing, error: null };
