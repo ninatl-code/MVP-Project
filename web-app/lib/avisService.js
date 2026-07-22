@@ -41,13 +41,20 @@ export const createReview = async ({
 
 /**
  * Get reviews for a service provider
+ * -> ajout: prenom du client + infos de la réservation (titre annonce + date) via reservation_id
  */
 export const getPhotographerReviews = async (photographeId, limit = 20) => {
   try {
     const { data, error } = await supabase
       .from('reviews_presta')
       .select(`
-        *, client:profiles!reviews_presta_client_id_fkey(id,nom, avatar_url)
+        *,
+        client:profiles!reviews_presta_client_id_fkey(id, prenom, nom, avatar_url),
+        reservation:reservations!reviews_presta_reservation_id_fkey(
+          id,
+          date,
+          demandes_client(id, titre)
+        )
       `)
       .eq('prestataire_id', photographeId)
       .order('created_at', { ascending: false })
@@ -83,6 +90,7 @@ export const getReservationReviews = async (reservationId,prestataireId,single=f
 };
 /**
  * Get reviews given by a client
+ * -> ajout: prenom du prestataire + infos de la réservation (titre annonce + date) via reservation_id
  */
 export const getClientReviews = async (clientId) => {
   try {
@@ -90,7 +98,12 @@ export const getClientReviews = async (clientId) => {
       .from('reviews_presta')
       .select(`
         *,
-        prestataire:profiles!reviews_presta_prestataire_id_fkey(id, nom, avatar_url)
+        prestataire:profiles!reviews_presta_prestataire_id_fkey(id, prenom, nom, avatar_url),
+        reservation:reservations!reviews_presta_reservation_id_fkey(
+          id,
+          date_reservation,
+          annonces(id, titre)
+        )
       `)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false });

@@ -1,11 +1,11 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../lib/supabaseClient';
+import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/HeaderPresta';
 import * as avisService from '../../lib/avisService';
 
-import { 
+import {
   Star, MessageSquare, Clock, Calendar, AlertCircle,
   CheckCircle, ChevronRight, Send, X, Loader2, TrendingUp,
   ThumbsUp, ThumbsDown, Filter, Search, ArrowLeft
@@ -65,9 +65,9 @@ export default function AvisDashboardPage() {
   };
 
   const calculateStats = (reviewsData) => {
-    const total = reviewsData.reduce((sum, r) => sum + (r.rating || r.overall_rating || 0), 0);
+    const total = reviewsData.reduce((sum, r) => sum + (r.rating || 0), 0);
     const average = reviewsData.length > 0 ? total / reviewsData.length : 0;
-    const pending = reviewsData.filter(r => !r.reponse_prestataire && !r.provider_response).length;
+    const pending = reviewsData.filter(r => !r.reponse_prestataire).length;
 
     const thisMonthStart = new Date();
     thisMonthStart.setDate(1);
@@ -117,17 +117,19 @@ export default function AvisDashboardPage() {
 
     // Filter by status
     if (filter === 'pending') {
-      filtered = filtered.filter(r => !r.reponse_prestataire && !r.provider_response);
+      filtered = filtered.filter(r => !r.reponse_prestataire);
     } else if (filter === 'responded') {
-      filtered = filtered.filter(r => r.reponse_prestataire || r.provider_response);
+      filtered = filtered.filter(r => r.reponse_prestataire);
     }
 
     // Filter by search
     if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter(r =>
-        r.commentaire?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.comment?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.reviewer?.prenom?.toLowerCase().includes(searchQuery.toLowerCase())
+        r.comment?.toLowerCase().includes(q) ||
+        r.client?.prenom?.toLowerCase().includes(q) ||
+        r.client?.nom?.toLowerCase().includes(q) ||
+        r.reservation?.demandes_client?.titre?.toLowerCase().includes(q)
       );
     }
 
@@ -147,6 +149,15 @@ export default function AvisDashboardPage() {
     );
   };
 
+  const formatDate = (date) => {
+    if (!date) return null;
+    return new Date(date).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8F9FB]">
@@ -163,7 +174,7 @@ export default function AvisDashboardPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
-      
+
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -336,9 +347,12 @@ export default function AvisDashboardPage() {
           <div className="space-y-4">
             {filteredReviews.map(review => {
               const rating = review.rating || 0;
-              const comment = review.commentaire || review.comment || '';
-              const response = review.reponse_prestataire || review.provider_response;
-              const hasResponse = !!response;
+              const comment = review.comment || '';
+              const hasResponse = !!review.reponse_prestataire;
+              const client = review.client;
+              const reservationTitre = review.reservation?.demandes_client?.titre || 'Prestation';
+              const reservationDate = formatDate(review.reservation?.date);
+              const avisDate = formatDate(review.created_at);
 
               return (
                 <div key={review.id} className="bg-white rounded-xl border border-gray-100 p-6 hover:shadow-md transition-all">
@@ -346,32 +360,40 @@ export default function AvisDashboardPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                        {review.reviewer?.photos ? (
-                          <img src={review.reviewer.photos} alt="" className="w-full h-full object-cover" />
+                        {client?.avatar_url ? (
+                          <img src={client.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-lg font-bold" style={{ color: COLORS.accent }}>
-                            {review.reviewer?.prenom?.[0] || 'C'}
+                            {client?.prenom?.[0] || 'C'}
                           </span>
                         )}
                       </div>
                       <div>
                         <p className="font-semibold" style={{ color: COLORS.text }}>
-                          {review.reviewer?.prenom || 'Client'} {review.reviewer?.nom?.[0] || ''}.
+                          {client?.prenom || 'Client'} {client?.nom?.[0] ? `${client.nom[0]}.` : ''}
                         </p>
-                        <p className="text-sm text-gray-500">
-                          {review.reservation?.annonces?.titre || 'Prestation'}
-                        </p>
+                        {review.reservation_id ? (
+                          <Link
+                            href={`/photographe/reservations/${review.reservation_id}`}
+                            className="text-sm text-gray-500 hover:text-[#130183] hover:underline"
+                          >
+                            {reservationTitre}
+                          </Link>
+                        ) : (
+                          <p className="text-sm text-gray-500">{reservationTitre}</p>
+                        )}
+                        {reservationDate && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Prestation du {reservationDate}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
                       {renderStars(rating)}
                       <span className="text-xs text-gray-400">
-                        {new Date(review.created_at).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
+                        Avis publié le {avisDate}
                       </span>
                     </div>
                   </div>
@@ -383,7 +405,12 @@ export default function AvisDashboardPage() {
                   {hasResponse && (
                     <div className="bg-gray-50 rounded-lg p-4 mb-4 border-l-4" style={{ borderLeftColor: COLORS.accent }}>
                       <p className="text-sm font-medium mb-1" style={{ color: COLORS.accent }}>Votre réponse</p>
-                      <p className="text-sm text-gray-600">{response}</p>
+                      <p className="text-sm text-gray-600">{review.reponse_prestataire}</p>
+                      {review.date_reponse && (
+                        <p className="text-xs text-gray-400 mt-2">
+                          Répondu le {formatDate(review.date_reponse)}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -438,18 +465,18 @@ export default function AvisDashboardPage() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                   <span className="text-sm font-bold" style={{ color: COLORS.accent }}>
-                    {selectedReview.reviewer?.prenom?.[0] || 'C'}
+                    {selectedReview.client?.prenom?.[0] || 'C'}
                   </span>
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-sm">
-                    {selectedReview.reviewer?.prenom || 'Client'}
+                    {selectedReview.client?.prenom || 'Client'}
                   </p>
                   {renderStars(selectedReview.rating || 0)}
                 </div>
               </div>
               <p className="text-sm text-gray-600">
-                "{selectedReview.commentaire || selectedReview.comment}"
+                "{selectedReview.comment}"
               </p>
             </div>
 

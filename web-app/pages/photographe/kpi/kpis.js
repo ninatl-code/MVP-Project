@@ -128,7 +128,7 @@ export default function KPIs() {
   const [loading, setLoading] = useState(true);
   const [rawDevis, setRawDevis] = useState([]);
   const [rawReservations, setRawReservations] = useState([]);
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState('all');
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 

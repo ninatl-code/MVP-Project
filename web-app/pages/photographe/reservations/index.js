@@ -7,7 +7,7 @@ import Header from '../../../components/HeaderPresta';
 import ReservationCard from '../../../components/ReservationCard';
 import { notifyReservationConfirmed, notifyReservationCancelled } from '../../../lib/notificationService';
 import {
-  ArrowLeft, Clock, X, Camera, CheckCircle, AlertCircle, Plus , XCircle, Search // ✅ ajoute Plus
+  ArrowLeft, Clock, X, Camera, CheckCircle, AlertCircle, Plus , XCircle, Search, Inbox // ✅ ajoute Plus
 } from 'lucide-react';
 
 /* =========================

@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
@@ -29,6 +30,13 @@ function StarRating({ note }) {
   );
 }
 
+const formatDate = (date, options) => {
+  if (!date) return null;
+  return new Date(date).toLocaleDateString('fr-FR', options || {
+    day: 'numeric', month: 'long', year: 'numeric'
+  });
+};
+
 export default function AvisListPage() {
   const router = useRouter();
   const { user, profileId, loading: authLoading } = useAuth();
@@ -45,55 +53,27 @@ export default function AvisListPage() {
   const fetchAvis = async () => {
     setLoading(true);
     try {
-      // 1. Avis du client
-      const { data: avisData, error } = await avisService.getClientReviews(profileId);
+      const { data, error } = await avisService.getClientReviews(profileId);
 
       if (error) throw error;
 
-      if (!avisData || avisData.length === 0) {
-        setAvis([]);
-        return;
-      }
-
-      // 2. IDs prestataires uniques
-      const prestataireIds = [
-        ...new Set(avisData.map(a => a.prestataire_id))
-      ];
-
-      // 3. Récupération des profils prestataires
-      const { data: prestataires, error: err2 } = await supabase
-        .from('profiles')
-        .select('id, nom, avatar_url')
-        .in('id', prestataireIds);
-
-      if (err2) throw err2;
-
-      // 4. Mapping prestataires
-      const prestataireMap = {};
-      prestataires.forEach(p => {
-        prestataireMap[p.id] = p;
-      });
-
-      // 5. Fusion des données
-      const enrichedAvis = avisData.map(a => ({
-        ...a,
-        prestataire: prestataireMap[a.prestataire_id] || null,
-      }));
-
-      // 6. Set state
-      setAvis(enrichedAvis);
-
+      setAvis(data || []);
     } catch (error) {
       console.error('Erreur chargement avis:', error);
     } finally {
       setLoading(false);
     }
   };
-  
-  const filtered = avis.filter(a =>
-    a.prestataire?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.comment?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
+  const filtered = avis.filter(a => {
+    const q = searchQuery.toLowerCase();
+    return (
+      a.prestataire?.prenom?.toLowerCase().includes(q) ||
+      a.prestataire?.nom?.toLowerCase().includes(q) ||
+      a.comment?.toLowerCase().includes(q) ||
+      a.reservation?.annonces?.titre?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
@@ -146,35 +126,73 @@ export default function AvisListPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filtered.map(a => (
-              <div
-                key={a.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600 flex-shrink-0 text-lg">
-                    {a.prestataire?.nom?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="font-semibold text-gray-900">{a.prestataire?.nom || 'Prestataire'}</p>
-                      <StarRating note={a.rating || 0} />
+            {filtered.map(a => {
+              const prestataire = a.prestataire;
+              const reservationTitre = a.reservation?.annonces?.titre || 'Prestation';
+              const reservationDate = formatDate(a.reservation?.date_reservation);
+              const avisDate = formatDate(a.created_at);
+
+              return (
+                <div
+                  key={a.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600 flex-shrink-0 text-lg overflow-hidden">
+                      {prestataire?.avatar_url ? (
+                        <img src={prestataire.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        prestataire?.prenom?.charAt(0)?.toUpperCase() || prestataire?.nom?.charAt(0)?.toUpperCase() || '?'
+                      )}
                     </div>
-                    {a.comment && (
-                      <p className="text-gray-600 text-sm mt-1">{a.comment}</p>
-                    )}
-                    {a.created_at && (
-                      <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(a.created_at).toLocaleDateString('fr-FR', {
-                          day: 'numeric', month: 'long', year: 'numeric'
-                        })}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="font-semibold text-gray-900">
+                          {prestataire?.prenom || ''} {prestataire?.nom || 'Prestataire'}
+                        </p>
+                        <StarRating note={a.rating || 0} />
                       </div>
-                    )}
+
+                      {a.reservation_id ? (
+                        <Link
+                          href={`/client/reservations/${a.reservation_id}`}
+                          className="text-sm text-gray-500 hover:text-[#130183] hover:underline"
+                        >
+                          {reservationTitre}
+                        </Link>
+                      ) : (
+                        <p className="text-sm text-gray-500">{reservationTitre}</p>
+                      )}
+                      {reservationDate && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Prestation du {reservationDate}
+                        </p>
+                      )}
+
+                      {a.comment && (
+                        <p className="text-gray-600 text-sm mt-2">{a.comment}</p>
+                      )}
+
+                      {a.reponse_prestataire && (
+                        <div className="bg-gray-50 rounded-lg p-3 mt-3 border-l-4" style={{ borderLeftColor: COLORS.accent }}>
+                          <p className="text-xs font-medium mb-1" style={{ color: COLORS.accent }}>
+                            Réponse du prestataire
+                          </p>
+                          <p className="text-sm text-gray-600">{a.reponse_prestataire}</p>
+                        </div>
+                      )}
+
+                      {avisDate && (
+                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                          <Calendar className="w-3 h-3" />
+                          Avis publié le {avisDate}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
