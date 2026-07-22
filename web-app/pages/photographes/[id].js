@@ -10,7 +10,7 @@ import {
   User, MapPin, Star, Phone, Mail, Instagram, Globe,
   Facebook, Linkedin, Briefcase, ArrowLeft,
   CheckCircle, MessageSquare, Shield, Calendar,
-  Clock, Award, Camera, TrendingUp, Image, ChevronRight,Heart
+  Clock, Award, TrendingUp, Image, ChevronRight,Heart
 } from 'lucide-react';
 
 export default function PhotographePublicPage() {
@@ -456,9 +456,6 @@ export default function PhotographePublicPage() {
                   <div className="space-y-2">
                     {prestations.map(p => (
                       <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                        <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                          <Camera className="w-4 h-4 text-indigo-600" />
-                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-gray-800 truncate">{p.titre || p.categorie || 'Prestation'}</p>
                           <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
