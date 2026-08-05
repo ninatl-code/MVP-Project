@@ -84,7 +84,7 @@ export default function AvisPrestataire() {
 
       // Récupérer les avis
       const { data: avisData, error: avisError } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select(`
           id,
           note,

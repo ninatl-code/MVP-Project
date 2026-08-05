@@ -53,7 +53,7 @@ export default function TarifsScreen() {
       setLoading(true);
 
       const { data: profil, error: profilError } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select('budget_min_prestation')
         .eq('user_id', user?.id)
         .single();
@@ -93,7 +93,7 @@ export default function TarifsScreen() {
 
     try {
       const { error } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .update({ budget_min_prestation: budget })
         .eq('user_id', user?.id);
 

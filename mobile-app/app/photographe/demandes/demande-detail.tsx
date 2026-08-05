@@ -38,9 +38,9 @@ export default function PhotographeDemandeDetailScreen() {
       setDemande(demandeData);
 
       // Charger le profil photographe
-      // Note: profils_photographe.id est lié à profiles.id via la clé primaire
+      // Note: profils_prestataire.id est lié à profiles.id via la clé primaire
       const { data: photoData, error: photoError } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select('*')
         .eq('id', user!.id)
         .single();

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -20,15 +20,6 @@ import { supabase } from '../../../lib/supabaseClient';
 import { COLORS } from '../../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-
-const CATEGORY_ICONS: Record<string, string> = {
-  'services-domicile': '🔧',
-  'beaute-bien-etre': '💆',
-  'evenementiel': '🎉',
-  'transport': '🚗',
-  'digital': '💻',
-  'education': '📚',
-};
 
 const STYLES = [
   { id: 'Lumineux / Naturel', label: 'Lumineux / Naturel' },
@@ -85,7 +76,14 @@ export default function NouvelleDemandeClient() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<{ id: string; label: string; icon: string }[]>([]);
+  const categories = [
+    { id: 'services-domicile', label: 'Services à domicile', icon: '🔧' },
+    { id: 'beaute-bien-etre', label: 'Beauté & Bien-être', icon: '💆' },
+    { id: 'evenementiel', label: 'Événementiel', icon: '🎉' },
+    { id: 'transport', label: 'Transport', icon: '🚗' },
+    { id: 'digital', label: 'Digital', icon: '💻' },
+    { id: 'education', label: 'Éducation', icon: '📚' },
+  ];
   const [request, setRequest] = useState<BookingRequest>({
     titre: '',
     description: '',
@@ -113,23 +111,6 @@ export default function NouvelleDemandeClient() {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-
-  useEffect(() => {
-    supabase
-      .from('prestations')
-      .select('id, nom, slug, description')
-      .eq('actif', true)
-      .order('ordre', { ascending: true })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setCategories(data.map(c => ({
-            id: c.slug,
-            label: c.nom,
-            icon: CATEGORY_ICONS[c.slug] || '📋',
-          })));
-        }
-      });
-  }, []);
 
   const validateStep = () => {
     if (step === 1) {

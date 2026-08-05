@@ -460,7 +460,7 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
       console.log('📝 Soumission avis - Annonce ID:', annonceId, 'Note:', rating)
 
       const { error: avisError } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .insert({
           annonce_id: annonceId,
           user_id: userId,

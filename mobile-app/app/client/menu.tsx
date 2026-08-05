@@ -61,7 +61,7 @@ export default function ClientMenu() {
 
       // Compter les avis donnés
       const { count: avisCount } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('*', { count: 'exact', head: true })
         .eq('auteur_id', profileId);
 

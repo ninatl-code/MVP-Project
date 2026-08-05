@@ -97,7 +97,7 @@ export default function ClientProfil() {
 
       // Get avis for stats
       const { data: avis } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('id')
         .eq('reviewer_id', profileId);
 
@@ -132,7 +132,7 @@ export default function ClientProfil() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'MAD'
     }).format(amount || 0);
   };
 

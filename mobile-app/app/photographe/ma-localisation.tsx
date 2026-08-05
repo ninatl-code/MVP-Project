@@ -62,9 +62,9 @@ export default function MaLocalisationPage() {
 
       if (error) throw error;
 
-      // Charger rayon_deplacement_km depuis profils_photographe
+      // Charger rayon_deplacement_km depuis profils_prestataire
       const { data: photoData } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select('rayon_deplacement_km')
         .eq('id', user.id)
         .single();
@@ -185,9 +185,9 @@ export default function MaLocalisationPage() {
 
       if (profileError) throw profileError;
 
-      // Sauvegarder rayon_deplacement_km dans profils_photographe
+      // Sauvegarder rayon_deplacement_km dans profils_prestataire
       const { error: photoError } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .update({
           rayon_deplacement_km: rayonIntervention,
         })

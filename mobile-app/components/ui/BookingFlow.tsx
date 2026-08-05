@@ -171,7 +171,7 @@ export default function BookingFlow({
         <ScrollView style={styles.container}>
           <PaymentSheet
             amount={acompteAmount}
-            currency="EUR"
+            currency="MAD"
             onPaymentSuccess={handlePaymentSuccess}
             onPaymentError={handlePaymentError}
             onCancel={() => setShowPayment(false)}

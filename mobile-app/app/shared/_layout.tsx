@@ -9,6 +9,8 @@ export default function SharedLayout() {
       <Stack.Screen name="paiement" />
       <Stack.Screen name="payments" />
       <Stack.Screen name="mes-remboursements" />
+      <Stack.Screen name="support" />
+      <Stack.Screen name="abonnements" />
     </Stack>
   );
 }

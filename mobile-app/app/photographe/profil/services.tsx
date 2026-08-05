@@ -101,7 +101,7 @@ export default function ServicesScreen() {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select(
           'specialisations, materiel, logiciels_retouche, styles_photo, langues_parlees, rayon_deplacement_km, disponibilite_generale, accepte_urgences, delai_livraison_jours'
         )
@@ -165,7 +165,7 @@ export default function ServicesScreen() {
       setSaving(true);
 
       const { error } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .update({
           specialisations: services.specialisations,
           materiel: services.materiel,

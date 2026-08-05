@@ -20,6 +20,7 @@ export default function ClientLayout() {
         <Stack.Screen name="Avis" options={{ title: "Mes avis" }} />
         <Stack.Screen name="Achievements" options={{ title: "Achievements" }} />
         <Stack.Screen name="profil" options={{ title: "Mon profil" }} />
+        <Stack.Screen name="photographes" options={{ title: "Prestataire" }} />
       </Stack>
       <FooterParti />
     </View>

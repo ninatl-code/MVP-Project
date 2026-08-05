@@ -140,7 +140,7 @@ export async function findMatchingPhotographes(
   try {
     // Récupérer tous les photographes actifs et disponibles
     const { data: photographes, error } = await supabase
-      .from('profils_photographe')
+      .from('profils_prestataire')
       .select('*')
       .eq('disponibilite_generale', true)
       .in('statut_verification', ['verifie', 'en_attente', 'non_verifie']);
@@ -255,7 +255,7 @@ export async function getRecommendedDemandesForPhotographe(
   try {
     // Récupérer le profil du photographe
     const { data: photographe, error: photographeError } = await supabase
-      .from('profils_photographe')
+      .from('profils_prestataire')
       .select('*')
       .eq('user_id', photographeId)
       .single();
@@ -313,7 +313,7 @@ export async function checkPhotographeAvailability(
   try {
     // Récupérer le profil photographe
     const { data: profil, error: profilError } = await supabase
-      .from('profils_photographe')
+      .from('profils_prestataire')
       .select('disponibilite_generale, blocked_slots')
       .eq('user_id', photographeId)
       .single();

@@ -35,7 +35,7 @@ export default function CreateDevisPage() {
   });
 
   // Génère les valeurs pré-remplies selon la demande + profil prestataire
-  const buildPrefill = (data, tarif) => {
+  const buildPrefill = (data, tarif,acomptePercentDefault = 0, modalitesPaiement = '') => {
     const duree = parseFloat(data.duree_estimee_heures) || 3;
     const cat = (data.categorie || '').toLowerCase();
     const lieu = data.lieu || data.ville || '';
@@ -48,7 +48,7 @@ export default function CreateDevisPage() {
       ? `Devis – ${data.titre}`
       : 'Devis pour votre projet';
 
-    // Description
+          // Description
     const descParts = [
       `Bonjour,`,
       `Suite à votre demande${data.titre ? ` « ${data.titre} »` : ''}, je vous propose ci-dessous mon offre personnalisée.`,
@@ -57,8 +57,26 @@ export default function CreateDevisPage() {
     if (lieu) descParts.push(`Lieu : ${lieu}`);
     if (dateStr) descParts.push(`Date souhaitée : ${dateStr}`);
     descParts.push(`\nN’hésitez pas à me contacter pour toute question.`);
-    const description = descParts.join('\n');
 
+     let montant = '';
+    if (data.budget_max) {
+      montant = String(data.budget_max);
+    } else if (tarif) {
+      montant = String(Math.round(tarif * duree));
+    }
+
+    if (montant && acomptePercentDefault) {
+      const acompteMontant = Math.round((parseFloat(montant) || 0) * acomptePercentDefault / 100);
+      descParts.push(
+        `\nConditions de paiement : un acompte de ${acomptePercentDefault}% (${acompteMontant} DH) est demandé à la confirmation, le solde étant réglé selon les modalités ci-dessous.`
+      );
+    }
+    if (modalitesPaiement) {
+      descParts.push(`Modalités de paiement : ${modalitesPaiement}`);
+    }
+    descParts.push(`\nN'hésitez pas à me contacter pour toute question.`);
+
+    const description = descParts.join('\n');
     // Prestations incluses selon catégorie
     const specialite = Array.isArray(data.type_prestation)
       ? data.type_prestation[0] || ''
@@ -66,12 +84,7 @@ export default function CreateDevisPage() {
     const prestations_incluses = getDevisTemplate(specialite, data.categorie, duree, data);
 
     // Montant : budget_max du client, ou tarif horaire × durée
-    let montant = '';
-    if (data.budget_max) {
-      montant = String(data.budget_max);
-    } else if (tarif) {
-      montant = String(Math.round(tarif * duree));
-    }
+   
 
     // Détail des lignes de prix
     const details = [];
@@ -83,7 +96,8 @@ export default function CreateDevisPage() {
       details.push({ label: '', montant: '' });
     }
 
-    return { titre, description, montant, prestations_incluses, details, validite_jours: 30 };
+    return { titre, description, montant, prestations_incluses, details,   validite_jours: 30,
+  acompte_percent: acomptePercentDefault };
   };
 
   useEffect(() => {
@@ -105,6 +119,17 @@ export default function CreateDevisPage() {
 
       // Fetch prestataire tarif_horaire_min pour suggestion de prix
       let tarif = null;
+      let acomptePercentDefault = 0;
+      let modalitesPaiement = '';
+      if (user?.id) {
+        const { data: prest, error: prestError } = await photographerService.getPhotographerTarifs(user.id);
+        if (!prestError && prest) {
+          tarif = prest.tarif_horaire_min || null;
+          acomptePercentDefault = prest.acompte_percent ?? 0;
+          modalitesPaiement = prest.modalites_paiement || '';
+        }
+      }
+      setFormData(buildPrefill(data, tarif, acomptePercentDefault, modalitesPaiement));      
       if (user?.id) {
         const { data: prest } = await photographerService.getPhotographerPrice(user.id);
         tarif = prest?.tarif_horaire_min || null;

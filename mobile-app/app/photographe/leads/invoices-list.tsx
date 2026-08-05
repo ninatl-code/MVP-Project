@@ -205,7 +205,7 @@ export default function InvoicesList() {
                 </View>
                 <View style={styles.invoiceAmount}>
                   <Text style={styles.amountText}>
-                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(invoice.montant_total)}
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD' }).format(invoice.montant_total)}
                   </Text>
                 </View>
               </View>

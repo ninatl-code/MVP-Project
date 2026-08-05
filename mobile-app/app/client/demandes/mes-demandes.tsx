@@ -88,11 +88,15 @@ export default function MesDemandesScreen() {
           text: 'Oui',
           style: 'destructive',
           onPress: async () => {
+            // Optimistic update — UI instantanée
+            setDemandes(prev =>
+              prev.map(d => d.id === demandeId ? { ...d, statut: 'annulee' } : d)
+            );
             try {
               await annulerDemande(demandeId);
-              Alert.alert('Succès', 'Demande annulée');
-              loadDemandes();
             } catch (error: any) {
+              // Rollback si erreur
+              loadDemandes();
               Alert.alert('Erreur', error.message || 'Impossible d\'annuler la demande');
             }
           },

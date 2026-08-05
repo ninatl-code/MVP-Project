@@ -10,7 +10,7 @@
   },
   {
     "table_name": "blocked_slots",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -73,7 +73,7 @@
   },
   {
     "table_name": "cancellation_policies",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -190,7 +190,7 @@
   },
   {
     "table_name": "conversations",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -253,7 +253,7 @@
   },
   {
     "table_name": "conversations",
-    "column_name": "unread_count_photographe",
+    "column_name": "unread_count_prestataire",
     "data_type": "integer",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -271,7 +271,7 @@
   },
   {
     "table_name": "conversations",
-    "column_name": "is_archived_by_photographe",
+    "column_name": "is_archived_by_prestataire",
     "data_type": "boolean",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -388,15 +388,6 @@
   },
   {
     "table_name": "demandes_client",
-    "column_name": "code_postal",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 12
-  },
-  {
-    "table_name": "demandes_client",
     "column_name": "lieu_exact_requis",
     "data_type": "boolean",
     "character_maximum_length": null,
@@ -442,105 +433,6 @@
   },
   {
     "table_name": "demandes_client",
-    "column_name": "style_souhaite",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 23
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "nb_photos_souhaitees",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 24
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "retouche_souhaitee",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "true",
-    "ordinal_position": 26
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "niveau_retouche",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 27
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "delai_livraison_jours",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "14",
-    "ordinal_position": 29
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "plateforme_livraison_preferee",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 31
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "livraison_physique_adresse",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 32
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "tirages_souhaites",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 33
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "nb_tirages",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 34
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "album_souhaite",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 39
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "format_fichiers_souhaites",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 43
-  },
-  {
-    "table_name": "demandes_client",
     "column_name": "budget_max",
     "data_type": "numeric",
     "character_maximum_length": null,
@@ -554,7 +446,7 @@
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
-    "column_default": "'EUR'::text",
+    "column_default": "'MAD'::text",
     "ordinal_position": 48
   },
   {
@@ -577,30 +469,12 @@
   },
   {
     "table_name": "demandes_client",
-    "column_name": "preferences_photographe",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 51
-  },
-  {
-    "table_name": "demandes_client",
     "column_name": "langues_souhaitees",
     "data_type": "ARRAY",
     "character_maximum_length": null,
     "is_nullable": "YES",
     "column_default": null,
     "ordinal_position": 52
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "photos_inspiration",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 53
   },
   {
     "table_name": "demandes_client",
@@ -721,39 +595,12 @@
   },
   {
     "table_name": "demandes_client",
-    "column_name": "styles_recherches",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 73
-  },
-  {
-    "table_name": "demandes_client",
     "column_name": "atmosphere",
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
     "column_default": "'natural'::text",
     "ordinal_position": 74
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "comfort_level",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'neutral'::text",
-    "ordinal_position": 75
-  },
-  {
-    "table_name": "demandes_client",
-    "column_name": "moodboard_notes",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 76
   },
   {
     "table_name": "devis",
@@ -775,7 +622,7 @@
   },
   {
     "table_name": "devis",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -878,7 +725,7 @@
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
-    "column_default": "'EUR'::text",
+    "column_default": "'MAD'::text",
     "ordinal_position": 14
   },
   {
@@ -889,231 +736,6 @@
     "is_nullable": "NO",
     "column_default": null,
     "ordinal_position": 15
-  },
-  {
-    "table_name": "devis",
-    "column_name": "nb_photos_livrees",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "NO",
-    "column_default": null,
-    "ordinal_position": 16
-  },
-  {
-    "table_name": "devis",
-    "column_name": "nb_videos_livrees",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "0",
-    "ordinal_position": 17
-  },
-  {
-    "table_name": "devis",
-    "column_name": "delai_livraison_jours",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "NO",
-    "column_default": null,
-    "ordinal_position": 18
-  },
-  {
-    "table_name": "devis",
-    "column_name": "retouches_incluses",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 19
-  },
-  {
-    "table_name": "devis",
-    "column_name": "niveau_retouche",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 20
-  },
-  {
-    "table_name": "devis",
-    "column_name": "modes_livraison_inclus",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 21
-  },
-  {
-    "table_name": "devis",
-    "column_name": "plateforme_livraison",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'galerie_privee'::text",
-    "ordinal_position": 22
-  },
-  {
-    "table_name": "devis",
-    "column_name": "duree_acces_galerie_jours",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "90",
-    "ordinal_position": 23
-  },
-  {
-    "table_name": "devis",
-    "column_name": "livraison_usb_incluse",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 24
-  },
-  {
-    "table_name": "devis",
-    "column_name": "type_usb",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 25
-  },
-  {
-    "table_name": "devis",
-    "column_name": "frais_livraison_physique",
-    "data_type": "numeric",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "0",
-    "ordinal_position": 26
-  },
-  {
-    "table_name": "devis",
-    "column_name": "formats_fichiers_livres",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 27
-  },
-  {
-    "table_name": "devis",
-    "column_name": "resolution_fichiers",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'haute'::text",
-    "ordinal_position": 28
-  },
-  {
-    "table_name": "devis",
-    "column_name": "tirages_inclus",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 29
-  },
-  {
-    "table_name": "devis",
-    "column_name": "nb_tirages_inclus",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "0",
-    "ordinal_position": 30
-  },
-  {
-    "table_name": "devis",
-    "column_name": "format_tirages_inclus",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 31
-  },
-  {
-    "table_name": "devis",
-    "column_name": "type_papier",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 32
-  },
-  {
-    "table_name": "devis",
-    "column_name": "encadrement_inclus",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 33
-  },
-  {
-    "table_name": "devis",
-    "column_name": "frais_tirages",
-    "data_type": "numeric",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "0",
-    "ordinal_position": 34
-  },
-  {
-    "table_name": "devis",
-    "column_name": "album_inclus",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 35
-  },
-  {
-    "table_name": "devis",
-    "column_name": "type_album",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 36
-  },
-  {
-    "table_name": "devis",
-    "column_name": "nb_pages_album",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 37
-  },
-  {
-    "table_name": "devis",
-    "column_name": "format_album",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 38
-  },
-  {
-    "table_name": "devis",
-    "column_name": "frais_album",
-    "data_type": "numeric",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "0",
-    "ordinal_position": 39
-  },
-  {
-    "table_name": "devis",
-    "column_name": "tarif_tirage_supplementaire",
-    "data_type": "jsonb",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::jsonb",
-    "ordinal_position": 40
   },
   {
     "table_name": "devis",
@@ -1213,15 +835,6 @@
     "is_nullable": "YES",
     "column_default": null,
     "ordinal_position": 51
-  },
-  {
-    "table_name": "devis",
-    "column_name": "portfolio_joint",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 52
   },
   {
     "table_name": "devis",
@@ -1351,7 +964,7 @@
   },
   {
     "table_name": "factures",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -1432,7 +1045,7 @@
   },
   {
     "table_name": "favoris",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -1567,7 +1180,7 @@
   },
   {
     "table_name": "matchings",
-    "column_name": "photographer_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -1603,7 +1216,7 @@
   },
   {
     "table_name": "matchings",
-    "column_name": "photographer_message",
+    "column_name": "prestataire_message",
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -1612,7 +1225,7 @@
   },
   {
     "table_name": "matchings",
-    "column_name": "photographe_quote",
+    "column_name": "prestataire_quote",
     "data_type": "jsonb",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -1918,7 +1531,7 @@
   },
   {
     "table_name": "packages_types",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -1967,7 +1580,7 @@
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
-    "column_default": "'EUR'::text",
+    "column_default": "'MAD'::text",
     "ordinal_position": 7
   },
   {
@@ -1978,87 +1591,6 @@
     "is_nullable": "NO",
     "column_default": null,
     "ordinal_position": 8
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "nb_photos_incluses",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "NO",
-    "column_default": null,
-    "ordinal_position": 9
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "nb_photos_retouchees",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 10
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "delai_livraison_jours",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "7",
-    "ordinal_position": 11
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "retouches_incluses",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "true",
-    "ordinal_position": 12
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "modes_livraison",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{telechargement}'::text[]",
-    "ordinal_position": 13
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "formats_fichiers",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{jpeg_haute_qualite}'::text[]",
-    "ordinal_position": 14
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "livraison_usb_incluse",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 15
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "tirages_inclus",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "0",
-    "ordinal_position": 16
-  },
-  {
-    "table_name": "packages_types",
-    "column_name": "format_tirages",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 17
   },
   {
     "table_name": "packages_types",
@@ -2215,7 +1747,7 @@
   },
   {
     "table_name": "paiements",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -2237,7 +1769,7 @@
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
-    "column_default": "'EUR'::text",
+    "column_default": "'MAD'::text",
     "ordinal_position": 6
   },
   {
@@ -2583,7 +2115,7 @@
     "ordinal_position": 20
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "id",
     "data_type": "uuid",
     "character_maximum_length": null,
@@ -2592,7 +2124,7 @@
     "ordinal_position": 1
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "bio",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2601,7 +2133,7 @@
     "ordinal_position": 2
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "nom_entreprise",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2610,7 +2142,7 @@
     "ordinal_position": 3
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "site_web",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2619,7 +2151,7 @@
     "ordinal_position": 4
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "instagram",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2628,7 +2160,7 @@
     "ordinal_position": 5
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "facebook",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2637,7 +2169,7 @@
     "ordinal_position": 6
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "linkedin",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2646,7 +2178,7 @@
     "ordinal_position": 7
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "specialisations",
     "data_type": "ARRAY",
     "character_maximum_length": null,
@@ -2655,7 +2187,7 @@
     "ordinal_position": 8
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "categories",
     "data_type": "ARRAY",
     "character_maximum_length": null,
@@ -2664,7 +2196,7 @@
     "ordinal_position": 9
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "statut_pro",
     "data_type": "boolean",
     "character_maximum_length": null,
@@ -2673,7 +2205,7 @@
     "ordinal_position": 10
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "siret",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2682,7 +2214,7 @@
     "ordinal_position": 11
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "numero_tva",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2691,7 +2223,7 @@
     "ordinal_position": 12
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "documents_siret",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2700,7 +2232,7 @@
     "ordinal_position": 13
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "documents_kbis",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2709,7 +2241,7 @@
     "ordinal_position": 14
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "documents_assurance",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2718,7 +2250,7 @@
     "ordinal_position": 15
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "identite_verifiee",
     "data_type": "boolean",
     "character_maximum_length": null,
@@ -2727,7 +2259,7 @@
     "ordinal_position": 16
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "document_identite_url",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2736,7 +2268,7 @@
     "ordinal_position": 17
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "date_verification",
     "data_type": "timestamp with time zone",
     "character_maximum_length": null,
@@ -2745,7 +2277,7 @@
     "ordinal_position": 18
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "statut_validation",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2754,7 +2286,7 @@
     "ordinal_position": 19
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "materiel",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -2763,7 +2295,7 @@
     "ordinal_position": 20
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "equipe",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -2772,7 +2304,7 @@
     "ordinal_position": 21
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "mobile",
     "data_type": "boolean",
     "character_maximum_length": null,
@@ -2781,8 +2313,8 @@
     "ordinal_position": 22
   },
   {
-    "table_name": "profils_photographe",
-    "column_name": "studio",
+    "table_name": "profils_prestataire",
+    "column_name": "agence",
     "data_type": "boolean",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -2790,8 +2322,8 @@
     "ordinal_position": 23
   },
   {
-    "table_name": "profils_photographe",
-    "column_name": "studio_adresse",
+    "table_name": "profils_prestataire",
+    "column_name": "agence_adresse",
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -2799,8 +2331,8 @@
     "ordinal_position": 24
   },
   {
-    "table_name": "profils_photographe",
-    "column_name": "studio_photos",
+    "table_name": "profils_prestataire",
+    "column_name": "agence_photos",
     "data_type": "ARRAY",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -2808,7 +2340,7 @@
     "ordinal_position": 25
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "rayon_deplacement_km",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -2817,7 +2349,7 @@
     "ordinal_position": 26
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "frais_deplacement_base",
     "data_type": "numeric",
     "character_maximum_length": null,
@@ -2826,16 +2358,7 @@
     "ordinal_position": 27
   },
   {
-    "table_name": "profils_photographe",
-    "column_name": "frais_deplacement_par_km",
-    "data_type": "numeric",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 28
-  },
-  {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "services_additionnels",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -2844,7 +2367,7 @@
     "ordinal_position": 29
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "portfolio_photos",
     "data_type": "ARRAY",
     "character_maximum_length": null,
@@ -2853,25 +2376,7 @@
     "ordinal_position": 30
   },
   {
-    "table_name": "profils_photographe",
-    "column_name": "portfolio_principal",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 31
-  },
-  {
-    "table_name": "profils_photographe",
-    "column_name": "photos_par_categorie",
-    "data_type": "jsonb",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::jsonb",
-    "ordinal_position": 32
-  },
-  {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "video_presentation_url",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2880,7 +2385,7 @@
     "ordinal_position": 33
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "tarifs_indicatifs",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -2889,7 +2394,7 @@
     "ordinal_position": 34
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "tarif_horaire_min",
     "data_type": "numeric",
     "character_maximum_length": null,
@@ -2898,7 +2403,7 @@
     "ordinal_position": 35
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "tarif_horaire_max",
     "data_type": "numeric",
     "character_maximum_length": null,
@@ -2907,7 +2412,7 @@
     "ordinal_position": 36
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "acompte_percent",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -2916,7 +2421,7 @@
     "ordinal_position": 37
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "conditions_annulation",
     "data_type": "text",
     "character_maximum_length": null,
@@ -2925,7 +2430,7 @@
     "ordinal_position": 38
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "delai_annulation_jours",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -2934,7 +2439,7 @@
     "ordinal_position": 39
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "modalites_paiement",
     "data_type": "ARRAY",
     "character_maximum_length": null,
@@ -2943,7 +2448,7 @@
     "ordinal_position": 40
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "calendrier_disponibilite",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -2952,7 +2457,7 @@
     "ordinal_position": 41
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "jours_travailles",
     "data_type": "ARRAY",
     "character_maximum_length": null,
@@ -2961,7 +2466,7 @@
     "ordinal_position": 42
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "horaires_preference",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -2970,7 +2475,7 @@
     "ordinal_position": 43
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "preferences",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -2979,7 +2484,7 @@
     "ordinal_position": 44
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "note_moyenne",
     "data_type": "numeric",
     "character_maximum_length": null,
@@ -2988,7 +2493,7 @@
     "ordinal_position": 45
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "nb_avis",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -2997,7 +2502,7 @@
     "ordinal_position": 46
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "nb_prestations_completees",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -3006,7 +2511,7 @@
     "ordinal_position": 47
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "nb_demandes_recues",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -3015,7 +2520,7 @@
     "ordinal_position": 48
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "nb_devis_envoyes",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -3024,7 +2529,7 @@
     "ordinal_position": 49
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "taux_reponse",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -3033,7 +2538,7 @@
     "ordinal_position": 50
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "taux_conversion",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -3042,7 +2547,7 @@
     "ordinal_position": 51
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "temps_reponse_moyen",
     "data_type": "integer",
     "character_maximum_length": null,
@@ -3051,7 +2556,7 @@
     "ordinal_position": 52
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "badges",
     "data_type": "ARRAY",
     "character_maximum_length": null,
@@ -3060,7 +2565,7 @@
     "ordinal_position": 53
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "certifications",
     "data_type": "ARRAY",
     "character_maximum_length": null,
@@ -3069,7 +2574,7 @@
     "ordinal_position": 54
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "plan_id",
     "data_type": "bigint",
     "character_maximum_length": null,
@@ -3078,7 +2583,7 @@
     "ordinal_position": 55
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "plan_actif",
     "data_type": "boolean",
     "character_maximum_length": null,
@@ -3087,70 +2592,7 @@
     "ordinal_position": 56
   },
   {
-    "table_name": "profils_photographe",
-    "column_name": "propose_tirages",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 57
-  },
-  {
-    "table_name": "profils_photographe",
-    "column_name": "propose_albums",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 58
-  },
-  {
-    "table_name": "profils_photographe",
-    "column_name": "partenaire_impression",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 59
-  },
-  {
-    "table_name": "profils_photographe",
-    "column_name": "tarifs_tirages",
-    "data_type": "jsonb",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::jsonb",
-    "ordinal_position": 60
-  },
-  {
-    "table_name": "profils_photographe",
-    "column_name": "tarifs_albums",
-    "data_type": "jsonb",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::jsonb",
-    "ordinal_position": 61
-  },
-  {
-    "table_name": "profils_photographe",
-    "column_name": "delai_production_tirages_jours",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "7",
-    "ordinal_position": 62
-  },
-  {
-    "table_name": "profils_photographe",
-    "column_name": "delai_production_album_jours",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "14",
-    "ordinal_position": 63
-  },
-  {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "stripe_account_id",
     "data_type": "text",
     "character_maximum_length": null,
@@ -3159,7 +2601,7 @@
     "ordinal_position": 64
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "stripe_onboarding_complete",
     "data_type": "boolean",
     "character_maximum_length": null,
@@ -3168,7 +2610,7 @@
     "ordinal_position": 65
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "created_at",
     "data_type": "timestamp with time zone",
     "character_maximum_length": null,
@@ -3177,7 +2619,7 @@
     "ordinal_position": 66
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "updated_at",
     "data_type": "timestamp with time zone",
     "character_maximum_length": null,
@@ -3186,16 +2628,7 @@
     "ordinal_position": 67
   },
   {
-    "table_name": "profils_photographe",
-    "column_name": "styles_photo",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 68
-  },
-  {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "disponibilite",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -3204,7 +2637,7 @@
     "ordinal_position": 69
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "document_identite_recto_url",
     "data_type": "text",
     "character_maximum_length": null,
@@ -3213,7 +2646,7 @@
     "ordinal_position": 70
   },
   {
-    "table_name": "profils_photographe",
+    "table_name": "profils_prestataire",
     "column_name": "document_identite_verso_url",
     "data_type": "text",
     "character_maximum_length": null,
@@ -3250,7 +2683,7 @@
   },
   {
     "table_name": "remboursements",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -3430,7 +2863,7 @@
   },
   {
     "table_name": "reservations",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -3565,24 +2998,6 @@
   },
   {
     "table_name": "reservations",
-    "column_name": "nb_photos_prevues",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 18
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "nb_videos_prevues",
-    "data_type": "integer",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 19
-  },
-  {
-    "table_name": "reservations",
     "column_name": "services_inclus",
     "data_type": "jsonb",
     "character_maximum_length": null,
@@ -3641,7 +3056,7 @@
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
-    "column_default": "'EUR'::text",
+    "column_default": "'MAD'::text",
     "ordinal_position": 26
   },
   {
@@ -3709,222 +3124,6 @@
   },
   {
     "table_name": "reservations",
-    "column_name": "photos_livrees",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 34
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_livraison_numerique",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 35
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "galerie_livraison_id",
-    "data_type": "uuid",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 36
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "mode_livraison",
-    "data_type": "ARRAY",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "'{}'::text[]",
-    "ordinal_position": 37
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "lien_telechargement",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 38
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "usb_envoyee",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 39
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_envoi_usb",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 40
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "numero_suivi_usb",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 41
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "tirages_commandes",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 42
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "tirages_imprimes",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 43
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_impression_tirages",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 44
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "tirages_expedies",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 45
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_expedition_tirages",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 46
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "numero_suivi_tirages",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 47
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "tirages_livres",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 48
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_livraison_tirages",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 49
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "album_commande",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 50
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "album_produit",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 51
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_production_album",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 52
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "album_expedie",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 53
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_expedition_album",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 54
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "numero_suivi_album",
-    "data_type": "text",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 55
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "album_livre",
-    "data_type": "boolean",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": "false",
-    "ordinal_position": 56
-  },
-  {
-    "table_name": "reservations",
-    "column_name": "date_livraison_album",
-    "data_type": "timestamp with time zone",
-    "character_maximum_length": null,
-    "is_nullable": "YES",
-    "column_default": null,
-    "ordinal_position": 57
-  },
-  {
-    "table_name": "reservations",
     "column_name": "notes_client",
     "data_type": "text",
     "character_maximum_length": null,
@@ -3934,7 +3133,7 @@
   },
   {
     "table_name": "reservations",
-    "column_name": "notes_photographe",
+    "column_name": "notes_prestataire",
     "data_type": "text",
     "character_maximum_length": null,
     "is_nullable": "YES",
@@ -3970,7 +3169,7 @@
   },
   {
     "table_name": "reviews_photographe",
-    "column_name": "photographer_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",
@@ -4078,7 +3277,7 @@
   },
   {
     "table_name": "statistiques_avis",
-    "column_name": "photographe_id",
+    "column_name": "prestataire_id",
     "data_type": "uuid",
     "character_maximum_length": null,
     "is_nullable": "NO",

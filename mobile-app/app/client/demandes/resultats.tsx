@@ -81,7 +81,7 @@ export default function RésultatsRecherche() {
       let photographersData: any[] = [];
       if (photographerIds.length > 0) {
         const { data: photographers } = await supabase
-          .from('profils_photographe')
+          .from('profils_prestataire')
           .select(`
             id,
             bio,

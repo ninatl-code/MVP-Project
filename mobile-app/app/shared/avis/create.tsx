@@ -92,7 +92,7 @@ export default function CreateAvis() {
 
       // Vérifier si un avis existe déjà
       const { data: existingAvis } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('id')
         .eq('reservation_id', reservation_id)
         .single();
@@ -179,7 +179,7 @@ export default function CreateAvis() {
 
       // Insérer l'avis
       const { data: avisData, error: avisError } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .insert({
           reservation_id: reservation.id,
           particulier_id: user.id,
@@ -196,7 +196,7 @@ export default function CreateAvis() {
 
       // Calculer la nouvelle moyenne pour le prestataire
       const { data: allAvis } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('note')
         .eq('prestataire_id', reservation.prestataire_id);
 

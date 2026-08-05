@@ -53,7 +53,7 @@ export default function MenuPrestataire() {
   const checkProfileCompleteness = async (userId: string) => {
     try {
       const { data: profilPhoto, error } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select('bio, specialisations, portfolio_photos, rayon_deplacement_km, tarifs_indicatifs')
         .eq('id', userId)
         .single();
@@ -147,7 +147,7 @@ export default function MenuPrestataire() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'MAD'
     }).format(amount || 0);
   };
 

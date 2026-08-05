@@ -7,10 +7,10 @@
     "files_created": {
       "components": [
         {
-          "name": "app/photographe/profil/profil-complet.tsx",
+          "name": "app/prestataire/profil/profil-complet.tsx",
           "type": "React Native Component",
           "size": "~600 lignes",
-          "purpose": "Formulaire complet photographe (5 onglets navigables)",
+          "purpose": "Formulaire complet prestataire (5 onglets navigables)",
           "features": [
             "Infos professionnelles",
             "Spécialités multi-select",
@@ -20,7 +20,7 @@
           ]
         },
         {
-          "name": "app/client/demandes/nouvelle-demande.tsx",
+          "name": "app/client/demandes/create.tsx",
           "type": "React Native Component",
           "size": "~700 lignes",
           "purpose": "Formulaire demande client (5 étapes wizard)",
@@ -53,19 +53,19 @@
           "name": "lib/matchingService.ts",
           "type": "TypeScript Service",
           "size": "~364 lignes (existant, enrichi)",
-          "purpose": "Algorithme scoring photographe vs demande client",
+          "purpose": "Algorithme scoring prestataire vs demande client",
           "functions": [
-            "findMatchingPhotographers(demande_id, location)",
-            "calculateMatchScore(demande, photographer, location)",
-            "recordMatching(demande_id, photographer_id, score)",
-            "getIncomingMatches(photographer_id)"
+            "findMatchingPrestataires(demande_id, location)",
+            "calculateMatchScore(demande, prestataire, location)",
+            "recordMatching(demande_id, prestataire_id, score)",
+            "getIncomingMatches(prestataire_id)"
           ]
         }
       ],
       
       "schemas": [
         {
-          "name": "lib/photographerProfileSchema.ts",
+          "name": "lib/prestataireProfileSchema.ts",
           "type": "TypeScript Constants",
           "size": "~60 lignes",
           "exports": [
@@ -98,11 +98,11 @@
           "tables_created": [
             "demandes_client",
             "matchings",
-            "reviews_photographe",
+            "reviews_presta",
             "messages_matching"
           ],
           "tables_modified": [
-            "profils_photographe (ajout colonnes)"
+            "profils_prestataire (ajout colonnes)"
           ],
           "features": [
             "RLS policies",
@@ -201,7 +201,7 @@
           ]
         },
 
-        "reviews_photographe": {
+        "profils_prestataire": {
           "columns": 7,
           "description": "Avis clients sur photographes",
           "key_fields": [
@@ -224,7 +224,7 @@
           ]
         },
 
-        "profils_photographe": {
+        "reviews_presta": {
           "columns_added": 22,
           "description": "Enrichissement profil photographe",
           "new_fields": [
@@ -250,7 +250,7 @@
         "idx_demandes_status",
         "idx_matchings_demande",
         "idx_matchings_score",
-        "idx_reviews_photographer"
+        "idx_reviews_prestar"
       ],
 
       "rls_policies": [
@@ -265,8 +265,8 @@
       "phase_1_knockout": {
         "description": "Si échoue → 0% (exclu)",
         "checks": [
-          "Spécialisation photographe inclut catégorie demande",
-          "Budget photographe couvre budget client",
+          "Spécialisation prestataire inclut catégorie demande",
+          "Budget prestataire couvre budget client",
           "Localisation OK (mobile OU studio)"
         ]
       },
@@ -389,7 +389,7 @@
       ],
       
       "phase_4_analytics": [
-        "Dashboard photographe (stats)",
+        "Dashboard prestataire (stats)",
         "Graphiques conversion",
         "Calendrier disponibilités",
         "Gestion avis"

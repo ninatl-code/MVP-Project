@@ -1546,7 +1546,7 @@ export default function ProviderHomeMenu() {
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
 
-              {/* Packages */}
+              {/* Packages 
               <div 
                 className="flex items-center gap-4 p-5 border-b cursor-pointer hover:bg-gray-50 transition-colors"
                 style={{ borderColor: '#EBEBEB' }}
@@ -1561,7 +1561,7 @@ export default function ProviderHomeMenu() {
                 </div>
                 <ChevronRight className="w-5 h-5" style={{ color: COLORS.text + '60' }} />
               </div>
-
+              */}
 
             </Card>
           </section>

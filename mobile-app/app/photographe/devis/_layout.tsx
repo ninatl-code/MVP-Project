@@ -29,6 +29,13 @@ export default function PhotographeDevisLayout() {
           headerShown: false,
         }} 
       />
+      <Stack.Screen 
+        name="devis-detail" 
+        options={{ 
+          title: 'Détail du devis',
+          headerShown: false,
+        }} 
+      />
     </Stack>
   );
 }

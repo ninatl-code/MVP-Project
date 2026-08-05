@@ -217,7 +217,7 @@ export const PRE_DEPLOYMENT_CHECKLIST = {
   database: [
     'Migrations SQL exécutées',
     'Tables créées: demandes_client, matchings, reviews, messages',
-    'Colonnes ajoutées à profils_photographe',
+    'Colonnes ajoutées à profils_prestataire',
     'RLS policies activées',
     'Indexes créés',
   ],
@@ -266,8 +266,8 @@ export const QUICK_TESTS = {
     // Exécuter dans Supabase SQL Editor
     SELECT COUNT(*) FROM demandes_client;
     SELECT COUNT(*) FROM matchings;
-    SELECT COUNT(*) FROM profils_photographe;
-    SELECT * FROM profils_photographe LIMIT 1 \\gset
+    SELECT COUNT(*) FROM profils_prestataire;
+    SELECT * FROM profils_prestataire LIMIT 1 \\gset
   `,
 
   test_2_typescript: `
@@ -284,7 +284,7 @@ export const QUICK_TESTS = {
     3. Connecter en tant que photographe
     4. Naviguer à /photographe/profil-complet
     5. Remplir le profil → Sauvegarder
-    6. Vérifier dans Supabase que profils_photographe est rempli
+    6. Vérifier dans Supabase que profils_prestataire est rempli
     
     7. Connecter en tant que client
     8. Naviguer à /client/demandes/nouvelle-demande

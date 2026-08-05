@@ -6,7 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import Header from '../../../components/HeaderParti';
 import * as avisService from '../../../lib/avisService';
 
-import { Star, ArrowLeft, Search, Calendar } from 'lucide-react';
+import { Star, ArrowLeft, Search, Calendar, Pencil, Trash2, X, Loader2, CheckCircle } from 'lucide-react';
 
 const COLORS = {
   accent: '#130183',
@@ -16,17 +16,38 @@ const COLORS = {
 
 function StarRating({ note }) {
   return (
-      <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map(s => (
-          <Star
-            key={s}
-            className="w-4 h-4"
-            fill={s <= note ? '#FBBF24' : 'none'}
-            stroke={s <= note ? '#FBBF24' : '#D1D5DB'}
-          />
-        ))}
-      </div>
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(s => (
+        <Star
+          key={s}
+          className="w-4 h-4"
+          fill={s <= note ? '#FBBF24' : 'none'}
+          stroke={s <= note ? '#FBBF24' : '#D1D5DB'}
+        />
+      ))}
+    </div>
+  );
+}
 
+// Version cliquable pour le formulaire d'édition
+function StarRatingInput({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map(s => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => onChange(s)}
+          className="p-0.5"
+        >
+          <Star
+            className="w-6 h-6"
+            fill={s <= value ? '#FBBF24' : 'none'}
+            stroke={s <= value ? '#FBBF24' : '#D1D5DB'}
+          />
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -42,7 +63,19 @@ export default function AvisListPage() {
   const { user, profileId, loading: authLoading } = useAuth();
   const [avis, setAvis] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Édition
+  const [editingReview, setEditingReview] = useState(null);
+  const [editNote, setEditNote] = useState(0);
+  const [editCommentaire, setEditCommentaire] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState(null);
+
+  // Suppression
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -52,6 +85,7 @@ export default function AvisListPage() {
 
   const fetchAvis = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const { data, error } = await avisService.getClientReviews(profileId);
 
@@ -60,8 +94,66 @@ export default function AvisListPage() {
       setAvis(data || []);
     } catch (error) {
       console.error('Erreur chargement avis:', error);
+      setLoadError("Impossible de charger vos avis pour le moment. Réessayez dans un instant.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openEdit = (review) => {
+    setEditingReview(review);
+    setEditNote(review.rating || 0);
+    setEditCommentaire(review.comment || '');
+    setEditError(null);
+  };
+
+  const closeEdit = () => {
+    setEditingReview(null);
+    setEditNote(0);
+    setEditCommentaire('');
+    setEditError(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingReview || !editNote) return;
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      const { data, error } = await avisService.updateReview(editingReview.id, {
+        note: editNote,
+        commentaire: editCommentaire.trim(),
+      });
+
+      if (error) {
+        setEditError(error.message || "Impossible de modifier cet avis.");
+        return;
+      }
+
+      closeEdit();
+      await fetchAvis();
+    } catch (error) {
+      console.error('Erreur modification avis:', error);
+      setEditError("Une erreur est survenue lors de la modification.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDelete = async (reviewId) => {
+    setDeletingId(reviewId);
+    try {
+      const { error } = await avisService.deleteReview(reviewId);
+      if (error) {
+        alert(error.message || "Impossible de supprimer cet avis.");
+        return;
+      }
+      setConfirmDeleteId(null);
+      await fetchAvis();
+    } catch (error) {
+      console.error('Erreur suppression avis:', error);
+      alert("Une erreur est survenue lors de la suppression.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -108,6 +200,13 @@ export default function AvisListPage() {
           </div>
         </div>
 
+        {/* Erreur de chargement */}
+        {loadError && !loading && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-sm text-red-700">
+            {loadError}
+          </div>
+        )}
+
         {/* Contenu */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -121,8 +220,14 @@ export default function AvisListPage() {
             <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Star className="w-10 h-10 text-yellow-500" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Aucun avis</h2>
-            <p className="text-gray-500">Vous n'avez pas encore laissé d'avis.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {avis.length === 0 ? 'Aucun avis' : 'Aucun résultat'}
+            </h2>
+            <p className="text-gray-500">
+              {avis.length === 0
+                ? "Vous n'avez pas encore laissé d'avis."
+                : "Aucun avis ne correspond à votre recherche."}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -130,7 +235,14 @@ export default function AvisListPage() {
               const prestataire = a.prestataire;
               const reservationTitre = a.reservation?.annonces?.titre || 'Prestation';
               const reservationDate = formatDate(a.reservation?.date_reservation);
-              const avisDate = formatDate(a.created_at);
+              const avisDate = formatDate(a.created_at, {
+                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+              });
+              const reponseDate = formatDate(a.date_reponse, {
+                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+              });
+              const hasResponse = !!a.reponse_prestataire;
+              const canEdit = !hasResponse;
 
               return (
                 <div
@@ -146,7 +258,7 @@ export default function AvisListPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-start justify-between gap-2 mb-1">
                         <p className="font-semibold text-gray-900">
                           {prestataire?.prenom || ''} {prestataire?.nom || 'Prestataire'}
                         </p>
@@ -173,20 +285,75 @@ export default function AvisListPage() {
                         <p className="text-gray-600 text-sm mt-2">{a.comment}</p>
                       )}
 
-                      {a.reponse_prestataire && (
+                      {/* Réponse du prestataire + toutes ses infos */}
+                      {hasResponse && (
                         <div className="bg-gray-50 rounded-lg p-3 mt-3 border-l-4" style={{ borderLeftColor: COLORS.accent }}>
-                          <p className="text-xs font-medium mb-1" style={{ color: COLORS.accent }}>
-                            Réponse du prestataire
-                          </p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                            <p className="text-xs font-medium" style={{ color: COLORS.accent }}>
+                              Réponse de {prestataire?.prenom || 'votre prestataire'}
+                            </p>
+                          </div>
                           <p className="text-sm text-gray-600">{a.reponse_prestataire}</p>
+                          {reponseDate && (
+                            <p className="text-xs text-gray-400 mt-2">Répondu le {reponseDate}</p>
+                          )}
                         </div>
                       )}
 
-                      {avisDate && (
-                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
-                          <Calendar className="w-3 h-3" />
-                          Avis publié le {avisDate}
-                        </div>
+                      <div className="flex items-center justify-between mt-3">
+                        {avisDate && (
+                          <div className="flex items-center gap-1 text-xs text-gray-400">
+                            <Calendar className="w-3 h-3" />
+                            Avis publié le {avisDate}
+                          </div>
+                        )}
+
+                        {/* Actions : modifier / supprimer, uniquement si pas encore de réponse */}
+                        {canEdit && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEdit(a)}
+                              className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-[#130183] px-2 py-1 rounded-md hover:bg-gray-100 transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Modifier
+                            </button>
+
+                            {confirmDeleteId === a.id ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-gray-500">Confirmer ?</span>
+                                <button
+                                  onClick={() => handleDelete(a.id)}
+                                  disabled={deletingId === a.id}
+                                  className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                                >
+                                  {deletingId === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Oui, supprimer'}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteId(null)}
+                                  className="text-xs text-gray-400 hover:underline"
+                                >
+                                  Annuler
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeleteId(a.id)}
+                                className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 px-2 py-1 rounded-md hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Supprimer
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {!canEdit && (
+                        <p className="text-xs text-gray-400 mt-2 italic">
+                          Le prestataire a déjà répondu, cet avis ne peut plus être modifié ni supprimé.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -196,6 +363,56 @@ export default function AvisListPage() {
           </div>
         )}
       </main>
+
+      {/* Modal d'édition */}
+      {editingReview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold" style={{ color: COLORS.text }}>Modifier mon avis</h2>
+              <button onClick={closeEdit} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Note</label>
+              <StarRatingInput value={editNote} onChange={setEditNote} />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Commentaire</label>
+              <textarea
+                value={editCommentaire}
+                onChange={(e) => setEditCommentaire(e.target.value)}
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+              />
+            </div>
+
+            {editError && (
+              <p className="text-sm text-red-600 mb-4">{editError}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeEdit}
+                className="flex-1 px-6 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={!editNote || savingEdit}
+                className="flex-1 px-6 py-3 text-white rounded-xl transition-all font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ background: COLORS.accent }}
+              >
+                {savingEdit ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

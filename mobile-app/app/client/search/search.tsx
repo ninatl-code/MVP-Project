@@ -103,7 +103,7 @@ export default function SearchPhotographes() {
   const loadPhotographes = async () => {
     try {
       let query = supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select(`
           id,
           bio,
@@ -116,7 +116,7 @@ export default function SearchPhotographes() {
           statut_verification,
           disponibilite_generale,
           photos_portfolio,
-          photographe_profile:profiles!profils_photographe_id_fkey (
+          photographe_profile:profiles!profils_prestataire_id_fkey (
             nom,
             prenom,
             ville,

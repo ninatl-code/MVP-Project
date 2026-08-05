@@ -19,7 +19,7 @@
  */
 
 /**
- * Table: profils_photographe (enrichissement)
+ * Table: profils_prestataire (enrichissement)
  * ============================================
  */
 
@@ -270,7 +270,7 @@ const MATCHING_ALGORITHM = {
 /**
  * CÔTÉ PHOTOGRAPHE (Professionnel)
  * 
- * 1. INSCRIPTION: Remplir profile (existing) + profils_photographe (new)
+ * 1. INSCRIPTION: Remplir profile (existing) + profils_prestataire (new)
  *    - Sections 1-11 du PHOTOGRAPHER_PROFILE_STRUCTURE
  *    - Création de portfolio avec photos categorisées
  *    - Configuration tarifs + disponibilités

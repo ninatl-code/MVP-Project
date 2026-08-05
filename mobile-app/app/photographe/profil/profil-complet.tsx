@@ -199,20 +199,20 @@ export default function ProfilComplet() {
         console.log('✅ profiles.id stored:', basicProfileData.id);
       }
 
-      // Load detailed photographer profile from profils_photographe
-      console.log('📥 Loading from profils_photographe...');
+      // Load detailed photographer profile from profils_prestataire
+      console.log('📥 Loading from profils_prestataire...');
       const { data: photoData, error: photoError } = basicProfileData?.id
         ? await supabase
-            .from('profils_photographe')
+            .from('profils_prestataire')
             .select('*')
             .eq('id', basicProfileData.id)
             .maybeSingle()
         : { data: null, error: null };
 
-      console.log('✅ profils_photographe loaded:', photoData ? 'YES' : 'NO');
-      console.log('⚠️ profils_photographe error:', photoError);
+      console.log('✅ profils_prestataire loaded:', photoData ? 'YES' : 'NO');
+      console.log('⚠️ profils_prestataire error:', photoError);
 
-      // Build complete profile - use profiles data (priority) and profils_photographe as fallback
+      // Build complete profile - use profiles data (priority) and profils_prestataire as fallback
       const newProfile = {
         nom: basicProfileData?.nom || photoData?.nom || '',
         email: basicProfileData?.email || photoData?.email || user.email || '',
@@ -307,7 +307,7 @@ export default function ProfilComplet() {
       // Sauvegarder les détails photographe (upsert pour créer si n'existe pas)
       // IMPORTANT: utiliser profileId qui est profiles.id, PAS auth_user_id
       const { error: photoError } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .upsert({
           id: profileId,  // UTILISER profiles.id stocké dans profileId
           bio: emptyToNull(profile.bio),
@@ -436,7 +436,7 @@ export default function ProfilComplet() {
               : { document_identite_verso_url: docUrl };
             
             await supabase
-              .from('profils_photographe')
+              .from('profils_prestataire')
               .update(updateData)
               .eq('id', profileId);
           }
@@ -514,7 +514,7 @@ export default function ProfilComplet() {
         // Update database
         if (profileId) {
           await supabase
-            .from('profils_photographe')
+            .from('profils_prestataire')
             .update({ 
               document_identite_recto_url: docUrl,
               document_identite_verso_url: null // Clear verso if uploading PDF

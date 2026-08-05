@@ -26,7 +26,7 @@ interface PaymentSheetProps {
 
 export default function PaymentSheet({
   amount,
-  currency = 'EUR',
+  currency = 'MAD',
   onPaymentSuccess,
   onPaymentError,
   onCancel,

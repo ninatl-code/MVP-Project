@@ -53,9 +53,9 @@ export default function ProfilPhotographe() {
         console.log('Profil trouvé:', data);
         setProfile(data);
         
-        // Load ALL photographer details from profils_photographe using profiles.id
+        // Load ALL photographer details from profils_prestataire using profiles.id
         const { data: photoData } = await supabase
-          .from('profils_photographe')
+          .from('profils_prestataire')
           .select('*')
           .eq('id', data.id)
           .maybeSingle();
@@ -116,7 +116,7 @@ export default function ProfilPhotographe() {
         .eq('photographe_id', user.id);
 
       const { data: avis } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select('note_globale')
         .eq('reviewee_id', user.id);
 
@@ -149,7 +149,7 @@ export default function ProfilPhotographe() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'MAD'
     }).format(amount || 0);
   };
 

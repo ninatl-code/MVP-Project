@@ -50,7 +50,7 @@ export const getPhotographerReviews = async (photographeId, limit = 20) => {
       .select(`
         *,
         client:profiles!reviews_presta_client_id_fkey(id, prenom, nom, avatar_url),
-        reservation:reservations!reviews_presta_reservation_id_fkey(
+        reservation:reservations!reservation_id(
           id,
           date,
           demandes_client(id, titre)
@@ -99,10 +99,10 @@ export const getClientReviews = async (clientId) => {
       .select(`
         *,
         prestataire:profiles!reviews_presta_prestataire_id_fkey(id, prenom, nom, avatar_url),
-        reservation:reservations!reviews_presta_reservation_id_fkey(
+        reservation:reservations!reservation_id(
           id,
-          date_reservation,
-          annonces(id, titre)
+          date,
+          demandes_client(id, titre)
         )
       `)
       .eq('client_id', clientId)
@@ -133,6 +133,77 @@ export const hasReviewed = async (reviewerId, reservationId) => {
   } catch (error) {
     console.error('Error checking review:', error);
     return { hasReviewed: false, error };
+  }
+};
+
+/**
+ * Update a review's rating/comment.
+ * Only allowed while the prestataire hasn't responded yet (enforced here AND should be enforced by RLS server-side).
+ */
+export const updateReview = async (reviewId, { note, commentaire }) => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews_presta')
+      .update({ rating: note, comment: commentaire })
+      .eq('id', reviewId)
+      .is('reponse_prestataire', null)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (!data) {
+      // No row matched -> either the review no longer exists, or it already has a response
+      return { data: null, error: { message: "Cet avis a déjà reçu une réponse et ne peut plus être modifié." } };
+    }
+
+    // Rating changed -> refresh the average
+    if (data.prestataire_id) {
+      await updatePhotographerRating(data.prestataire_id);
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error updating review:', error);
+    return { data: null, error };
+  }
+};
+
+/**
+ * Delete a review.
+ * Only allowed while the prestataire hasn't responded yet (enforced here AND should be enforced by RLS server-side).
+ */
+export const deleteReview = async (reviewId) => {
+  try {
+    // Fetch prestataire_id first so we can refresh their average rating after deletion
+    const { data: existing, error: fetchError } = await supabase
+      .from('reviews_presta')
+      .select('prestataire_id, reponse_prestataire')
+      .eq('id', reviewId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    if (existing?.reponse_prestataire) {
+      return { error: { message: "Cet avis a déjà reçu une réponse et ne peut plus être supprimé." } };
+    }
+
+    const { error } = await supabase
+      .from('reviews_presta')
+      .delete()
+      .eq('id', reviewId)
+      .is('reponse_prestataire', null);
+
+    if (error) throw error;
+
+    if (existing?.prestataire_id) {
+      await updatePhotographerRating(existing.prestataire_id);
+    }
+
+    return { error: null };
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    return { error };
   }
 };
 
@@ -304,6 +375,8 @@ export default {
   getPhotographerReviews,
   getClientReviews,
   hasReviewed,
+  updateReview,
+  deleteReview,
   updatePhotographerRating,
   getPhotographerRatingStats,
   replyToReview,

@@ -142,7 +142,7 @@ export default function CheckoutPage() {
       // Créer une session de paiement
       const session = await paymentService.createMobileSession({
         amount: reservation.montant,
-        currency: 'eur',
+        currency: 'MAD',
         customer_email: user.email,
         metadata: {
           reservation_id: reservation.id,

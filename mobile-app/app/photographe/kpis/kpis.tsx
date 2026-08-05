@@ -73,7 +73,7 @@ export default function KPIsPrestataire() {
         comparaisonData
       ] = await Promise.all([
         supabase.from('reservations').select('*, status, montant, date').eq('prestataire_id', user.id),
-        supabase.from('avis').select('note').eq('prestataire_id', user.id),
+        supabase.from('reviews_presta').select('note').eq('prestataire_id', user.id),
         fetchCAParMois(user.id),
         fetchServicesPopulaires(user.id),
         fetchStatsClients(user.id),

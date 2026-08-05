@@ -31,6 +31,20 @@ export const getPhotographerPrice = async (userId) => {
 };
 
 /**
+ * Récupère les conditions tarifaires par défaut du prestataire
+ * pour pré-remplir un devis (tarif horaire, acompte, modalités de paiement)
+ */
+export const getPhotographerTarifs = async (userId) => {
+  const { data, error } = await supabase
+    .from('profils_prestataire')
+    .select('tarif_horaire_min, acompte_percent, modalites_paiement')
+    .eq('id', userId)
+    .single();
+
+  return { data, error };
+};
+
+/**
  * Create or update photographer profile
  */
 export const upsertPhotographerProfile = async (userId, profileData) => {
@@ -295,6 +309,7 @@ export const updateAvailabilitySettings = async (photographeId, settings) => {
 
 export default {
   getPhotographerProfile,
+  getPhotographerTarifs,
   upsertPhotographerProfile,
   updateSpecializations,
   updateServiceRadius,

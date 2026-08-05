@@ -149,7 +149,7 @@ export async function createDevis(
         remise_montant: data.remise_montant || 0,
         remise_percent: data.remise_percent || 0,
         montant_total: data.montant_total,
-        monnaie: 'EUR',
+        monnaie: 'MAD',
         
         duree_prestation_heures: data.duree_prestation_heures,
         nb_photos_livrees: data.nb_photos_livrees,

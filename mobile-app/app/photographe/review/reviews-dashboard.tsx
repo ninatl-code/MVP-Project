@@ -62,7 +62,7 @@ export default function ProviderReviewsDashboard() {
       }
 
       const { data, error } = await supabase
-        .from('avis')
+        .from('reviews_presta')
         .select(`
           *,
           reviewer_profiles:reviewer_id(nom),

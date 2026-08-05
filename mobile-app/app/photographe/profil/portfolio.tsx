@@ -65,7 +65,7 @@ export default function PortfolioScreen() {
       setLoading(true);
 
       const { data: profil, error: profilError } = await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .select('photos_portfolio')
         .eq('user_id', user?.id)
         .single();
@@ -149,7 +149,7 @@ export default function PortfolioScreen() {
 
       // Sauvegarder dans la DB
       await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .update({ photos_portfolio: updatedPhotos })
         .eq('user_id', user?.id);
 
@@ -177,7 +177,7 @@ export default function PortfolioScreen() {
               setPhotos(updatedPhotos);
 
               await supabase
-                .from('profils_photographe')
+                .from('profils_prestataire')
                 .update({ photos_portfolio: updatedPhotos })
                 .eq('user_id', user?.id);
 
@@ -205,7 +205,7 @@ export default function PortfolioScreen() {
       setPhotos(updatedPhotos);
 
       await supabase
-        .from('profils_photographe')
+        .from('profils_prestataire')
         .update({ photos_portfolio: updatedPhotos })
         .eq('user_id', user?.id);
 
@@ -237,7 +237,7 @@ export default function PortfolioScreen() {
     setPhotos(reorderedPhotos);
 
     await supabase
-      .from('profils_photographe')
+      .from('profils_prestataire')
       .update({ photos_portfolio: reorderedPhotos })
       .eq('user_id', user?.id);
   };

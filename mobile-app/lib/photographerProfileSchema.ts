@@ -52,7 +52,7 @@ export const PRICE_RANGES = {
 };
 
 export interface PhotographerProfile {
-  // De profils_photographe
+  // De profils_prestataire
   bio: string;
   specialisations: string[]; // IDs des catégories
   styles_photo: string[]; // IDs des styles

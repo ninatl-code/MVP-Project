@@ -32,7 +32,7 @@ ADD COLUMN IF NOT EXISTS moodboard_notes TEXT;
 CREATE TABLE IF NOT EXISTS matchings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   demande_id UUID NOT NULL REFERENCES demandes_client(id) ON DELETE CASCADE,
-  photographer_id UUID NOT NULL REFERENCES profils_photographe(id) ON DELETE CASCADE,
+  photographer_id UUID NOT NULL REFERENCES profils_prestataire(id) ON DELETE CASCADE,
   
   -- Score & Raisons
   match_score INTEGER CHECK (match_score >= 0 AND match_score <= 100),
@@ -84,11 +84,11 @@ CREATE INDEX IF NOT EXISTS idx_demandes_client_created_at
 ON demandes_client(created_at DESC);
 
 -- ============================================
--- 4. ALTER TABLE profils_photographe (colonnes manquantes)
+-- 4. ALTER TABLE profils_prestataire (colonnes manquantes)
 -- ============================================
 -- Ces colonnes manquent dans la base existante pour supporter le matching
 
-ALTER TABLE profils_photographe
+ALTER TABLE profils_prestataire
 ADD COLUMN IF NOT EXISTS styles_photo TEXT[] DEFAULT '{}',
 ADD COLUMN IF NOT EXISTS disponibilite JSONB DEFAULT '{
   "weekdays": true,
@@ -97,7 +97,7 @@ ADD COLUMN IF NOT EXISTS disponibilite JSONB DEFAULT '{
 }';
 
 -- Note: Les autres colonnes telles que specialisations, tarifs, instagram, etc. 
--- existent déjà dans la table profils_photographe de la base existante
+-- existent déjà dans la table profils_prestataire de la base existante
 
 -- ============================================
 -- 5. TABLE: reviews_photographe (NOUVELLE)
@@ -106,7 +106,7 @@ ADD COLUMN IF NOT EXISTS disponibilite JSONB DEFAULT '{
 
 CREATE TABLE IF NOT EXISTS reviews_photographe (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  photographer_id UUID NOT NULL REFERENCES profils_photographe(id) ON DELETE CASCADE,
+  photographer_id UUID NOT NULL REFERENCES profils_prestataire(id) ON DELETE CASCADE,
   client_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   matching_id UUID REFERENCES matchings(id) ON DELETE SET NULL,
   
@@ -149,7 +149,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages_matching(sender_id);
 CREATE OR REPLACE FUNCTION update_photographer_rating()
 RETURNS TRIGGER AS $$
 BEGIN
-  UPDATE profils_photographe
+  UPDATE profils_prestataire
   SET note_moyenne = (
     SELECT ROUND(AVG(rating)::numeric, 1)
     FROM reviews_photographe
@@ -245,10 +245,10 @@ ON matchings(match_score DESC);
 -- ============================================
 
 -- Remplir les ratings initiaux si vides
-UPDATE profils_photographe SET note_moyenne = 0
+UPDATE profils_prestataire SET note_moyenne = 0
 WHERE note_moyenne IS NULL;
 
-UPDATE profils_photographe SET nb_avis = 0
+UPDATE profils_prestataire SET nb_avis = 0
 WHERE nb_avis IS NULL;
 
 
@@ -261,9 +261,9 @@ SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public' 
   AND table_name IN ('demandes_client', 'matchings', 'reviews_photographe', 'messages_matching');
 
--- Vérifier les colonnes de profils_photographe
+-- Vérifier les colonnes de profils_prestataire
 SELECT column_name, data_type FROM information_schema.columns
-WHERE table_name = 'profils_photographe'
+WHERE table_name = 'profils_prestataire'
 ORDER BY column_name;
 
 -- ============================================
@@ -276,7 +276,7 @@ COMPATIBILITÉ BASE EXISTANTE:
   ✓ Ajout de colonnes: styles_recherches, atmosphere, comfort_level, moodboard_notes
   ✓ Colonnes existantes réutilisées: categorie (pas category), lieu, ville, budget_min/max
   
-- profils_photographe: Table existante avec 54 colonnes
+- profils_prestataire: Table existante avec 54 colonnes
   ✓ Ajout de colonnes: styles_photo, disponibilite
   ✓ Colonnes existantes réutilisées: specialisations, tarifs_indicatifs, note_moyenne, nb_avis
 
@@ -289,7 +289,7 @@ DÉPLOIEMENT:
 1. Exécuter ce script complet dans Supabase SQL Editor
 2. Si des erreurs columns déjà existantes → ignorées par IF NOT EXISTS
 3. Vérifier les 3 nouvelles tables ont été créées
-4. Vérifier les colonnes manquantes de profils_photographe ont été ajoutées
+4. Vérifier les colonnes manquantes de profils_prestataire ont été ajoutées
 5. Les triggers RLS sont actifs et sécurisent les données
 
 ROLLBACK (si besoin):
@@ -300,6 +300,6 @@ ALTER TABLE demandes_client DROP COLUMN IF EXISTS styles_recherches;
 ALTER TABLE demandes_client DROP COLUMN IF EXISTS atmosphere;
 ALTER TABLE demandes_client DROP COLUMN IF EXISTS comfort_level;
 ALTER TABLE demandes_client DROP COLUMN IF EXISTS moodboard_notes;
-ALTER TABLE profils_photographe DROP COLUMN IF EXISTS styles_photo;
-ALTER TABLE profils_photographe DROP COLUMN IF EXISTS disponibilite;
+ALTER TABLE profils_prestataire DROP COLUMN IF EXISTS styles_photo;
+ALTER TABLE profils_prestataire DROP COLUMN IF EXISTS disponibilite;
 */
