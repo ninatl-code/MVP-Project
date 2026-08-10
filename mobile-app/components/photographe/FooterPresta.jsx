@@ -27,11 +27,10 @@ export default function FooterPresta() {
       if (!user) return;
 
       // Compter les messages non lus
-      const { data: unreadMessages } = await supabase
+      const { data: unreadConvs } = await supabase
         .from('conversations')
-        .select('id')
-        .eq('artist_id', user.id)
-        .eq('lu', false);
+        .select('unread_count_prestataire')
+        .eq('prestataire_id', user.id);
 
       // Compter les notifications non lues  
       const { data: unreadNotifs } = await supabase
@@ -41,7 +40,7 @@ export default function FooterPresta() {
         .eq('lu', false);
 
       setStats({
-        messages: unreadMessages?.length || 0,
+        messages: (unreadConvs || []).reduce((sum, c) => sum + (c.unread_count_prestataire || 0), 0),
         notifications: unreadNotifs?.length || 0
       });
     };

@@ -342,10 +342,10 @@ export async function checkPhotographeAvailability(
     // Vérifier les réservations existantes
     const { data: reservations, error: reservationsError } = await supabase
       .from('reservations')
-      .select('date_prestation, heure_debut, duree_heures')
-      .eq('photographe_id', photographeId)
-      .eq('date_prestation', date)
-      .in('statut_reservation', ['confirmee', 'en_cours']);
+      .select('date, heure_debut, duree_heures')
+      .eq('prestataire_id', photographeId)
+      .eq('date', date)
+      .in('statut', ['confirmed', 'pending']);
 
     if (reservationsError) throw reservationsError;
 

@@ -24,8 +24,8 @@ interface Reservation {
   id: string;
   package_id: string;
   package_titre: string;
-  photographe_id: string;
-  photographe_nom: string;
+  prestataire_id: string;
+  prestataire_nom: string;
   date: string;
   heure: string;
   lieu: string;
@@ -58,7 +58,7 @@ export default function ReservationsParticulier() {
       .select(`
         id,
         package_id,
-        photographe_id,
+        prestataire_id,
         date,
         heure_debut,
         lieu,
@@ -67,7 +67,7 @@ export default function ReservationsParticulier() {
         created_at,
         notes_client,
         packages_types!reservations_package_id_fkey (titre),
-        profiles!reservations_photographe_id_fkey (nom)
+        profiles!reservations_prestataire_id_fkey (nom)
       `)
       .eq('client_id', user.id)
       .order('date', { ascending: false });
@@ -84,8 +84,8 @@ export default function ReservationsParticulier() {
           id: r.id,
           package_id: r.package_id,
           package_titre: Array.isArray(r.packages_types) ? r.packages_types[0]?.titre : r.packages_types?.titre || 'Package',
-          photographe_id: r.photographe_id,
-          photographe_nom: Array.isArray(r.profiles) ? r.profiles[0]?.nom : r.profiles?.nom || 'Photographe',
+          prestataire_id: r.prestataire_id,
+          prestataire_nom: Array.isArray(r.profiles) ? r.profiles[0]?.nom : r.profiles?.nom || 'Prestataire',
           date: dateStr,
           heure: heureStr,
           lieu: r.lieu || '',
@@ -263,7 +263,7 @@ export default function ReservationsParticulier() {
             </Text>
             <TouchableOpacity 
               style={styles.emptyStateButton}
-              onPress={() => router.push('/particuliers/search')}
+              onPress={() => router.push('/client/search/search' as any)}
             >
               <Text style={styles.emptyStateButtonText}>Explorer les annonces</Text>
             </TouchableOpacity>
@@ -286,7 +286,7 @@ export default function ReservationsParticulier() {
                   {/* Infos principales */}
                   <View style={styles.infoRow}>
                     <Ionicons name="person-outline" size={18} color={COLORS.primary} />
-                    <Text style={styles.infoText}>{reservation.photographe_nom}</Text>
+                    <Text style={styles.infoText}>{reservation.prestataire_nom}</Text>
                   </View>
 
                   <View style={styles.infoRow}>

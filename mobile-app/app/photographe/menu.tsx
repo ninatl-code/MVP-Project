@@ -114,15 +114,15 @@ export default function MenuPrestataire() {
 
     // Charger les statistiques
     const [reservationsRes, devisRes, demandesRes, messagesRes] = await Promise.all([
-      supabase.from('reservations').select('id, montant_total, statut_reservation').eq('photographe_id', authUser.id),
-      supabase.from('devis').select('id, statut').eq('photographe_id', authUser.id),
+      supabase.from('reservations').select('id, montant_total, statut').eq('prestataire_id', authUser.id),
+      supabase.from('devis').select('id, statut').eq('prestataire_id', authUser.id),
       supabase.from('demandes_client').select('id').eq('statut', 'ouverte'),
-      supabase.from('conversations').select('id', { count: 'exact' }).eq('artist_id', authUser.id).eq('lu', false)
+      supabase.from('conversations').select('unread_count_prestataire').eq('prestataire_id', authUser.id)
     ]);
 
     // Calculer le CA
     const reservationsPayees = reservationsRes.data?.filter(r => 
-      r.statut_reservation === 'confirmee' || r.statut_reservation === 'en_cours' || r.statut_reservation === 'terminee'
+      r.statut === 'confirmed' || r.statut === 'completed'
     ) || [];
     const ca = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
 
@@ -136,7 +136,7 @@ export default function MenuPrestataire() {
       demandes_vues: demandesRes.data?.length || 0,
       devis_envoyes: devisData.length,
       devis_acceptes: devisAcceptes,
-      messages: messagesRes.data?.length || 0,
+      messages: (messagesRes.data || []).reduce((sum: number, c: any) => sum + (c.unread_count_prestataire || 0), 0),
       chiffreAffaires: ca,
       tauxAcceptation: Math.round(tauxAcceptation)
     });
@@ -257,7 +257,7 @@ export default function MenuPrestataire() {
               <Ionicons name="mail" size={24} color={COLORS.info} />
             </View>
             <Text style={styles.statValue}>{stats.demandes_vues}</Text>
-            <Text style={styles.statLabel}>Demandes vues</Text>
+            <Text style={styles.statLabel}>Demandes client</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -305,20 +305,6 @@ export default function MenuPrestataire() {
           <Text style={styles.sectionTitle}>Gestion</Text>
 
           <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/photographe/media-library')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="images" size={24} color="#EF4444" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Médiathèque</Text>
-              <Text style={styles.menuSubtitle}>Gérer mes photos</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.menuItem, { borderBottomWidth: 0 }]}
             onPress={() => router.push('/photographe/review/reviews-dashboard')}
           >
@@ -331,13 +317,8 @@ export default function MenuPrestataire() {
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
-        </View>
 
-        {/* Section Finances */}
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Finances</Text>
-
-          <TouchableOpacity
+                    <TouchableOpacity
             style={styles.menuItem}
             onPress={() => router.push('/photographe/leads/invoices-list')}
           >
@@ -350,68 +331,6 @@ export default function MenuPrestataire() {
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/photographe/packages/packages-list')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="pricetag" size={24} color={COLORS.warning} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Mes Packages</Text>
-              <Text style={styles.menuSubtitle}>Offres standardisées</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={() => router.push('/photographe/remboursements')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
-              <Ionicons name="card" size={24} color={COLORS.purple} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Remboursements</Text>
-              <Text style={styles.menuSubtitle}>Historique des paiements</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Section Paramètres */}
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Paramètres</Text>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/photographe/ma-localisation')}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="location" size={24} color={COLORS.info} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Ma localisation</Text>
-              <Text style={styles.menuSubtitle}>Zones d'intervention</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/photographe/integrations-list' as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="flash" size={24} color={COLORS.success} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Intégrations & Paiements</Text>
-              <Text style={styles.menuSubtitle}>Stripe, Google Calendar</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
-          </TouchableOpacity>
-
         </View>
 
         <View style={{ height: 120 }} />

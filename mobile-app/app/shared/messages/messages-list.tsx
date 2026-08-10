@@ -34,7 +34,7 @@ const COLORS = {
 interface Conversation {
   id: string;
   client_id: string;
-  photographe_id: string;
+  prestataire_id: string;
   last_message_text: string;
   last_message_at: string;
   last_message_sender_id: string;
@@ -76,18 +76,19 @@ export default function MessagesListScreen() {
       // Determine if user is client or provider by checking their role
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
-        .eq('auth_user_id', user.id)
-        .single();
+        .select('id, role')
+        .or(`id.eq.${user.id},auth_user_id.eq.${user.id}`)
+        .maybeSingle();
 
+      const profileId = profile?.id || user.id;
       const role = profile?.role || 'particulier';
-      setUserRole(role === 'photographe' ? 'provider' : 'client');
+      setUserRole(role === 'photographe' || role === 'prestataire' ? 'provider' : 'client');
 
       // Get conversations where user is either client or provider
       const { data: conversationsData, error } = await supabase
         .from('conversations')
         .select('*')
-        .or(`client_id.eq.${user.id},photographe_id.eq.${user.id}`)
+        .or(`client_id.eq.${profileId},prestataire_id.eq.${profileId}`)
         .order('last_message_at', { ascending: false });
 
       if (error) throw error;
@@ -96,7 +97,7 @@ export default function MessagesListScreen() {
       const userIds = new Set<string>();
       (conversationsData || []).forEach(conv => {
         if (conv.client_id) userIds.add(conv.client_id);
-        if (conv.photographe_id) userIds.add(conv.photographe_id);
+        if (conv.prestataire_id) userIds.add(conv.prestataire_id);
       });
 
       const { data: profilesData } = await supabase
@@ -114,8 +115,8 @@ export default function MessagesListScreen() {
       const formatted = (conversationsData || []).map(conv => ({
         ...conv,
         other_user_name:
-          conv.client_id === user.id
-            ? `${profileMap[conv.photographe_id]?.prenom || ''} ${profileMap[conv.photographe_id]?.nom || ''}`
+          conv.client_id === profileId
+            ? `${profileMap[conv.prestataire_id]?.prenom || ''} ${profileMap[conv.prestataire_id]?.nom || ''}`
             : `${profileMap[conv.client_id]?.prenom || ''} ${profileMap[conv.client_id]?.nom || ''}`,
       }));
 

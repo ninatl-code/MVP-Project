@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient';
 export interface Devis {
   id: string;
   demande_id: string;
-  photographe_id: string;
+  prestataire_id: string;
   client_id: string;
   titre: string;
   description: string;
@@ -136,7 +136,7 @@ export async function createDevis(
     const { data: devis, error } = await supabase
       .from('devis')
       .insert({
-        photographe_id: photographeId,
+        prestataire_id: photographeId,
         client_id: data.client_id,
         demande_id: data.demande_id,
         titre: data.titre,
@@ -174,7 +174,6 @@ export async function createDevis(
       .select(`
         *,
         demande:demandes_client(titre, categorie, lieu, ville, date_souhaitee),
-        photographe:profiles!devis_photographe_id_fkey(nom, avatar_url, ville),
         client:profiles!devis_client_id_fkey(nom, avatar_url)
       `)
       .single();
@@ -201,7 +200,7 @@ export async function getPhotographeDevis(photographeId: string): Promise<Devis[
         demande:demandes_client(id, titre, categorie, lieu, ville, date_souhaitee, statut),
         client:profiles!devis_client_id_fkey(nom, avatar_url)
       `)
-      .eq('photographe_id', photographeId)
+      .eq('prestataire_id', photographeId)
       .order('envoye_le', { ascending: false });
 
     if (error) throw error;
@@ -221,7 +220,7 @@ export async function getDemandeDevis(demandeId: string): Promise<Devis[]> {
       .from('devis')
       .select(`
         *,
-        photographe:profiles!devis_photographe_id_fkey(
+        prestataire:profiles!devis_prestataire_id_fkey(
           id,
           nom,
           avatar_url,
@@ -249,7 +248,7 @@ export async function getDevisById(devisId: string): Promise<Devis> {
       .select(`
         *,
         demande:demandes_client(*),
-        photographe:profiles!devis_photographe_id_fkey(*),
+        prestataire:profiles!devis_prestataire_id_fkey(*),
         client:profiles!devis_client_id_fkey(*)
       `)
       .eq('id', devisId)
@@ -370,7 +369,7 @@ export async function hasAlreadySentDevis(photographeId: string, demandeId: stri
     const { data, error } = await supabase
       .from('devis')
       .select('id')
-      .eq('photographe_id', photographeId)
+      .eq('prestataire_id', photographeId)
       .eq('demande_id', demandeId)
       .maybeSingle();
 

@@ -65,13 +65,14 @@ export default function ProviderReviewsDashboard() {
         .from('reviews_presta')
         .select(`
           *,
-          reviewer_profiles:reviewer_id(nom),
-          reservation_info:reservation_id(
-            annonce_id,
-            annonce_data:annonce_id(titre)
+          client:profiles!reviews_presta_client_id_fkey(id, nom, prenom, avatar_url),
+          reservation:reservations!reservation_id(
+            id,
+            date,
+            demandes_client(id, titre)
           )
         `)
-        .eq('reviewee_id', user.id)
+        .eq('prestataire_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -79,15 +80,15 @@ export default function ProviderReviewsDashboard() {
       // Map avis to Review format
       const formattedData = (data || []).map((avis: any) => ({
         id: avis.id,
-        overall_rating: avis.note_globale || 5,
-        comment: avis.commentaire,
+        overall_rating: avis.rating || 0,
+        comment: avis.comment,
         created_at: avis.created_at,
         provider_response: avis.provider_response,
         reviewer: {
-          nom: avis.reviewer_profiles?.nom || 'Client',
+          nom: avis.client?.nom || avis.client?.prenom || 'Client',
         },
         reservation: {
-          titre: avis.reservation_info?.annonce_data?.titre || 'Service',
+          titre: avis.reservation?.demandes_client?.titre || 'Service',
         },
       }));
 

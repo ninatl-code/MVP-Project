@@ -89,7 +89,7 @@ export default function ClientMenu() {
   };
 
   const handleSwitchProfile = async () => {
-    const photographeProfile = availableProfiles.find(p => p.role === 'photographe');
+    const photographeProfile = availableProfiles.find(p => p.role === 'photographe' || p.role === 'prestataire');
     if (photographeProfile) {
       await switchProfile(photographeProfile.id);
       setShowSwitchModal(false);

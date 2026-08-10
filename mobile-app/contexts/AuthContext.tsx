@@ -46,114 +46,142 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [availableProfiles, setAvailableProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
-    // Récupérer la session existante
+    let initialized = false;
+
     const getInitialSession = async () => {
-      try {
-        // D'abord, essayer de restaurer depuis AsyncStorage
-        const savedSession = await AsyncStorage.getItem('userSession');
-        
-        // Puis, récupérer la session Supabase (qui devrait être persistée)
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
+      // Safety net: never block the UI for more than 5 seconds
+      const timeoutId = setTimeout(() => {
+        if (!initialized) {
+          initialized = true;
+          setLoading(false);
         }
-        
+      }, 5000);
+
+      try {
+        // Read cache and Supabase session in parallel
+        const [cachedProfileId, cachedRole, { data: { session }, error }] = await Promise.all([
+          AsyncStorage.getItem('activeProfileId'),
+          AsyncStorage.getItem('activeRole'),
+          supabase.auth.getSession(),
+        ]);
+
+        if (error) console.error('Error getting session:', error);
+
         if (session) {
-          // Session existe (soit fraîche, soit restaurée par Supabase)
           setSession(session);
           setUser(session.user);
-          
-          console.log('Session restaurée pour:', session.user?.email);
-          
-          // Récupérer les profils disponibles
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, role, nom')
-            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
-          
-          if (profiles && profiles.length > 0) {
-            setAvailableProfiles(profiles);
-            
-            // Restaurer le profil actif depuis AsyncStorage
-            const savedProfileId = await AsyncStorage.getItem('activeProfileId');
-            
-            if (savedProfileId && profiles.find(p => p.id === savedProfileId)) {
-              const profile = profiles.find(p => p.id === savedProfileId);
-              setProfileId(savedProfileId);
-              setActiveRole(profile?.role || null);
-            } else {
-              // Par défaut : photographe si disponible, sinon le premier profil
-              const defaultProfile = profiles.find(p => p.role === 'photographe') || profiles[0];
+
+          if (cachedProfileId && cachedRole) {
+            // Fast path: restore from cache immediately, validate profiles in background
+            setProfileId(cachedProfileId);
+            setActiveRole(cachedRole);
+            clearTimeout(timeoutId);
+            initialized = true;
+            setLoading(false);
+
+            supabase
+              .from('profiles')
+              .select('id, role, nom')
+              .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`)
+              .then(({ data: profiles }) => {
+                if (profiles?.length) {
+                  setAvailableProfiles(profiles);
+                  if (!profiles.find(p => p.id === cachedProfileId)) {
+                    const def = profiles.find(p => p.role === 'photographe' || p.role === 'prestataire') || profiles[0];
+                    setProfileId(def.id);
+                    setActiveRole(def.role);
+                    AsyncStorage.setItem('activeProfileId', def.id);
+                    AsyncStorage.setItem('activeRole', def.role);
+                  }
+                }
+              });
+          } else {
+            // Slow path (first launch): fetch profiles and wait
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, role, nom')
+              .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
+
+            if (profiles?.length) {
+              setAvailableProfiles(profiles);
+              const defaultProfile = profiles.find(p => p.role === 'photographe' || p.role === 'prestataire') || profiles[0];
               setProfileId(defaultProfile.id);
               setActiveRole(defaultProfile.role);
-              await AsyncStorage.setItem('activeProfileId', defaultProfile.id);
+              await Promise.all([
+                AsyncStorage.setItem('activeProfileId', defaultProfile.id),
+                AsyncStorage.setItem('activeRole', defaultProfile.role),
+              ]);
             }
+            clearTimeout(timeoutId);
+            initialized = true;
+            setLoading(false);
           }
         } else {
-          // Pas de session - rester sur login
-          setSession(null);
-          setUser(null);
-          setProfileId(null);
-          setActiveRole(null);
-          setAvailableProfiles([]);
+          clearTimeout(timeoutId);
+          initialized = true;
+          setLoading(false);
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
-      } finally {
+        clearTimeout(timeoutId);
+        initialized = true;
         setLoading(false);
       }
     };
 
     getInitialSession();
 
-    // Écouter les changements d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // INITIAL_SESSION is already handled by getInitialSession above
+        if (event === 'INITIAL_SESSION') return;
+
         console.log('Auth state change:', event, session?.user?.email);
-        
+
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
-          // Récupérer tous les profils de l'utilisateur
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, role, nom')
             .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
-          
-          if (profiles && profiles.length > 0) {
+
+          if (profiles?.length) {
             setAvailableProfiles(profiles);
-            
-            // Vérifier s'il y a un profil actif sauvegardé
             const savedProfileId = await AsyncStorage.getItem('activeProfileId');
-            
+
             if (savedProfileId && profiles.find(p => p.id === savedProfileId)) {
-              // Utiliser le profil sauvegardé
               const profile = profiles.find(p => p.id === savedProfileId);
               setProfileId(savedProfileId);
               setActiveRole(profile?.role || null);
             } else {
-              // Par défaut : photographe si disponible, sinon le premier profil
-              const defaultProfile = profiles.find(p => p.role === 'photographe') || profiles[0];
+              const defaultProfile = profiles.find(p => p.role === 'photographe' || p.role === 'prestataire') || profiles[0];
               setProfileId(defaultProfile.id);
               setActiveRole(defaultProfile.role);
-              await AsyncStorage.setItem('activeProfileId', defaultProfile.id);
+              await Promise.all([
+                AsyncStorage.setItem('activeProfileId', defaultProfile.id),
+                AsyncStorage.setItem('activeRole', defaultProfile.role),
+              ]);
             }
           }
-          
-          // Sauvegarder les infos utilisateur pour la persistance
+
           await AsyncStorage.setItem('userSession', JSON.stringify(session));
         } else if (event === 'SIGNED_OUT') {
-          // Nettoyer le cache à la déconnexion explicite
-          await AsyncStorage.removeItem('userSession');
-          await AsyncStorage.removeItem('activeProfileId');
+          await Promise.all([
+            AsyncStorage.removeItem('userSession'),
+            AsyncStorage.removeItem('activeProfileId'),
+            AsyncStorage.removeItem('activeRole'),
+          ]);
           setProfileId(null);
           setActiveRole(null);
           setAvailableProfiles([]);
         }
-        
-        setLoading(false);
+
+        if (!initialized) {
+          initialized = true;
+          setLoading(false);
+        }
       }
     );
 
@@ -213,7 +241,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (profile) {
         setProfileId(newProfileId);
         setActiveRole(profile.role);
-        await AsyncStorage.setItem('activeProfileId', newProfileId);
+        await Promise.all([
+          AsyncStorage.setItem('activeProfileId', newProfileId),
+          AsyncStorage.setItem('activeRole', profile.role),
+        ]);
       }
     } catch (error) {
       console.error('Switch profile error:', error);

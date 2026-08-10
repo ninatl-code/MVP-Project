@@ -11,6 +11,7 @@ export default function ProfilPhotographe() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
   const [stats, setStats] = useState({ 
     totalAnnonces: 0, 
     totalReservations: 0, 
@@ -20,6 +21,8 @@ export default function ProfilPhotographe() {
   });
   const [villeNom, setVilleNom] = useState('');
   const [loading, setLoading] = useState(true);
+  const [verificationStatus, setVerificationStatus] = useState<any>(null);
+  
 
   useEffect(() => {
     fetchProfile();
@@ -28,59 +31,116 @@ export default function ProfilPhotographe() {
 
   const fetchProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         console.log('Aucun utilisateur authentifié');
+        setDebugError('Pas de session utilisateur');
         router.replace('/auth/login');
         return;
       }
+      const user = session.user;
 
       setUserId(user.id);
       console.log('Récupération du profil pour user:', user.id);
 
-      const { data, error } = await supabase
+      const { data, error, status, statusText } = await supabase
         .from('profiles')
         .select('*')
-        .eq('auth_user_id', user.id)
-        .eq('role', 'photographe')
+        .eq('id', user.id)
+        .in('role', ['photographe'])
         .maybeSingle();
 
+      // LOG COMPLET, pas juste error.message
+      console.log('📊 Résultat requête profiles:', {
+        data,
+        error,
+        status,
+        statusText,
+        errorCode: error?.code,
+        errorDetails: error?.details,
+        errorHint: error?.hint,
+      });
+
       if (error) {
-        console.error('Erreur Supabase:', error.message);
+        console.error('❌ Erreur Supabase complète:', JSON.stringify(error, null, 2));
+        setDebugError(`Code: ${error.code || 'N/A'} | Message: ${error.message} | Détails: ${error.details || 'aucun'}`);
       }
 
       if (data) {
         console.log('Profil trouvé:', data);
-        setProfile(data);
-        
-        // Load ALL photographer details from profils_prestataire using profiles.id
-        const { data: photoData } = await supabase
+
+        // Also fetch profils_prestataire for bio, specialisations, equipment, etc.
+        const { data: prestaData } = await supabase
           .from('profils_prestataire')
           .select('*')
-          .eq('id', data.id)
+          .eq('id', user.id)
           .maybeSingle();
 
-        if (photoData) {
-          console.log('Détails photographe chargés:', photoData);
-          setProfile(prev => ({
-            ...prev,
-            ...photoData
-          }));
-        }
-        
-        if (data.ville_id) {
-          const { data: villeData } = await supabase
-            .from('villes')
-            .select('ville')
-            .eq('id', data.ville_id)
-            .maybeSingle();
-          setVilleNom(villeData?.ville || '');
-        }
+        const merged = {
+          ...data,
+          bio: prestaData?.bio || '',
+          nom_entreprise: prestaData?.nom_entreprise || '',
+          instagram: prestaData?.instagram || data.instagram || '',
+          facebook: prestaData?.facebook || data.facebook || '',
+          linkedin: prestaData?.linkedin || data.linkedin || '',
+          site_web: prestaData?.site_web || data.site_web || '',
+          specialisations: Array.isArray(prestaData?.specialisations) ? prestaData.specialisations : [],
+          categories: Array.isArray(prestaData?.categories) ? prestaData.categories : [],
+          equipe: Array.isArray(prestaData?.equipe) ? prestaData.equipe : (prestaData?.equipe ? [prestaData.equipe] : []),
+          materiel: prestaData?.materiel || '',
+          rayon_deplacement_km: prestaData?.rayon_deplacement_km || 50,
+          mobile: prestaData?.mobile ?? true,
+          agence: prestaData?.agence ?? false,
+          agence_adresse: prestaData?.agence_adresse || '',
+          preferences: prestaData?.preferences || {},
+          portfolio_photos: Array.isArray(prestaData?.portfolio_photos) ? prestaData.portfolio_photos : [],
+          tarifs_indicatifs: prestaData?.tarifs_indicatifs || {},
+          siret: prestaData?.siret || data.siret || '',
+          statut_pro: prestaData?.statut_pro ?? data.statut_pro ?? false,
+          identite_verifiee: prestaData?.identite_verifiee ?? data.identite_verifiee ?? false,
+          entreprise_verifiee: prestaData?.entreprise_verifiee ?? false,
+          document_identite_recto_url: prestaData?.document_identite_recto_url || null,
+          documents_assurance: prestaData?.documents_assurance || null,
+          statut_validation: prestaData?.statut_validation || 'pending',
+        };
+        setProfile(merged);
+        setVilleNom(data.ville || '');
+
+        // Compute verification status like the web app
+        const emailVerified = !!session.user.email;
+        const phoneVerified = !!(data.phone_verified);
+        const identityVerified = !!(prestaData?.identite_verifiee);
+        const identityPending = !!(prestaData?.document_identite_recto_url) && !identityVerified;
+        const businessVerified = !!(prestaData?.entreprise_verifiee);
+        const businessPending = !!(prestaData?.documents_siret || prestaData?.documents_kbis) && !businessVerified;
+        let score = 20;
+        if (emailVerified) score += 20;
+        if (phoneVerified) score += 15;
+        if (identityPending) score += 10;
+        if (identityVerified) score += 20;
+        if (businessPending) score += 5;
+        if (businessVerified) score += 15;
+        score = Math.min(score, 100);
+        const level = score < 40 ? 'Débutant' : score < 60 ? 'Confirmé' : score < 80 ? 'Avancé' : 'Certifié';
+        setVerificationStatus({
+          email_verified: emailVerified,
+          phone_verified: phoneVerified,
+          identity_verified: identityVerified,
+          identity_pending: identityPending,
+          business_verified: businessVerified,
+          business_pending: businessPending,
+          trust_score: score,
+          trust_level: level,
+        });
       } else {
         console.warn('Aucun profil trouvé pour cet utilisateur');
+        if (!error) {
+          setDebugError('Aucune erreur, mais data est null/vide (0 ligne trouvée)');
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors du chargement du profil:', error);
+      setDebugError(`Exception JS: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -106,29 +166,30 @@ export default function ProfilPhotographe() {
 
   const loadStats = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const user = session.user;
 
       // Get reservations and avis for stats
       const { data: reservations } = await supabase
         .from('reservations')
-        .select('id, montant_total, status')
-        .eq('photographe_id', user.id);
+        .select('id, montant_total, statut')
+        .eq('prestataire_id', user.id);
 
       const { data: avis } = await supabase
         .from('reviews_presta')
-        .select('note_globale')
-        .eq('reviewee_id', user.id);
+        .select('rating')
+        .eq('prestataire_id', user.id);
 
       const totalReservations = reservations?.length || 0;
       const reservationsPayees = reservations?.filter(r => 
-        r.status === 'paid' || r.status === 'confirmed' || r.status === 'completed'
+        r.statut === 'confirmed' || r.statut === 'completed'
       ) || [];
       
       const chiffreAffaires = reservationsPayees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
       
       const noteMoyenneNum = avis && avis.length > 0 ? 
-        avis.reduce((sum, a) => sum + (a.note_globale || 0), 0) / avis.length : 0;
+        avis.reduce((sum, a) => sum + (a.rating || 0), 0) / avis.length : 0;
 
       setStats({
         totalAnnonces: totalReservations,
@@ -155,18 +216,19 @@ export default function ProfilPhotographe() {
 
   const checkAndConfigureSupabase = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         Alert.alert('Erreur', 'Aucun utilisateur connecté');
         return;
       }
+      const user = session.user;
 
       // Vérifier la configuration du compte
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, email, telephone, assurance_pro, role')
-        .eq('auth_user_id', user.id)
-        .eq('role', 'photographe')
+        .eq('id', user.id)
+        .in('role', ['photographe'])
         .maybeSingle();
 
       if (profileError) {
@@ -237,6 +299,11 @@ export default function ProfilPhotographe() {
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>Profil non trouvé</Text>
           <Text style={styles.debugText}>ID: {userId?.substring(0, 8)}...</Text>
+          {debugError && (
+            <Text style={[styles.debugText, { color: 'red', marginTop: 8, paddingHorizontal: 20, textAlign: 'center' }]}>
+              {debugError}
+            </Text>
+          )}
           <TouchableOpacity 
             style={styles.editButton}
             onPress={() => router.push('/photographe/profil/profil-complet')}
@@ -432,29 +499,37 @@ export default function ProfilPhotographe() {
           <View style={styles.sectionHeader}>
             <Ionicons name="camera" size={20} color={COLORS.primary} />
             <Text style={styles.sectionTitle}>Spécialisations</Text>
+            <TouchableOpacity onPress={() => router.push('/photographe/profil/profil-complet')}>
+              <Ionicons name="create-outline" size={18} color={COLORS.textLight} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            {profile?.specialisations && Array.isArray(profile.specialisations) && profile.specialisations.length > 0 ? (
-              <View style={styles.infoCard}>
-                <Ionicons name="star" size={20} color={COLORS.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Spécialisations</Text>
-                  <Text style={styles.infoValue}>{profile.specialisations.join(', ')}</Text>
+            {profile?.categories && profile.categories.length > 0 && (
+              <View style={styles.tagGroup}>
+                <Text style={styles.tagGroupLabel}>Catégories</Text>
+                <View style={styles.tagRow}>
+                  {profile.categories.map((c: string, i: number) => (
+                    <View key={i} style={[styles.tag, { backgroundColor: '#EEF2FF' }]}>
+                      <Text style={[styles.tagText, { color: COLORS.primary }]}>{c}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            {profile?.specialisations && profile.specialisations.length > 0 ? (
+              <View style={styles.tagGroup}>
+                <Text style={styles.tagGroupLabel}>Spécialisations</Text>
+                <View style={styles.tagRow}>
+                  {profile.specialisations.map((s: string, i: number) => (
+                    <View key={i} style={[styles.tag, { backgroundColor: '#F0FDF4' }]}>
+                      <Text style={[styles.tagText, { color: '#15803D' }]}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
             ) : (
               <Text style={styles.emptyText}>Aucune spécialisation renseignée</Text>
-            )}
-
-            {profile?.categories && Array.isArray(profile.categories) && profile.categories.length > 0 && (
-              <View style={styles.infoCard}>
-                <Ionicons name="grid" size={20} color={COLORS.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Catégories</Text>
-                  <Text style={styles.infoValue}>{profile.categories.join(', ')}</Text>
-                </View>
-              </View>
             )}
           </View>
         </View>
@@ -464,41 +539,41 @@ export default function ProfilPhotographe() {
           <View style={styles.sectionHeader}>
             <Ionicons name="construct" size={20} color={COLORS.primary} />
             <Text style={styles.sectionTitle}>Équipement & Équipe</Text>
+            <TouchableOpacity onPress={() => router.push('/photographe/profil/profil-complet')}>
+              <Ionicons name="create-outline" size={18} color={COLORS.textLight} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            {profile?.materiel && Object.keys(profile.materiel).length > 0 ? (
+            {profile?.materiel ? (
               <View style={styles.infoCard}>
-                <Ionicons name="settings" size={20} color={COLORS.primary} />
+                <Ionicons name="camera-outline" size={20} color={COLORS.primary} />
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Matériel</Text>
+                  <Text style={styles.infoLabel}>Matériel & équipements</Text>
+                  <Text style={styles.infoValue}>{profile.materiel}</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {profile?.equipe && profile.equipe.length > 0 ? (
+              <View style={styles.infoCard}>
+                <Ionicons name="people" size={20} color={COLORS.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Organisation</Text>
                   <Text style={styles.infoValue}>
-                    {Object.entries(profile.materiel)
-                      .filter(([_, value]) => value)
-                      .map(([key]) => key)
-                      .join(', ') || 'Non spécifié'}
+                    {profile.equipe.map((e: string) => {
+                      if (e === 'solo') return 'Je travaille seul(e)';
+                      if (e === 'equipe') return "J'ai une équipe";
+                      if (e === 'binome') return "J'ai un binôme";
+                      return e;
+                    }).join(', ')}
                   </Text>
                 </View>
               </View>
             ) : null}
 
-            {profile?.equipe && (
-              <View style={styles.infoCard}>
-                <Ionicons name="people" size={20} color={COLORS.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Équipe</Text>
-                  <Text style={styles.infoValue}>
-                    {[
-                      profile.equipe.solo_only 
-                        ? 'Travail en solo'
-                        : `Équipe de ${profile.equipe.num_assistants || 0} assistant(s)`,
-                      profile.equipe.has_makeup ? 'Maquilleur' : null,
-                      profile.equipe.has_stylist ? 'Styliste' : null,
-                      profile.equipe.has_videographer ? 'Vidéographe' : null,
-                    ].filter(Boolean).join(', ')}
-                  </Text>
-                </View>
-              </View>
+            {!profile?.materiel && (!profile?.equipe || profile.equipe.length === 0) && (
+              <Text style={styles.emptyText}>Aucune information renseignée</Text>
             )}
           </View>
         </View>
@@ -545,44 +620,50 @@ export default function ProfilPhotographe() {
           </View>
 
           <View style={styles.card}>
-            {profile?.mobile !== undefined && (
-              <View style={styles.infoCard}>
-                <Ionicons name="car" size={20} color={COLORS.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Déplacement</Text>
-                  <Text style={styles.infoValue}>
-                    {profile.mobile ? `Oui (${profile.rayon_deplacement_km || 50} km)` : 'Non'}
-                  </Text>
-                </View>
+            <View style={styles.infoCard}>
+              <Ionicons name="location" size={20} color={COLORS.primary} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Ville</Text>
+                <Text style={styles.infoValue}>{villeNom || 'Non renseignée'}</Text>
               </View>
-            )}
+            </View>
 
-            {profile?.studio && (
+            <View style={styles.infoCard}>
+              <Ionicons name="car" size={20} color={COLORS.primary} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Déplacement</Text>
+                <Text style={styles.infoValue}>
+                  {profile?.mobile !== false
+                    ? `Oui — jusqu'à ${profile?.rayon_deplacement_km || 50} km`
+                    : 'Non'}
+                </Text>
+              </View>
+            </View>
+
+            {profile?.agence && (
               <View style={styles.infoCard}>
                 <Ionicons name="home" size={20} color={COLORS.primary} />
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Studio</Text>
+                  <Text style={styles.infoLabel}>Agence / Studio</Text>
                   <Text style={styles.infoValue}>
-                    {profile.studio_adresse || 'Adresse disponible sur demande'}
+                    {profile.agence_adresse || 'Adresse disponible sur demande'}
                   </Text>
                 </View>
               </View>
             )}
 
-            {profile?.preferences && typeof profile.preferences === 'object' ? (
-              <View style={styles.infoCard}>
-                <Ionicons name="calendar" size={20} color={COLORS.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Disponibilités</Text>
-                  <Text style={styles.infoValue}>
-                    {[
-                      profile.preferences?.accepte_weekend ? 'Weekends' : null,
-                      profile.preferences?.accepte_soiree ? 'Soirées' : null,
-                    ].filter(Boolean).join(', ') || 'Semaine uniquement'}
-                  </Text>
-                </View>
+            <View style={styles.infoCard}>
+              <Ionicons name="calendar" size={20} color={COLORS.primary} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Disponibilités</Text>
+                <Text style={styles.infoValue}>
+                  {[
+                    profile?.preferences?.accepte_weekend ? 'Weekends' : null,
+                    profile?.preferences?.accepte_soiree ? 'Soirées' : null,
+                  ].filter(Boolean).join(', ') || 'Semaine uniquement'}
+                </Text>
               </View>
-            ) : null}
+            </View>
           </View>
         </View>
 
@@ -590,31 +671,102 @@ export default function ProfilPhotographe() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Vérification</Text>
+            <Text style={styles.sectionTitle}>Vérification & Confiance</Text>
           </View>
 
           <View style={styles.card}>
-            {profile?.documents_assurance && (
-              <View style={styles.infoCard}>
-                <Ionicons name="document" size={20} color={COLORS.primary} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Assurance professionnelle</Text>
-                  <Text style={styles.infoValue}>Document fourni ✓</Text>
+            {verificationStatus && (
+              <>
+                {/* Trust score bar */}
+                <View style={styles.trustScoreContainer}>
+                  <View style={styles.trustScoreHeader}>
+                    <Text style={styles.trustScoreLabel}>Score de confiance</Text>
+                    <Text style={styles.trustScoreValue}>{verificationStatus.trust_score}/100 — {verificationStatus.trust_level}</Text>
+                  </View>
+                  <View style={styles.trustScoreBar}>
+                    <View style={[styles.trustScoreBarFill, {
+                      width: `${verificationStatus.trust_score}%` as any,
+                      backgroundColor: verificationStatus.trust_score >= 80 ? '#10B981' : verificationStatus.trust_score >= 60 ? '#3B82F6' : '#F59E0B',
+                    }]} />
+                  </View>
                 </View>
-              </View>
+
+                <View style={styles.infoCard}>
+                  <Ionicons name="mail" size={20} color={verificationStatus.email_verified ? '#10B981' : '#9CA3AF'} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Email</Text>
+                    <Text style={[styles.infoValue, { color: verificationStatus.email_verified ? '#10B981' : '#F59E0B' }]}>
+                      {verificationStatus.email_verified ? 'Vérifié ✓' : 'Non vérifié'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoCard}>
+                  <Ionicons name="call" size={20} color={verificationStatus.phone_verified ? '#10B981' : '#9CA3AF'} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Téléphone</Text>
+                    <Text style={[styles.infoValue, { color: verificationStatus.phone_verified ? '#10B981' : '#F59E0B' }]}>
+                      {verificationStatus.phone_verified ? 'Vérifié ✓' : 'Non vérifié'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoCard}>
+                  <Ionicons name="id-card" size={20} color={
+                    verificationStatus.identity_verified ? '#10B981' :
+                    verificationStatus.identity_pending ? '#3B82F6' : '#9CA3AF'
+                  } />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Identité</Text>
+                    <Text style={[styles.infoValue, { color:
+                      verificationStatus.identity_verified ? '#10B981' :
+                      verificationStatus.identity_pending ? '#3B82F6' : '#F59E0B'
+                    }]}>
+                      {verificationStatus.identity_verified ? 'Vérifiée ✓' :
+                       verificationStatus.identity_pending ? 'Document soumis — en cours ⏳' :
+                       'Document non soumis'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoCard}>
+                  <Ionicons name="business" size={20} color={
+                    verificationStatus.business_verified ? '#10B981' :
+                    verificationStatus.business_pending ? '#3B82F6' : '#9CA3AF'
+                  } />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Entreprise</Text>
+                    <Text style={[styles.infoValue, { color:
+                      verificationStatus.business_verified ? '#10B981' :
+                      verificationStatus.business_pending ? '#3B82F6' : '#F59E0B'
+                    }]}>
+                      {verificationStatus.business_verified ? 'Vérifiée ✓' :
+                       verificationStatus.business_pending ? 'Document soumis — en cours ⏳' :
+                       'Document non soumis'}
+                    </Text>
+                  </View>
+                </View>
+
+                {profile?.documents_assurance && (
+                  <View style={styles.infoCard}>
+                    <Ionicons name="document" size={20} color="#10B981" />
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Assurance professionnelle</Text>
+                      <Text style={[styles.infoValue, { color: '#10B981' }]}>Document fourni ✓</Text>
+                    </View>
+                  </View>
+                )}
+              </>
             )}
 
-            {profile?.identite_verifiee !== undefined && (
-              <View style={styles.infoCard}>
-                <Ionicons name="id-card" size={20} color={profile.identite_verifiee ? '#10B981' : '#F59E0B'} />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Identité</Text>
-                  <Text style={[styles.infoValue, { color: profile.identite_verifiee ? '#10B981' : '#F59E0B' }]}>
-                    {profile.identite_verifiee ? 'Vérifiée ✓' : 'En attente de vérification'}
-                  </Text>
-                </View>
-              </View>
-            )}
+            <TouchableOpacity
+              style={styles.verifyButton}
+              onPress={() => router.push('/photographe/profil/verification')}
+            >
+              <Ionicons name="shield-checkmark-outline" size={18} color="white" />
+              <Text style={styles.verifyButtonText}>Gérer mes documents</Text>
+              <Ionicons name="chevron-forward" size={16} color="white" />
+            </TouchableOpacity>
           </View>
         </View>
         {/* Portfolio */}
@@ -677,40 +829,6 @@ export default function ProfilPhotographe() {
               {(!profile?.instagram && !profile?.facebook && !profile?.linkedin && !profile?.site_web) ? (
                 <Text style={styles.emptyText}>Aucun réseau social configuré</Text>
               ) : null}
-            </View>
-          </View>
-        </View>
-
-        {/* Configuration Stripe */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="card" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Compte Stripe</Text>
-          </View>
-
-          <View style={styles.card}>
-            <View style={styles.stripeInfo}>
-              <Ionicons name="information-circle" size={20} color={COLORS.primary} />
-              <Text style={styles.stripeInfoText}>
-                Configurez votre compte Stripe pour recevoir vos paiements
-              </Text>
-            </View>
-
-            <TouchableOpacity 
-              style={styles.stripeButton}
-              onPress={() => router.push('/photographe/integrations' as any)}
-            >
-              <Ionicons name="settings" size={20} color="white" />
-              <Text style={styles.stripeButtonText}>Configurer Stripe</Text>
-              <Ionicons name="chevron-forward" size={20} color="white" />
-            </TouchableOpacity>
-
-            <View style={styles.stripeStatus}>
-              <Text style={styles.stripeStatusLabel}>Statut:</Text>
-              <View style={styles.stripeStatusBadge}>
-                <View style={[styles.statusDot, { backgroundColor: '#F59E0B' }]} />
-                <Text style={styles.stripeStatusText}>Non configuré</Text>
-              </View>
             </View>
           </View>
         </View>
@@ -802,6 +920,19 @@ const styles = StyleSheet.create({
   socialItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.backgroundLight, padding: 12, borderRadius: 12 },
   socialText: { fontSize: 15, color: COLORS.text, flex: 1 },
   emptyText: { textAlign: 'center', color: COLORS.textLight, fontSize: 14, paddingVertical: 20 },
+  tagGroup: { marginBottom: 12 },
+  tagGroupLabel: { fontSize: 12, color: COLORS.primary, fontWeight: '600', marginBottom: 8 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  tagText: { fontSize: 13, fontWeight: '500' },
+  trustScoreContainer: { marginBottom: 12, padding: 12, backgroundColor: COLORS.backgroundLight, borderRadius: 12 },
+  trustScoreHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  trustScoreLabel: { fontSize: 13, color: COLORS.textLight, fontWeight: '600' },
+  trustScoreValue: { fontSize: 13, color: COLORS.text, fontWeight: '600' },
+  trustScoreBar: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
+  trustScoreBarFill: { height: 8, borderRadius: 4 },
+  verifyButton: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.primary, padding: 14, borderRadius: 10, marginTop: 12, justifyContent: 'center' },
+  verifyButtonText: { color: 'white', fontWeight: '600', fontSize: 14, flex: 1, textAlign: 'center' },
   errorText: { color: COLORS.red, fontSize: 16, fontWeight: '600' },
   debugText: { color: COLORS.textLight, fontSize: 12, marginTop: 8 },
   verificationButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },

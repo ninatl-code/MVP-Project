@@ -73,7 +73,7 @@ export default function ReservationsPrestataire() {
           client:profiles!reservations_client_id_fkey(nom, email, telephone, avatar_url),
           packages_types!reservations_package_id_fkey(titre)
         `)
-        .eq('photographe_id', user.id)
+        .eq('prestataire_id', user.id)
         .order('created_at', { ascending: false });
 
       if (filter !== 'all') {

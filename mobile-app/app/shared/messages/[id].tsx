@@ -41,7 +41,7 @@ interface Message {
 
 interface ConversationDetails {
   id: string;
-  artist_id: string;
+  prestataire_id: string;
   client_id: string;
   other_user_name: string;
   other_user_photo?: string;
@@ -132,10 +132,10 @@ export default function ConversationPage() {
         .from('conversations')
         .select(`
           id,
-          artist_id,
+          prestataire_id,
           client_id,
-          artist:profiles!artist_id(nom, photos),
-          client:profiles!client_id(nom, photos)
+          prestataire:profiles!prestataire_id_fkey(nom, avatar_url),
+          client:profiles!client_id_fkey(nom, avatar_url)
         `)
         .eq('id', conversation_id)
         .single();
@@ -144,17 +144,16 @@ export default function ConversationPage() {
 
       if (convData) {
         const isParti = user_role === 'particulier';
-        const otherUserId = isParti ? convData.artist_id : convData.client_id;
         const otherUserProfile: any = isParti
-          ? convData.artist // artist profile
-          : convData.client; // client profile
+          ? convData.prestataire
+          : convData.client;
         
         setConversationDetails({
           id: convData.id,
-          artist_id: convData.artist_id,
+          prestataire_id: convData.prestataire_id,
           client_id: convData.client_id,
           other_user_name: otherUserProfile?.nom || 'Utilisateur',
-          other_user_photo: otherUserProfile?.photos
+          other_user_photo: otherUserProfile?.avatar_url
         });
       }
 
@@ -194,12 +193,12 @@ export default function ConversationPage() {
         }
       }
 
-      // Mettre à jour le statut lu de la conversation
+      // Mettre à jour le compteur non-lus de la conversation
       if (currentUserId) {
-        const updateField = user_role === 'particulier' ? 'client_lu' : 'lu';
+        const updateField = user_role === 'particulier' ? 'unread_count_client' : 'unread_count_prestataire';
         await supabase
           .from('conversations')
-          .update({ [updateField]: true })
+          .update({ [updateField]: 0 })
           .eq('id', conversation_id);
       }
 
@@ -233,7 +232,7 @@ export default function ConversationPage() {
     try {
       const receiverId =
         user_role === 'particulier'
-          ? conversationDetails.artist_id
+          ? conversationDetails.prestataire_id
           : conversationDetails.client_id;
 
       // Insérer le message
@@ -256,10 +255,9 @@ export default function ConversationPage() {
       await supabase
         .from('conversations')
         .update({
-          last_message: messageContent.substring(0, 100),
-          updated: new Date().toISOString(),
-          // Marquer comme non lu pour le destinataire
-          [user_role === 'particulier' ? 'lu' : 'client_lu']: false
+          last_message_text: messageContent.substring(0, 200),
+          last_message_at: new Date().toISOString(),
+          last_message_sender_id: currentUserId,
         })
         .eq('id', conversation_id);
 

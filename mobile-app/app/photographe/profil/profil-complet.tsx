@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -9,773 +9,700 @@ import {
   ActivityIndicator,
   TextInput,
   Switch,
-  FlatList,
   Image,
   Modal,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import { supabase } from '../../../lib/supabaseClient';
-import { COLORS } from '../../../constants/Colors';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import FooterPresta from '../../../components/photographe/FooterPresta';
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system/legacy'
+import { supabase } from '../../../lib/supabaseClient'
+import { COLORS } from '../../../constants/Colors'
+import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import FooterPresta from '../../../components/photographe/FooterPresta'
 
-// Types et constantes
-const SPECIALISATIONS = [
-  { id: 'portrait', label: 'Portrait / Book' },
-  { id: 'event', label: 'Événement' },
-  { id: 'product', label: 'Produit' },
-  { id: 'real_estate', label: 'Immobilier' },
-  { id: 'fashion', label: 'Mode' },
-  { id: 'family', label: 'Famille' },
-  { id: 'corporate', label: 'Corporate' },
-  { id: 'reportage', label: 'Reportage' },
-];
+// ⚠️ Ces trois imports doivent pointer vers des copies EXACTES des fichiers
+// web pour garantir que les valeurs de categories/specialisations/villes
+// soient strictement identiques des deux côtés.
+import { categories } from '../../../constants/categories'
+import { SPECIALITES_MAP } from '../../../constants/specialite'
+import { VILLES_MAROC } from '../../../constants/villes'
 
-const STYLES = [
-  { id: 'luminous', label: 'Lumineux' },
-  { id: 'dark_moody', label: 'Dark & Moody' },
-  { id: 'studio', label: 'Studio' },
-  { id: 'lifestyle', label: 'Lifestyle' },
-  { id: 'artistic', label: 'Artistique' },
-  { id: 'vintage', label: 'Vintage' },
-];
+// ──────────────────────────────────────────────────────────────────────────
+// Constantes locales (alignées sur le web)
+// ──────────────────────────────────────────────────────────────────────────
 
-const EQUIPMENT = [
-  { id: 'drones', label: 'Drones' },
-  { id: 'lighting', label: 'Éclairage Pro' },
-  { id: 'studio', label: 'Équipement Studio' },
-  { id: 'macro', label: 'Objectif Macro' },
-  { id: 'wide_angle', label: 'Grand Angle' },
-  { id: 'stabilizers', label: 'Stabilisateurs' },
-];
+const EQUIPE = [
+  { id: 'solo', label: 'Je travaille seul(e)', icon: 'person-outline' as const },
+  { id: 'equipe', label: "J'ai une équipe", icon: 'people-outline' as const },
+  { id: 'binome', label: 'J\'ai un binôme', icon: 'people-outline' as const },
+]
 
-interface PhotographerProfile {
-  id?: string;
-  nom: string;
-  email: string;
-  telephone: string;
-  bio: string;
-  nom_entreprise: string;
-  site_web: string;
-  specialisations: string[];
-  categories: string[];
-  equipe: {
-    solo_only: boolean;
-    num_assistants: number;
-    has_makeup: boolean;
-    has_stylist: boolean;
-    has_videographer: boolean;
-  };
-  materiel: Record<string, boolean>;
-  tarifs: Record<string, { min: number; max: number }>;
-  frais_deplacement_par_km: number;
-  rayon_deplacement: number;
-  mobile: boolean;
-  studio: boolean;
-  studio_adresse: string;
-  preferences: {
-    accepte_weekend: boolean;
-    accepte_soiree: boolean;
-  };
-  instagram: string;
-  facebook: string;
-  linkedin: string;
-  documents_assurance: string;
-  portfolio_photos: string[];
-  statut_validation?: string;
-  statut_pro?: boolean;
-  siret?: string;
-  document_identite_url?: string;
-  identite_verifiee?: boolean;
+const MODALITES_PAIEMENT = ['Virement bancaire', 'Carte bancaire', 'Espèces', 'Chèque']
+
+const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+
+type DocType = 'identity_recto' | 'identity_verso' | 'siret' | 'kbis' | 'assurance'
+
+const DOCUMENT_TYPES: {
+  type: DocType
+  profileColumn: string
+  label: string
+  required: boolean
+}[] = [
+  { type: 'identity_recto', profileColumn: 'document_identite_recto_url', label: "Carte d'identité (recto)", required: true },
+  { type: 'identity_verso', profileColumn: 'document_identite_verso_url', label: "Carte d'identité (verso)", required: false },
+  { type: 'siret', profileColumn: 'documents_siret', label: 'Justificatif SIRET', required: true },
+  { type: 'kbis', profileColumn: 'documents_kbis', label: 'Extrait Kbis', required: false },
+  { type: 'assurance', profileColumn: 'documents_assurance', label: 'Assurance professionnelle', required: false },
+]
+
+// Services additionnels dynamiques par catégorie / spécialisation
+// ⚠️ RECONSTRUIT depuis le web — à remplacer par une copie exacte si le web
+// fait évoluer cette liste.
+const SERVICES_ADDITIONNELS_MAP: Record<string, Record<string, { key: string; label: string }[]> & { _default: { key: string; label: string }[] }> = {
+  'Services à domicile': {
+    'Plomberie': [
+      { key: 'urgence_24h', label: 'Intervention 24h/24' },
+      { key: 'devis_gratuit', label: 'Devis gratuit' },
+      { key: 'garantie_travaux', label: 'Garantie travaux' },
+      { key: 'fourniture_pieces', label: 'Fourniture de pièces' },
+    ],
+    'Électricité': [
+      { key: 'urgence_24h', label: 'Intervention 24h/24' },
+      { key: 'devis_gratuit', label: 'Devis gratuit' },
+      { key: 'mise_aux_normes', label: 'Mise aux normes' },
+    ],
+    'Ménage': [
+      { key: 'produits_fournis', label: 'Produits fournis' },
+      { key: 'menage_regulier', label: 'Ménage régulier' },
+    ],
+    'Bricolage': [
+      { key: 'devis_gratuit', label: 'Devis gratuit' },
+      { key: 'garantie_travaux', label: 'Garantie travaux' },
+    ],
+    _default: [
+      { key: 'devis_gratuit', label: 'Devis gratuit' },
+      { key: 'urgence_24h', label: 'Intervention 24h/24' },
+    ],
+  },
+  'Transport & logistique': {
+    'Chauffeur': [{ key: 'aeroport_gare', label: 'Aéroport / Gare' }],
+    'Livraison': [{ key: 'livraison_express', label: 'Livraison express' }],
+    'Déménagement': [{ key: 'emballage', label: 'Emballage / Déballage' }],
+    _default: [{ key: 'livraison_express', label: 'Service express' }],
+  },
+  'Services digitaux': {
+    'Développement': [{ key: 'maintenance', label: 'Maintenance mensuelle' }],
+    'Design': [{ key: 'retouche_pro', label: 'Retouche pro' }],
+    'Marketing': [{ key: 'seo', label: 'Référencement SEO' }],
+    _default: [{ key: 'support_prioritaire', label: 'Support prioritaire' }],
+  },
+  'Éducation & coaching': {
+    'Cours particuliers': [{ key: 'supports_cours', label: 'Supports de cours fournis' }],
+    'Coaching': [{ key: 'suivi_intersession', label: 'Suivi entre séances' }],
+    _default: [{ key: 'supports_cours', label: 'Supports fournis' }],
+  },
+} as any
+
+const getServicesAdditionnels = (cats: string[], specs: string[]) => {
+  const cat = cats[0]
+  const spec = specs[0]
+  const fallback = [
+    { key: 'devis_gratuit', label: 'Devis gratuit' },
+    { key: 'livraison_express', label: 'Service express' },
+    { key: 'garantie', label: 'Garantie satisfaction' },
+  ]
+  if (!cat || !SERVICES_ADDITIONNELS_MAP[cat]) return fallback
+  const catMap = SERVICES_ADDITIONNELS_MAP[cat]
+  return (spec && catMap[spec]) || catMap._default || fallback
 }
 
-const DEFAULT_TARIFS = {
-  portrait: { min: 150, max: 500 },
-  event: { min: 500, max: 3000 },
-  product: { min: 200, max: 1000 },
-  real_estate: { min: 300, max: 1500 },
-  fashion: { min: 400, max: 2000 },
-  family: { min: 150, max: 600 },
-  corporate: { min: 300, max: 1500 },
-  reportage: { min: 400, max: 2000 },
-};
+const toArray = (val: any): string[] => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') return [val]
+  return []
+}
 
-const CATEGORIES = [
-  { id: 'portrait', label: 'Portrait / Book' },
-  { id: 'event', label: 'Événement' },
-  { id: 'product', label: 'Produit' },
-  { id: 'real_estate', label: 'Immobilier' },
-  { id: 'fashion', label: 'Mode' },
-  { id: 'family', label: 'Famille' },
-  { id: 'corporate', label: 'Corporate' },
-  { id: 'reportage', label: 'Reportage' },
-];
+// ──────────────────────────────────────────────────────────────────────────
+// Types — alignés sur les colonnes réellement utilisées côté web
+// ──────────────────────────────────────────────────────────────────────────
+
+interface PrestataireProfile {
+  // profiles
+  nom: string
+  email: string
+  telephone: string
+  ville: string
+
+  // profils_prestataire
+  bio: string
+  nom_entreprise: string
+  site_web: string
+  instagram: string
+  facebook: string
+  linkedin: string
+  video_presentation_url: string
+
+  categories: string[]
+  specialisations: string[]
+  details: { langages?: string; matiere?: string; niveau?: string }
+
+  equipe: string[] // ['solo' | 'equipe' | 'binome'] — même format que le web
+  materiel: string // texte libre — même format que le web
+
+  mobile: boolean
+  agence: boolean
+  agence_adresse: string
+  rayon_deplacement: number
+  frais_deplacement: string
+
+  preferences: { accepte_weekend: boolean; accepte_soiree: boolean }
+  jours_travailles: string[]
+
+  tarif_horaire_min: string
+  tarif_horaire_max: string
+  acompte_percent: number
+  conditions_annulation: string
+  delai_annulation_jours: number
+  modalites_paiement: string[]
+  services_additionnels: Record<string, boolean> & { _texte_libre?: string }
+
+  siret: string
+  numero_tva: string
+  statut_pro: boolean
+  statut_validation: string
+
+  portfolio_photos: string[]
+  photo_couverture: string
+
+  document_identite_recto_url: string | null
+  document_identite_verso_url: string | null
+  documents_siret: string | null
+  documents_kbis: string | null
+  documents_assurance: string | null
+}
+
+const DEFAULT_PROFILE: PrestataireProfile = {
+  nom: '',
+  email: '',
+  telephone: '',
+  ville: '',
+  bio: '',
+  nom_entreprise: '',
+  site_web: '',
+  instagram: '',
+  facebook: '',
+  linkedin: '',
+  video_presentation_url: '',
+  categories: [],
+  specialisations: [],
+  details: {},
+  equipe: [],
+  materiel: '',
+  mobile: true,
+  agence: false,
+  agence_adresse: '',
+  rayon_deplacement: 50,
+  frais_deplacement: '',
+  preferences: { accepte_weekend: true, accepte_soiree: true },
+  jours_travailles: [],
+  tarif_horaire_min: '',
+  tarif_horaire_max: '',
+  acompte_percent: 30,
+  conditions_annulation: '',
+  delai_annulation_jours: 7,
+  modalites_paiement: [],
+  services_additionnels: {},
+  siret: '',
+  numero_tva: '',
+  statut_pro: false,
+  statut_validation: 'pending',
+  portfolio_photos: [],
+  photo_couverture: '',
+  document_identite_recto_url: null,
+  document_identite_verso_url: null,
+  documents_siret: null,
+  documents_kbis: null,
+  documents_assurance: null,
+}
 
 export default function ProfilComplet() {
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const [profile, setProfile] = useState<PhotographerProfile>({
-    nom: '',
-    email: '',
-    telephone: '',
-    bio: '',
-    nom_entreprise: '',
-    site_web: '',
-    specialisations: [],
-    categories: [],
-    equipe: {
-      solo_only: true,
-      num_assistants: 0,
-      has_makeup: false,
-      has_stylist: false,
-      has_videographer: false,
-    },
-    materiel: {},
-    tarifs: DEFAULT_TARIFS,
-    frais_deplacement_par_km: 0,
-    rayon_deplacement: 50,
-    mobile: true,
-    studio: false,
-    studio_adresse: '',
-    preferences: {
-      accepte_weekend: true,
-      accepte_soiree: false,
-    },
-    instagram: '',
-    facebook: '',
-    linkedin: '',
-    documents_assurance: '',
-    portfolio_photos: [],
-  });
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('infos');
-  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
-  const [idDocRecto, setIdDocRecto] = useState<string | null>(null);
-  const [idDocVerso, setIdDocVerso] = useState<string | null>(null);
+  const [profile, setProfile] = useState<PrestataireProfile>(DEFAULT_PROFILE)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState<DocType | 'avatar' | 'cover' | null>(null)
+  const [activeTab, setActiveTab] = useState('infos')
+  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null)
+  const [profileId, setProfileId] = useState<string | null>(null)
+  const [autreSpecInput, setAutreSpecInput] = useState('')
+  const prevExistsRef = useRef(false)
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    loadProfile()
+  }, [])
 
+  // ── Chargement ──────────────────────────────────────────────────────────
   const loadProfile = async () => {
     try {
-      console.log('🔄 loadProfile starting...');
-      
-      // Get session (plus fiable que getUser)
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      // getSession() : lit la session en cache (AsyncStorage), fiable même
+      // juste après une navigation — contrairement à getUser() qui fait un
+      // appel réseau pouvant échouer/retarder au mauvais moment.
+      const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
-        console.log('❌ No session found');
-        setLoading(false);
-        return;
+        setLoading(false)
+        return
       }
-      
-      const user = session.user;
-      console.log('✅ User found:', user.id);
-      console.log('✅ User email:', user.email);
+      const user = session.user
 
-      // Load from profiles using auth_user_id AND role
-      console.log('📥 Loading from profiles table...');
-      const { data: basicProfileData, error: basicError } = await supabase
+      const { data: baseProfile, error: baseError } = await supabase
         .from('profiles')
-        .select('id, nom, email, telephone, avatar_url')
+        .select('id, nom, email, telephone, avatar_url, ville')
         .eq('auth_user_id', user.id)
         .eq('role', 'photographe')
-        .maybeSingle();
+        .maybeSingle()
 
-      console.log('✅ profiles data:', basicProfileData);
-      console.log('⚠️ profiles error:', basicError);
-
-      // Stocker le profiles.id pour l'utiliser dans saveProfile
-      if (basicProfileData?.id) {
-        setProfileId(basicProfileData.id);
-        console.log('✅ profiles.id stored:', basicProfileData.id);
+      if (baseError) {
+        console.error('Erreur profiles:', baseError)
       }
 
-      // Load detailed photographer profile from profils_prestataire
-      console.log('📥 Loading from profils_prestataire...');
-      const { data: photoData, error: photoError } = basicProfileData?.id
-        ? await supabase
-            .from('profils_prestataire')
-            .select('*')
-            .eq('id', basicProfileData.id)
-            .maybeSingle()
-        : { data: null, error: null };
+      if (baseProfile?.id) {
+        setProfileId(baseProfile.id)
+      }
 
-      console.log('✅ profils_prestataire loaded:', photoData ? 'YES' : 'NO');
-      console.log('⚠️ profils_prestataire error:', photoError);
+      const { data: photoData, error: photoError } = baseProfile?.id
+        ? await supabase.from('profils_prestataire').select('*').eq('id', baseProfile.id).maybeSingle()
+        : { data: null, error: null }
 
-      // Build complete profile - use profiles data (priority) and profils_prestataire as fallback
-      const newProfile = {
-        nom: basicProfileData?.nom || photoData?.nom || '',
-        email: basicProfileData?.email || photoData?.email || user.email || '',
-        telephone: basicProfileData?.telephone || photoData?.telephone || '',
+      if (photoError) {
+        console.error('Erreur profils_prestataire:', photoError)
+      }
+
+      prevExistsRef.current = !!photoData
+
+      const merged: PrestataireProfile = {
+        nom: baseProfile?.nom || user.user_metadata?.nom || '',
+        email: baseProfile?.email || user.email || '',
+        telephone: baseProfile?.telephone || '',
+        ville: baseProfile?.ville || '',
+
         bio: photoData?.bio || '',
         nom_entreprise: photoData?.nom_entreprise || '',
         site_web: photoData?.site_web || '',
-        specialisations: photoData?.specialisations || [],
-        categories: photoData?.categories || [],
-        equipe: photoData?.equipe || {
-          solo_only: true,
-          num_assistants: 0,
-          has_makeup: false,
-          has_stylist: false,
-          has_videographer: false,
-        },
-        materiel: photoData?.materiel || {},
-        tarifs: photoData?.tarifs_indicatifs || DEFAULT_TARIFS,
-        frais_deplacement_par_km: photoData?.frais_deplacement_par_km || 0,
-        rayon_deplacement: photoData?.rayon_deplacement_km || 50,
-        mobile: photoData?.mobile !== false,
-        studio: photoData?.studio || false,
-        studio_adresse: photoData?.studio_adresse || '',
-        preferences: photoData?.preferences || {
-          accepte_weekend: true,
-          accepte_soiree: false,
-        },
         instagram: photoData?.instagram || '',
         facebook: photoData?.facebook || '',
         linkedin: photoData?.linkedin || '',
-        documents_assurance: photoData?.documents_assurance || '',
-        portfolio_photos: photoData?.portfolio_photos || [],
+        video_presentation_url: photoData?.video_presentation_url || '',
+
+        categories: toArray(photoData?.categories),
+        specialisations: toArray(photoData?.specialisations),
+        details: Array.isArray(photoData?.details) ? (photoData.details[0] || {}) : (photoData?.details || {}),
+
+        equipe: toArray(photoData?.equipe),
+        materiel: typeof photoData?.materiel === 'string' ? photoData.materiel : '',
+
+        mobile: photoData?.mobile ?? true,
+        agence: photoData?.agence ?? false,
+        agence_adresse: photoData?.agence_adresse || '',
+        rayon_deplacement: photoData?.rayon_deplacement_km || 50,
+        frais_deplacement: photoData?.frais_deplacement_base ?? '',
+
+        preferences: {
+          accepte_weekend: photoData?.preferences?.accepte_weekend ?? true,
+          accepte_soiree: photoData?.preferences?.accepte_soiree ?? true,
+        },
+        jours_travailles: toArray(photoData?.jours_travailles),
+
+        tarif_horaire_min: photoData?.tarif_horaire_min ?? '',
+        tarif_horaire_max: photoData?.tarif_horaire_max ?? '',
+        acompte_percent: photoData?.acompte_percent ?? 30,
+        conditions_annulation: photoData?.conditions_annulation || '',
+        delai_annulation_jours: photoData?.delai_annulation_jours ?? 7,
+        modalites_paiement: toArray(photoData?.modalites_paiement),
+        services_additionnels: photoData?.services_additionnels || {},
+
+        siret: photoData?.siret || '',
+        numero_tva: photoData?.numero_tva || '',
+        statut_pro: photoData?.statut_pro ?? false,
         statut_validation: photoData?.statut_validation || 'pending',
-        statut_pro: photoData?.statut_pro || false,
-        siret: photoData?.siret || undefined,
-        document_identite_url: photoData?.document_identite_url || '',
-        identite_verifiee: photoData?.identite_verifiee || false,
-      };
 
-      console.log('💾 Setting profile with nom:', newProfile.nom, 'tel:', newProfile.telephone);
-      setProfile(newProfile as PhotographerProfile);
+        portfolio_photos: toArray(photoData?.portfolio_photos),
+        photo_couverture: photoData?.photo_couverture || '',
 
-      // Load profile photo
-      if (basicProfileData?.avatar_url) {
-        console.log('🖼️ Loading avatar...');
-        setProfilePhotoUri(basicProfileData.avatar_url);
+        document_identite_recto_url: photoData?.document_identite_recto_url || null,
+        document_identite_verso_url: photoData?.document_identite_verso_url || null,
+        documents_siret: photoData?.documents_siret || null,
+        documents_kbis: photoData?.documents_kbis || null,
+        documents_assurance: photoData?.documents_assurance || null,
       }
 
-      // Load ID documents
-      if (photoData?.document_identite_recto_url) {
-        setIdDocRecto(photoData.document_identite_recto_url);
-      }
-      if (photoData?.document_identite_verso_url) {
-        setIdDocVerso(photoData.document_identite_verso_url);
-      }
-
-      console.log('✅ loadProfile completed successfully');
-      setLoading(false);
+      setProfile(merged)
+      if (baseProfile?.avatar_url) setProfilePhotoUri(baseProfile.avatar_url)
     } catch (error) {
-      console.error('❌ Erreur chargement profil:', error);
-      setLoading(false);
+      console.error('Erreur chargement profil:', error)
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
+  const set = <K extends keyof PrestataireProfile>(field: K, value: PrestataireProfile[K]) => {
+    setProfile(prev => ({ ...prev, [field]: value }))
+  }
+
+  // ── Sauvegarde ───────────────────────────────────────────────────────────
   const saveProfile = async () => {
-    setSaving(true);
+    setSaving(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error('Non authentifié');
-      const user = session.user;
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('Non authentifié')
+      const user = session.user
 
-      if (!profileId) {
-        throw new Error('Profile ID manquant. Veuillez recharger la page.');
-      }
+      if (!profileId) throw new Error('Profile ID manquant. Veuillez recharger la page.')
 
-      // Fonction helper pour convertir les chaînes vides en null
-      const emptyToNull = (value: string | undefined) => {
-        return value && value.trim() !== '' ? value : null;
-      };
+      const emptyToNull = (v: string | undefined | null) => (v && v.trim() !== '' ? v : null)
 
-      // Sauvegarder les infos de base dans profiles (use auth_user_id AND role)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           nom: emptyToNull(profile.nom) || 'Utilisateur',
-          email: profile.email,
           telephone: emptyToNull(profile.telephone),
+          ville: emptyToNull(profile.ville),
         })
         .eq('auth_user_id', user.id)
-        .eq('role', 'photographe');
+        .eq('role', 'photographe')
 
-      // Sauvegarder les détails photographe (upsert pour créer si n'existe pas)
-      // IMPORTANT: utiliser profileId qui est profiles.id, PAS auth_user_id
+      if (profileError) console.error('Erreur profiles:', profileError)
+
       const { error: photoError } = await supabase
         .from('profils_prestataire')
         .upsert({
-          id: profileId,  // UTILISER profiles.id stocké dans profileId
+          id: profileId, // profils_prestataire.id === profiles.id (pas auth_user_id)
           bio: emptyToNull(profile.bio),
           nom_entreprise: emptyToNull(profile.nom_entreprise),
           site_web: emptyToNull(profile.site_web),
-          specialisations: profile.specialisations || [],
-          categories: profile.categories || [],
-          equipe: profile.equipe,
-          materiel: profile.materiel || {},
-          tarifs_indicatifs: profile.tarifs,
-          frais_deplacement_par_km: profile.frais_deplacement_par_km || 0,
-          rayon_deplacement_km: profile.rayon_deplacement || 50,
-          mobile: profile.mobile,
-          studio: profile.studio,
-          studio_adresse: emptyToNull(profile.studio_adresse),
-          preferences: profile.preferences,
           instagram: emptyToNull(profile.instagram),
           facebook: emptyToNull(profile.facebook),
           linkedin: emptyToNull(profile.linkedin),
-          documents_assurance: emptyToNull(profile.documents_assurance),
-          portfolio_photos: profile.portfolio_photos || [],
-          statut_validation: profile.statut_validation || 'pending',
-          statut_pro: profile.statut_pro || false,
+          video_presentation_url: emptyToNull(profile.video_presentation_url),
+
+          categories: profile.categories,
+          specialisations: profile.specialisations,
+          details: Object.keys(profile.details || {}).length > 0 ? [profile.details] : null,
+
+          equipe: profile.equipe,
+          materiel: emptyToNull(profile.materiel),
+
+          mobile: profile.mobile,
+          agence: profile.agence,
+          agence_adresse: emptyToNull(profile.agence_adresse),
+          rayon_deplacement_km: profile.rayon_deplacement || 50,
+          frais_deplacement_base: profile.frais_deplacement === '' ? null : profile.frais_deplacement,
+
+          preferences: profile.preferences,
+          jours_travailles: profile.jours_travailles,
+
+          tarif_horaire_min: profile.tarif_horaire_min === '' ? null : profile.tarif_horaire_min,
+          tarif_horaire_max: profile.tarif_horaire_max === '' ? null : profile.tarif_horaire_max,
+          acompte_percent: profile.acompte_percent || 0,
+          conditions_annulation: emptyToNull(profile.conditions_annulation),
+          delai_annulation_jours: profile.delai_annulation_jours || 7,
+          modalites_paiement: profile.modalites_paiement,
+          services_additionnels: profile.services_additionnels,
+
           siret: emptyToNull(profile.siret),
-          document_identite_url: emptyToNull(profile.document_identite_url),
-          document_identite_recto_url: idDocRecto,
-          document_identite_verso_url: idDocVerso,
-        });
+          numero_tva: emptyToNull(profile.numero_tva),
+          statut_pro: profile.statut_pro,
+          statut_validation: profile.statut_validation || 'pending',
 
-      if (profileError || photoError) {
-        throw profileError || photoError;
-      }
+          portfolio_photos: profile.portfolio_photos,
+          photo_couverture: emptyToNull(profile.photo_couverture),
 
-      Alert.alert('Succès', 'Profil mis à jour');
-      
-      // Rediriger vers profil.tsx après sauvegarde
-      router.push('/photographe/profil/profil');
+          document_identite_recto_url: profile.document_identite_recto_url,
+          document_identite_verso_url: profile.document_identite_verso_url,
+          documents_siret: profile.documents_siret,
+          documents_kbis: profile.documents_kbis,
+          documents_assurance: profile.documents_assurance,
+        })
+
+      if (profileError || photoError) throw (photoError || profileError)
+
+      Alert.alert('Succès', 'Profil mis à jour')
+      router.push('/photographe/profil/profil')
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert('Erreur', error.message || 'Erreur inconnue')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
-  const pickIdDocument = async (side: 'recto' | 'verso', useCamera: boolean = false) => {
+  // ── Upload photo de profil / couverture ────────────────────────────────
+  const pickAndUploadImage = async (
+    kind: 'avatar' | 'cover',
+    aspect: [number, number],
+  ) => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect,
+      quality: 0.85,
+    })
+    if (result.canceled) return
+
+    setUploading(kind)
     try {
-      let result;
-      
-      if (useCamera) {
-        // Demander la permission de la caméra
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission refusée', 'Nous avons besoin de la permission d\'accéder à la caméra');
-          return;
-        }
-        
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.9,
-        });
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('Non authentifié')
+
+      const uri = result.assets[0].uri
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
+      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+      const fileName = `${kind}_${session.user.id}_${Date.now()}.jpg`
+      const filePath = `${kind === 'avatar' ? 'photos' : 'documents'}/${fileName}`
+
+      const { data, error } = await supabase.storage
+        .from('photos')
+        .upload(filePath, byteArray, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false })
+
+      if (error || !data) throw new Error(error?.message || "Échec de l'upload")
+
+      const { data: publicUrlData } = supabase.storage.from('photos').getPublicUrl(filePath)
+      const url = publicUrlData.publicUrl
+
+      if (kind === 'avatar') {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ avatar_url: url })
+          .eq('auth_user_id', session.user.id)
+          .eq('role', 'photographe')
+        if (updateError) throw updateError
+        setProfilePhotoUri(url)
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.9,
-        });
-      }
-
-      if (!result.canceled) {
-        const imageUri = result.assets[0].uri;
-        setSaving(true);
-
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session?.user) throw new Error('Non authentifié');
-
-          // Read file as base64
-          const base64 = await FileSystem.readAsStringAsync(imageUri, {
-            encoding: 'base64',
-          });
-
-          const byteCharacters = atob(base64);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-
-          const fileName = `id_${side}_${session.user.id}_${Date.now()}.jpg`;
-          const filePath = `documents/${fileName}`;
-
-          // Upload to storage
-          const { data, error } = await supabase.storage
-            .from('photos')
-            .upload(filePath, byteArray, {
-              contentType: 'image/jpeg',
-              cacheControl: '3600',
-              upsert: false
-            });
-
-          let docUrl = imageUri;
-
-          if (!error && data) {
-            const { data: publicUrlData } = supabase.storage
-              .from('photos')
-              .getPublicUrl(filePath);
-            if (publicUrlData?.publicUrl) {
-              docUrl = publicUrlData.publicUrl;
-            }
-          }
-
-          // Update state
-          if (side === 'recto') {
-            setIdDocRecto(docUrl);
-          } else {
-            setIdDocVerso(docUrl);
-          }
-
-          // Update database immediately
-          if (profileId) {
-            const updateData = side === 'recto' 
-              ? { document_identite_recto_url: docUrl }
-              : { document_identite_verso_url: docUrl };
-            
-            await supabase
-              .from('profils_prestataire')
-              .update(updateData)
-              .eq('id', profileId);
-          }
-
-          setSaving(false);
-          Alert.alert('Succès', `Document (${side}) téléchargé`);
-        } catch (error: any) {
-          setSaving(false);
-          Alert.alert('Erreur', error.message || 'Impossible de télécharger le document');
-        }
-      }
-    } catch (error: any) {
-      setSaving(false);
-      Alert.alert('Erreur', error.message || 'Erreur lors de la sélection');
-    }
-  };
-
-  const pickIdDocumentPDF = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*'], // Only allow images, not PDFs since bucket doesn't support it
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) return;
-
-      setSaving(true);
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) throw new Error('Non authentifié');
-
-        const file = result.assets[0];
-        const fileUri = file.uri;
-        
-        // Read file as base64
-        const base64 = await FileSystem.readAsStringAsync(fileUri, {
-          encoding: 'base64',
-        });
-
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-
-        const extension = file.name.split('.').pop() || 'jpg';
-        const fileName = `id_document_${session.user.id}_${Date.now()}.${extension}`;
-        const filePath = `documents/${fileName}`;
-
-        // Upload to storage - force image content type
-        const { data, error } = await supabase.storage
-          .from('photos')
-          .upload(filePath, byteArray, {
-            contentType: file.mimeType || 'image/jpeg',
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        let docUrl = fileUri;
-
-        if (!error && data) {
-          const { data: publicUrlData } = supabase.storage
-            .from('photos')
-            .getPublicUrl(filePath);
-          if (publicUrlData?.publicUrl) {
-            docUrl = publicUrlData.publicUrl;
-          }
-        }
-
-        // Set both recto (will be the PDF URL)
-        setIdDocRecto(docUrl);
-        
-        // Update database
+        set('photo_couverture', url)
         if (profileId) {
-          await supabase
-            .from('profils_prestataire')
-            .update({ 
-              document_identite_recto_url: docUrl,
-              document_identite_verso_url: null // Clear verso if uploading PDF
-            })
-            .eq('id', profileId);
+          await supabase.from('profils_prestataire').update({ photo_couverture: url }).eq('id', profileId)
         }
-
-        setSaving(false);
-        Alert.alert('Succès', 'Document PDF téléchargé');
-      } catch (error: any) {
-        setSaving(false);
-        Alert.alert('Erreur', error.message || 'Impossible de télécharger le PDF');
       }
+      Alert.alert('Succès', 'Photo mise à jour')
     } catch (error: any) {
-      setSaving(false);
-      Alert.alert('Erreur', error.message || 'Erreur lors de la sélection');
+      Alert.alert("Erreur d'upload", error.message || 'Erreur inconnue')
+    } finally {
+      setUploading(null)
     }
-  };
+  }
 
+  // ── Upload documents (identité, SIRET, Kbis, assurance) ────────────────
+  const pickAndUploadDocument = async (docType: DocType, useCamera: boolean = false) => {
+    let result
+    if (useCamera) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', "Nous avons besoin de la permission d'accéder à la caméra")
+        return
+      }
+      result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.9 })
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.9 })
+    }
+    if (result.canceled) return
+
+    setUploading(docType)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('Non authentifié')
+
+      const uri = result.assets[0].uri
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
+      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+      const fileName = `${docType}_${session.user.id}_${Date.now()}.jpg`
+      const filePath = `documents/${fileName}`
+
+      const { data, error } = await supabase.storage
+        .from('photos')
+        .upload(filePath, byteArray, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false })
+
+      let docUrl = uri
+      if (!error && data) {
+        const { data: publicUrlData } = supabase.storage.from('photos').getPublicUrl(filePath)
+        if (publicUrlData?.publicUrl) docUrl = publicUrlData.publicUrl
+      }
+
+      const columnMap: Record<DocType, keyof PrestataireProfile> = {
+        identity_recto: 'document_identite_recto_url',
+        identity_verso: 'document_identite_verso_url',
+        siret: 'documents_siret',
+        kbis: 'documents_kbis',
+        assurance: 'documents_assurance',
+      }
+      const column = columnMap[docType]
+      set(column, docUrl as any)
+      set('statut_validation', 'pending')
+
+      if (profileId) {
+        await supabase
+          .from('profils_prestataire')
+          .update({ [column]: docUrl, statut_validation: 'pending' })
+          .eq('id', profileId)
+      }
+      Alert.alert('Succès', 'Document téléchargé')
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Impossible de télécharger le document')
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  // ── Upload portfolio ─────────────────────────────────────────────────────
   const pickPortfolioPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.8 })
+    if (result.canceled) return
+
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('Non authentifié')
 
-      if (!result.canceled) {
-        // TODO: Upload to Supabase storage and get URL
-        setProfile(prev => ({
-          ...prev,
-          portfolio_photos: [...prev.portfolio_photos, result.assets[0].uri],
-        }));
-      }
-    } catch (error) {
-      console.error('Erreur upload:', error);
-    }
-  };
+      const uri = result.assets[0].uri
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
+      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+      const fileName = `portfolio_${session.user.id}_${Date.now()}.jpg`
+      const filePath = `photos/${fileName}`
 
-  const pickProfilePhoto = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+      const { data, error } = await supabase.storage
+        .from('photos')
+        .upload(filePath, byteArray, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false })
+      if (error || !data) throw new Error(error?.message || "Échec de l'upload")
 
-      if (!result.canceled) {
-        const imageUri = result.assets[0].uri;
-        setSaving(true);
+      const { data: publicUrlData } = supabase.storage.from('photos').getPublicUrl(filePath)
+      const newPhotos = [...profile.portfolio_photos, publicUrlData.publicUrl]
+      set('portfolio_photos', newPhotos)
 
-        try {
-          // Get user
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error('Non authentifié');
-
-          // Read file as base64
-          const base64 = await FileSystem.readAsStringAsync(imageUri, {
-            encoding: 'base64',
-          });
-
-          // Convert base64 to blob
-          const byteCharacters = atob(base64);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-
-          const fileName = `profile_${user.id}_${Date.now()}.jpg`;
-          const filePath = `photos/${fileName}`;
-
-          // Try to upload to storage
-          const { data, error } = await supabase.storage
-            .from('photos')
-            .upload(filePath, byteArray, {
-              contentType: 'image/jpeg',
-              cacheControl: '3600',
-              upsert: false
-            });
-
-          // Ne sauvegarder QUE si l'upload a réussi
-          if (error || !data) {
-            throw new Error(error?.message || 'Échec de l\'upload vers le stockage cloud');
-          }
-
-          // Get public URL
-          const { data: publicUrlData } = supabase.storage
-            .from('photos')
-            .getPublicUrl(filePath);
-          
-          if (!publicUrlData?.publicUrl) {
-            throw new Error('Impossible d\'obtenir l\'URL publique');
-          }
-
-          const photoUrl = publicUrlData.publicUrl;
-
-          // Update profiles table with photo (use auth_user_id AND role)
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ avatar_url: photoUrl })
-            .eq('auth_user_id', user.id)
-            .eq('role', 'photographe');
-
-          if (updateError) {
-            throw updateError;
-          }
-
-          setProfilePhotoUri(photoUrl);
-          setSaving(false);
-          Alert.alert('Succès', 'Photo de profil mise à jour');
-        } catch (error: any) {
-          // Afficher une erreur claire sans fallback local
-          setSaving(false);
-          console.error('Erreur upload photo:', error);
-          Alert.alert(
-            'Erreur d\'upload', 
-            'Impossible d\'enregistrer votre photo. Vérifiez votre connexion internet et réessayez.\n\n' + 
-            (error.message || 'Erreur inconnue')
-          );
-        }
+      if (profileId) {
+        await supabase.from('profils_prestataire').update({ portfolio_photos: newPhotos }).eq('id', profileId)
       }
     } catch (error: any) {
-      setSaving(false);
-      console.error('Erreur sélection photo:', error);
-      Alert.alert('Erreur', error.message || 'Erreur lors de la sélection');
+      Alert.alert('Erreur', error.message || "Impossible d'ajouter la photo")
     }
-  };
+  }
+
+  const removePortfolioPhoto = async (index: number) => {
+    const newPhotos = profile.portfolio_photos.filter((_, i) => i !== index)
+    set('portfolio_photos', newPhotos)
+    if (profileId) {
+      await supabase.from('profils_prestataire').update({ portfolio_photos: newPhotos }).eq('id', profileId)
+    }
+  }
 
   if (loading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
-    );
+    )
   }
+
+  const profileSpecialisations = toArray(profile.specialisations)
+  const profileCategories = toArray(profile.categories)
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
-      {/* Header avec flèche retour et bouton sauvegarder */}
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profil Complet</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.saveHeaderButton, saving && styles.saveButtonDisabled]}
           onPress={saveProfile}
           disabled={saving}
         >
-          {saving ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Ionicons name="checkmark" size={24} color="white" />
-          )}
+          {saving ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="checkmark" size={24} color="white" />}
         </TouchableOpacity>
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabsContainer}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsContainer}>
         {[
           { id: 'infos', label: 'Infos' },
           { id: 'specialites', label: 'Spécialités' },
-          { id: 'tarifs', label: 'Tarifs' },
           { id: 'localisation', label: 'Localisation' },
           { id: 'verification', label: 'Vérification' },
           { id: 'portfolio', label: 'Portfolio' },
+          { id: 'tarifs', label: 'Tarifs' },
         ].map(tab => (
           <TouchableOpacity
             key={tab.id}
-            style={[
-              styles.tab,
-              activeTab === tab.id && styles.tabActive,
-            ]}
+            style={[styles.tab, activeTab === tab.id && styles.tabActive]}
             onPress={() => setActiveTab(tab.id)}
           >
-            <Text style={[
-              styles.tabText,
-              activeTab === tab.id && styles.tabTextActive,
-            ]}>
-              {tab.label}
-            </Text>
+            <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* TAB: INFOS GÉNÉRALES */}
+        {/* ── INFOS ── */}
         {activeTab === 'infos' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Informations Professionnelles</Text>
 
-            {/* Photo de profil */}
             <View style={styles.profilePhotoSection}>
               <View style={styles.profilePhotoContainer}>
                 {profilePhotoUri ? (
-                  <Image 
-                    source={{ uri: profilePhotoUri }} 
-                    style={styles.profilePhoto} 
-                  />
+                  <Image source={{ uri: profilePhotoUri }} style={styles.profilePhoto} />
                 ) : (
                   <View style={[styles.profilePhoto, styles.profilePhotoPlaceholder]}>
                     <Ionicons name="person" size={48} color={COLORS.primary} />
                   </View>
                 )}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.editPhotoButton}
-                  onPress={pickProfilePhoto}
-                  disabled={saving}
+                  onPress={() => pickAndUploadImage('avatar', [1, 1])}
+                  disabled={uploading === 'avatar'}
                 >
-                  <Ionicons name="camera" size={20} color="white" />
+                  {uploading === 'avatar' ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="camera" size={20} color="white" />}
                 </TouchableOpacity>
               </View>
               <Text style={styles.profilePhotoLabel}>Photo de profil</Text>
-              <Text style={styles.profilePhotoHint}>Cliquez sur l'appareil photo pour changer</Text>
+            </View>
+
+            {/* Photo de couverture — ajout, absente de l'ancienne version mobile */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Photo de couverture</Text>
+              {profile.photo_couverture ? (
+                <Image source={{ uri: profile.photo_couverture }} style={styles.coverPreview} />
+              ) : null}
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={() => pickAndUploadImage('cover', [3, 1])}
+                disabled={uploading === 'cover'}
+              >
+                {uploading === 'cover' ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Ionicons name="image" size={20} color={COLORS.primary} />}
+                <Text style={styles.uploadButtonText}>{profile.photo_couverture ? 'Remplacer' : 'Ajouter'} une couverture</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nom</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.nom}
-                onChangeText={text => setProfile({ ...profile, nom: text })}
-                placeholder="Votre nom complet"
-              />
+              <TextInput style={styles.input} value={profile.nom} onChangeText={t => set('nom', t)} placeholder="Votre nom complet" />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.email}
-                editable={false}
-                placeholder="Email"
-              />
+              <TextInput style={styles.input} value={profile.email} editable={false} placeholder="Email" />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Téléphone</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.telephone}
-                onChangeText={text => setProfile({ ...profile, telephone: text })}
-                placeholder="Téléphone"
-                keyboardType="phone-pad"
-              />
+              <TextInput style={styles.input} value={profile.telephone} onChangeText={t => set('telephone', t)} placeholder="Téléphone" keyboardType="phone-pad" />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nom de l'entreprise</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.nom_entreprise}
-                onChangeText={text => setProfile({ ...profile, nom_entreprise: text })}
-                placeholder="Ex: Studio Lumineux"
-              />
+              <TextInput style={styles.input} value={profile.nom_entreprise} onChangeText={t => set('nom_entreprise', t)} placeholder="Ex: Studio Lumineux" />
             </View>
 
             <View style={styles.formGroup}>
@@ -783,8 +710,8 @@ export default function ProfilComplet() {
               <TextInput
                 style={[styles.input, styles.bioInput]}
                 value={profile.bio}
-                onChangeText={text => setProfile({ ...profile, bio: text })}
-                placeholder="Décrivez votre approche photographique..."
+                onChangeText={t => set('bio', t)}
+                placeholder="Décrivez votre approche professionnelle..."
                 multiline
                 numberOfLines={4}
               />
@@ -792,497 +719,430 @@ export default function ProfilComplet() {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Site web</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.site_web}
-                onChangeText={text => setProfile({ ...profile, site_web: text })}
-                placeholder="https://exemple.com"
-              />
+              <TextInput style={styles.input} value={profile.site_web} onChangeText={t => set('site_web', t)} placeholder="https://exemple.com" />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Instagram</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.instagram}
-                onChangeText={text => setProfile({ ...profile, instagram: text })}
-                placeholder="@username"
-              />
+              <TextInput style={styles.input} value={profile.instagram} onChangeText={t => set('instagram', t)} placeholder="@username" />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Facebook</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.facebook}
-                onChangeText={text => setProfile({ ...profile, facebook: text })}
-                placeholder="URL Facebook"
-              />
+              <TextInput style={styles.input} value={profile.facebook} onChangeText={t => set('facebook', t)} placeholder="URL Facebook" />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>LinkedIn</Text>
-              <TextInput
-                style={styles.input}
-                value={profile.linkedin}
-                onChangeText={text => setProfile({ ...profile, linkedin: text })}
-                placeholder="URL LinkedIn"
-              />
+              <TextInput style={styles.input} value={profile.linkedin} onChangeText={t => set('linkedin', t)} placeholder="URL LinkedIn" />
             </View>
 
+            {/* Vidéo de présentation — ajout */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Document d'assurance (URL)</Text>
+              <Text style={styles.label}>Vidéo de présentation (URL)</Text>
               <TextInput
                 style={styles.input}
-                value={profile.documents_assurance}
-                onChangeText={text => setProfile({ ...profile, documents_assurance: text })}
-                placeholder="URL du document d'assurance"
+                value={profile.video_presentation_url}
+                onChangeText={t => set('video_presentation_url', t)}
+                placeholder="https://youtube.com/..."
               />
+              <Text style={styles.hint}>Lien YouTube, Vimeo ou autre plateforme vidéo</Text>
             </View>
+
+            <TouchableOpacity
+              style={[styles.proCard, profile.statut_pro && styles.proCardActive]}
+              onPress={() => set('statut_pro', !profile.statut_pro)}
+            >
+              <Ionicons name="shield" size={24} color={profile.statut_pro ? COLORS.primary : '#999'} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.label}>Professionnel</Text>
+                <Text style={styles.hint}>Je suis prestataire professionnel (auto-entrepreneur, société…)</Text>
+              </View>
+              {profile.statut_pro && <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />}
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* TAB: SPÉCIALITÉS */}
+        {/* ── SPÉCIALITÉS ── */}
         {activeTab === 'specialites' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Spécialités & Services</Text>
-
-            <Text style={styles.subLabel}>Spécialisations (sélectionnez au moins une)</Text>
+            <Text style={styles.sectionTitle}>Catégorie principale</Text>
+            <Text style={styles.subLabel}>Sélectionnez votre domaine d'activité (un seul choix)</Text>
             <View style={styles.gridContainer}>
-              {SPECIALISATIONS.map(spec => (
-                <TouchableOpacity
-                  key={spec.id}
-                  style={[
-                    styles.chip,
-                    profile.specialisations.includes(spec.id) && styles.chipSelected,
-                  ]}
-                  onPress={() => {
-                    setProfile(prev => ({
-                      ...prev,
-                      specialisations: prev.specialisations.includes(spec.id)
-                        ? prev.specialisations.filter(s => s !== spec.id)
-                        : [...prev.specialisations, spec.id],
-                    }));
-                  }}
-                >
-                  <Text style={[
-                    styles.chipText,
-                    profile.specialisations.includes(spec.id) && styles.chipTextSelected,
-                  ]}>
-                    {spec.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {categories.map((cat: any) => {
+                const isSelected = profileCategories[0] === cat.id
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    onPress={() => {
+                      set('categories', [cat.id])
+                      set('specialisations', [])
+                    }}
+                  >
+                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
 
-            <Text style={[styles.subLabel, { marginTop: 24 }]}>Catégories</Text>
-            <View style={styles.gridContainer}>
-              {CATEGORIES.map(cat => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.chip,
-                    profile.categories.includes(cat.id) && styles.chipSelected,
-                  ]}
-                  onPress={() => {
-                    setProfile(prev => ({
-                      ...prev,
-                      categories: prev.categories.includes(cat.id)
-                        ? prev.categories.filter(s => s !== cat.id)
-                        : [...prev.categories, cat.id],
-                    }));
-                  }}
-                >
-                  <Text style={[
-                    styles.chipText,
-                    profile.categories.includes(cat.id) && styles.chipTextSelected,
-                  ]}>
-                    {cat.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {profileCategories.length > 0 && SPECIALITES_MAP[profileCategories[0]] && (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Spécialisations</Text>
+                <Text style={styles.subLabel}>
+                  Vos spécialisations dans {categories.find((c: any) => c.id === profileCategories[0])?.label || profileCategories[0]}
+                </Text>
+                <View style={styles.gridContainer}>
+                  {SPECIALITES_MAP[profileCategories[0]].map((spec: string) => {
+                    const isSelected = profileSpecialisations.includes(spec)
+                    return (
+                      <TouchableOpacity
+                        key={spec}
+                        style={[styles.chip, isSelected && styles.chipSelected]}
+                        onPress={() => {
+                          const next = isSelected
+                            ? profileSpecialisations.filter(s => s !== spec)
+                            : [...profileSpecialisations, spec]
+                          set('specialisations', next)
+                        }}
+                      >
+                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{spec}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                  {(() => {
+                    const autreSelected = profileSpecialisations.includes('Autre')
+                    return (
+                      <TouchableOpacity
+                        style={[styles.chip, autreSelected && styles.chipSelected]}
+                        onPress={() => {
+                          const next = autreSelected
+                            ? profileSpecialisations.filter(s => s !== 'Autre')
+                            : [...profileSpecialisations, 'Autre']
+                          set('specialisations', next)
+                        }}
+                      >
+                        <Text style={[styles.chipText, autreSelected && styles.chipTextSelected]}>Autre</Text>
+                      </TouchableOpacity>
+                    )
+                  })()}
+                </View>
 
-            <Text style={[styles.subLabel, { marginTop: 24 }]}>Équipement</Text>
-            <View style={styles.gridContainer}>
-              {EQUIPMENT.map(eq => (
-                <TouchableOpacity
-                  key={eq.id}
-                  style={[
-                    styles.chip,
-                    profile.materiel[eq.id] && styles.chipSelected,
-                  ]}
-                  onPress={() => {
-                    setProfile(prev => ({
-                      ...prev,
-                      materiel: {
-                        ...prev.materiel,
-                        [eq.id]: !prev.materiel[eq.id],
-                      },
-                    }));
-                  }}
-                >
-                  <Text style={[
-                    styles.chipText,
-                    profile.materiel[eq.id] && styles.chipTextSelected,
-                  ]}>
-                    {eq.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                {profileSpecialisations.includes('Autre') && (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={styles.subLabel}>Précisez vos autres spécialités</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        value={autreSpecInput}
+                        onChangeText={setAutreSpecInput}
+                        placeholder="Ex: Jardinage, Baby-sitting..."
+                      />
+                      <TouchableOpacity
+                        style={styles.smallAddButton}
+                        onPress={() => {
+                          const val = autreSpecInput.trim()
+                          if (val && val !== 'Autre' && !profileSpecialisations.includes(val)) {
+                            set('specialisations', [...profileSpecialisations, val])
+                          }
+                          setAutreSpecInput('')
+                        }}
+                      >
+                        <Text style={{ color: 'white', fontWeight: '600' }}>Ajouter</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.gridContainer}>
+                      {profileSpecialisations.filter(s => s !== 'Autre').map((spec, i) => (
+                        <View key={i} style={styles.tagChip}>
+                          <Text style={styles.tagChipText}>{spec}</Text>
+                          <TouchableOpacity onPress={() => set('specialisations', profileSpecialisations.filter(s => s !== spec))}>
+                            <Ionicons name="close" size={14} color={COLORS.primary} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
 
-            <Text style={[styles.subLabel, { marginTop: 24 }]}>Équipe</Text>
-            <View style={styles.switchGroup}>
-              <Text style={styles.label}>Travail en solo uniquement</Text>
-              <Switch
-                value={profile.equipe.solo_only}
-                onValueChange={value => setProfile({
-                  ...profile,
-                  equipe: { ...profile.equipe, solo_only: value },
-                })}
-              />
-            </View>
-
-            {!profile.equipe.solo_only && (
+            {/* Champs conditionnels — alignés sur le web */}
+            {profileSpecialisations.includes('Développement') && (
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Nombre d'assistants</Text>
+                <Text style={styles.label}>Langages de développement (optionnel)</Text>
                 <TextInput
                   style={styles.input}
-                  value={profile.equipe.num_assistants.toString()}
-                  onChangeText={text => setProfile({
-                    ...profile,
-                    equipe: { ...profile.equipe, num_assistants: parseInt(text) || 0 },
-                  })}
-                  keyboardType="numeric"
+                  value={profile.details?.langages || ''}
+                  onChangeText={t => set('details', { ...profile.details, langages: t })}
+                  placeholder="Ex : JavaScript, Python, React, Node.js..."
                 />
               </View>
             )}
-
-            <View style={styles.switchGroup}>
-              <Text style={styles.label}>Maquilleur professionnel</Text>
-              <Switch
-                value={profile.equipe.has_makeup}
-                onValueChange={value => setProfile({
-                  ...profile,
-                  equipe: { ...profile.equipe, has_makeup: value },
-                })}
-              />
-            </View>
-
-            <View style={styles.switchGroup}>
-              <Text style={styles.label}>Styliste</Text>
-              <Switch
-                value={profile.equipe.has_stylist}
-                onValueChange={value => setProfile({
-                  ...profile,
-                  equipe: { ...profile.equipe, has_stylist: value },
-                })}
-              />
-            </View>
-
-            <View style={styles.switchGroup}>
-              <Text style={styles.label}>Vidéographe</Text>
-              <Switch
-                value={profile.equipe.has_videographer}
-                onValueChange={value => setProfile({
-                  ...profile,
-                  equipe: { ...profile.equipe, has_videographer: value },
-                })}
-              />
-            </View>
-          </View>
-        )}
-
-        {/* TAB: TARIFS */}
-        {activeTab === 'tarifs' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tarification</Text>
-
-            {Object.entries(profile.tarifs).map(([categorie, tarif]) => (
-              <View key={categorie} style={styles.tarifCard}>
-                <Text style={styles.tarifTitle}>
-                  {SPECIALISATIONS.find(s => s.id === categorie)?.label || categorie}
-                </Text>
-                <View style={styles.tarifRow}>
-                  <View style={styles.tarifInput}>
-                    <Text style={styles.label}>Min (MAD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={tarif.min.toString()}
-                      onChangeText={text => setProfile({
-                        ...profile,
-                        tarifs: {
-                          ...profile.tarifs,
-                          [categorie]: {
-                            ...tarif,
-                            min: parseInt(text) || 0,
-                          },
-                        },
-                      })}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={styles.tarifInput}>
-                    <Text style={styles.label}>Max (MAD)</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={tarif.max.toString()}
-                      onChangeText={text => setProfile({
-                        ...profile,
-                        tarifs: {
-                          ...profile.tarifs,
-                          [categorie]: {
-                            ...tarif,
-                            max: parseInt(text) || 0,
-                          },
-                        },
-                      })}
-                      keyboardType="numeric"
-                    />
-                  </View>
+            {profileSpecialisations.includes('Cours particuliers') && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Matière (optionnel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={profile.details?.matiere || ''}
+                    onChangeText={t => set('details', { ...profile.details, matiere: t })}
+                    placeholder="Ex : Mathématiques, Français..."
+                  />
                 </View>
-              </View>
-            ))}
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Niveau (optionnel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={profile.details?.niveau || ''}
+                    onChangeText={t => set('details', { ...profile.details, niveau: t })}
+                    placeholder="Ex : Collège, Lycée, Université..."
+                  />
+                </View>
+              </>
+            )}
 
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Configuration équipe</Text>
+            <Text style={styles.subLabel}>Comment travaillez-vous ?</Text>
+            <View style={{ gap: 8 }}>
+              {EQUIPE.map(item => {
+                const isSelected = profile.equipe.includes(item.id)
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.equipeCard, isSelected && styles.equipeCardActive]}
+                    onPress={() => set('equipe', [item.id])} // choix unique, comme sur le web
+                  >
+                    <Ionicons name={item.icon} size={20} color={isSelected ? 'white' : '#666'} />
+                    <Text style={[styles.equipeCardText, isSelected && { color: 'white' }]}>{item.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
+            {/* Équipement — texte libre, comme sur le web (plus une checklist d'objets) */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Frais déplacement par km (MAD/km)</Text>
+              <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Équipement disponible</Text>
+              <Text style={styles.subLabel}>Décrivez votre matériel ou équipement professionnel</Text>
               <TextInput
-                style={styles.input}
-                value={profile.frais_deplacement_par_km.toString()}
-                onChangeText={text => setProfile({
-                  ...profile,
-                  frais_deplacement_par_km: parseFloat(text) || 0,
-                })}
-                keyboardType="numeric"
-                placeholder="0"
+                style={[styles.input, styles.bioInput]}
+                value={profile.materiel}
+                onChangeText={t => set('materiel', t)}
+                placeholder="Ex : matériel professionnel, outillage spécialisé, véhicule..."
+                multiline
+                numberOfLines={4}
               />
+            </View>
+
+            {/* Services additionnels — ajout, absent de l'ancienne version mobile */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Services additionnels</Text>
+              <Text style={styles.subLabel}>Sélectionnez les services supplémentaires que vous proposez</Text>
+              <View style={styles.gridContainer}>
+                {getServicesAdditionnels(profileCategories, profileSpecialisations).map(({ key, label }) => {
+                  const isOn = profile.services_additionnels?.[key] ?? false
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[styles.chip, isOn && styles.chipSelected]}
+                      onPress={() => set('services_additionnels', { ...profile.services_additionnels, [key]: !isOn })}
+                    >
+                      <Text style={[styles.chipText, isOn && styles.chipTextSelected]}>{isOn ? '✓ ' : ''}{label}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.label}>Autres services (champ libre)</Text>
+                <TextInput
+                  style={[styles.input, styles.bioInput]}
+                  value={profile.services_additionnels?._texte_libre || ''}
+                  onChangeText={t => set('services_additionnels', { ...profile.services_additionnels, _texte_libre: t })}
+                  placeholder="Ex : Installation de climatiseur, Cours de cuisine..."
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
             </View>
           </View>
         )}
 
-        {/* TAB: LOCALISATION */}
+        {/* ── LOCALISATION ── */}
         {activeTab === 'localisation' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Localisation & Mobilité</Text>
 
+            {/* Ville — ajout, absente de l'ancienne version mobile */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Ville</Text>
+              <View style={styles.gridContainer}>
+                {VILLES_MAROC.slice().sort().map((v: string) => (
+                  <TouchableOpacity
+                    key={v}
+                    style={[styles.chip, profile.ville === v && styles.chipSelected]}
+                    onPress={() => set('ville', v)}
+                  >
+                    <Text style={[styles.chipText, profile.ville === v && styles.chipTextSelected]}>{v}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             <View style={styles.switchGroup}>
               <Text style={styles.label}>Je me déplace sur site</Text>
-              <Switch
-                value={profile.mobile}
-                onValueChange={value => setProfile({ ...profile, mobile: value })}
-              />
+              <Switch value={profile.mobile} onValueChange={v => set('mobile', v)} />
             </View>
 
             {profile.mobile && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Rayon de déplacement (km)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={profile.rayon_deplacement.toString()}
-                  onChangeText={text => setProfile({
-                    ...profile,
-                    rayon_deplacement: parseInt(text) || 50,
-                  })}
-                  keyboardType="numeric"
-                />
-              </View>
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Rayon de déplacement (km)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(profile.rayon_deplacement)}
+                    onChangeText={t => set('rayon_deplacement', parseInt(t) || 50)}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Frais de déplacement (MAD/km)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={String(profile.frais_deplacement)}
+                    onChangeText={t => set('frais_deplacement', t)}
+                    keyboardType="numeric"
+                    placeholder="0.50"
+                  />
+                  <Text style={styles.hint}>Laissez vide pour inclure les frais dans vos tarifs</Text>
+                </View>
+              </>
             )}
 
+            {/* agence / agence_adresse — remplace studio / studio_adresse pour matcher le web */}
             <View style={styles.switchGroup}>
-              <Text style={styles.label}>Je dispose d'un studio</Text>
-              <Switch
-                value={profile.studio}
-                onValueChange={value => setProfile({ ...profile, studio: value })}
-              />
+              <Text style={styles.label}>J'ai un bureau / une agence</Text>
+              <Switch value={profile.agence} onValueChange={v => set('agence', v)} />
             </View>
-
-            {profile.studio && (
+            {profile.agence && (
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Adresse du studio</Text>
+                <Text style={styles.label}>Adresse de l'agence</Text>
                 <TextInput
                   style={[styles.input, styles.bioInput]}
-                  value={profile.studio_adresse}
-                  onChangeText={text => setProfile({ ...profile, studio_adresse: text })}
-                  placeholder="123 Rue de Paris, 75001 Paris"
+                  value={profile.agence_adresse}
+                  onChangeText={t => set('agence_adresse', t)}
+                  placeholder="Ex : 45 Boulevard Mohammed V, Casablanca 20000"
                   multiline
                 />
               </View>
             )}
 
-            <Text style={[styles.subLabel, { marginTop: 24 }]}>Disponibilités</Text>
-
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Préférences horaires</Text>
             <View style={styles.switchGroup}>
               <Text style={styles.label}>Disponible les weekends</Text>
               <Switch
                 value={profile.preferences.accepte_weekend}
-                onValueChange={value => setProfile({
-                  ...profile,
-                  preferences: { ...profile.preferences, accepte_weekend: value },
-                })}
+                onValueChange={v => set('preferences', { ...profile.preferences, accepte_weekend: v })}
               />
             </View>
-
             <View style={styles.switchGroup}>
               <Text style={styles.label}>Disponible en soirée</Text>
               <Switch
                 value={profile.preferences.accepte_soiree}
-                onValueChange={value => setProfile({
-                  ...profile,
-                  preferences: { ...profile.preferences, accepte_soiree: value },
-                })}
+                onValueChange={v => set('preferences', { ...profile.preferences, accepte_soiree: v })}
               />
+            </View>
+
+            {/* Jours travaillés — ajout, absent de l'ancienne version mobile */}
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Jours travaillés</Text>
+            <Text style={styles.subLabel}>Sélectionnez vos jours de disponibilité habituels</Text>
+            <View style={styles.gridContainer}>
+              {JOURS.map(jour => {
+                const isActive = profile.jours_travailles.includes(jour)
+                return (
+                  <TouchableOpacity
+                    key={jour}
+                    style={[styles.chip, isActive && styles.chipSelected]}
+                    onPress={() => {
+                      const next = isActive
+                        ? profile.jours_travailles.filter(d => d !== jour)
+                        : [...profile.jours_travailles, jour]
+                      set('jours_travailles', next)
+                    }}
+                  >
+                    <Text style={[styles.chipText, isActive && styles.chipTextSelected]}>
+                      {jour.charAt(0).toUpperCase() + jour.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
           </View>
         )}
 
-        {/* TAB: VÉRIFICATION */}
+        {/* ── VÉRIFICATION ── */}
         {activeTab === 'verification' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Statut de Vérification</Text>
-            
-            <View style={styles.switchGroup}>
-              <Text style={styles.label}>Je suis photographe professionnel</Text>
-              <Switch
-                value={profile.statut_pro || false}
-                onValueChange={value => setProfile({ ...profile, statut_pro: value })}
+            <Text style={styles.sectionTitle}>Informations légales</Text>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Numéro SIRET {profile.statut_pro && '(obligatoire)'}</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.siret}
+                onChangeText={t => set('siret', t)}
+                placeholder="123 456 789 00012"
+                keyboardType="numeric"
               />
             </View>
 
-            {profile.statut_pro && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Numéro SIRET (obligatoire pour les professionnels)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={profile.siret || ''}
-                  onChangeText={text => setProfile({ ...profile, siret: text })}
-                  placeholder="Entrez votre numéro SIRET"
-                  keyboardType="numeric"
-                />
-              </View>
-            )}
-
-            <Text style={[styles.sectionTitle, { marginTop: 24, fontSize: 16 }]}>Vérification d'identité</Text>
-
-            <View style={[styles.card, { backgroundColor: (idDocRecto || idDocVerso) ? '#F0FDF4' : '#FEF3C7', borderColor: (idDocRecto || idDocVerso) ? '#10B981' : '#F59E0B', borderWidth: 1 }]}>
-              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-                <Ionicons name={(idDocRecto || idDocVerso) ? "checkmark-circle" : "alert-circle"} size={20} color={(idDocRecto || idDocVerso) ? '#10B981' : '#F59E0B'} style={{ marginRight: 8 }} />
-                <Text style={[styles.sectionTitle, { color: (idDocRecto || idDocVerso) ? '#10B981' : '#F59E0B', fontSize: 14 }]}>
-                  {(idDocRecto || idDocVerso) ? 'Document téléchargé' : 'Document requis'}
-                </Text>
-              </View>
-              <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
-                {(idDocRecto || idDocVerso)
-                  ? 'Votre pièce d\'identité a été téléchargée et est en cours de vérification.'
-                  : 'Téléchargez votre carte d\'identité ou passeport (recto/verso ou PDF).'}
-              </Text>
-            </View>
-
+            {/* numero_tva — ajout, absent de l'ancienne version mobile */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Pièce d'identité (Images)</Text>
-              
-              {/* Recto */}
-              <View style={{ marginBottom: 12 }}>
-                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Recto</Text>
-                {idDocRecto ? (
-                  <View style={styles.uploadedDocContainer}>
-                    <Image source={{ uri: idDocRecto }} style={styles.uploadedDocImage} />
-                    <TouchableOpacity 
-                      style={styles.removeDocButton}
-                      onPress={() => setIdDocRecto(null)}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity 
-                      style={[styles.uploadButton, { flex: 1 }]}
-                      onPress={() => pickIdDocument('recto', true)}
-                      disabled={saving}
-                    >
-                      <Ionicons name="camera" size={20} color={COLORS.primary} />
-                      <Text style={styles.uploadButtonText}>Prendre photo</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.uploadButton, { flex: 1 }]}
-                      onPress={() => pickIdDocument('recto', false)}
-                      disabled={saving}
-                    >
-                      <Ionicons name="images" size={20} color={COLORS.primary} />
-                      <Text style={styles.uploadButtonText}>Galerie</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-
-              {/* Verso */}
-              <View style={{ marginBottom: 12 }}>
-                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Verso</Text>
-                {idDocVerso ? (
-                  <View style={styles.uploadedDocContainer}>
-                    <Image source={{ uri: idDocVerso }} style={styles.uploadedDocImage} />
-                    <TouchableOpacity 
-                      style={styles.removeDocButton}
-                      onPress={() => setIdDocVerso(null)}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity 
-                      style={[styles.uploadButton, { flex: 1 }]}
-                      onPress={() => pickIdDocument('verso', true)}
-                      disabled={saving}
-                    >
-                      <Ionicons name="camera" size={20} color={COLORS.primary} />
-                      <Text style={styles.uploadButtonText}>Prendre photo</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.uploadButton, { flex: 1 }]}
-                      onPress={() => pickIdDocument('verso', false)}
-                      disabled={saving}
-                    >
-                      <Ionicons name="images" size={20} color={COLORS.primary} />
-                      <Text style={styles.uploadButtonText}>Galerie</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.divider} />
-
-              {/* Additional Image Option */}
-              <View style={{ marginTop: 12 }}>
-                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Ou choisir une autre image</Text>
-                <TouchableOpacity 
-                  style={styles.uploadButton}
-                  onPress={pickIdDocumentPDF}
-                  disabled={saving}
-                >
-                  <Ionicons name="images" size={20} color={COLORS.primary} />
-                  <Text style={styles.uploadButtonText}>Choisir une image</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.label}>Numéro de TVA intracommunautaire</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.numero_tva}
+                onChangeText={t => set('numero_tva', t)}
+                placeholder="Ex : ICE 001234567000012 ou IF 1234567"
+              />
             </View>
 
-            <View style={[styles.card, { backgroundColor: '#F0F9FF', borderColor: '#0EA5E9', borderWidth: 1 }]}>
-              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-                <Ionicons name="information" size={20} color="#0EA5E9" style={{ marginRight: 8 }} />
-                <Text style={[styles.sectionTitle, { color: '#0EA5E9', fontSize: 14 }]}>Pourquoi vérifier mon identité?</Text>
-              </View>
-              <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
-                • Les photographes amateurs peuvent utiliser la plateforme sans restriction{"\n"}
-                • Les professionnels doivent fournir un SIRET valide{"\n"}
-                • La vérification d'identité augmente la confiance des clients{"\n"}
-                • Accès à des fonctionnalités premium pour les comptes vérifiés
-              </Text>
-            </View>
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Documents à soumettre</Text>
+            {DOCUMENT_TYPES.map(docType => {
+              const docUrl = (profile as any)[docType.profileColumn]
+              const hasDoc = !!docUrl
+              return (
+                <View key={docType.type} style={[styles.docCard, hasDoc && styles.docCardActive]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: hasDoc ? 8 : 0 }}>
+                    <Ionicons name={hasDoc ? 'checkmark-circle' : 'document-outline'} size={20} color={hasDoc ? '#10B981' : '#999'} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.label}>{docType.label}{docType.required && ' *'}</Text>
+                    </View>
+                  </View>
+                  {hasDoc && <Image source={{ uri: docUrl }} style={styles.uploadedDocImage} />}
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.uploadButton, { flex: 1 }]}
+                      onPress={() => pickAndUploadDocument(docType.type, true)}
+                      disabled={uploading === docType.type}
+                    >
+                      {uploading === docType.type ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Ionicons name="camera" size={18} color={COLORS.primary} />}
+                      <Text style={styles.uploadButtonText}>Photo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.uploadButton, { flex: 1 }]}
+                      onPress={() => pickAndUploadDocument(docType.type, false)}
+                      disabled={uploading === docType.type}
+                    >
+                      <Ionicons name="images" size={18} color={COLORS.primary} />
+                      <Text style={styles.uploadButtonText}>{hasDoc ? 'Remplacer' : 'Galerie'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )
+            })}
           </View>
         )}
 
-        {/* TAB: PORTFOLIO */}
+        {/* ── PORTFOLIO ── */}
         {activeTab === 'portfolio' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Portfolio</Text>
@@ -1296,13 +1156,7 @@ export default function ProfilComplet() {
               {profile.portfolio_photos.map((photo, index) => (
                 <View key={index} style={styles.portfolioItem}>
                   <Image source={{ uri: photo }} style={styles.portfolioImage} />
-                  <TouchableOpacity
-                    style={styles.deletePhotoButton}
-                    onPress={() => setProfile({
-                      ...profile,
-                      portfolio_photos: profile.portfolio_photos.filter((_, i) => i !== index),
-                    })}
-                  >
+                  <TouchableOpacity style={styles.deletePhotoButton} onPress={() => removePortfolioPhoto(index)}>
                     <Text style={styles.deletePhotoText}>✕</Text>
                   </TouchableOpacity>
                 </View>
@@ -1310,324 +1164,159 @@ export default function ProfilComplet() {
             </View>
           </View>
         )}
+
+        {/* ── TARIFS ── (refonte complète : tarif horaire simple, plus grille par spécialité) */}
+        {activeTab === 'tarifs' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tarification</Text>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Tarif horaire de base (MAD)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(profile.tarif_horaire_min)}
+                onChangeText={t => set('tarif_horaire_min', t)}
+                keyboardType="numeric"
+                placeholder="80"
+              />
+              <Text style={styles.hint}>Ce tarif sera affiché sur votre profil public</Text>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Tarif horaire maximum (MAD)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(profile.tarif_horaire_max)}
+                onChangeText={t => set('tarif_horaire_max', t)}
+                keyboardType="numeric"
+                placeholder="200"
+              />
+            </View>
+
+            {/* acompte / annulation / modalités — ajout, absents de l'ancienne version mobile */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Acompte à la réservation (%)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(profile.acompte_percent)}
+                onChangeText={t => set('acompte_percent', parseInt(t) || 0)}
+                keyboardType="numeric"
+                placeholder="30"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Délai d'annulation sans frais (jours)</Text>
+              <TextInput
+                style={styles.input}
+                value={String(profile.delai_annulation_jours)}
+                onChangeText={t => set('delai_annulation_jours', parseInt(t) || 0)}
+                keyboardType="numeric"
+                placeholder="7"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Conditions d'annulation</Text>
+              <TextInput
+                style={[styles.input, styles.bioInput]}
+                value={profile.conditions_annulation}
+                onChangeText={t => set('conditions_annulation', t)}
+                placeholder="Ex : Annulation gratuite jusqu'à 7 jours avant..."
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Modalités de paiement acceptées</Text>
+              <View style={styles.gridContainer}>
+                {MODALITES_PAIEMENT.map(mode => {
+                  const isOn = profile.modalites_paiement.includes(mode)
+                  return (
+                    <TouchableOpacity
+                      key={mode}
+                      style={[styles.chip, isOn && styles.chipSelected]}
+                      onPress={() => {
+                        const next = isOn
+                          ? profile.modalites_paiement.filter(m => m !== mode)
+                          : [...profile.modalites_paiement, mode]
+                        set('modalites_paiement', next)
+                      }}
+                    >
+                      <Text style={[styles.chipText, isOn && styles.chipTextSelected]}>{mode}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={{ height: 80 }} />
       </ScrollView>
 
       <FooterPresta />
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF',
-  },  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+  container: { flex: 1, backgroundColor: '#FFF' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF',
+    borderBottomWidth: 1, borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    flex: 1,
-    textAlign: 'center',
-  },
-  saveHeaderButton: {
-    backgroundColor: COLORS.primary,
-    padding: 8,
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },  tabsContainer: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    backgroundColor: '#F9F9F9',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomColor: COLORS.primary,
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#888',
-  },
-  tabTextActive: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  scrollContent: {
-    flex: 1,
-  },
-  section: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  profilePhotoSection: {
-    alignItems: 'center',
-    marginBottom: 28,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  profilePhotoContainer: {
-    position: 'relative',
-    marginBottom: 12,
-  },
-  profilePhoto: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: COLORS.primary,
-  },
-  profilePhotoPlaceholder: {
-    backgroundColor: '#F5F5F5',
-  },
-  editPhotoButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: COLORS.primary,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
-  },
-  profilePhotoLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#222',
-    marginBottom: 4,
-  },
-  profilePhotoHint: {
-    fontSize: 12,
-    color: '#888',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#222',
-    marginBottom: 20,
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
-  },
-  subLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#222',
-    backgroundColor: '#FAFAFA',
-  },
-  bioInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  switchGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#F9F9F9',
-    marginBottom: 8,
-  },
-  chipSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  chipText: {
-    fontSize: 13,
-    color: '#666',
-  },
-  chipTextSelected: {
-    color: '#FFF',
-    fontWeight: '500',
-  },
-  tarifCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    padding: 12,
-    marginBottom: 12,
-  },
-  tarifTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  tarifRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  tarifInput: {
-    flex: 1,
-  },
-  addPhotoButton: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: 24,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  addPhotoText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  portfolioGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  portfolioItem: {
-    width: '48%',
-    aspectRatio: 1,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#F0F0F0',
-  },
-  portfolioImage: {
-    width: '100%',
-    height: '100%',
-  },
-  deletePhotoButton: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deletePhotoText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  card: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 8,
-    padding: 16,
-    marginVertical: 8,
-  },
-  bottomBar: {
-    padding: 16,
-    backgroundColor: '#FFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  uploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#F0F9FF',
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  uploadButtonText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  uploadedDocContainer: {
-    position: 'relative',
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#F5F5F5',
-  },
-  uploadedDocImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'contain',
-  },
-  removeDocButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'white',
-    borderRadius: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 16,
-  },
-});
+  backButton: { padding: 8 },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, flex: 1, textAlign: 'center' },
+  saveHeaderButton: { backgroundColor: COLORS.primary, padding: 8, borderRadius: 20, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  saveButtonDisabled: { opacity: 0.6 },
+  tabsContainer: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E0E0E0', backgroundColor: '#F9F9F9', flexGrow: 0 },
+  tab: { paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: COLORS.primary },
+  tabText: { fontSize: 13, fontWeight: '500', color: '#888' },
+  tabTextActive: { color: COLORS.primary, fontWeight: '600' },
+  scrollContent: { flex: 1 },
+  section: { padding: 16, paddingBottom: 100 },
+  profilePhotoSection: { alignItems: 'center', marginBottom: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  profilePhotoContainer: { position: 'relative', marginBottom: 12 },
+  profilePhoto: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: COLORS.primary },
+  profilePhotoPlaceholder: { backgroundColor: '#F5F5F5' },
+  editPhotoButton: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.primary, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFF' },
+  profilePhotoLabel: { fontSize: 14, fontWeight: '600', color: '#222' },
+  coverPreview: { width: '100%', height: 100, borderRadius: 8, marginBottom: 8, backgroundColor: '#F0F0F0' },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#222', marginBottom: 12 },
+  formGroup: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '500', color: '#333', marginBottom: 8 },
+  subLabel: { fontSize: 13, fontWeight: '500', color: '#666', marginBottom: 12 },
+  hint: { fontSize: 12, color: '#888', marginTop: 4 },
+  input: { borderWidth: 1, borderColor: '#DDD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#222', backgroundColor: '#FAFAFA' },
+  bioInput: { height: 100, textAlignVertical: 'top' },
+  switchGroup: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#DDD', backgroundColor: '#F9F9F9', marginBottom: 8 },
+  chipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  chipText: { fontSize: 13, color: '#666' },
+  chipTextSelected: { color: '#FFF', fontWeight: '500' },
+  tagChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: `${COLORS.primary}20`, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
+  tagChipText: { fontSize: 13, color: COLORS.primary, fontWeight: '500' },
+  smallAddButton: { backgroundColor: COLORS.primary, borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
+  equipeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#DDD', backgroundColor: '#FAFAFA' },
+  equipeCardActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  equipeCardText: { fontSize: 14, color: '#333', fontWeight: '500' },
+  proCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 2, borderColor: '#E0E0E0', marginTop: 8 },
+  proCardActive: { borderColor: COLORS.primary, backgroundColor: `${COLORS.primary}10` },
+  addPhotoButton: { borderWidth: 2, borderStyle: 'dashed', borderColor: COLORS.primary, borderRadius: 8, paddingVertical: 24, alignItems: 'center', marginBottom: 16 },
+  addPhotoText: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  portfolioItem: { width: '48%', aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#F0F0F0' },
+  portfolioImage: { width: '100%', height: '100%' },
+  deletePhotoButton: { position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.6)', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  deletePhotoText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  uploadButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F0F9FF', borderWidth: 1, borderColor: COLORS.primary, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16 },
+  uploadButtonText: { color: COLORS.primary, fontSize: 14, fontWeight: '600' },
+  uploadedDocImage: { width: '100%', height: 160, borderRadius: 8, resizeMode: 'contain', backgroundColor: '#F5F5F5' },
+  docCard: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, padding: 12, marginBottom: 12 },
+  docCardActive: { borderColor: '#10B981', backgroundColor: '#F0FDF4' },
+})

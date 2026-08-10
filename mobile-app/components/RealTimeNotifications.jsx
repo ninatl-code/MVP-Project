@@ -365,13 +365,15 @@ export default function RealTimeNotifications({ userId, userRole, triggerNotific
         event: 'UPDATE',
         schema: 'public',
         table: 'conversations',
-        filter: userRole === 'prestataire' ? `artist_id=eq.${userId}` : `client_id=eq.${userId}`
+        filter: userRole === 'prestataire' ? `prestataire_id=eq.${userId}` : `client_id=eq.${userId}`
       }, async (payload) => {
         console.log('💬 Changement dans conversations:', payload.new)
         
-        const isUnread = userRole === 'prestataire' ? !payload.new.lu : !payload.new.client_lu
+        const isUnread = userRole === 'prestataire'
+          ? (payload.new.unread_count_prestataire || 0) > 0
+          : (payload.new.unread_count_client || 0) > 0
         
-        if (isUnread && payload.new.last_message) {
+        if (isUnread && payload.new.last_message_text) {
           showToast('💬 Nouveau message reçu')
         }
       })

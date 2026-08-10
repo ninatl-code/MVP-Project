@@ -83,7 +83,7 @@ export default function AnalyticsDashboardScreen() {
       const { data: statsData, error: statsError } = await supabase
         .from('statistiques_avis')
         .select('*')
-        .eq('photographe_id', user.id)
+        .eq('prestataire_id', user.id)
         .single();
 
       if (statsError && statsError.code !== 'PGRST116') {
@@ -94,7 +94,7 @@ export default function AnalyticsDashboardScreen() {
       const { data: reservations, error: reservationsError } = await supabase
         .from('reservations')
         .select('*')
-        .eq('photographe_id', user.id);
+        .eq('prestataire_id', user.id);
 
       if (reservationsError) {
         throw reservationsError;
@@ -130,7 +130,7 @@ export default function AnalyticsDashboardScreen() {
       const { data: servicesData, error: servicesError } = await supabase
         .from('reservations')
         .select('demande_id, montant')
-        .eq('photographe_id', user.id)
+        .eq('prestataire_id', user.id)
         .order('created_at', { ascending: false });
 
       if (servicesError && servicesError.code !== 'PGRST116') {
@@ -140,7 +140,7 @@ export default function AnalyticsDashboardScreen() {
       // Calculate earnings summary
       const earningsBreakdown = [
         {
-          annonces: { titre: 'Services photographiques' },
+          annonces: { titre: 'Mes services' },
           bookings_count: servicesData?.length || 0,
           avg_price: servicesData?.length ? servicesData.reduce((sum: number, r: any) => sum + (r.montant || 0), 0) / servicesData.length : 0,
           total_earnings: servicesData?.reduce((sum: number, r: any) => sum + (r.montant || 0), 0) || 0,

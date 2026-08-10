@@ -56,18 +56,25 @@ export default function ReviewsListPage() {
   const fetchReviews = async () => {
     try {
       const { data, error } = await supabase
-        .from('reviews')
+        .from('reviews_presta')
         .select(`
           *,
-          reviewer:reviewer_id(prenom, nom)
+          client:profiles!reviews_presta_client_id_fkey(prenom, nom)
         `)
-        .eq('reviewee_id', providerId)
+        .eq('prestataire_id', providerId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setReviews(data || []);
-      calculateStats(data || []);
+      const mapped = (data || []).map((r: any) => ({
+        ...r,
+        overall_rating: r.rating || 0,
+        comment: r.comment,
+        reviewer: r.client,
+      }));
+
+      setReviews(mapped);
+      calculateStats(mapped);
     } catch (error) {
       console.error('Error fetching reviews:', error);
     } finally {

@@ -43,10 +43,10 @@ interface Message {
 interface Conversation {
   id: string;
   client_id: string;
-  photographe_id: string;
+  prestataire_id: string;
   booking_id: string;
-  clients?: { nom: string; prenom: string };
-  prestataires?: { nom: string; prenom: string };
+  client?: { nom: string; prenom: string };
+  prestataire?: { nom: string; prenom: string };
 }
 
 export default function ChatConversationScreen() {
@@ -82,8 +82,8 @@ export default function ChatConversationScreen() {
         .from('conversations')
         .select(`
           *,
-          clients (nom, prenom),
-          prestataires (nom, prenom)
+          client:profiles!client_id_fkey(nom, prenom),
+          prestataire:profiles!prestataire_id_fkey(nom, prenom)
         `)
         .eq('id', conversationId)
         .single();
@@ -95,9 +95,9 @@ export default function ChatConversationScreen() {
       if (data.client_id === user.id) {
         await supabase
           .from('messages')
-          .update({ is_read: true })
+          .update({ lu: true })
           .eq('conversation_id', conversationId)
-          .eq('sender_id', data.photographe_id);
+          .eq('sender_id', data.prestataire_id);
 
         await supabase
           .from('conversations')
@@ -106,13 +106,13 @@ export default function ChatConversationScreen() {
       } else {
         await supabase
           .from('messages')
-          .update({ is_read: true })
+          .update({ lu: true })
           .eq('conversation_id', conversationId)
           .eq('sender_id', data.client_id);
 
         await supabase
           .from('conversations')
-          .update({ unread_count_provider: 0 })
+          .update({ unread_count_prestataire: 0 })
           .eq('id', conversationId);
       }
     } catch (error) {
