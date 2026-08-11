@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import * as avisService from '../../lib/avisService';
 import * as messageSService from '../../lib/messageService';
-import * as photographerService from  '../../../lib/photographerService';
+import * as photographerService from  '../../lib/photographerService';
 import {
   ArrowLeft, Star, MapPin, Calendar, Euro, Camera, Clock,
   MessageCircle, Heart, Share2, CheckCircle, Award, Shield,
@@ -64,14 +64,7 @@ export default function PhotographeProfilePage() {
       
       setAvis(avisData || []);
 
-      // Track view
-      if (user?.id && user.id !== id) {
-        await supabase.from('vues_profil').insert({
-          prestataire_id: id,
-          visiteur_id: user.id,
-          created_at: new Date().toISOString(),
-        }).single();
-      }
+
     } catch (error) {
       console.error('Error fetching photographe:', error);
     } finally {
@@ -157,13 +150,6 @@ export default function PhotographeProfilePage() {
     <div className="min-h-screen bg-[#F8F9FB]">
       {/* Cover Image */}
       <div className="h-64 md:h-80 bg-gradient-to-br from-indigo-600 to-purple-700 relative">
-        {photographe.photo_couverture && (
-          <img
-            src={photographe.photo_couverture}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        )}
         <div className="absolute top-4 left-4">
           <button
             onClick={() => router.back()}
@@ -240,7 +226,7 @@ export default function PhotographeProfilePage() {
                         {(photographe.note_moyenne || 0).toFixed(1)}
                       </span>
                       <span className="text-gray-500">
-                        ({photographe.nombre_avis || 0} avis)
+                        ({photographe.nb_avis || 0} avis)
                       </span>
                     </div>
                   </div>

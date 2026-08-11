@@ -8,7 +8,7 @@ export const approuverPrestataire = async (prestataireId) => {
   const { error } = await supabase
     .from('profils_prestataire')
     .update({
-      statut_validation: 'approved',
+      statut_validation: 'valide',
       identite_verifiee: true,
       score_confiance: 100,
       motif_refus: null,
@@ -28,7 +28,7 @@ export const refuserPrestataire = async (prestataireId, motif) => {
   const { error } = await supabase
     .from('profils_prestataire')
     .update({
-      statut_validation: 'rejected',
+      statut_validation: 'refuse',
       identite_verifiee: false,
       score_confiance: 0,
       motif_refus: motif || null,
@@ -56,7 +56,7 @@ export const suspendreutilisateur = async (userId, raison, role) => {
     // Hide prestataire profile from searches
     await supabase
       .from('profils_prestataire')
-      .update({ statut_validation: 'suspended' })
+      .update({ statut_validation: 'suspendu' })
       .eq('id', userId);
   }
 

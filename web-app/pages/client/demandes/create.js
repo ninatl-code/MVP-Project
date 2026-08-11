@@ -726,10 +726,8 @@ export default function CreateDemandePage() {
               </button>
             </div>
             <p className="font-medium text-lg">
-              {formData.budget_min && formData.budget_max 
-                ? `${formData.budget_min} DH - ${formData.budget_max} DH`
-                : formData.budget_max 
-                ? `Maximum ${formData.budget_max} DH`
+              {formData.budget_max 
+                ? `Jusqu'à ${formData.budget_max} DH`
                 : 'Non défini'}
             </p>
           </div>

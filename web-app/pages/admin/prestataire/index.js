@@ -182,7 +182,7 @@ export default function AdminPrestataires() {
   };
 
   const isSuspendu = (row) =>
-    row?.statut_validation === 'suspended' || row?.statut_validation === 'suspendu';
+    row?.statut_validation === 'suspendu' || row?.statut_validation === 'refuse';
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB]">
@@ -539,7 +539,7 @@ export default function AdminPrestataires() {
                   </p>
 
                   {/* Approuver */}
-                  {selected.statut_validation !== 'approved' && selected.statut_validation !== 'valide' && (
+                  {selected.statut_validation !== 'valide' && (
                     <div className="border border-green-200 rounded-xl p-4 space-y-2 bg-green-50/40">
                       <div className="flex items-center gap-2 mb-1">
                         <CheckCircle className="w-4 h-4 text-green-600" />
@@ -556,7 +556,7 @@ export default function AdminPrestataires() {
                   )}
 
                   {/* Refuser */}
-                  {selected.statut_validation !== 'rejected' && selected.statut_validation !== 'refuse' && (
+                  {selected.statut_validation !== 'refuse' && selected.statut_validation !== 'suspendu' && (
                     <div className="border border-red-200 rounded-xl p-4 space-y-2 bg-red-50/40">
                       <div className="flex items-center gap-2 mb-1">
                         <XCircle className="w-4 h-4 text-red-600" />

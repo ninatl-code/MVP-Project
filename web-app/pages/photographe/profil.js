@@ -343,7 +343,7 @@ export default function PhotographeProfilPage() {
       const column = columnMap[docType];
       if (!column) throw new Error('Type de document inconnu');
 
-      const { error } = await photographerService.upsertPhotographerProfile(currentUser.id, { [column]: base64, statut_validation: 'pending' });
+      const { error } = await photographerService.upsertPhotographerProfile(currentUser.id, { [column]: base64, statut_validation: 'en_attente' });
       if (error) throw error;
 
       const labelMap = {
@@ -354,7 +354,7 @@ export default function PhotographeProfilPage() {
         assurance: 'Assurance professionnelle'
       };
       handleProfileChange(column, base64);
-      handleProfileChange('statut_validation', 'pending');
+      handleProfileChange('statut_validation', 'en_attente');
       alert(`${labelMap[docType] || docType} chargé avec succès !`);
     } catch (error) {
       console.error('Error uploading document:', error);
@@ -455,7 +455,6 @@ export default function PhotographeProfilPage() {
           equipe: toArray(photoProfile?.equipe),
           materiel: photoProfile?.materiel || '',
           tarif_horaire_min: photoProfile?.tarif_horaire_min || '',
-          photo_couverture: photoProfile?.photo_couverture || '',
           mobile: photoProfile?.mobile ?? true,
           agence: photoProfile?.agence ?? false,
           agence_adresse: photoProfile?.agence_adresse || '',
@@ -480,7 +479,7 @@ export default function PhotographeProfilPage() {
           documents_siret: photoProfile?.documents_siret || null,
           documents_kbis: photoProfile?.documents_kbis || null,
           documents_assurance: photoProfile?.documents_assurance || null,
-          statut_validation: photoProfile?.statut_validation || 'pending',
+          statut_validation: photoProfile?.statut_validation || 'en_attente',
           portfolio_photos: toArray(photoProfile?.portfolio_photos),
           details: Array.isArray(photoProfile?.details) ? (photoProfile.details[0] || {}) : (photoProfile?.details || {}),
         };
@@ -703,7 +702,7 @@ export default function PhotographeProfilPage() {
         reader.readAsDataURL(file);
       });
 
-      if (type === 'avatar') {
+      
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ avatar_url: base64 })
@@ -711,12 +710,7 @@ export default function PhotographeProfilPage() {
         if (updateError) throw updateError;
         setProfile(prev => ({ ...prev, avatar_url: base64 }));
         alert('Photo de profil mise à jour !');
-      } else if (type === 'cover') {
-        const { error: updateError } = await photographerService.upsertPhotographerProfile(currentUser.id, { photo_couverture: base64 });
-        if (updateError) throw updateError;
-        setProfile(prev => ({ ...prev, photo_couverture: base64 }));
-        alert('Photo de couverture mise à jour !');
-      }
+      
     } catch (error) {
       console.error('Error uploading photo:', error);
       alert('Erreur lors du téléchargement: ' + (error.message || 'Erreur inconnue'));
