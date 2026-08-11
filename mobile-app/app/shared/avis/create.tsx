@@ -209,7 +209,7 @@ export default function CreateAvis() {
           .from('profiles')
           .update({
             note_moyenne: moyenne,
-            nombre_avis: nombreAvis
+            nb_avis: nombreAvis
           })
           .eq('id', reservation.prestataire_id);
       }

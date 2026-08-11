@@ -97,7 +97,6 @@ export interface ClientBookingRequest {
   album_wanted: boolean;
   
   // Budget
-  budget_min: number;
   budget_max: number;
   
   // Préférences humaines

@@ -26,7 +26,7 @@ interface Reservation {
   lieu?: string;
   statut: string;
   montant_total: number;
-  notes_photographe?: string;
+  notes_prestataire?: string;
   client_id: string;
   package_id: string;
   client?: { nom: string; email: string; telephone: string; avatar_url: string } | { nom: string; email: string; telephone: string; avatar_url: string }[];
@@ -66,7 +66,7 @@ export default function ReservationsPrestataire() {
           statut,
           montant_total,
           lieu,
-          notes_photographe,
+          notes_prestataire,
           client_id,
           package_id,
           created_at,
@@ -350,10 +350,10 @@ export default function ReservationsPrestataire() {
                     <Text style={[styles.detailText, styles.priceText]}>{reservation.montant_total} DH</Text>
                   </View>
 
-                  {reservation.notes_photographe && (
+                  {reservation.notes_prestataire && (
                     <View style={styles.notesSection}>
                       <Text style={styles.notesLabel}>Message du client:</Text>
-                      <Text style={styles.notesText}>{reservation.notes_photographe}</Text>
+                      <Text style={styles.notesText}>{reservation.notes_prestataire}</Text>
                     </View>
                   )}
                 </View>

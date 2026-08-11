@@ -101,11 +101,11 @@ export default function AnalyticsDashboardScreen() {
       }
 
       // Calculate analytics from reservations and avis
-      const totalRevenue = reservations?.reduce((sum: number, r: any) => sum + (r.montant || 0), 0) || 0;
+      const totalRevenue = reservations?.reduce((sum: number, r: any) => sum + (r.montant_total || 0), 0) || 0;
       const totalBookings = reservations?.length || 0;
-      const confirmedBookings = reservations?.filter((r: any) => r.status === 'confirmed').length || 0;
-      const cancelledBookings = reservations?.filter((r: any) => r.status === 'cancelled').length || 0;
-      const completedBookings = reservations?.filter((r: any) => r.status === 'completed').length || 0;
+      const confirmedBookings = reservations?.filter((r: any) => r.statut === 'confirmed').length || 0;
+      const cancelledBookings = reservations?.filter((r: any) => r.statut === 'cancelled').length || 0;
+      const completedBookings = reservations?.filter((r: any) => r.statut === 'completed').length || 0;
 
       const analyticsData = {
         total_revenue: totalRevenue,
@@ -129,7 +129,7 @@ export default function AnalyticsDashboardScreen() {
       // Get earnings breakdown by service type (from reservations)
       const { data: servicesData, error: servicesError } = await supabase
         .from('reservations')
-        .select('demande_id, montant')
+        .select('demande_id, montant_total')
         .eq('prestataire_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -142,8 +142,8 @@ export default function AnalyticsDashboardScreen() {
         {
           annonces: { titre: 'Mes services' },
           bookings_count: servicesData?.length || 0,
-          avg_price: servicesData?.length ? servicesData.reduce((sum: number, r: any) => sum + (r.montant || 0), 0) / servicesData.length : 0,
-          total_earnings: servicesData?.reduce((sum: number, r: any) => sum + (r.montant || 0), 0) || 0,
+          avg_price: servicesData?.length ? servicesData.reduce((sum: number, r: any) => sum + (r.montant_total || 0), 0) / servicesData.length : 0,
+          total_earnings: servicesData?.reduce((sum: number, r: any) => sum + (r.montant_total || 0), 0) || 0,
         }
       ];
       

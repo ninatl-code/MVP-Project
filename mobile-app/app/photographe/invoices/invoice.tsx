@@ -58,8 +58,16 @@ export default function InvoiceDetail() {
       const { data, error } = await supabase
         .from('factures')
         .select(`
-          *,
-          client:profiles!client_id(nom, email, telephone, adresse, ville, code_postal)
+          id,
+          num_facture,
+          montant_ht,
+          montant_tva,
+          montant_ttc,
+          facture,
+          created_at,
+          date_echeance,
+          notes,
+          reservation:reservations(client:profiles!reservations_client_id_fkey(nom, email, telephone, adresse, ville, code_postal))
         `)
         .eq('id', id)
         .single();
@@ -67,11 +75,21 @@ export default function InvoiceDetail() {
       if (error) throw error;
 
       if (data) {
-        const transformedData = {
-          ...data,
-          client: Array.isArray(data.client) ? data.client[0] : data.client
-        };
-        setInvoice(transformedData);
+        const reservation: any = Array.isArray((data as any).reservation) ? (data as any).reservation[0] : (data as any).reservation;
+        const client = Array.isArray(reservation?.client) ? reservation.client[0] : reservation?.client;
+        setInvoice({
+          id: data.id,
+          numero: (data as any).num_facture,
+          montant_ht: (data as any).montant_ht,
+          montant_tva: (data as any).montant_tva,
+          montant_total: (data as any).montant_ttc,
+          date_emission: (data as any).created_at,
+          date_echeance: (data as any).date_echeance,
+          statut: 'emise',
+          notes: (data as any).notes,
+          lignes: Array.isArray((data as any).facture) ? (data as any).facture : [],
+          client: client || undefined,
+        });
       }
     } catch (error) {
       console.error('Erreur chargement facture:', error);
@@ -81,36 +99,8 @@ export default function InvoiceDetail() {
     }
   };
 
-  const handleMarkAsPaid = async () => {
-    Alert.alert(
-      'Marquer comme payée',
-      'Confirmer que cette facture a été payée ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Confirmer',
-          onPress: async () => {
-            try {
-              setUpdating(true);
-              const { error } = await supabase
-                .from('factures')
-                .update({ statut: 'payee', date_paiement: new Date().toISOString() })
-                .eq('id', id);
-
-              if (error) throw error;
-
-              Alert.alert('Succès', 'Facture marquée comme payée');
-              fetchInvoice();
-            } catch (error) {
-              console.error('Erreur mise à jour:', error);
-              Alert.alert('Erreur', 'Impossible de mettre à jour la facture');
-            } finally {
-              setUpdating(false);
-            }
-          }
-        }
-      ]
-    );
+  const handleMarkAsPaid = () => {
+    Alert.alert('Info', 'Le suivi du statut de paiement sera bientôt disponible.');
   };
 
   const handleDownloadPDF = () => {
@@ -122,7 +112,7 @@ export default function InvoiceDetail() {
       case 'payee': return COLORS.success;
       case 'en_attente': return COLORS.warning;
       case 'annulee': return COLORS.error;
-      default: return COLORS.textLight;
+      default: return COLORS.primary;
     }
   };
 
@@ -131,6 +121,7 @@ export default function InvoiceDetail() {
       case 'payee': return 'Payée';
       case 'en_attente': return 'En attente';
       case 'annulee': return 'Annulée';
+      case 'emise': return 'Émise';
       default: return status;
     }
   };

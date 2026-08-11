@@ -73,7 +73,7 @@ export default function ProfilPhotographe() {
         const { data: prestaData } = await supabase
           .from('profils_prestataire')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', data.id)
           .maybeSingle();
 
         const merged = {
@@ -101,7 +101,7 @@ export default function ProfilPhotographe() {
           entreprise_verifiee: prestaData?.entreprise_verifiee ?? false,
           document_identite_recto_url: prestaData?.document_identite_recto_url || null,
           documents_assurance: prestaData?.documents_assurance || null,
-          statut_validation: prestaData?.statut_validation || 'pending',
+          statut_validation: prestaData?.statut_validation || 'en_attente',
         };
         setProfile(merged);
         setVilleNom(data.ville || '');
@@ -170,16 +170,25 @@ export default function ProfilPhotographe() {
       if (!session?.user) return;
       const user = session.user;
 
+      // Résoudre l'id réel du profil photographe (peut différer de l'auth uid pour les comptes multi-rôles)
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .eq('role', 'photographe')
+        .maybeSingle();
+      const prestataireId = profileRow?.id || user.id;
+
       // Get reservations and avis for stats
       const { data: reservations } = await supabase
         .from('reservations')
         .select('id, montant_total, statut')
-        .eq('prestataire_id', user.id);
+        .eq('prestataire_id', prestataireId);
 
       const { data: avis } = await supabase
         .from('reviews_presta')
         .select('rating')
-        .eq('prestataire_id', user.id);
+        .eq('prestataire_id', prestataireId);
 
       const totalReservations = reservations?.length || 0;
       const reservationsPayees = reservations?.filter(r => 

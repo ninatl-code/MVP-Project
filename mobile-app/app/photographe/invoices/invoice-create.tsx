@@ -80,15 +80,15 @@ export default function InvoiceCreate() {
       // Compter le nombre de factures ce mois
       const { data, error } = await supabase
         .from('factures')
-        .select('numero')
-        .eq('photographe_id', user.id)
-        .like('numero', `INV-${year}-${month}-%`)
+        .select('num_facture')
+        .eq('prestataire_id', user.id)
+        .like('num_facture', `INV-${year}-${month}-%`)
         .order('created_at', { ascending: false })
         .limit(1);
 
       let nextNumber = 1;
       if (data && data.length > 0) {
-        const lastNumero = data[0].numero;
+        const lastNumero = data[0].num_facture;
         const match = lastNumero.match(/INV-\d{4}-\d{2}-(\d+)/);
         if (match) {
           nextNumber = parseInt(match[1]) + 1;
@@ -220,32 +220,35 @@ export default function InvoiceCreate() {
         return;
       }
 
-      // Récupérer client_id depuis devis ou clientInfo
-      let clientId = null;
+      // Récupérer reservation_id depuis le devis (une facture est rattachée à une réservation, pas directement à un devis/client)
+      let reservationId: string | null = null;
       if (devisId) {
         const { data: devisData } = await supabase
           .from('devis')
           .select('client_id')
           .eq('id', devisId)
           .single();
-        clientId = devisData?.client_id;
+        if (devisData?.client_id) {
+          const { data: resData } = await supabase
+            .from('reservations')
+            .select('id')
+            .eq('devis_id', devisId)
+            .maybeSingle();
+          reservationId = resData?.id || null;
+        }
       }
 
-      // Préparer les données de la facture
+      // Préparer les données de la facture (colonnes réelles de la table factures)
       const factureData = {
-        photographe_id: user.id,
-        client_id: clientId,
-        devis_id: devisId || null,
-        numero: numero,
-        date_emission: dateEmission.toISOString().split('T')[0],
+        prestataire_id: user.id,
+        reservation_id: reservationId,
+        num_facture: numero,
         date_echeance: dateEcheance.toISOString().split('T')[0],
         montant_ht: montantHT,
         montant_tva: montantTVA,
-        montant_total: montantTTC,
-        lignes: lineItems,
-        notes: notes,
-        conditions_paiement: conditionsPaiement,
-        statut: 'en_attente',
+        montant_ttc: montantTTC,
+        facture: lineItems,
+        notes: conditionsPaiement ? `${notes}\n\n${conditionsPaiement}`.trim() : notes,
       };
 
       const { data, error } = await supabase

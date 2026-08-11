@@ -150,15 +150,11 @@ export default function DemandesListScreen() {
             </Text>
           </View>
 
-          {(demande.budget_min || demande.budget_max) && (
+          {(demande.budget_max) && (
             <View style={styles.infoRow}>
               <Ionicons name="cash-outline" size={16} color="#666" />
               <Text style={styles.infoText}>
-                {demande.budget_min && demande.budget_max
-                  ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                  : demande.budget_min
-                  ? `À partir de ${demande.budget_min} DH`
-                  : `Jusqu'à ${demande.budget_max} DH`}
+                { `Jusqu'à ${demande.budget_max} DH`}
               </Text>
             </View>
           )}

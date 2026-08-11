@@ -135,6 +135,7 @@ interface PrestataireProfile {
   email: string
   telephone: string
   ville: string
+  avatar_url: string
 
   // profils_prestataire
   bio: string
@@ -167,7 +168,7 @@ interface PrestataireProfile {
   conditions_annulation: string
   delai_annulation_jours: number
   modalites_paiement: string[]
-  services_additionnels: Record<string, boolean> & { _texte_libre?: string }
+  services_additionnels: Record<string, boolean | string>
 
   siret: string
   numero_tva: string
@@ -175,7 +176,6 @@ interface PrestataireProfile {
   statut_validation: string
 
   portfolio_photos: string[]
-  photo_couverture: string
 
   document_identite_recto_url: string | null
   document_identite_verso_url: string | null
@@ -218,14 +218,14 @@ const DEFAULT_PROFILE: PrestataireProfile = {
   siret: '',
   numero_tva: '',
   statut_pro: false,
-  statut_validation: 'pending',
+  statut_validation: 'en_attente',
   portfolio_photos: [],
-  photo_couverture: '',
   document_identite_recto_url: null,
   document_identite_verso_url: null,
   documents_siret: null,
   documents_kbis: null,
   documents_assurance: null,
+  avatar_url: '',
 }
 
 export default function ProfilComplet() {
@@ -235,7 +235,7 @@ export default function ProfilComplet() {
   const [profile, setProfile] = useState<PrestataireProfile>(DEFAULT_PROFILE)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState<DocType | 'avatar' | 'cover' | null>(null)
+  const [uploading, setUploading] = useState<DocType | 'avatar' | null>(null)
   const [activeTab, setActiveTab] = useState('infos')
   const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
@@ -262,7 +262,7 @@ export default function ProfilComplet() {
       const { data: baseProfile, error: baseError } = await supabase
         .from('profiles')
         .select('id, nom, email, telephone, avatar_url, ville')
-        .eq('auth_user_id', user.id)
+        .eq('id', user.id)
         .eq('role', 'photographe')
         .maybeSingle()
 
@@ -289,6 +289,7 @@ export default function ProfilComplet() {
         email: baseProfile?.email || user.email || '',
         telephone: baseProfile?.telephone || '',
         ville: baseProfile?.ville || '',
+        avatar_url: photoData?.avatar_url || '',
 
         bio: photoData?.bio || '',
         nom_entreprise: photoData?.nom_entreprise || '',
@@ -328,10 +329,9 @@ export default function ProfilComplet() {
         siret: photoData?.siret || '',
         numero_tva: photoData?.numero_tva || '',
         statut_pro: photoData?.statut_pro ?? false,
-        statut_validation: photoData?.statut_validation || 'pending',
+        statut_validation: photoData?.statut_validation || 'en_attente',
 
         portfolio_photos: toArray(photoData?.portfolio_photos),
-        photo_couverture: photoData?.photo_couverture || '',
 
         document_identite_recto_url: photoData?.document_identite_recto_url || null,
         document_identite_verso_url: photoData?.document_identite_verso_url || null,
@@ -372,7 +372,7 @@ export default function ProfilComplet() {
           telephone: emptyToNull(profile.telephone),
           ville: emptyToNull(profile.ville),
         })
-        .eq('auth_user_id', user.id)
+        .eq('id', user.id)
         .eq('role', 'photographe')
 
       if (profileError) console.error('Erreur profiles:', profileError)
@@ -416,10 +416,9 @@ export default function ProfilComplet() {
           siret: emptyToNull(profile.siret),
           numero_tva: emptyToNull(profile.numero_tva),
           statut_pro: profile.statut_pro,
-          statut_validation: profile.statut_validation || 'pending',
+          statut_validation: profile.statut_validation || 'en_attente',
 
           portfolio_photos: profile.portfolio_photos,
-          photo_couverture: emptyToNull(profile.photo_couverture),
 
           document_identite_recto_url: profile.document_identite_recto_url,
           document_identite_verso_url: profile.document_identite_verso_url,
@@ -441,8 +440,8 @@ export default function ProfilComplet() {
 
   // ── Upload photo de profil / couverture ────────────────────────────────
   const pickAndUploadImage = async (
-    kind: 'avatar' | 'cover',
-    aspect: [number, number],
+    kind: 'avatar',
+    aspect: [number, number] ,
   ) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -472,20 +471,15 @@ export default function ProfilComplet() {
       const { data: publicUrlData } = supabase.storage.from('photos').getPublicUrl(filePath)
       const url = publicUrlData.publicUrl
 
-      if (kind === 'avatar') {
+      
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ avatar_url: url })
-          .eq('auth_user_id', session.user.id)
+          .eq('id', session.user.id)
           .eq('role', 'photographe')
         if (updateError) throw updateError
         setProfilePhotoUri(url)
-      } else {
-        set('photo_couverture', url)
-        if (profileId) {
-          await supabase.from('profils_prestataire').update({ photo_couverture: url }).eq('id', profileId)
-        }
-      }
+
       Alert.alert('Succès', 'Photo mise à jour')
     } catch (error: any) {
       Alert.alert("Erreur d'upload", error.message || 'Erreur inconnue')
@@ -539,12 +533,12 @@ export default function ProfilComplet() {
       }
       const column = columnMap[docType]
       set(column, docUrl as any)
-      set('statut_validation', 'pending')
+      set('statut_validation', 'en_attente') // reset statut_validation to pending
 
       if (profileId) {
         await supabase
           .from('profils_prestataire')
-          .update({ [column]: docUrl, statut_validation: 'pending' })
+          .update({ [column]: docUrl, statut_validation: 'en_attente' })
           .eq('id', profileId)
       }
       Alert.alert('Succès', 'Document téléchargé')
@@ -670,20 +664,6 @@ export default function ProfilComplet() {
             </View>
 
             {/* Photo de couverture — ajout, absente de l'ancienne version mobile */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Photo de couverture</Text>
-              {profile.photo_couverture ? (
-                <Image source={{ uri: profile.photo_couverture }} style={styles.coverPreview} />
-              ) : null}
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={() => pickAndUploadImage('cover', [3, 1])}
-                disabled={uploading === 'cover'}
-              >
-                {uploading === 'cover' ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Ionicons name="image" size={20} color={COLORS.primary} />}
-                <Text style={styles.uploadButtonText}>{profile.photo_couverture ? 'Remplacer' : 'Ajouter'} une couverture</Text>
-              </TouchableOpacity>
-            </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nom</Text>
@@ -955,7 +935,7 @@ export default function ProfilComplet() {
                 <Text style={styles.label}>Autres services (champ libre)</Text>
                 <TextInput
                   style={[styles.input, styles.bioInput]}
-                  value={profile.services_additionnels?._texte_libre || ''}
+                  value={typeof profile.services_additionnels?._texte_libre === 'string' ? profile.services_additionnels._texte_libre : ''}
                   onChangeText={t => set('services_additionnels', { ...profile.services_additionnels, _texte_libre: t })}
                   placeholder="Ex : Installation de climatiseur, Cours de cuisine..."
                   multiline
@@ -1285,7 +1265,6 @@ const styles = StyleSheet.create({
   profilePhotoPlaceholder: { backgroundColor: '#F5F5F5' },
   editPhotoButton: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.primary, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFF' },
   profilePhotoLabel: { fontSize: 14, fontWeight: '600', color: '#222' },
-  coverPreview: { width: '100%', height: 100, borderRadius: 8, marginBottom: 8, backgroundColor: '#F0F0F0' },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: '#222', marginBottom: 12 },
   formGroup: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#333', marginBottom: 8 },

@@ -72,7 +72,7 @@ export default function KPIsPrestataire() {
         clientsData,
         comparaisonData
       ] = await Promise.all([
-        supabase.from('reservations').select('*, status, montant, date').eq('prestataire_id', user.id),
+        supabase.from('reservations').select('*, statut, montant_total, date').eq('prestataire_id', user.id),
         supabase.from('reviews_presta').select('note').eq('prestataire_id', user.id),
         fetchCAParMois(user.id),
         fetchServicesPopulaires(user.id),
@@ -82,10 +82,10 @@ export default function KPIsPrestataire() {
 
       const allReservations = reservations.data || [];
       const reservationsConfirmees = allReservations.filter(r => 
-        ['confirmed', 'paid', 'acompte_paye', 'completed'].includes(r.status)
+        ['confirmed', 'paid', 'acompte_paye', 'completed'].includes(r.statut)
       );
       const reservationsAnnulees = allReservations.filter(r => 
-        ['cancelled', 'annulee', 'refused', 'refusee'].includes(r.status)
+        ['cancelled', 'annulee', 'refused', 'refusee'].includes(r.statut)
       );
 
       // CA par période
@@ -98,19 +98,19 @@ export default function KPIsPrestataire() {
 
       const caJour = reservationsConfirmees
         .filter(r => new Date(r.date) >= today)
-        .reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+        .reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
 
       const caSemaine = reservationsConfirmees
         .filter(r => new Date(r.date) >= weekStart)
-        .reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+        .reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
 
       const caMois = reservationsConfirmees
         .filter(r => new Date(r.date) >= monthStart)
-        .reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+        .reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
 
       const caAnnee = reservationsConfirmees
         .filter(r => new Date(r.date) >= yearStart)
-        .reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0);
+        .reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0);
 
       const tauxConversion = allReservations.length > 0 
         ? (reservationsConfirmees.length / allReservations.length) * 100 
@@ -121,7 +121,7 @@ export default function KPIsPrestataire() {
         : 0;
 
       const panierMoyen = reservationsConfirmees.length > 0
-        ? reservationsConfirmees.reduce((sum, r) => sum + (parseFloat(r.montant) || 0), 0) / reservationsConfirmees.length
+        ? reservationsConfirmees.reduce((sum, r) => sum + (parseFloat(r.montant_total) || 0), 0) / reservationsConfirmees.length
         : 0;
 
       const notesAvis = avis.data || [];
@@ -165,15 +165,15 @@ export default function KPIsPrestataire() {
   const fetchCAParMois = async (userId: string) => {
     const { data } = await supabase
       .from('reservations')
-      .select('date, montant, status')
+      .select('date, montant_total, statut')
       .eq('prestataire_id', userId)
       .gte('date', new Date(new Date().setMonth(new Date().getMonth() - 11)).toISOString());
 
     const montantsByMonth: { [key: string]: number } = {};
     data?.forEach(r => {
-      if (['confirmed', 'paid', 'acompte_paye', 'completed'].includes(r.status)) {
+      if (['confirmed', 'paid', 'acompte_paye', 'completed'].includes(r.statut)) {
         const month = new Date(r.date).toLocaleDateString('fr-FR', { month: 'short' });
-        montantsByMonth[month] = (montantsByMonth[month] || 0) + parseFloat(r.montant || 0);
+        montantsByMonth[month] = (montantsByMonth[month] || 0) + parseFloat(r.montant_total || 0);
       }
     });
 
@@ -186,19 +186,19 @@ export default function KPIsPrestataire() {
   const fetchServicesPopulaires = async (userId: string) => {
     const { data } = await supabase
       .from('reservations')
-      .select('annonce_id, montant, status, annonces(titre)')
+      .select('package_id, montant_total, statut, packages_types(titre)')
       .eq('prestataire_id', userId)
-      .in('status', ['confirmed', 'paid', 'acompte_paye', 'completed']);
+      .in('statut', ['confirmed', 'paid', 'acompte_paye', 'completed']);
 
     const serviceStats: { [key: string]: { count: number; ca: number; titre: string } } = {};
     
     data?.forEach(r => {
-      const annonceTitre = (r.annonces as any)?.titre || 'Service inconnu';
-      if (!serviceStats[r.annonce_id]) {
-        serviceStats[r.annonce_id] = { count: 0, ca: 0, titre: annonceTitre };
+      const annonceTitre = (r.packages_types as any)?.titre || 'Service inconnu';
+      if (!serviceStats[r.package_id]) {
+        serviceStats[r.package_id] = { count: 0, ca: 0, titre: annonceTitre };
       }
-      serviceStats[r.annonce_id].count++;
-      serviceStats[r.annonce_id].ca += parseFloat(r.montant || 0);
+      serviceStats[r.package_id].count++;
+      serviceStats[r.package_id].ca += parseFloat(r.montant_total || 0);
     });
 
     return Object.values(serviceStats)
@@ -209,13 +209,13 @@ export default function KPIsPrestataire() {
   const fetchStatsClients = async (userId: string) => {
     const { data } = await supabase
       .from('reservations')
-      .select('particulier_id')
+      .select('client_id')
       .eq('prestataire_id', userId)
-      .in('status', ['confirmed', 'paid', 'acompte_paye', 'completed']);
+      .in('statut', ['confirmed', 'paid', 'acompte_paye', 'completed']);
 
     const clientCounts: { [key: string]: number } = {};
     data?.forEach(r => {
-      clientCounts[r.particulier_id] = (clientCounts[r.particulier_id] || 0) + 1;
+      clientCounts[r.client_id] = (clientCounts[r.client_id] || 0) + 1;
     });
 
     const total = Object.keys(clientCounts).length;
@@ -233,21 +233,21 @@ export default function KPIsPrestataire() {
 
     const { data: currentMonth } = await supabase
       .from('reservations')
-      .select('montant')
+      .select('montant_total')
       .eq('prestataire_id', userId)
-      .in('status', ['confirmed', 'paid', 'acompte_paye', 'completed'])
+      .in('statut', ['confirmed', 'paid', 'acompte_paye', 'completed'])
       .gte('date', currentMonthStart.toISOString());
 
     const { data: lastMonth } = await supabase
       .from('reservations')
-      .select('montant')
+      .select('montant_total')
       .eq('prestataire_id', userId)
-      .in('status', ['confirmed', 'paid', 'acompte_paye', 'completed'])
+      .in('statut', ['confirmed', 'paid', 'acompte_paye', 'completed'])
       .gte('date', lastMonthStart.toISOString())
       .lte('date', lastMonthEnd.toISOString());
 
-    const actuel = currentMonth?.reduce((sum, r) => sum + parseFloat(r.montant || 0), 0) || 0;
-    const precedent = lastMonth?.reduce((sum, r) => sum + parseFloat(r.montant || 0), 0) || 0;
+    const actuel = currentMonth?.reduce((sum, r) => sum + parseFloat(r.montant_total || 0), 0) || 0;
+    const precedent = lastMonth?.reduce((sum, r) => sum + parseFloat(r.montant_total || 0), 0) || 0;
     const evolution = precedent > 0 ? ((actuel - precedent) / precedent) * 100 : 0;
 
     return { actuel, precedent, evolution: Math.round(evolution) };
@@ -256,7 +256,7 @@ export default function KPIsPrestataire() {
   const calculateStatutsRepartition = (reservations: any[]) => {
     const statusCounts: { [key: string]: number } = {};
     reservations.forEach(r => {
-      statusCounts[r.status] = (statusCounts[r.status] || 0) + 1;
+      statusCounts[r.statut] = (statusCounts[r.statut] || 0) + 1;
     });
 
     const colors = ['#10B981', '#F59E0B', '#EF4444', '#6B7280', '#8B5CF6'];

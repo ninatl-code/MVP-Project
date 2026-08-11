@@ -27,6 +27,10 @@ interface Notification {
   contenu: string;
   created_at: string;
   lu: boolean;
+  demande_id?: string | null;
+  devis_id?: string | null;
+  reservation_id?: string | null;
+  lien?: string | null;
 }
 
 export default function NotificationsPrestataire() {
@@ -68,6 +72,63 @@ export default function NotificationsPrestataire() {
     if (!user) return;
     await supabase.from('notifications').update({ lu: true }).eq('user_id', user.id).eq('lu', false);
     fetchNotifications();
+  };
+
+  // Redirige vers la page correspondant au sujet de la notification (équivalent getNotificationLink du web)
+  const getNotificationRoute = (n: Notification): string | null => {
+    const { type, demande_id, devis_id, reservation_id } = n;
+    switch (type) {
+      case 'mission_suggeree':
+      case 'new_demande':
+      case 'demande_pourvue':
+        return demande_id
+          ? `/photographe/demandes/demande-detail?id=${demande_id}`
+          : '/photographe/demandes/demandes-list';
+      case 'new_devis':
+      case 'devis_lu':
+      case 'devis_accepte':
+        return reservation_id
+          ? `/photographe/reservations/reservation-detail?id=${reservation_id}`
+          : devis_id
+          ? `/photographe/devis/devis-detail?id=${devis_id}`
+          : '/photographe/devis/devis-list';
+      case 'devis_refuse':
+        return devis_id ? `/photographe/devis/devis-detail?id=${devis_id}` : '/photographe/devis/devis-list';
+      case 'reservation':
+      case 'confirmation':
+      case 'reservation_confirmee':
+      case 'reservation_annulee':
+      case 'cancellation':
+      case 'prestation_terminee':
+      case 'reminder':
+        return reservation_id
+          ? `/photographe/reservations/reservation-detail?id=${reservation_id}`
+          : '/photographe/reservations/reservations';
+      case 'avis':
+      case 'nouvel_avis':
+      case 'reponse_avis':
+      case 'avis_masque':
+        return '/photographe/review/reviews-dashboard';
+      case 'message':
+      case 'nouveau_message':
+        return '/shared/messages/messages-list';
+      case 'profil_approuve':
+      case 'profil_refuse':
+      case 'compte_suspendu':
+      case 'compte_reactive':
+        return '/photographe/profil/profil';
+      case 'payment':
+      case 'paiement_recu':
+        return '/photographe/leads/invoices-list';
+      default:
+        return null;
+    }
+  };
+
+  const handleNotificationPress = (item: Notification) => {
+    if (!item.lu) markAsRead(item.id);
+    const route = getNotificationRoute(item);
+    if (route) router.push(route as any);
   };
 
   const getIcon = (type: string) => {
@@ -161,7 +222,7 @@ export default function NotificationsPrestataire() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[styles.notificationItem, !item.lu && styles.notificationItemUnread]}
-              onPress={() => !item.lu && markAsRead(item.id)}
+              onPress={() => handleNotificationPress(item)}
             >
               <View style={[styles.iconContainer, { backgroundColor: getIconColor(item.type) + '15' }]}>
                 <Ionicons name={getIcon(item.type) as any} size={24} color={getIconColor(item.type)} />

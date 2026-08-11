@@ -43,7 +43,7 @@ interface PrestataireInfo {
   nom: string;
   photos?: string[];
   note_moyenne: number;
-  nombre_avis: number;
+  nb_avis: number;
 }
 
 export default function AvisPrestataire() {
@@ -69,7 +69,7 @@ export default function AvisPrestataire() {
       // Récupérer les infos du prestataire
       const { data: prestataireData, error: prestataireError } = await supabase
         .from('profiles')
-        .select('nom, photos, note_moyenne, nombre_avis')
+        .select('nom, photos, note_moyenne, nb_avis')
         .eq('id', prestataire_id)
         .single();
 
@@ -79,7 +79,7 @@ export default function AvisPrestataire() {
         nom: prestataireData.nom || 'Prestataire',
         photos: prestataireData.photos,
         note_moyenne: prestataireData.note_moyenne || 0,
-        nombre_avis: prestataireData.nombre_avis || 0
+        nb_avis: prestataireData.nb_avis || 0
       });
 
       // Récupérer les avis
@@ -230,7 +230,7 @@ export default function AvisPrestataire() {
                   {prestataire.note_moyenne > 0 ? prestataire.note_moyenne.toFixed(1) : 'N/A'}
                 </Text>
                 <StarRating rating={prestataire.note_moyenne} size={20} />
-                <Text style={styles.ratingCount}>({prestataire.nombre_avis})</Text>
+                <Text style={styles.ratingCount}>({prestataire.nb_avis})</Text>
               </View>
             </View>
           </View>

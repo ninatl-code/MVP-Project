@@ -18,7 +18,7 @@ export default function PhotographeCard({
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <Image 
-        source={photographe.photo_profil ? { uri: photographe.photo_profil } : require('@/assets/images/default-avatar.png')}
+        source={photographe.avatar_url ? { uri: photographe.avatar_url } : require('@/assets/images/default-avatar.png')}
         style={styles.avatar}
       />
       
@@ -45,7 +45,7 @@ export default function PhotographeCard({
               {photographe.note_moyenne?.toFixed(1) || '5.0'}
             </Text>
             <Text style={styles.reviewCount}>
-              ({photographe.nombre_avis || 0})
+              ({photographe.nb_avis || 0})
             </Text>
           </View>
 

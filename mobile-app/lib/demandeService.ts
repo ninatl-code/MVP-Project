@@ -19,7 +19,6 @@ export interface DemandeClient {
   lieu_adresse?: string;
   lieu_latitude?: number;
   lieu_longitude?: number;
-  budget_min?: number;
   budget_max?: number;
   statut: 'ouverte' | 'en_cours' | 'pourvue' | 'annulee' | 'expiree';
   nombre_devis_recus: number;
@@ -27,7 +26,7 @@ export interface DemandeClient {
   photographes_interesses: string[];
   created_at: string;
   updated_at: string;
-  expire_le?: string;
+  date_expiration?: string;
 }
 
 export interface CreateDemandeData {
@@ -42,7 +41,6 @@ export interface CreateDemandeData {
   lieu_adresse?: string;
   lieu_latitude?: number;
   lieu_longitude?: number;
-  budget_min?: number;
   budget_max?: number;
 }
 
@@ -58,7 +56,6 @@ export interface UpdateDemandeData {
   lieu_adresse?: string;
   lieu_latitude?: number;
   lieu_longitude?: number;
-  budget_min?: number;
   budget_max?: number;
   statut?: 'ouverte' | 'en_cours' | 'pourvue' | 'annulee' | 'expiree';
 }
@@ -81,7 +78,7 @@ export async function createDemande(userId: string, data: CreateDemandeData): Pr
         nombre_devis_recus: 0,
         photographes_notifies: [],
         photographes_interesses: [],
-        expire_le: expireDate.toISOString(),
+        date_expiration: expireDate.toISOString(),
       })
       .select()
       .single();
@@ -250,7 +247,7 @@ export async function searchDemandesForPhotographe(
       .from('demandes_client')
       .select('*')
       .eq('statut', 'ouverte')
-      .gt('expire_le', new Date().toISOString());
+      .gt('date_expiration', new Date().toISOString());
 
     // Filtrer par catégorie (si le photographe a des spécialisations)
     if (specialisations && specialisations.length > 0) {
@@ -320,7 +317,7 @@ export async function checkExpiredDemandes(): Promise<void> {
       .from('demandes_client')
       .update({ statut: 'expiree' })
       .eq('statut', 'ouverte')
-      .lt('expire_le', now);
+      .lt('date_expiration', now);
   } catch (error: any) {
     console.error('❌ Erreur vérification demandes expirées:', error);
   }

@@ -116,11 +116,11 @@ export default function CalendrierPrestataire() {
         date, 
         statut,
         montant_total,
-        notes_photographe,
+        notes_prestataire,
         demande_id,
         client:profiles!client_id(nom, prenom)
       `)
-      .eq('photographe_id', userId)
+      .eq('prestataire_id', userId)
       .order('date', { ascending: true });
 
     console.log('📅 Reservations:', reservations?.length || 0);
@@ -130,7 +130,7 @@ export default function CalendrierPrestataire() {
     const { data: blockedSlots, error: blockedError } = await supabase
       .from('blocked_slots')
       .select('*')
-      .eq('photographe_id', userId)
+      .eq('prestataire_id', userId)
       .order('start_datetime', { ascending: true });
 
     console.log('🔒 Blocked slots:', blockedSlots?.length || 0);
@@ -287,7 +287,7 @@ export default function CalendrierPrestataire() {
     const { error } = await supabase
       .from('reservations')
       .insert({
-        photographe_id: user.id,
+        prestataire_id: user.id,
         client_id: user.id, // Service provider is creating for their own calendar
         titre: clientNom,
         categorie: 'personnelle',
@@ -296,7 +296,7 @@ export default function CalendrierPrestataire() {
         lieu: endroit || 'À confirmer',
         montant_total: montant ? parseFloat(montant) : 0,
         description: commentaire || null,
-        status: 'confirmed'
+        statut: 'confirmed'
       });
 
     if (error) {
@@ -329,7 +329,7 @@ export default function CalendrierPrestataire() {
     const { error } = await supabase
       .from('blocked_slots')
       .insert({
-        photographe_id: user.id,
+        prestataire_id: user.id,
         start_datetime: startDateTime.toISOString(),
         end_datetime: endDateTime.toISOString(),
         reason: motifBlock || 'Période bloquée'

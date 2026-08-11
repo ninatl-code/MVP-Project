@@ -383,13 +383,13 @@ export default function ClientDevisDetailScreen() {
           )}
 
           {/* Validité */}
-          {selectedDevis.expire_le && (
+          {selectedDevis.date_expiration && (
             <View style={styles.section}>
               <View style={styles.infoRow}>
                 <Ionicons name="time-outline" size={20} color="#666" />
                 <Text style={styles.infoText}>
                   Valide jusqu'au{' '}
-                  {new Date(selectedDevis.expire_le).toLocaleDateString('fr-FR')}
+                  {new Date(selectedDevis.date_expiration).toLocaleDateString('fr-FR')}
                 </Text>
               </View>
             </View>
@@ -398,7 +398,7 @@ export default function ClientDevisDetailScreen() {
           {/* Dates */}
           <View style={styles.datesSection}>
             <Text style={styles.dateText}>
-              Envoyé le {new Date(selectedDevis.envoye_le).toLocaleDateString('fr-FR')}
+              Envoyé le {new Date(selectedDevis.created_at).toLocaleDateString('fr-FR')}
             </Text>
             {selectedDevis.lu_le && (
               <Text style={styles.dateText}>

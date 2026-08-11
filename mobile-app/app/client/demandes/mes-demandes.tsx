@@ -113,8 +113,8 @@ export default function MesDemandesScreen() {
 
   const renderDemandeCard = ({ item }: { item: any }) => {
     const isOuverte = item.statut === 'ouverte';
-    const daysRemaining = item.expire_le
-      ? Math.max(0, Math.ceil((new Date(item.expire_le).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    const daysRemaining = item.date_expiration
+      ? Math.max(0, Math.ceil((new Date(item.date_expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
       : 0;
 
     return (
@@ -159,15 +159,11 @@ export default function MesDemandesScreen() {
             </Text>
           </View>
 
-          {(item.budget_min || item.budget_max) && (
+          {(item.budget_max) && (
             <View style={styles.infoRow}>
               <Ionicons name="cash-outline" size={16} color="#666" />
               <Text style={styles.infoText}>
-                {item.budget_min && item.budget_max
-                  ? `${item.budget_min} DH - ${item.budget_max} DH`
-                  : item.budget_min
-                  ? `À partir de ${item.budget_min} DH`
-                  : `Jusqu'à ${item.budget_max} DH`}
+                {`Jusqu'à ${item.budget_max} DH`}
               </Text>
             </View>
           )}

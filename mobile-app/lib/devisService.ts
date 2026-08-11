@@ -74,12 +74,12 @@ export interface Devis {
   
   // Validité
   validite_jours?: number;
-  expire_le?: string;
+  date_expiration?: string;
   conditions_particulieres?: string;
   
   // Statut
   statut: 'envoye' | 'lu' | 'accepte' | 'refuse' | 'expire';
-  envoye_le: string;
+  created_at: string;
   lu_le?: string;
   decision_le?: string;
   
@@ -163,13 +163,13 @@ export async function createDevis(
         formats_fichiers_livres: data.formats_fichiers_livres || ['JPEG'],
         
         validite_jours: validiteJours,
-        expire_le: expireLe.toISOString(),
+        date_expiration: expireLe.toISOString(),
         conditions_particulieres: data.conditions_particulieres || null,
         
         acompte_requis_percent: data.acompte_requis_percent || 30,
         
         statut: 'envoye',
-        envoye_le: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       })
       .select(`
         *,
@@ -201,7 +201,7 @@ export async function getPhotographeDevis(photographeId: string): Promise<Devis[
         client:profiles!devis_client_id_fkey(nom, avatar_url)
       `)
       .eq('prestataire_id', photographeId)
-      .order('envoye_le', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     return data || [];
@@ -228,7 +228,7 @@ export async function getDemandeDevis(demandeId: string): Promise<Devis[]> {
         )
       `)
       .eq('demande_id', demandeId)
-      .order('envoye_le', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     return data || [];

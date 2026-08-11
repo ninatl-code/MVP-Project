@@ -207,7 +207,7 @@ export default function NouvelleDemandeClient() {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('auth_user_id', user.id)
+        .eq('id', user.id)
         .eq('role', 'particulier')
         .single();
 

@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             supabase
               .from('profiles')
               .select('id, role, nom')
-              .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`)
+              .or(`id.eq.${session.user.id},id.eq.${session.user.id}`)
               .then(({ data: profiles }) => {
                 if (profiles?.length) {
                   setAvailableProfiles(profiles);
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const { data: profiles } = await supabase
               .from('profiles')
               .select('id, role, nom')
-              .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
+              .or(`id.eq.${session.user.id},id.eq.${session.user.id}`);
 
             if (profiles?.length) {
               setAvailableProfiles(profiles);
@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, role, nom')
-            .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`);
+            .or(`id.eq.${session.user.id},id.eq.${session.user.id}`);
 
           if (profiles?.length) {
             setAvailableProfiles(profiles);

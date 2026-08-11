@@ -77,7 +77,7 @@ export default function MessagesListScreen() {
       const { data: profile } = await supabase
         .from('profiles')
         .select('id, role')
-        .or(`id.eq.${user.id},auth_user_id.eq.${user.id}`)
+        .or(`id.eq.${user.id},id.eq.${user.id}`)
         .maybeSingle();
 
       const profileId = profile?.id || user.id;
@@ -185,7 +185,7 @@ export default function MessagesListScreen() {
       <TouchableOpacity
         style={[styles.conversationCard, isUnread && styles.conversationCardUnread]}
         onPress={() =>
-          router.push(`/messages/chat-conversation?id=${item.id}` as any)
+          router.push(`/shared/messages/chat-conversation?id=${item.id}` as any)
         }
       >
         <View style={styles.avatarContainer}>

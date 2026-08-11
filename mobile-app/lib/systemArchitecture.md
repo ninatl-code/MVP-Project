@@ -108,7 +108,7 @@ const PHOTOGRAPHER_PROFILE_STRUCTURE = {
   
   // Section 13: Réputations & stats
   rating_moyen: 'number', // 1-5
-  nombre_avis: 'number',
+  nb_avis: 'number',
   taux_acceptation: 'number', // % demandes acceptées
 };
 

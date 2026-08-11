@@ -103,8 +103,8 @@ export default function DemandeDetailScreen() {
 
   const isOuverte = demande.statut === 'ouverte';
   const isPourvue = demande.statut === 'pourvue';
-  const daysRemaining = demande.expire_le
-    ? Math.max(0, Math.ceil((new Date(demande.expire_le).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+  const daysRemaining = demande.date_expiration
+    ? Math.max(0, Math.ceil((new Date(demande.date_expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
 
   return (
@@ -180,17 +180,13 @@ export default function DemandeDetailScreen() {
             </View>
           )}
 
-          {(demande.budget_min || demande.budget_max) && (
+          {demande.budget_max && (
             <View style={styles.detailRow}>
               <Ionicons name="cash-outline" size={20} color="#5C6BC0" />
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Budget</Text>
                 <Text style={styles.detailValue}>
-                  {demande.budget_min && demande.budget_max
-                    ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                    : demande.budget_min
-                    ? `À partir de ${demande.budget_min} DH`
-                    : `Jusqu'à ${demande.budget_max} DH`}
+                  Jusqu'à {demande.budget_max} DH
                 </Text>
               </View>
             </View>
@@ -266,7 +262,7 @@ export default function DemandeDetailScreen() {
 
                 <View style={styles.devisFooter}>
                   <Text style={styles.devisDate}>
-                    Envoyé le {new Date(d.envoye_le).toLocaleDateString('fr-FR')}
+                    Envoyé le {new Date(d.created_at).toLocaleDateString('fr-FR')}
                   </Text>
                   <Ionicons name="chevron-forward" size={20} color="#999" />
                 </View>

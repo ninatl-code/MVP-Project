@@ -32,12 +32,11 @@ export default function InvoicesList() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
-  const [filter, setFilter] = useState('all');
   const router = useRouter();
 
   useEffect(() => {
     fetchInvoices();
-  }, [filter]);
+  }, []);
 
   const fetchInvoices = async () => {
     try {
@@ -47,31 +46,34 @@ export default function InvoicesList() {
         return;
       }
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('factures')
         .select(`
           id,
-          numero,
-          statut,
-          date_emission,
-          montant_total,
-          client:profiles!client_id(nom)
+          num_facture,
+          montant_ttc,
+          created_at,
+          reservation:reservations(client:profiles!reservations_client_id_fkey(nom))
         `)
-        .eq('photographe_id', user.id)
-        .order('date_emission', { ascending: false });
+        .eq('prestataire_id', user.id)
+        .order('created_at', { ascending: false });
 
-      if (filter !== 'all') {
-        query = query.eq('statut', filter);
-      }
-
-      const { data, error } = await query;
-      
       if (!error) {
-        const transformedData = (data || []).map(invoice => ({
-          ...invoice,
-          client: Array.isArray(invoice.client) ? invoice.client[0] : invoice.client
-        }));
+        const transformedData = (data || []).map((invoice: any) => {
+          const reservation = Array.isArray(invoice.reservation) ? invoice.reservation[0] : invoice.reservation;
+          const client = Array.isArray(reservation?.client) ? reservation.client[0] : reservation?.client;
+          return {
+            id: invoice.id,
+            numero: invoice.num_facture,
+            statut: 'emise',
+            date_emission: invoice.created_at,
+            montant_total: invoice.montant_ttc,
+            client: client || null,
+          };
+        });
         setInvoices(transformedData);
+      } else {
+        console.error('Error fetching invoices:', error);
       }
     } catch (err) {
       console.error('Error fetching invoices:', err);
@@ -91,7 +93,7 @@ export default function InvoicesList() {
       case 'payee': return COLORS.success;
       case 'en_attente': return COLORS.warning;
       case 'annulee': return COLORS.error;
-      default: return COLORS.textLight;
+      default: return COLORS.primary;
     }
   };
 
@@ -101,6 +103,7 @@ export default function InvoicesList() {
       case 'en_attente': return 'En attente';
       case 'annulee': return 'Annulée';
       case 'envoyee': return 'Envoyée';
+      case 'emise': return 'Émise';
       default: return status;
     }
   };
@@ -135,27 +138,6 @@ export default function InvoicesList() {
         </View>
       </LinearGradient>
 
-      <View style={styles.filtersContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {[
-            { key: 'all', label: 'Toutes' },
-            { key: 'en_attente', label: 'En attente' },
-            { key: 'payee', label: 'Payées' },
-            { key: 'annulee', label: 'Annulées' }
-          ].map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              style={[styles.filterChip, filter === item.key && styles.filterChipActive]}
-              onPress={() => setFilter(item.key)}
-            >
-              <Text style={[styles.filterText, filter === item.key && styles.filterTextActive]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
       <ScrollView
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -164,11 +146,7 @@ export default function InvoicesList() {
           <View style={styles.emptyState}>
             <Ionicons name="receipt-outline" size={64} color={COLORS.textLight} />
             <Text style={styles.emptyText}>Aucune facture</Text>
-            <Text style={styles.emptySubtext}>
-              {filter === 'all' 
-                ? "Créez votre première facture" 
-                : `Aucune facture ${getStatusLabel(filter).toLowerCase()}`}
-            </Text>
+            <Text style={styles.emptySubtext}>Créez votre première facture</Text>
             <TouchableOpacity 
               style={styles.createButton}
               onPress={() => router.push('/photographe/leads/invoice-create' as any)}

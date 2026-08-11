@@ -42,11 +42,11 @@ export default function DemandeCard({ demande, onPress, variant = 'client' }: De
         </Text>
       </View>
 
-      {demande.budget_min && demande.budget_max && (
+      {demande.budget_max && (
         <View style={styles.budgetRow}>
           <Text style={styles.budgetLabel}>Budget:</Text>
           <Text style={styles.budgetValue}>
-            {demande.budget_min} DH - {demande.budget_max} DH
+            Jusqu'à {demande.budget_max} DH
           </Text>
         </View>
       )}

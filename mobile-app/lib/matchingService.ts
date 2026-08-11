@@ -13,12 +13,12 @@ interface ProfilPhotographe {
   nom_entreprise?: string;
   specialisations: string[];
   rayon_deplacement_km: number;
-  budget_min_prestation?: number;
+  tarif_horaire_min?: number;
   ville: string;
   code_postal: string;
   latitude?: number;
   longitude?: number;
-  statut_verification: string;
+  statut_validation: string;
   disponibilite_generale: boolean;
 }
 
@@ -104,25 +104,25 @@ export function calculateMatchScore(
   }
 
   // 3. Budget (20 points)
-  if (demande.budget_max && photographe.budget_min_prestation) {
-    if (demande.budget_max >= photographe.budget_min_prestation) {
-      const budgetRatio = demande.budget_max / photographe.budget_min_prestation;
+  if (demande.budget_max && photographe.tarif_horaire_min) {
+    if (demande.budget_max >= photographe.tarif_horaire_min) {
+      const budgetRatio = demande.budget_max / photographe.tarif_horaire_min;
       const budgetScore = Math.min(20, budgetRatio * 10);
       score += budgetScore;
       reasons.push('Budget compatible');
     } else {
       reasons.push('Budget insuffisant');
     }
-  } else if (!photographe.budget_min_prestation) {
+  } else if (!photographe.tarif_horaire_min) {
     score += 15;
     reasons.push('Budget non spécifié (flexible)');
   }
 
   // 4. Statut de vérification (10 points)
-  if (photographe.statut_verification === 'verifie') {
+  if (photographe.statut_validation === 'valide') {
     score += 10;
     reasons.push('Profil vérifié');
-  } else if (photographe.statut_verification === 'en_attente') {
+  } else if (photographe.statut_validation === 'en_attente') {
     score += 5;
     reasons.push('Vérification en cours');
   }
@@ -143,7 +143,7 @@ export async function findMatchingPhotographes(
       .from('profils_prestataire')
       .select('*')
       .eq('disponibilite_generale', true)
-      .in('statut_verification', ['verifie', 'en_attente', 'non_verifie']);
+      .in('statut_validation', ['valide', 'en_attente']);
 
     if (error) throw error;
 
@@ -257,7 +257,7 @@ export async function getRecommendedDemandesForPhotographe(
     const { data: photographe, error: photographeError } = await supabase
       .from('profils_prestataire')
       .select('*')
-      .eq('user_id', photographeId)
+      .eq('id', photographeId)
       .single();
 
     if (photographeError) throw photographeError;
@@ -268,7 +268,7 @@ export async function getRecommendedDemandesForPhotographe(
       .from('demandes_client')
       .select('*')
       .eq('statut', 'ouverte')
-      .gt('expire_le', new Date().toISOString());
+      .gt('date_expiration', new Date().toISOString());
 
     if (demandesError) throw demandesError;
 
@@ -315,7 +315,7 @@ export async function checkPhotographeAvailability(
     const { data: profil, error: profilError } = await supabase
       .from('profils_prestataire')
       .select('disponibilite_generale, blocked_slots')
-      .eq('user_id', photographeId)
+      .eq('id', photographeId)
       .single();
 
     if (profilError) throw profilError;

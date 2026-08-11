@@ -64,7 +64,7 @@ export default function BlockedSlotsPage() {
       const { data, error } = await supabase
         .from('blocked_slots')
         .select('*')
-        .eq('photographe_id', user.id)
+        .eq('prestataire_id', user.id)
         .gte('end_datetime', new Date().toISOString())
         .order('start_datetime', { ascending: true });
 
@@ -91,7 +91,7 @@ export default function BlockedSlotsPage() {
       const { error } = await supabase
         .from('blocked_slots')
         .insert({
-          photographe_id: user.id,
+          prestataire_id: user.id,
           start_datetime: startDate.toISOString(),
           end_datetime: endDate.toISOString(),
           reason: selectedReason,

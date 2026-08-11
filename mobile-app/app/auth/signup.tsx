@@ -78,7 +78,7 @@ export default function Signup() {
         const { error: prestaError } = await supabase
           .from('profiles')
           .insert({
-            auth_user_id: userId,
+            id: userId,
             nom,
             email,
             telephone,
@@ -93,7 +93,7 @@ export default function Signup() {
         const { error: clientError } = await supabase
           .from('profiles')
           .insert({
-            auth_user_id: userId,
+            id: userId,
             nom,
             email,
             telephone,
@@ -109,7 +109,6 @@ export default function Signup() {
           .from('profiles')
           .insert({
             id: authData.user.id,
-            auth_user_id: authData.user.id,
             nom,
             email,
             telephone,

@@ -202,21 +202,17 @@ export default function PhotographeDemandeDetailScreen() {
             </View>
           )}
 
-          {(demande.budget_min || demande.budget_max) && (
+          {(demande.budget_max) && (
             <View style={styles.detailRow}>
               <Ionicons name="cash-outline" size={20} color="#5C6BC0" />
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Budget</Text>
                 <Text style={styles.detailValue}>
-                  {demande.budget_min && demande.budget_max
-                    ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                    : demande.budget_min
-                    ? `À partir de ${demande.budget_min} DH`
-                    : `Jusqu'à ${demande.budget_max} DH`}
+                  { `Jusqu'à ${demande.budget_max} DH`}
                 </Text>
-                {photographe.budget_min_prestation && (
+                {photographe.tarif_horaire_min && (
                   <Text style={styles.detailHint}>
-                    Votre tarif minimum : {photographe.budget_min_prestation} DH
+                    Votre tarif minimum : {photographe.tarif_horaire_min} DH
                   </Text>
                 )}
               </View>

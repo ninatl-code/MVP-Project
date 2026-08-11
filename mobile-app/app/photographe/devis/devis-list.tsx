@@ -146,7 +146,7 @@ export default function PhotographeDevisListScreen() {
 
       <View style={styles.devisFooter}>
         <Text style={styles.dateText}>
-          Envoyé le {new Date(item.envoye_le).toLocaleDateString('fr-FR')}
+          Envoyé le {new Date(item.created_at).toLocaleDateString('fr-FR')}
         </Text>
         <Ionicons name="chevron-forward" size={20} color="#999" />
       </View>

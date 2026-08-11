@@ -239,7 +239,7 @@
             "portfolio_photos (TEXT[])",
             "assurance_pro",
             "rating_moyen",
-            "nombre_avis"
+            "nb_avis"
           ]
         }
       },

@@ -34,9 +34,9 @@ interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
-  content: string;
+  contenu: string;
   attachments: any[];
-  is_read: boolean;
+  lu: boolean;
   created_at: string;
 }
 
@@ -80,16 +80,24 @@ export default function ChatConversationScreen() {
 
       const { data, error } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          client:profiles!client_id_fkey(nom, prenom),
-          prestataire:profiles!prestataire_id_fkey(nom, prenom)
-        `)
+        .select('*')
         .eq('id', conversationId)
         .single();
 
       if (error) throw error;
-      setConversation(data);
+
+      const otherId = data.client_id === user.id ? data.prestataire_id : data.client_id;
+      const { data: otherProfile } = await supabase
+        .from('profiles')
+        .select('nom, prenom')
+        .eq('id', otherId)
+        .maybeSingle();
+
+      setConversation({
+        ...data,
+        client: data.client_id === user.id ? undefined : otherProfile || undefined,
+        prestataire: data.prestataire_id === user.id ? undefined : otherProfile || undefined,
+      });
 
       // Mark messages as read
       if (data.client_id === user.id) {
@@ -175,12 +183,23 @@ export default function ChatConversationScreen() {
       const { error } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_id: currentUserId,
-        content: newMessage.trim(),
+        receiver_id: conversation.client_id === currentUserId ? conversation.prestataire_id : conversation.client_id,
+        contenu: newMessage.trim(),
         attachments: uploadedAttachments,
-        is_read: false,
+        lu: false,
       });
 
       if (error) throw error;
+
+      // Mettre à jour le dernier message de la conversation
+      await supabase
+        .from('conversations')
+        .update({
+          last_message_text: newMessage.trim().substring(0, 200),
+          last_message_at: new Date().toISOString(),
+          last_message_sender_id: currentUserId,
+        })
+        .eq('id', conversationId);
 
       setNewMessage('');
       setAttachments([]);
@@ -321,9 +340,9 @@ export default function ChatConversationScreen() {
         )}
         <View style={[styles.messageContainer, isSent ? styles.sentContainer : styles.receivedContainer]}>
           <View style={[styles.messageBubble, isSent ? styles.sentBubble : styles.receivedBubble]}>
-            {message.content ? (
+            {message.contenu ? (
               <Text style={[styles.messageText, isSent ? styles.sentText : styles.receivedText]}>
-                {message.content}
+                {message.contenu}
               </Text>
             ) : null}
             {message.attachments && message.attachments.length > 0 && (
@@ -362,8 +381,8 @@ export default function ChatConversationScreen() {
   }
 
   const otherUser = conversation?.client_id === currentUserId
-    ? conversation?.prestataires
-    : conversation?.clients;
+    ? conversation?.prestataire
+    : conversation?.client;
 
   return (
     <KeyboardAvoidingView
@@ -378,7 +397,7 @@ export default function ChatConversationScreen() {
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>
-            {otherUser ? `${otherUser.prenom} ${otherUser.nom}` : 'Chat'}
+            {otherUser ? `${otherUser.prenom || ''} ${otherUser.nom || ''}`.trim() : 'Chat'}
           </Text>
           <Text style={styles.headerSubtitle}>Online</Text>
         </View>

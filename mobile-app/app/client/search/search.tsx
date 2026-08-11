@@ -71,20 +71,19 @@ const SORT_OPTIONS = [
 interface Photographe {
   id: string;
   bio: string;
-  photo_profil: string | null;
   specialisations: string[];
   rayon_deplacement_km: number;
-  budget_min_prestation: number;
   note_moyenne: number;
-  nombre_avis: number;
-  statut_verification: 'non_verifie' | 'en_attente' | 'verifie' | 'refuse';
-  disponibilite_generale: boolean;
-  photos_portfolio: any[];
+  tarif_horaire_min: number; 
+  nb_avis: number;
+  statut_validation: 'suspendu' | 'en_attente' | 'valide' | 'refuse';
+  portfolio_photos: any[];
   photographe_profile?: {
     nom: string;
     prenom: string;
     ville: string;
-    avatar_url: string;
+    avatar_url: string; 
+    suspendu: boolean;
   };
 }
 
@@ -102,28 +101,28 @@ export default function SearchPhotographes() {
 
   const loadPhotographes = async () => {
     try {
-      let query = supabase
-        .from('profils_prestataire')
-        .select(`
-          id,
-          bio,
-          photo_profil,
-          specialisations,
-          rayon_deplacement_km,
-          budget_min_prestation,
-          note_moyenne,
-          nombre_avis,
-          statut_verification,
-          disponibilite_generale,
-          photos_portfolio,
-          photographe_profile:profiles!profils_prestataire_id_fkey (
-            nom,
-            prenom,
-            ville,
-            avatar_url
-          )
-        `)
-        .eq('disponibilite_generale', true);
+     // Après
+  let query = supabase
+    .from('profils_prestataire')
+    .select(`
+      id,
+      bio,
+      specialisations,
+      rayon_deplacement_km,
+      tarif_horaire_min,
+      note_moyenne,
+      nb_avis,
+      statut_validation,
+      portfolio_photos,
+      photographe_profile:profiles!profils_prestataire_id_fkey (
+        nom,
+        prenom,
+        ville,
+        avatar_url,
+        suspendu
+      )
+    `)
+    .eq('photographe_profile.suspendu', false);
 
       // Filtre par catégorie
       if (selectedCategorie) {
@@ -132,7 +131,7 @@ export default function SearchPhotographes() {
 
       // Filtre par budget
       if (budgetMax) {
-        query = query.lte('budget_min_prestation', parseFloat(budgetMax));
+        query = query.lte('tarif_horaire_min', parseFloat(budgetMax));
       }
 
       const { data, error } = await query;
@@ -152,7 +151,7 @@ export default function SearchPhotographes() {
           sortedData.sort((a, b) => (b.note_moyenne || 0) - (a.note_moyenne || 0));
           break;
         case 'tarif':
-          sortedData.sort((a, b) => (a.budget_min_prestation || 0) - (b.budget_min_prestation || 0));
+          sortedData.sort((a, b) => (a.tarif_horaire_min || 0) - (b.tarif_horaire_min || 0));
           break;
         case 'recent':
           sortedData.reverse();
@@ -210,7 +209,7 @@ export default function SearchPhotographes() {
   };
 
   const renderPhotographeCard = ({ item }: { item: Photographe }) => {
-    const portfolioPhoto = item.photos_portfolio?.[0]?.url;
+    const portfolioPhoto = item.portfolio_photos?.[0]?.url;
 
     return (
       <TouchableOpacity
@@ -220,8 +219,8 @@ export default function SearchPhotographes() {
         <View style={styles.cardHeader}>
           <Image
             source={
-              item.photo_profil
-                ? { uri: item.photo_profil }
+              item.photographe_profile?.avatar_url
+                ? { uri: item.photographe_profile.avatar_url }
                 : require('@/assets/images/shutterstock_2502519999.jpg')
             }
             style={styles.avatar}
@@ -231,7 +230,7 @@ export default function SearchPhotographes() {
               <Text style={styles.name}>
                 {item.photographe_profile?.prenom || ''} {item.photographe_profile?.nom || 'Photographe'}
               </Text>
-              {item.statut_verification === 'verifie' && (
+              {item.statut_validation === 'valide' && (
                 <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
               )}
             </View>
@@ -239,7 +238,7 @@ export default function SearchPhotographes() {
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={16} color="#FFB300" />
                 <Text style={styles.ratingText}>
-                  {item.note_moyenne.toFixed(1)} ({item.nombre_avis})
+                  {item.note_moyenne.toFixed(1)} ({item.nb_avis})
                 </Text>
               </View>
             )}
@@ -269,7 +268,7 @@ export default function SearchPhotographes() {
           <View style={styles.infoRow}>
             <Ionicons name="cash-outline" size={16} color="#666" />
             <Text style={styles.infoText}>
-              À partir de {item.budget_min_prestation} DH
+              À partir de {item.tarif_horaire_min} DH
             </Text>
           </View>
           <View style={styles.infoRow}>

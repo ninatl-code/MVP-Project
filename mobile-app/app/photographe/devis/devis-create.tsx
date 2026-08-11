@@ -210,14 +210,10 @@ export default function DevisCreateScreen() {
               </Text>
             </View>
           </View>
-          {(demande.budget_min || demande.budget_max) && (
+          {(demande.budget_max) && (
             <View style={styles.budgetHint}>
               <Text style={styles.budgetHintText}>
-                Budget client : {demande.budget_min && demande.budget_max
-                  ? `${demande.budget_min} DH - ${demande.budget_max} DH`
-                  : demande.budget_min
-                  ? `À partir de ${demande.budget_min} DH`
-                  : `Jusqu'à ${demande.budget_max} DH`}
+                Budget client : { `Jusqu'à ${demande.budget_max} DH`}
               </Text>
             </View>
           )}

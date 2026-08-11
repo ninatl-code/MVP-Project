@@ -66,14 +66,14 @@ export default function PortfolioScreen() {
 
       const { data: profil, error: profilError } = await supabase
         .from('profils_prestataire')
-        .select('photos_portfolio')
-        .eq('user_id', user?.id)
+        .select('portfolio_photos')
+        .eq('id', user?.id)
         .single();
 
       if (profilError) throw profilError;
 
-      if (profil?.photos_portfolio) {
-        setPhotos(profil.photos_portfolio);
+      if (profil?.portfolio_photos) {
+        setPhotos(profil.portfolio_photos);
       }
     } catch (error: any) {
       console.error('❌ Erreur chargement portfolio:', error);
@@ -150,8 +150,8 @@ export default function PortfolioScreen() {
       // Sauvegarder dans la DB
       await supabase
         .from('profils_prestataire')
-        .update({ photos_portfolio: updatedPhotos })
-        .eq('user_id', user?.id);
+        .update({ portfolio_photos: updatedPhotos })
+        .eq('id', user?.id);
 
       Alert.alert('Succès', 'Photo ajoutée au portfolio');
     } catch (error: any) {
@@ -178,8 +178,8 @@ export default function PortfolioScreen() {
 
               await supabase
                 .from('profils_prestataire')
-                .update({ photos_portfolio: updatedPhotos })
-                .eq('user_id', user?.id);
+                .update({ portfolio_photos: updatedPhotos })
+                .eq('id', user?.id);
 
               Alert.alert('Succès', 'Photo supprimée');
             } catch (error: any) {
@@ -206,8 +206,8 @@ export default function PortfolioScreen() {
 
       await supabase
         .from('profils_prestataire')
-        .update({ photos_portfolio: updatedPhotos })
-        .eq('user_id', user?.id);
+        .update({ portfolio_photos: updatedPhotos })
+        .eq('id', user?.id);
 
       setModalVisible(false);
       Alert.alert('Succès', 'Photo mise à jour');
@@ -238,8 +238,8 @@ export default function PortfolioScreen() {
 
     await supabase
       .from('profils_prestataire')
-      .update({ photos_portfolio: reorderedPhotos })
-      .eq('user_id', user?.id);
+      .update({ portfolio_photos: reorderedPhotos })
+      .eq('id', user?.id);
   };
 
   if (loading) {

@@ -105,7 +105,7 @@ export default function ServicesScreen() {
         .select(
           'specialisations, materiel, logiciels_retouche, styles_photo, langues_parlees, rayon_deplacement_km, disponibilite_generale, accepte_urgences, delai_livraison_jours'
         )
-        .eq('user_id', user?.id)
+        .eq('id', user?.id)
         .single();
 
       if (error) throw error;
@@ -177,7 +177,7 @@ export default function ServicesScreen() {
           accepte_urgences: services.accepte_urgences,
           delai_livraison_jours: services.delai_livraison_jours,
         })
-        .eq('user_id', user?.id);
+        .eq('id', user?.id);
 
       if (error) throw error;
 
