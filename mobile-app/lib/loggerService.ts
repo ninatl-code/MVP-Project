@@ -32,13 +32,13 @@ class LoggerService {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('type')
+        .select('role')
         .eq('id', user.id)
         .single();
 
       return {
         userId: user.id,
-        userType: profile?.type || null,
+        userType: profile?.role || null,
       };
     } catch (error) {
       return { userId: null, userType: null };

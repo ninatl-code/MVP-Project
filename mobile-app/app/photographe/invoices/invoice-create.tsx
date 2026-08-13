@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform, Modal, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,9 +33,18 @@ interface DevisData {
   id: string;
   client_id: string;
   titre: string;
-  montant: number;
-  prestations?: string;
+  montant_total: number;
+  description?: string;
   client?: { nom: string; email: string };
+}
+
+interface ReservationOption {
+  id: string;
+  titre: string;
+  date: string;
+  montant_total: number;
+  client_id: string;
+  client?: { nom: string; email: string; telephone?: string };
 }
 
 export default function InvoiceCreate() {
@@ -46,6 +55,9 @@ export default function InvoiceCreate() {
 
   // Form state
   const [clientInfo, setClientInfo] = useState<any>(null);
+  const [reservations, setReservations] = useState<ReservationOption[]>([]);
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+  const [showReservationPicker, setShowReservationPicker] = useState(false);
   const [numero, setNumero] = useState('');
   const [dateEmission, setDateEmission] = useState(new Date());
   const [dateEcheance, setDateEcheance] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)); // +30 jours
@@ -63,10 +75,50 @@ export default function InvoiceCreate() {
 
   useEffect(() => {
     generateInvoiceNumber();
+    loadReservations();
     if (devisId) {
       loadDevisData();
     }
   }, [devisId]);
+
+  const loadReservations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('id, titre, date, montant_total, client_id')
+        .eq('prestataire_id', user.id)
+        .in('statut', ['confirmed', 'completed'])
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      if (!data || data.length === 0) { setReservations([]); return; }
+
+      const clientIds = [...new Set(data.map((r: any) => r.client_id).filter(Boolean))];
+      const { data: clients } = clientIds.length
+        ? await supabase.from('profiles').select('id, nom, email, telephone').in('id', clientIds)
+        : { data: [] as any[] };
+      const clientMap = new Map((clients || []).map((c: any) => [c.id, c]));
+
+      setReservations(data.map((r: any) => ({ ...r, client: clientMap.get(r.client_id) })));
+    } catch (error) {
+      console.error('Erreur chargement réservations:', error);
+    }
+  };
+
+  const selectReservation = (reservation: ReservationOption) => {
+    setSelectedReservationId(reservation.id);
+    setClientInfo(reservation.client || null);
+    setLineItems([{
+      id: '1',
+      description: reservation.titre || 'Prestation',
+      quantite: 1,
+      prix_unitaire: reservation.montant_total || 0,
+    }]);
+    setShowReservationPicker(false);
+  };
 
   const generateInvoiceNumber = async () => {
     try {
@@ -111,7 +163,7 @@ export default function InvoiceCreate() {
         .from('devis')
         .select(`
           *,
-          client:profiles!client_id(nom, email, telephone)
+          client:profiles!devis_client_id_fkey(nom, email, telephone)
         `)
         .eq('id', devisId)
         .single();
@@ -124,29 +176,23 @@ export default function InvoiceCreate() {
         // Charger info client
         setClientInfo(Array.isArray(devis.client) ? devis.client[0] : devis.client);
 
-        // Pré-remplir avec prestations du devis
-        if (devis.prestations) {
-          const prestationsLines = devis.prestations.split('\n').filter(p => p.trim());
-          if (prestationsLines.length > 0) {
-            const items = prestationsLines.map((prestation, index) => ({
-              id: String(index + 1),
-              description: prestation,
-              quantite: 1,
-              prix_unitaire: index === 0 ? devis.montant : 0
-            }));
-            setLineItems(items);
-          }
-        } else {
-          // Sinon, une ligne avec le montant total
-          setLineItems([{
-            id: '1',
-            description: devis.titre || 'Prestation photographe',
-            quantite: 1,
-            prix_unitaire: devis.montant
-          }]);
-        }
+        // Une ligne avec le montant total du devis
+        setLineItems([{
+          id: '1',
+          description: devis.description || devis.titre || 'Prestation photographe',
+          quantite: 1,
+          prix_unitaire: devis.montant_total
+        }]);
 
         setNotes(`Facture générée à partir du devis accepté\nRéférence devis: ${devis.titre}`);
+
+        // Pré-sélectionner la réservation liée à ce devis, si elle existe
+        const { data: resa } = await supabase
+          .from('reservations')
+          .select('id')
+          .eq('devis_id', devisId)
+          .maybeSingle();
+        if (resa?.id) setSelectedReservationId(resa.id);
       }
     } catch (error) {
       console.error('Erreur chargement devis:', error);
@@ -196,7 +242,7 @@ export default function InvoiceCreate() {
       }
 
       if (!clientInfo) {
-        Alert.alert('Erreur', 'Les informations client sont requises');
+        Alert.alert('Erreur', 'Veuillez sélectionner une réservation pour renseigner le client');
         return;
       }
 
@@ -221,23 +267,8 @@ export default function InvoiceCreate() {
         return;
       }
 
-      // Récupérer reservation_id depuis le devis (une facture est rattachée à une réservation, pas directement à un devis/client)
-      let reservationId: string | null = null;
-      if (devisId) {
-        const { data: devisData } = await supabase
-          .from('devis')
-          .select('client_id')
-          .eq('id', devisId)
-          .single();
-        if (devisData?.client_id) {
-          const { data: resData } = await supabase
-            .from('reservations')
-            .select('id')
-            .eq('devis_id', devisId)
-            .maybeSingle();
-          reservationId = resData?.id || null;
-        }
-      }
+      // Récupérer reservation_id sélectionnée (soit choisie manuellement, soit déduite du devis)
+      const reservationId: string | null = selectedReservationId;
 
       // Préparer les données de la facture (colonnes réelles de la table factures)
       const factureData = {
@@ -311,6 +342,22 @@ export default function InvoiceCreate() {
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Réservation liée */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Réservation liée</Text>
+          </View>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowReservationPicker(true)}>
+            <Text style={styles.dateText}>
+              {selectedReservationId
+                ? reservations.find(r => r.id === selectedReservationId)?.titre || 'Réservation sélectionnée'
+                : 'Sélectionner une réservation…'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Client Info */}
         {clientInfo && (
           <View style={styles.section}>
@@ -527,6 +574,42 @@ export default function InvoiceCreate() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <Modal visible={showReservationPicker} transparent animationType="slide" onRequestClose={() => setShowReservationPicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.sectionTitle}>Choisir une réservation</Text>
+              <TouchableOpacity onPress={() => setShowReservationPicker(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            {reservations.length === 0 ? (
+              <Text style={styles.clientDetail}>Aucune réservation confirmée trouvée.</Text>
+            ) : (
+              <FlatList
+                data={reservations}
+                keyExtractor={(item) => item.id}
+                style={{ maxHeight: 400 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.reservationOption} onPress={() => selectReservation(item)}>
+                    <Text style={styles.clientName}>{item.titre || 'Réservation'}</Text>
+                    <Text style={styles.clientDetail}>
+                      {item.client?.nom || 'Client'} · {new Date(item.date).toLocaleDateString('fr-FR')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+            <TouchableOpacity
+              style={styles.freeInvoiceButton}
+              onPress={() => { setSelectedReservationId(null); setShowReservationPicker(false); }}
+            >
+              <Text style={styles.freeInvoiceButtonText}>Facture libre (sans réservation)</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -754,5 +837,41 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  reservationOption: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  freeInvoiceButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  freeInvoiceButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textLight,
   },
 });

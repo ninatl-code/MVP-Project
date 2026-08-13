@@ -982,7 +982,9 @@ const styles = StyleSheet.create({
   },
   footerContainer: {
     position: 'absolute',
-    bottom: 0,
+    // Le layout client affiche une barre de navigation globale (FooterParti) en
+    // bas de l'écran : on remonte ce footer au-dessus pour ne pas la recouvrir.
+    bottom: 64,
     left: 0,
     right: 0,
     zIndex: 1000,

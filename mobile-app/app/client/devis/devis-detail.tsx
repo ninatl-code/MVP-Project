@@ -60,7 +60,7 @@ export default function ClientDevisDetailScreen() {
 
     Alert.alert(
       'Accepter ce devis',
-      `Vous êtes sur le point d'accepter le devis de ${selectedDevis.photographe?.nom || 'ce photographe'}.\n\nCela refusera automatiquement tous les autres devis et marquera votre demande comme pourvue.`,
+      `Vous êtes sur le point d'accepter le devis de ${selectedDevis.prestataire?.nom || 'ce photographe'}.\n\nCela refusera automatiquement tous les autres devis et marquera votre demande comme pourvue.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -98,7 +98,7 @@ export default function ClientDevisDetailScreen() {
 
     Alert.alert(
       'Refuser ce devis',
-      `Êtes-vous sûr de vouloir refuser le devis de ${selectedDevis.photographe?.nom || 'ce photographe'} ?`,
+      `Êtes-vous sûr de vouloir refuser le devis de ${selectedDevis.prestataire?.nom || 'ce photographe'} ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -212,11 +212,11 @@ export default function ClientDevisDetailScreen() {
                   ]}
                 >
                   <Text style={[styles.photographerInitial, { color: devisBadge.color }]}>
-                    {devis.photographe?.nom?.charAt(0) || '?'}
+                    {devis.prestataire?.nom?.charAt(0) || '?'}
                   </Text>
                 </View>
                 <Text style={styles.photographerName} numberOfLines={1}>
-                  {devis.photographe?.nom || 'Photographe'}
+                  {devis.prestataire?.nom || 'Photographe'}
                 </Text>
                 <Text style={styles.photographerPrice}>{devis.montant_total} DH</Text>
                 <View style={[styles.miniStatusBadge, { backgroundColor: devisBadge.color }]}>
@@ -241,18 +241,18 @@ export default function ClientDevisDetailScreen() {
                 ]}
               >
                 <Text style={[styles.photographerInitialLarge, { color: badge!.color }]}>
-                  {selectedDevis.photographe?.nom?.charAt(0) || '?'}
+                  {selectedDevis.prestataire?.nom?.charAt(0) || '?'}
                 </Text>
               </View>
               <View style={styles.photographerDetails}>
                 <Text style={styles.photographerNameLarge}>
-                  {selectedDevis.photographe?.nom || 'Photographe'}
+                  {selectedDevis.prestataire?.nom || 'Photographe'}
                 </Text>
-                {selectedDevis.photographe?.ville && (
+                {selectedDevis.prestataire?.ville && (
                   <View style={styles.photographerLocation}>
                     <Ionicons name="location-outline" size={14} color="#666" />
                     <Text style={styles.photographerLocationText}>
-                      {selectedDevis.photographe.ville}
+                      {selectedDevis.prestataire.ville}
                     </Text>
                   </View>
                 )}

@@ -96,6 +96,37 @@ export default function PhotographePublicProfile() {
     ? (reviews.reduce((sum, r) => sum + (r.note || 0), 0) / reviews.length).toFixed(1)
     : null;
 
+  const handleContact = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { router.push('/auth/login' as any); return; }
+    const { data: existing } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('client_id', user.id)
+      .eq('prestataire_id', id)
+      .maybeSingle();
+    let conversationId = existing?.id;
+    if (!conversationId) {
+      const { data: created, error } = await supabase
+        .from('conversations')
+        .insert({ client_id: user.id, prestataire_id: id })
+        .select('id')
+        .single();
+      if (error) { router.push('/shared/messages/messages-list' as any); return; }
+      conversationId = created?.id;
+    }
+    router.push(`/shared/messages/chat-conversation?id=${conversationId}` as any);
+  };
+
+  const getAnciennete = () => {
+    if (!profile?.created_at) return null;
+    const diff = Math.floor((Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30));
+    if (diff < 1) return 'Nouveau membre';
+    if (diff < 12) return `${diff} mois`;
+    const years = Math.floor(diff / 12);
+    return `${years} an${years > 1 ? 's' : ''}`;
+  };
+
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   }
@@ -115,7 +146,7 @@ export default function PhotographePublicProfile() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView stickyHeaderIndices={[1]}>
+      <ScrollView stickyHeaderIndices={[3]}>
         {/* Header photo */}
         <LinearGradient colors={[COLORS.accent, COLORS.primary]} style={styles.heroBanner}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -133,6 +164,26 @@ export default function PhotographePublicProfile() {
             </View>
           )}
           <Text style={styles.heroName}>{profile.nom_entreprise || profile.nom || 'Prestataire'}</Text>
+          <View style={styles.heroBadgesRow}>
+            {profile.statut_validation === 'valide' && (
+              <View style={[styles.trustBadge, { backgroundColor: 'rgba(16,185,129,0.2)' }]}>
+                <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                <Text style={[styles.trustBadgeText, { color: '#D1FAE5' }]}>Profil approuvé</Text>
+              </View>
+            )}
+            {profile.identite_verifiee && (
+              <View style={[styles.trustBadge, { backgroundColor: 'rgba(59,130,246,0.2)' }]}>
+                <Ionicons name="shield-checkmark" size={12} color="#93C5FD" />
+                <Text style={[styles.trustBadgeText, { color: '#DBEAFE' }]}>Identité vérifiée</Text>
+              </View>
+            )}
+            {profile.entreprise_verifiee && (
+              <View style={[styles.trustBadge, { backgroundColor: 'rgba(168,85,247,0.2)' }]}>
+                <Ionicons name="business" size={12} color="#E9D5FF" />
+                <Text style={[styles.trustBadgeText, { color: '#F3E8FF' }]}>Entreprise vérifiée</Text>
+              </View>
+            )}
+          </View>
           {profile.ville && (
             <View style={styles.heroLocation}>
               <Ionicons name="location-outline" size={14} color="#fff" />
@@ -146,6 +197,32 @@ export default function PhotographePublicProfile() {
             </View>
           )}
         </LinearGradient>
+
+        {/* Stats de confiance */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{profile.nb_prestations_completees || 0}</Text>
+            <Text style={styles.statLabel}>Prestations</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{avgRating || '–'}</Text>
+            <Text style={styles.statLabel}>Note moyenne</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{profile.taux_reponse ? `${profile.taux_reponse}%` : '–'}</Text>
+            <Text style={styles.statLabel}>Taux réponse</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{getAnciennete() || '–'}</Text>
+            <Text style={styles.statLabel}>Ancienneté</Text>
+          </View>
+        </View>
+
+        {/* Bouton contacter */}
+        <TouchableOpacity style={styles.contactCta} onPress={handleContact}>
+          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
+          <Text style={styles.contactCtaText}>Contacter</Text>
+        </TouchableOpacity>
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
@@ -193,8 +270,46 @@ export default function PhotographePublicProfile() {
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>Tarif</Text>
                   <Text style={[styles.cardText, { color: COLORS.accent, fontWeight: '700', fontSize: 18 }]}>
-                    À partir de {profile.tarif_horaire_min} MAD/h
+                    {profile.tarif_horaire_max
+                      ? `${profile.tarif_horaire_min} – ${profile.tarif_horaire_max} MAD/h`
+                      : `À partir de ${profile.tarif_horaire_min} MAD/h`}
                   </Text>
+                </View>
+              )}
+              {(profile.equipe?.length > 0 || profile.rayon_deplacement_km || profile.materiel) && (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Détails</Text>
+                  {profile.equipe?.length > 0 && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="people-outline" size={16} color={COLORS.textLight} />
+                      <Text style={styles.infoText}>
+                        {profile.equipe[0] === 'solo' ? 'Travaille seul(e)' : profile.equipe[0] === 'equipe' ? 'Avec une équipe' : profile.equipe[0] === 'binome' ? 'Avec un binôme' : profile.equipe[0]}
+                      </Text>
+                    </View>
+                  )}
+                  {profile.rayon_deplacement_km && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="navigate-outline" size={16} color={COLORS.textLight} />
+                      <Text style={styles.infoText}>Rayon de déplacement : {profile.rayon_deplacement_km} km</Text>
+                    </View>
+                  )}
+                  {profile.materiel && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="camera-outline" size={16} color={COLORS.textLight} />
+                      <Text style={styles.infoText}>{profile.materiel}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+              {(profile.instagram || profile.facebook || profile.linkedin || profile.site_web) && (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Réseaux sociaux</Text>
+                  <View style={styles.socialRow}>
+                    {profile.instagram && <Ionicons name="logo-instagram" size={22} color="#E4405F" />}
+                    {profile.facebook && <Ionicons name="logo-facebook" size={22} color="#1877F2" />}
+                    {profile.linkedin && <Ionicons name="logo-linkedin" size={22} color="#0A66C2" />}
+                    {profile.site_web && <Ionicons name="globe-outline" size={22} color={COLORS.accent} />}
+                  </View>
                 </View>
               )}
               <TouchableOpacity
@@ -337,4 +452,18 @@ const styles = StyleSheet.create({
   starRow: { flexDirection: 'row', gap: 2 },
   reviewText: { fontSize: 14, color: COLORS.textLight, lineHeight: 20 },
   reviewDate: { fontSize: 12, color: COLORS.border, marginTop: 6 },
+  heroBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 8 },
+  trustBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  trustBadgeText: { fontSize: 11, fontWeight: '600' },
+  statsGrid: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: 12, gap: 8 },
+  statBox: { flex: 1, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
+  statValue: { fontSize: 16, fontWeight: '700', color: COLORS.accent },
+  statLabel: { fontSize: 11, color: COLORS.textLight, marginTop: 2, textAlign: 'center' },
+  contactCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: COLORS.accent, marginHorizontal: 12, marginTop: 12, marginBottom: 4,
+    paddingVertical: 12, borderRadius: 12,
+  },
+  contactCtaText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  socialRow: { flexDirection: 'row', gap: 14, marginTop: 4 },
 });

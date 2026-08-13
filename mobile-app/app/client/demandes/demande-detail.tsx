@@ -246,7 +246,7 @@ export default function DemandeDetailScreen() {
               >
                 <View style={styles.devisHeader}>
                   <View>
-                    <Text style={styles.devisPhotographe}>{d.photographe_nom || 'Photographe'}</Text>
+                    <Text style={styles.devisPhotographe}>{d.prestataire?.nom || 'Photographe'}</Text>
                     <Text style={styles.devisTitre}>{d.titre}</Text>
                   </View>
                   <View style={styles.devisPrix}>

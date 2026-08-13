@@ -290,7 +290,7 @@ export default function ProfilComplet() {
         email: baseProfile?.email || user.email || '',
         telephone: baseProfile?.telephone || '',
         ville: baseProfile?.ville || '',
-        avatar_url: photoData?.avatar_url || '',
+        avatar_url: baseProfile?.avatar_url || '',
 
         bio: photoData?.bio || '',
         nom_entreprise: photoData?.nom_entreprise || '',
@@ -305,7 +305,8 @@ export default function ProfilComplet() {
         details: Array.isArray(photoData?.details) ? (photoData.details[0] || {}) : (photoData?.details || {}),
 
         equipe: toArray(photoData?.equipe),
-        materiel: typeof photoData?.materiel === 'string' ? photoData.materiel : '',
+        // materiel est un text[] en base ; on l'affiche comme un texte libre multi-lignes
+        materiel: Array.isArray(photoData?.materiel) ? photoData.materiel.join('\n') : '',
 
         mobile: photoData?.mobile ?? true,
         agence: photoData?.agence ?? false,
@@ -394,7 +395,7 @@ export default function ProfilComplet() {
           details: Object.keys(profile.details || {}).length > 0 ? [profile.details] : null,
 
           equipe: profile.equipe,
-          materiel: emptyToNull(profile.materiel),
+          materiel: profile.materiel.trim() ? profile.materiel.split('\n').map(s => s.trim()).filter(Boolean) : [],
 
           mobile: profile.mobile,
           agence: profile.agence,

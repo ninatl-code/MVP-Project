@@ -98,6 +98,7 @@ export default function SearchPhotographes() {
   const [showFilters, setShowFilters] = useState(false);
   const [budgetMax, setBudgetMax] = useState('');
   const [villeFilter, setVilleFilter] = useState('');
+  const [noteMin, setNoteMin] = useState('');
 
   const loadPhotographes = async () => {
     try {
@@ -166,6 +167,11 @@ export default function SearchPhotographes() {
         );
       }
 
+      // Filtre par note minimum
+      if (noteMin) {
+        formattedData = formattedData.filter((p) => (p.note_moyenne || 0) >= parseFloat(noteMin));
+      }
+
       // Tri
       let sortedData = [...formattedData];
       switch (sortBy) {
@@ -202,12 +208,12 @@ export default function SearchPhotographes() {
 
   useEffect(() => {
     loadPhotographes();
-  }, [selectedCategorie, sortBy, budgetMax, searchQuery]);
+  }, [selectedCategorie, sortBy, budgetMax, villeFilter, noteMin, searchQuery]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadPhotographes();
-  }, [selectedCategorie, sortBy, budgetMax, searchQuery]);
+  }, [selectedCategorie, sortBy, budgetMax, villeFilter, noteMin, searchQuery]);
 
   const getCategoryIcon = (category: string): any => {
     const icons: { [key: string]: any } = {
@@ -453,7 +459,16 @@ export default function SearchPhotographes() {
 
       {showFilters && (
         <View style={styles.advancedFilters}>
-          <Text style={styles.filterLabel}>Budget max (MAD)</Text>
+          <Text style={styles.filterLabel}>Ville</Text>
+          <TextInput
+            style={styles.budgetInput}
+            placeholder="Ex: Casablanca"
+            value={villeFilter}
+            onChangeText={setVilleFilter}
+            placeholderTextColor="#999"
+          />
+
+          <Text style={[styles.filterLabel, { marginTop: 12 }]}>Budget max (MAD)</Text>
           <TextInput
             style={styles.budgetInput}
             placeholder="Ex: 800"
@@ -462,6 +477,21 @@ export default function SearchPhotographes() {
             keyboardType="numeric"
             placeholderTextColor="#999"
           />
+
+          <Text style={[styles.filterLabel, { marginTop: 12 }]}>Note minimum</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['', '3', '4', '4.5'].map((val) => (
+              <TouchableOpacity
+                key={val}
+                style={[styles.sortChip, noteMin === val && styles.sortChipSelected]}
+                onPress={() => setNoteMin(val)}
+              >
+                <Text style={[styles.sortChipText, noteMin === val && styles.sortChipTextSelected]}>
+                  {val === '' ? 'Toutes' : `${val}+ ⭐`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       )}
 
@@ -482,39 +512,7 @@ export default function SearchPhotographes() {
             }
           </Text>
           
-          {/* Guide rapide */}
-          <View style={styles.guideSection}>
-            <Text style={styles.guideTitle}>Comment ça marche ?</Text>
-            <View style={styles.guideSteps}>
-              <View style={styles.guideStep}>
-                <View style={styles.guideStepNumber}>
-                  <Text style={styles.guideStepNumberText}>1</Text>
-                </View>
-                <View style={styles.guideStepContent}>
-                  <Text style={styles.guideStepTitle}>Recherchez</Text>
-                  <Text style={styles.guideStepText}>Parcourez les profils de prestataires</Text>
-                </View>
-              </View>
-              <View style={styles.guideStep}>
-                <View style={styles.guideStepNumber}>
-                  <Text style={styles.guideStepNumberText}>2</Text>
-                </View>
-                <View style={styles.guideStepContent}>
-                  <Text style={styles.guideStepTitle}>Contactez</Text>
-                  <Text style={styles.guideStepText}>Discutez de votre projet</Text>
-                </View>
-              </View>
-              <View style={styles.guideStep}>
-                <View style={styles.guideStepNumber}>
-                  <Text style={styles.guideStepNumberText}>3</Text>
-                </View>
-                <View style={styles.guideStepContent}>
-                  <Text style={styles.guideStepTitle}>Réservez</Text>
-                  <Text style={styles.guideStepText}>Confirmez votre prestation</Text>
-                </View>
-              </View>
-            </View>
-          </View>
+
           
           {selectedCategorie && (
             <TouchableOpacity

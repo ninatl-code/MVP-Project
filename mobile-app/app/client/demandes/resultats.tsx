@@ -87,7 +87,7 @@ export default function RésultatsRecherche() {
             bio,
             specialisations,
             tarifs_indicatifs,
-            rating_moyen,
+            note_moyenne,
             nb_avis
           `)
           .in('id', photographerIds);
@@ -124,7 +124,7 @@ export default function RésultatsRecherche() {
           id: match.photographer_id,
           nom: profile?.nom || 'Photographe',
           avatar: profile?.avatar_url || '',
-          rating: photo?.rating_moyen || 0,
+          rating: photo?.note_moyenne || 0,
           reviews: photo?.nb_avis || 0,
           specialities: photo?.specialisations || [],
           price_range: photo?.tarifs_indicatifs || { min: 0, max: 0 },

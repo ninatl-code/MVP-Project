@@ -36,8 +36,8 @@ interface Profile {
   nom: string;
   email: string;
   telephone: string;
-  bio: string;
-  ville_id: string;
+  description: string;
+  ville: string;
   avatar_url?: string;
 }
 
@@ -155,17 +155,10 @@ export default function ClientProfil() {
           nom: data.nom || '',
           email: data.email || user?.email || '',
           telephone: data.telephone || '',
-          bio: data.bio || ''
+          bio: data.description || ''
         });
 
-        if (data.ville_id) {
-          const { data: villeData } = await supabase
-            .from('villes')
-            .select('ville')
-            .eq('id', data.ville_id)
-            .single();
-          setVilleNom(villeData?.ville || '');
-        }
+        setVilleNom(data.ville || '');
       }
     } catch (error) {
       console.error('Erreur chargement profil:', error);
@@ -185,7 +178,7 @@ export default function ClientProfil() {
         .update({
           nom: formData.nom,
           telephone: formData.telephone,
-          bio: formData.bio
+          description: formData.bio
         })
         .eq('id', profileId);
 
@@ -480,7 +473,7 @@ export default function ClientProfil() {
           <View style={styles.card}>
             {!editMode ? (
               <Text style={styles.bioText}>
-                {profile?.bio || "Aucune description disponible. Cliquez sur 'Modifier mon profil' pour ajouter une présentation."}
+                {profile?.description || "Aucune description disponible. Cliquez sur 'Modifier mon profil' pour ajouter une présentation."}
               </Text>
             ) : (
               <View>

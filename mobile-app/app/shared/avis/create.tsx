@@ -75,7 +75,7 @@ export default function CreateAvis() {
           prestataire_id,
           date,
           annonces!inner(titre),
-          prestataire:profiles!prestataire_id(nom, photos)
+          prestataire:profiles!prestataire_id(nom, avatar_url)
         `)
         .eq('id', reservation_id)
         .eq('particulier_id', user.id)
@@ -112,7 +112,7 @@ export default function CreateAvis() {
         prestataire_id: data.prestataire_id,
         annonce_titre: annonces?.titre || 'Prestation',
         prestataire_nom: prestataire?.nom || 'Prestataire',
-        prestataire_photo: prestataire?.photos,
+        prestataire_photo: prestataire?.avatar_url,
         date: data.date
       });
     } catch (error) {
@@ -204,9 +204,9 @@ export default function CreateAvis() {
         const moyenne = allAvis.reduce((sum, a) => sum + a.note, 0) / allAvis.length;
         const nombreAvis = allAvis.length;
 
-        // Mettre à jour le profil du prestataire
+        // Mettre à jour le profil du prestataire (note_moyenne/nb_avis vivent sur profils_prestataire)
         await supabase
-          .from('profiles')
+          .from('profils_prestataire')
           .update({
             note_moyenne: moyenne,
             nb_avis: nombreAvis

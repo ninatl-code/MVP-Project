@@ -81,24 +81,25 @@ export default function ProfilPhotographe() {
           ...data,
           bio: prestaData?.bio || '',
           nom_entreprise: prestaData?.nom_entreprise || '',
-          instagram: prestaData?.instagram || data.instagram || '',
-          facebook: prestaData?.facebook || data.facebook || '',
-          linkedin: prestaData?.linkedin || data.linkedin || '',
-          site_web: prestaData?.site_web || data.site_web || '',
+          instagram: prestaData?.instagram || '',
+          facebook: prestaData?.facebook || '',
+          linkedin: prestaData?.linkedin || '',
+          site_web: prestaData?.site_web || '',
           specialisations: Array.isArray(prestaData?.specialisations) ? prestaData.specialisations : [],
           categories: Array.isArray(prestaData?.categories) ? prestaData.categories : [],
           equipe: Array.isArray(prestaData?.equipe) ? prestaData.equipe : (prestaData?.equipe ? [prestaData.equipe] : []),
-          materiel: prestaData?.materiel || '',
+          materiel: Array.isArray(prestaData?.materiel) ? prestaData.materiel : (prestaData?.materiel ? [prestaData.materiel] : []),
           rayon_deplacement_km: prestaData?.rayon_deplacement_km || 50,
+          frais_deplacement_base: prestaData?.frais_deplacement_base ?? null,
           mobile: prestaData?.mobile ?? true,
           agence: prestaData?.agence ?? false,
           agence_adresse: prestaData?.agence_adresse || '',
           preferences: prestaData?.preferences || {},
           portfolio_photos: Array.isArray(prestaData?.portfolio_photos) ? prestaData.portfolio_photos : [],
           tarifs_indicatifs: prestaData?.tarifs_indicatifs || {},
-          siret: prestaData?.siret || data.siret || '',
-          statut_pro: prestaData?.statut_pro ?? data.statut_pro ?? false,
-          identite_verifiee: prestaData?.identite_verifiee ?? data.identite_verifiee ?? false,
+          siret: prestaData?.siret || '',
+          statut_pro: prestaData?.statut_pro ?? false,
+          identite_verifiee: prestaData?.identite_verifiee ?? false,
           entreprise_verifiee: prestaData?.entreprise_verifiee ?? false,
           document_identite_recto_url: prestaData?.document_identite_recto_url || null,
           documents_assurance: prestaData?.documents_assurance || null,
@@ -108,8 +109,10 @@ export default function ProfilPhotographe() {
         setVilleNom(data.ville || '');
 
         // Compute verification status like the web app
+        // NB: profiles/profils_prestataire have no dedicated "verified" flags for
+        // email/phone, so presence of the value is used as a proxy.
         const emailVerified = !!session.user.email;
-        const phoneVerified = !!(data.phone_verified);
+        const phoneVerified = !!(data.telephone);
         const identityVerified = !!(prestaData?.identite_verifiee);
         const identityPending = !!(prestaData?.document_identite_recto_url) && !identityVerified;
         const businessVerified = !!(prestaData?.entreprise_verifiee);
@@ -236,7 +239,7 @@ export default function ProfilPhotographe() {
       // Vérifier la configuration du compte
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email, telephone, assurance_pro, role')
+        .select('id, email, telephone, role')
         .eq('id', user.id)
         .in('role', ['photographe'])
         .maybeSingle();
@@ -252,11 +255,17 @@ export default function ProfilPhotographe() {
         return;
       }
 
+      const { data: prestaData } = await supabase
+        .from('profils_prestataire')
+        .select('documents_assurance')
+        .eq('id', profileData.id)
+        .maybeSingle();
+
       // Vérifications de configuration
       const checklist = {
         email: !!user.email,
         telephone: !!profileData.telephone,
-        assurance: !!profileData.assurance_pro,
+        assurance: !!prestaData?.documents_assurance,
         profileComplet: !!profileData.id
       };
 
@@ -555,12 +564,12 @@ export default function ProfilPhotographe() {
           </View>
 
           <View style={styles.card}>
-            {profile?.materiel ? (
+            {profile?.materiel && profile.materiel.length > 0 ? (
               <View style={styles.infoCard}>
                 <Ionicons name="camera-outline" size={20} color={COLORS.primary} />
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Matériel & équipements</Text>
-                  <Text style={styles.infoValue}>{profile.materiel}</Text>
+                  <Text style={styles.infoValue}>{profile.materiel.join(', ')}</Text>
                 </View>
               </View>
             ) : null}
@@ -582,7 +591,7 @@ export default function ProfilPhotographe() {
               </View>
             ) : null}
 
-            {!profile?.materiel && (!profile?.equipe || profile.equipe.length === 0) && (
+            {(!profile?.materiel || profile.materiel.length === 0) && (!profile?.equipe || profile.equipe.length === 0) && (
               <Text style={styles.emptyText}>Aucune information renseignée</Text>
             )}
           </View>
@@ -609,12 +618,12 @@ export default function ProfilPhotographe() {
                 </View>
               ))}
 
-              {profile?.frais_deplacement_par_km && (
+              {profile?.frais_deplacement_base && (
                 <View style={styles.infoCard}>
                   <Ionicons name="car" size={20} color={COLORS.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Frais de déplacement</Text>
-                    <Text style={styles.infoValue}>{profile.frais_deplacement_par_km}MAD/km</Text>
+                    <Text style={styles.infoValue}>{profile.frais_deplacement_base} MAD/km</Text>
                   </View>
                 </View>
               )}

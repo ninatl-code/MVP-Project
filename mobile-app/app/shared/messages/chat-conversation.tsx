@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { supabase } from '@/lib/supabaseClient';
+import FooterPresta from '@/components/photographe/FooterPresta';
+import FooterParti from '@/components/client/FooterParti';
 
 const COLORS = {
   primary: '#007AFF',
@@ -393,12 +395,13 @@ export default function ChatConversationScreen() {
   const otherUser = conversation?.client_id === currentUserId
     ? conversation?.prestataire
     : conversation?.client;
+  const isProvider = conversation?.prestataire_id === currentUserId;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -484,6 +487,7 @@ export default function ChatConversationScreen() {
           )}
         </TouchableOpacity>
       </View>
+      {isProvider ? <FooterPresta /> : <FooterParti />}
     </KeyboardAvoidingView>
   );
 }

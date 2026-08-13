@@ -28,6 +28,10 @@ interface Notification {
   contenu: string;
   created_at: string;
   lu: boolean;
+  demande_id?: string | null;
+  devis_id?: string | null;
+  reservation_id?: string | null;
+  lien?: string | null;
 }
 
 export default function NotificationsClient() {
@@ -69,6 +73,58 @@ export default function NotificationsClient() {
     if (!user) return;
     await supabase.from('notifications').update({ lu: true }).eq('user_id', user.id).eq('lu', false);
     fetchNotifications();
+  };
+
+  // Redirige vers la page correspondant au sujet de la notification (équivalent getNotificationLink du web)
+  const getNotificationRoute = (n: Notification): string | null => {
+    const { type, demande_id, devis_id, reservation_id } = n;
+    switch (type) {
+      case 'mission_suggeree':
+      case 'new_demande':
+      case 'demande_pourvue':
+        return demande_id ? `/client/demandes/demande-detail?id=${demande_id}` : '/client/demandes/mes-demandes';
+      case 'new_devis':
+      case 'devis_recu':
+      case 'devis_lu':
+        return demande_id
+          ? `/client/devis/devis-detail?demandeId=${demande_id}`
+          : '/client/devis/devis-list';
+      case 'devis_accepte':
+      case 'devis_refuse':
+        return reservation_id
+          ? `/client/reservations/reservation-detail?id=${reservation_id}`
+          : '/client/devis/devis-list';
+      case 'reservation':
+      case 'confirmation':
+      case 'reservation_confirmee':
+      case 'reservation_annulee':
+      case 'cancellation':
+      case 'prestation_terminee':
+      case 'reminder':
+        return reservation_id
+          ? `/client/reservations/reservation-detail?id=${reservation_id}`
+          : '/client/reservations/reservations';
+      case 'avis':
+      case 'nouvel_avis':
+      case 'reponse_avis':
+        return '/client/Avis/mes-avis';
+      case 'message':
+      case 'nouveau_message':
+        return '/shared/messages/messages-list';
+      case 'profil_approuve':
+      case 'profil_refuse':
+      case 'compte_suspendu':
+      case 'compte_reactive':
+        return '/client/profil/profil';
+      default:
+        return null;
+    }
+  };
+
+  const handleNotificationPress = (item: Notification) => {
+    if (!item.lu) markAsRead(item.id);
+    const route = getNotificationRoute(item);
+    if (route) router.push(route as any);
   };
 
   const getIcon = (type: string) => {
@@ -162,7 +218,7 @@ export default function NotificationsClient() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[styles.notificationItem, !item.lu && styles.notificationItemUnread]}
-              onPress={() => !item.lu && markAsRead(item.id)}
+              onPress={() => handleNotificationPress(item)}
             >
               <View style={[styles.iconContainer, { backgroundColor: getIconColor(item.type) + '15' }]}>
                 <Ionicons name={getIcon(item.type) as any} size={24} color={getIconColor(item.type)} />

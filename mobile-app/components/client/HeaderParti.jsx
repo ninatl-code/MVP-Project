@@ -31,7 +31,7 @@ export default function Header() {
       }
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("nom, photos")
+        .select("nom, avatar_url")
         .eq("id", user.id)
         .single();
       setProfile(profileData);
@@ -51,7 +51,7 @@ export default function Header() {
         <ShootyLogoSimple width={40} height={40} />
         {profile && (
           <View style={styles.profileWrap}>
-            <Image source={{ uri: profile.photos?.[0] || undefined }} style={styles.avatar} />
+            <Image source={{ uri: profile.avatar_url || undefined }} style={styles.avatar} />
             <Text style={styles.name}>{profile.nom}</Text>
           </View>
         )}

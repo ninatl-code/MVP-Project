@@ -66,9 +66,7 @@ export default function ReservationsParticulier() {
         montant_total,
         statut,
         created_at,
-        notes_client,
-        packages_types!reservations_package_id_fkey (titre),
-        profiles!reservations_prestataire_id_fkey (nom)
+        notes_client
       `)
       .eq('client_id', user.id)
       .order('date', { ascending: false });
@@ -76,17 +74,34 @@ export default function ReservationsParticulier() {
     console.log('📅 Reservations fetched:', data?.length || 0, error);
 
     if (!error && data) {
+      // Pas de relation FK reconnue entre reservations.prestataire_id/package_id et
+      // profiles/packages_types : on récupère ces infos séparément.
+      const prestataireIds = [...new Set(data.map((r: any) => r.prestataire_id).filter(Boolean))];
+      const packageIds = [...new Set(data.map((r: any) => r.package_id).filter(Boolean))];
+
+      const [{ data: prestataires }, { data: packages }] = await Promise.all([
+        prestataireIds.length
+          ? supabase.from('profiles').select('id, nom').in('id', prestataireIds)
+          : Promise.resolve({ data: [] as any[] }),
+        packageIds.length
+          ? supabase.from('packages_types').select('id, titre').in('id', packageIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const prestataireMap = new Map((prestataires || []).map((p: any) => [p.id, p]));
+      const packageMap = new Map((packages || []).map((p: any) => [p.id, p]));
+
       const formattedData = data.map((r: any) => {
         const dateObj = new Date(r.date);
         const dateStr = dateObj.toLocaleDateString('fr-FR');
         const heureStr = r.heure_debut || '00:00';
-        
+
         return {
           id: r.id,
           package_id: r.package_id,
-          package_titre: Array.isArray(r.packages_types) ? r.packages_types[0]?.titre : r.packages_types?.titre || 'Package',
+          package_titre: packageMap.get(r.package_id)?.titre || 'Package',
           prestataire_id: r.prestataire_id,
-          prestataire_nom: Array.isArray(r.profiles) ? r.profiles[0]?.nom : r.profiles?.nom || 'Prestataire',
+          prestataire_nom: prestataireMap.get(r.prestataire_id)?.nom || 'Prestataire',
           date: dateStr,
           heure: heureStr,
           lieu: r.lieu || '',

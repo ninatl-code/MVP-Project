@@ -24,6 +24,8 @@ interface AvisItem {
   comment: string;
   created_at: string;
   provider_response?: string;
+  provider_response_date?: string;
+  prestataire_id?: string;
   prestataire?: { nom: string; avatar_url?: string };
 }
 
@@ -67,7 +69,11 @@ export default function MesAvisScreen() {
   };
 
   const renderItem = ({ item }: { item: AvisItem }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.7}
+      onPress={() => item.prestataire_id && router.push(`/client/photographes/${item.prestataire_id}` as any)}
+    >
       <View style={styles.cardHeader}>
         <Text style={styles.prestataireNom}>{item.prestataire?.nom || 'Prestataire'}</Text>
         <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString('fr-FR')}</Text>
@@ -77,10 +83,21 @@ export default function MesAvisScreen() {
       {!!item.provider_response && (
         <View style={styles.responseBox}>
           <Ionicons name="chatbubble-ellipses-outline" size={14} color={COLORS.primary} />
-          <Text style={styles.responseText}>{item.provider_response}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.responseText}>{item.provider_response}</Text>
+            {!!item.provider_response_date && (
+              <Text style={styles.responseDate}>
+                {new Date(item.provider_response_date).toLocaleDateString('fr-FR')}
+              </Text>
+            )}
+          </View>
         </View>
       )}
-    </View>
+      <View style={styles.cardFooter}>
+        <Text style={styles.detailsLink}>Voir le profil</Text>
+        <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+      </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -197,6 +214,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: COLORS.textLight,
+  },
+  responseDate: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    marginTop: 4,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 12,
+  },
+  detailsLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   emptyState: {
     alignItems: 'center',

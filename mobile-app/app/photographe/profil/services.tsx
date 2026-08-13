@@ -19,13 +19,8 @@ import { COLORS } from '@/lib/constants';
 interface ServicesData {
   specialisations: string[];
   materiel: string[];
-  logiciels_retouche: string[];
-  styles_photo: string[];
-  langues_parlees: string[];
   rayon_deplacement_km: number;
-  disponibilite_generale: boolean;
-  accepte_urgences: boolean;
-  delai_livraison_jours: number;
+  disponibilite: { weekdays: boolean; weekends: boolean; evenings: boolean };
 }
 
 const CATEGORIES = [
@@ -54,27 +49,6 @@ const MATERIEL_OPTIONS = [
   'Steadicam',
 ];
 
-const LOGICIELS = [
-  'Lightroom',
-  'Photoshop',
-  'Capture One',
-  'DxO PhotoLab',
-  'Affinity Photo',
-];
-
-const STYLES = [
-  'Naturel',
-  'Artistique',
-  'Vintage',
-  'Moderne',
-  'Noir et blanc',
-  'Coloré',
-  'Minimaliste',
-  'Dramatique',
-];
-
-const LANGUES = ['Français', 'Anglais', 'Espagnol', 'Allemand', 'Italien', 'Arabe'];
-
 export default function ServicesScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -83,13 +57,8 @@ export default function ServicesScreen() {
   const [services, setServices] = useState<ServicesData>({
     specialisations: [],
     materiel: [],
-    logiciels_retouche: [],
-    styles_photo: [],
-    langues_parlees: ['Français'],
     rayon_deplacement_km: 50,
-    disponibilite_generale: true,
-    accepte_urgences: false,
-    delai_livraison_jours: 7,
+    disponibilite: { weekdays: true, weekends: true, evenings: false },
   });
 
   useEffect(() => {
@@ -102,9 +71,7 @@ export default function ServicesScreen() {
 
       const { data, error } = await supabase
         .from('profils_prestataire')
-        .select(
-          'specialisations, materiel, logiciels_retouche, styles_photo, langues_parlees, rayon_deplacement_km, disponibilite_generale, accepte_urgences, delai_livraison_jours'
-        )
+        .select('specialisations, materiel, rayon_deplacement_km, disponibilite')
         .eq('id', user?.id)
         .single();
 
@@ -114,13 +81,12 @@ export default function ServicesScreen() {
         setServices({
           specialisations: data.specialisations || [],
           materiel: data.materiel || [],
-          logiciels_retouche: data.logiciels_retouche || [],
-          styles_photo: data.styles_photo || [],
-          langues_parlees: data.langues_parlees || ['Français'],
           rayon_deplacement_km: data.rayon_deplacement_km || 50,
-          disponibilite_generale: data.disponibilite_generale ?? true,
-          accepte_urgences: data.accepte_urgences ?? false,
-          delai_livraison_jours: data.delai_livraison_jours || 7,
+          disponibilite: {
+            weekdays: data.disponibilite?.weekdays ?? true,
+            weekends: data.disponibilite?.weekends ?? true,
+            evenings: data.disponibilite?.evenings ?? false,
+          },
         });
       }
     } catch (error: any) {
@@ -148,10 +114,10 @@ export default function ServicesScreen() {
     }));
   };
 
-  const updateDelaiLivraison = (delta: number) => {
+  const toggleDisponibilite = (field: keyof ServicesData['disponibilite']) => {
     setServices((prev) => ({
       ...prev,
-      delai_livraison_jours: Math.max(1, Math.min(60, prev.delai_livraison_jours + delta)),
+      disponibilite: { ...prev.disponibilite, [field]: !prev.disponibilite[field] },
     }));
   };
 
@@ -169,13 +135,8 @@ export default function ServicesScreen() {
         .update({
           specialisations: services.specialisations,
           materiel: services.materiel,
-          logiciels_retouche: services.logiciels_retouche,
-          styles_photo: services.styles_photo,
-          langues_parlees: services.langues_parlees,
           rayon_deplacement_km: services.rayon_deplacement_km,
-          disponibilite_generale: services.disponibilite_generale,
-          accepte_urgences: services.accepte_urgences,
-          delai_livraison_jours: services.delai_livraison_jours,
+          disponibilite: services.disponibilite,
         })
         .eq('id', user?.id);
 
@@ -276,93 +237,6 @@ export default function ServicesScreen() {
           </View>
         </View>
 
-        {/* Logiciels */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="color-wand-outline" size={24} color="#5C6BC0" />
-            <Text style={styles.sectionTitle}>Logiciels de retouche</Text>
-          </View>
-          <View style={styles.chipsContainer}>
-            {LOGICIELS.map((log) => (
-              <TouchableOpacity
-                key={log}
-                style={[
-                  styles.chip,
-                  services.logiciels_retouche.includes(log) && styles.chipSelected,
-                ]}
-                onPress={() => toggleItem('logiciels_retouche', log)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    services.logiciels_retouche.includes(log) && styles.chipTextSelected,
-                  ]}
-                >
-                  {log}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Styles */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="brush-outline" size={24} color="#5C6BC0" />
-            <Text style={styles.sectionTitle}>Styles de photo</Text>
-          </View>
-          <View style={styles.chipsContainer}>
-            {STYLES.map((style) => (
-              <TouchableOpacity
-                key={style}
-                style={[
-                  styles.chip,
-                  services.styles_photo.includes(style) && styles.chipSelected,
-                ]}
-                onPress={() => toggleItem('styles_photo', style)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    services.styles_photo.includes(style) && styles.chipTextSelected,
-                  ]}
-                >
-                  {style}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Langues */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="language-outline" size={24} color="#5C6BC0" />
-            <Text style={styles.sectionTitle}>Langues parlées</Text>
-          </View>
-          <View style={styles.chipsContainer}>
-            {LANGUES.map((langue) => (
-              <TouchableOpacity
-                key={langue}
-                style={[
-                  styles.chip,
-                  services.langues_parlees.includes(langue) && styles.chipSelected,
-                ]}
-                onPress={() => toggleItem('langues_parlees', langue)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    services.langues_parlees.includes(langue) && styles.chipTextSelected,
-                  ]}
-                >
-                  {langue}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* Rayon de déplacement */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -386,63 +260,26 @@ export default function ServicesScreen() {
           </View>
         </View>
 
-        {/* Délai de livraison */}
+        {/* Disponibilité */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="time-outline" size={24} color="#5C6BC0" />
-            <Text style={styles.sectionTitle}>Délai de livraison</Text>
+            <Ionicons name="calendar-outline" size={24} color="#5C6BC0" />
+            <Text style={styles.sectionTitle}>Disponibilité</Text>
           </View>
-          <View style={styles.counterRow}>
-            <TouchableOpacity
-              style={styles.counterButton}
-              onPress={() => updateDelaiLivraison(-1)}
-            >
-              <Ionicons name="remove" size={24} color="#5C6BC0" />
-            </TouchableOpacity>
-            <Text style={styles.counterValue}>
-              {services.delai_livraison_jours} jour{services.delai_livraison_jours > 1 ? 's' : ''}
-            </Text>
-            <TouchableOpacity
-              style={styles.counterButton}
-              onPress={() => updateDelaiLivraison(1)}
-            >
-              <Ionicons name="add" size={24} color="#5C6BC0" />
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Options */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="options-outline" size={24} color="#5C6BC0" />
-            <Text style={styles.sectionTitle}>Options</Text>
-          </View>
-          
           <TouchableOpacity
             style={styles.optionRow}
-            onPress={() =>
-              setServices((prev) => ({
-                ...prev,
-                disponibilite_generale: !prev.disponibilite_generale,
-              }))
-            }
+            onPress={() => toggleDisponibilite('weekdays')}
           >
             <View style={styles.optionInfo}>
-              <Text style={styles.optionTitle}>Disponible pour nouvelles demandes</Text>
-              <Text style={styles.optionDescription}>
-                Recevoir des notifications de nouvelles demandes
-              </Text>
+              <Text style={styles.optionTitle}>Semaine</Text>
+              <Text style={styles.optionDescription}>Disponible du lundi au vendredi</Text>
             </View>
-            <View
-              style={[
-                styles.toggle,
-                services.disponibilite_generale && styles.toggleActive,
-              ]}
-            >
+            <View style={[styles.toggle, services.disponibilite.weekdays && styles.toggleActive]}>
               <View
                 style={[
                   styles.toggleButton,
-                  services.disponibilite_generale && styles.toggleButtonActive,
+                  services.disponibilite.weekdays && styles.toggleButtonActive,
                 ]}
               />
             </View>
@@ -450,21 +287,35 @@ export default function ServicesScreen() {
 
           <TouchableOpacity
             style={styles.optionRow}
-            onPress={() =>
-              setServices((prev) => ({ ...prev, accepte_urgences: !prev.accepte_urgences }))
-            }
+            onPress={() => toggleDisponibilite('weekends')}
           >
             <View style={styles.optionInfo}>
-              <Text style={styles.optionTitle}>Accepter les urgences</Text>
-              <Text style={styles.optionDescription}>
-                Prestations à réaliser sous 48h
-              </Text>
+              <Text style={styles.optionTitle}>Weekends</Text>
+              <Text style={styles.optionDescription}>Disponible le samedi et dimanche</Text>
             </View>
-            <View style={[styles.toggle, services.accepte_urgences && styles.toggleActive]}>
+            <View style={[styles.toggle, services.disponibilite.weekends && styles.toggleActive]}>
               <View
                 style={[
                   styles.toggleButton,
-                  services.accepte_urgences && styles.toggleButtonActive,
+                  services.disponibilite.weekends && styles.toggleButtonActive,
+                ]}
+              />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => toggleDisponibilite('evenings')}
+          >
+            <View style={styles.optionInfo}>
+              <Text style={styles.optionTitle}>Soirées</Text>
+              <Text style={styles.optionDescription}>Disponible en soirée</Text>
+            </View>
+            <View style={[styles.toggle, services.disponibilite.evenings && styles.toggleActive]}>
+              <View
+                style={[
+                  styles.toggleButton,
+                  services.disponibilite.evenings && styles.toggleButtonActive,
                 ]}
               />
             </View>

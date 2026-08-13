@@ -105,7 +105,7 @@ export default function MenuPrestataire() {
     // Récupérer le profil + profil photographe
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('nom, photos')
+      .select('nom, avatar_url')
       .eq('id', authUser.id)
       .single();
     setProfile(profileData);

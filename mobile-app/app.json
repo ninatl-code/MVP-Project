@@ -49,6 +49,13 @@
       ],
       "expo-web-browser",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nous avons besoin d'accéder à vos photos pour changer votre photo de profil et vos documents.",
+          "cameraPermission": "Nous avons besoin d'accéder à votre appareil photo pour prendre une photo."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#5C6BC0",

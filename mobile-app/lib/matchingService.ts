@@ -9,17 +9,17 @@ import { DemandeClient } from './demandeService';
 
 interface ProfilPhotographe {
   id: string;
-  user_id: string;
   nom_entreprise?: string;
   specialisations: string[];
   rayon_deplacement_km: number;
   tarif_horaire_min?: number;
-  ville: string;
-  code_postal: string;
+  statut_validation: string;
+  disponibilite: { weekdays: boolean; weekends: boolean; evenings: boolean };
+  // Ces champs viennent de profiles (jointe via id), pas de profils_prestataire
+  ville?: string;
+  code_postal?: string;
   latitude?: number;
   longitude?: number;
-  statut_validation: string;
-  disponibilite_generale: boolean;
 }
 
 interface MatchResult {
@@ -138,11 +138,11 @@ export async function findMatchingPhotographes(
   minScore: number = 40
 ): Promise<MatchResult[]> {
   try {
-    // Récupérer tous les photographes actifs et disponibles
+    // Récupérer tous les photographes actifs et disponibles (ville/code_postal/latitude/
+    // longitude vivent sur profiles, le reste sur profils_prestataire)
     const { data: photographes, error } = await supabase
       .from('profils_prestataire')
-      .select('*')
-      .eq('disponibilite_generale', true)
+      .select('*, profiles!inner(ville, code_postal, latitude, longitude)')
       .in('statut_validation', ['valide', 'en_attente']);
 
     if (error) throw error;
@@ -152,8 +152,16 @@ export async function findMatchingPhotographes(
       return [];
     }
 
+    const photographesFlat = photographes.map((p: any) => ({
+      ...p,
+      ville: p.profiles?.ville,
+      code_postal: p.profiles?.code_postal,
+      latitude: p.profiles?.latitude,
+      longitude: p.profiles?.longitude,
+    }));
+
     // Calculer le score de correspondance pour chaque photographe
-    const matches: MatchResult[] = photographes
+    const matches: MatchResult[] = photographesFlat
       .map((photographe) => {
         const { score, reasons } = calculateMatchScore(demande, photographe);
         return {
@@ -197,7 +205,7 @@ export async function notifyMatchingPhotographes(
     for (const match of photographesToNotify) {
       try {
         // Envoyer une notification push
-        await sendPushNotification(match.photographe.user_id, {
+        await sendPushNotification(match.photographe.id, {
           title: '📸 Nouvelle demande correspondant à votre profil',
           body: `${demande.titre} - ${demande.lieu_ville} (Score: ${Math.round(match.score)}%)`,
           data: {
@@ -209,7 +217,7 @@ export async function notifyMatchingPhotographes(
 
         // Créer une notification dans la base de données
         await supabase.from('notifications').insert({
-          user_id: match.photographe.user_id,
+          user_id: match.photographe.id,
           type: 'new_demande',
           titre: 'Nouvelle demande',
           contenu: `${demande.titre} - ${demande.lieu_ville}`,
@@ -223,18 +231,18 @@ export async function notifyMatchingPhotographes(
 
         // Ajouter le photographe à la liste des notifiés
         const currentNotifies = demande.photographes_notifies || [];
-        if (!currentNotifies.includes(match.photographe.user_id)) {
+        if (!currentNotifies.includes(match.photographe.id)) {
           await supabase
             .from('demandes_client')
             .update({
-              photographes_notifies: [...currentNotifies, match.photographe.user_id],
+              photographes_notifies: [...currentNotifies, match.photographe.id],
             })
             .eq('id', demande.id);
         }
 
         notifiedCount++;
       } catch (notifError) {
-        console.error(`❌ Erreur notification photographe ${match.photographe.user_id}:`, notifError);
+        console.error(`❌ Erreur notification photographe ${match.photographe.id}:`, notifError);
       }
     }
 
@@ -253,15 +261,23 @@ export async function getRecommendedDemandesForPhotographe(
   photographeId: string
 ): Promise<MatchResult[]> {
   try {
-    // Récupérer le profil du photographe
-    const { data: photographe, error: photographeError } = await supabase
+    // Récupérer le profil du photographe (ville/code_postal/lat/long viennent de profiles)
+    const { data: photographeRaw, error: photographeError } = await supabase
       .from('profils_prestataire')
-      .select('*')
+      .select('*, profiles!inner(ville, code_postal, latitude, longitude)')
       .eq('id', photographeId)
       .single();
 
     if (photographeError) throw photographeError;
-    if (!photographe) throw new Error('Profil photographe non trouvé');
+    if (!photographeRaw) throw new Error('Profil photographe non trouvé');
+
+    const photographe: ProfilPhotographe = {
+      ...photographeRaw,
+      ville: photographeRaw.profiles?.ville,
+      code_postal: photographeRaw.profiles?.code_postal,
+      latitude: photographeRaw.profiles?.latitude,
+      longitude: photographeRaw.profiles?.longitude,
+    };
 
     // Récupérer les demandes ouvertes non expirées
     const { data: demandes, error: demandesError } = await supabase
@@ -311,26 +327,33 @@ export async function checkPhotographeAvailability(
   dureeHeures?: number
 ): Promise<boolean> {
   try {
-    // Récupérer le profil photographe
+    // Récupérer le profil photographe (disponibilité générale)
     const { data: profil, error: profilError } = await supabase
       .from('profils_prestataire')
-      .select('disponibilite_generale, blocked_slots')
+      .select('disponibilite')
       .eq('id', photographeId)
       .single();
 
     if (profilError) throw profilError;
 
-    // Vérifier la disponibilité générale
-    if (!profil.disponibilite_generale) {
+    // Vérifier la disponibilité générale (semaine/weekend/soirée)
+    if (profil.disponibilite && profil.disponibilite.weekdays === false && profil.disponibilite.weekends === false) {
       return false;
     }
 
-    // Vérifier les créneaux bloqués
-    if (profil.blocked_slots && profil.blocked_slots.length > 0) {
+    // Vérifier les créneaux bloqués (table dédiée blocked_slots)
+    const { data: blockedSlots, error: blockedError } = await supabase
+      .from('blocked_slots')
+      .select('start_datetime, end_datetime')
+      .eq('prestataire_id', photographeId);
+
+    if (blockedError) throw blockedError;
+
+    if (blockedSlots && blockedSlots.length > 0) {
       const requestDate = new Date(date);
-      const isBlocked = profil.blocked_slots.some((slot: any) => {
-        const slotStart = new Date(slot.start);
-        const slotEnd = new Date(slot.end);
+      const isBlocked = blockedSlots.some((slot) => {
+        const slotStart = new Date(slot.start_datetime);
+        const slotEnd = new Date(slot.end_datetime);
         return requestDate >= slotStart && requestDate <= slotEnd;
       });
 

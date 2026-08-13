@@ -35,13 +35,13 @@ interface Avis {
   created_at: string;
   client: {
     nom: string;
-    photos?: string[];
+    avatar_url?: string;
   };
 }
 
 interface PrestataireInfo {
   nom: string;
-  photos?: string[];
+  avatar_url?: string;
   note_moyenne: number;
   nb_avis: number;
 }
@@ -67,19 +67,26 @@ export default function AvisPrestataire() {
 
     try {
       // Récupérer les infos du prestataire
-      const { data: prestataireData, error: prestataireError } = await supabase
-        .from('profiles')
-        .select('nom, photos, note_moyenne, nb_avis')
-        .eq('id', prestataire_id)
-        .single();
+      const [{ data: prestataireData, error: prestataireError }, { data: prestaData }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('nom, avatar_url')
+          .eq('id', prestataire_id)
+          .single(),
+        supabase
+          .from('profils_prestataire')
+          .select('note_moyenne, nb_avis')
+          .eq('id', prestataire_id)
+          .maybeSingle(),
+      ]);
 
       if (prestataireError) throw prestataireError;
 
       setPrestataire({
         nom: prestataireData.nom || 'Prestataire',
-        photos: prestataireData.photos,
-        note_moyenne: prestataireData.note_moyenne || 0,
-        nb_avis: prestataireData.nb_avis || 0
+        avatar_url: prestataireData.avatar_url,
+        note_moyenne: prestaData?.note_moyenne || 0,
+        nb_avis: prestaData?.nb_avis || 0
       });
 
       // Récupérer les avis
@@ -91,7 +98,7 @@ export default function AvisPrestataire() {
           commentaire,
           created_at,
           particulier_id,
-          client:profiles!particulier_id(nom, photos)
+          client:profiles!particulier_id(nom, avatar_url)
         `)
         .eq('prestataire_id', prestataire_id)
         .order('created_at', { ascending: false });
@@ -105,7 +112,7 @@ export default function AvisPrestataire() {
         created_at: a.created_at,
         client: {
           nom: a.client?.nom || 'Client',
-          photos: a.client?.photos
+          avatar_url: a.client?.avatar_url
         }
       }));
 
@@ -142,8 +149,8 @@ export default function AvisPrestataire() {
       <View style={styles.avisCard}>
         <View style={styles.avisHeader}>
           <View style={styles.clientInfo}>
-            {item.client.photos?.[0] ? (
-              <Image source={{ uri: item.client.photos[0] }} style={styles.clientPhoto} />
+            {item.client.avatar_url ? (
+              <Image source={{ uri: item.client.avatar_url }} style={styles.clientPhoto} />
             ) : (
               <View style={styles.clientPhotoPlaceholder}>
                 <Ionicons name="person" size={20} color={COLORS.textLight} />
@@ -216,8 +223,8 @@ export default function AvisPrestataire() {
       {prestataire && (
         <View style={styles.prestataireSection}>
           <View style={styles.prestataireCard}>
-            {prestataire.photos?.[0] ? (
-              <Image source={{ uri: prestataire.photos[0] }} style={styles.prestatairePhoto} />
+            {prestataire.avatar_url ? (
+              <Image source={{ uri: prestataire.avatar_url }} style={styles.prestatairePhoto} />
             ) : (
               <View style={styles.prestatairePhotoPlaceholder}>
                 <Ionicons name="person" size={40} color={COLORS.textLight} />

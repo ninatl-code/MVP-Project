@@ -19,13 +19,12 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { COLORS } from '@/lib/constants';
 
+// Un document correspond directement à une colonne url de profils_prestataire
+// (il n'existe pas de table verification_documents dans la base).
 interface VerificationDocument {
-  id: string;
   document_type: string;
   document_url: string;
   verification_status: 'pending' | 'approved' | 'rejected';
-  rejection_reason?: string;
-  created_at: string;
 }
 
 interface UserVerificationStatus {
@@ -38,16 +37,25 @@ interface UserVerificationStatus {
   badges: string[];
 }
 
-const DOCUMENT_TYPES = [
+const DOCUMENT_TYPES: {
+  type: string;
+  profileColumn: 'document_identite_recto_url' | 'documents_siret' | 'documents_kbis' | 'documents_assurance';
+  label: string;
+  icon: string;
+  description: string;
+  required: boolean;
+}[] = [
   {
     type: 'identity_card',
+    profileColumn: 'document_identite_recto_url',
     label: 'Carte d\'identité',
     icon: 'card',
-    description: 'Recto et verso de votre CNI',
+    description: 'Recto de votre CNI',
     required: true,
   },
   {
     type: 'business_license',
+    profileColumn: 'documents_kbis',
     label: 'Licence professionnelle',
     icon: 'briefcase',
     description: 'Justificatif d\'activité professionnelle',
@@ -55,16 +63,18 @@ const DOCUMENT_TYPES = [
   },
   {
     type: 'insurance',
+    profileColumn: 'documents_assurance',
     label: 'Assurance professionnelle',
     icon: 'shield-checkmark',
     description: 'Attestation d\'assurance en cours',
     required: false,
   },
   {
-    type: 'address_proof',
-    label: 'Justificatif de domicile',
-    icon: 'home',
-    description: 'Facture de moins de 3 mois',
+    type: 'siret',
+    profileColumn: 'documents_siret',
+    label: 'Justificatif SIRET',
+    icon: 'document-text',
+    description: 'Justificatif SIRET de votre entreprise',
     required: false,
   },
 ];
@@ -73,6 +83,7 @@ export default function VerificationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [documents, setDocuments] = useState<VerificationDocument[]>([]);
   const [verificationStatus, setVerificationStatus] = useState<UserVerificationStatus | null>(null);
 
@@ -88,25 +99,53 @@ export default function VerificationPage() {
         return;
       }
 
-      // Fetch documents
-      const { data: docsData, error: docsError } = await supabase
-        .from('verification_documents')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, telephone')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (docsError) throw docsError;
-      setDocuments(docsData || []);
+      if (profileError) throw profileError;
+      setProfileId(profileData?.id || user.id);
 
-      // Fetch verification status
-      const { data: statusData, error: statusError } = await supabase
-        .from('user_verification_status')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      const { data: presta, error: prestaError } = await supabase
+        .from('profils_prestataire')
+        .select('document_identite_recto_url, documents_siret, documents_kbis, documents_assurance, identite_verifiee, entreprise_verifiee, score_confiance, badges')
+        .eq('id', profileData?.id || user.id)
+        .maybeSingle();
 
-      if (statusError && statusError.code !== 'PGRST116') throw statusError;
-      setVerificationStatus(statusData);
+      if (prestaError) throw prestaError;
+
+      const docs: VerificationDocument[] = DOCUMENT_TYPES
+        .filter((d) => !!presta?.[d.profileColumn])
+        .map((d) => ({
+          document_type: d.type,
+          document_url: presta![d.profileColumn] as string,
+          verification_status:
+            (d.type === 'identity_card' && presta?.identite_verifiee) ||
+            (d.type !== 'identity_card' && presta?.entreprise_verifiee)
+              ? 'approved'
+              : 'pending',
+        }));
+      setDocuments(docs);
+
+      const emailVerified = !!profileData?.email;
+      const phoneVerified = !!profileData?.telephone;
+      const identityVerified = !!presta?.identite_verifiee;
+      const businessVerified = !!presta?.entreprise_verifiee;
+      const trustScore = presta?.score_confiance ?? 0;
+      const trustLevel =
+        trustScore < 40 ? 'unverified' : trustScore < 60 ? 'basic' : trustScore < 80 ? 'verified' : 'trusted';
+
+      setVerificationStatus({
+        email_verified: emailVerified,
+        phone_verified: phoneVerified,
+        identity_verified: identityVerified,
+        business_verified: businessVerified,
+        trust_score: trustScore,
+        trust_level: trustLevel,
+        badges: presta?.badges || [],
+      });
     } catch (error) {
       console.error('Error fetching verification data:', error);
       Alert.alert('Erreur', 'Impossible de charger les données de vérification');
@@ -166,15 +205,18 @@ export default function VerificationPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const docConfig = DOCUMENT_TYPES.find((d) => d.type === documentType);
+      if (!docConfig) return;
+
       const fileName = `${documentType}_${user.id}_${Date.now()}.jpg`;
-      
+
       // Convert file URI to blob
       const response = await fetch(file.uri);
       const blob = await response.blob();
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('verification_documents')
-        .upload(fileName, blob, {
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(`documents/${fileName}`, blob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false
@@ -183,20 +225,15 @@ export default function VerificationPage() {
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('verification_documents')
-        .getPublicUrl(fileName);
+        .from('photos')
+        .getPublicUrl(`documents/${fileName}`);
 
-      // Insert document record
-      const { error: insertError } = await supabase
-        .from('verification_documents')
-        .insert({
-          user_id: user.id,
-          document_type: documentType,
-          document_url: publicUrl,
-          verification_status: 'pending',
-        });
+      const { error: updateError } = await supabase
+        .from('profils_prestataire')
+        .update({ [docConfig.profileColumn]: publicUrl, statut_validation: 'en_attente' })
+        .eq('id', profileId || user.id);
 
-      if (insertError) throw insertError;
+      if (updateError) throw updateError;
 
       Alert.alert('Succès', 'Document envoyé ! Il sera vérifié dans les 24-48h.');
       fetchVerificationData();
@@ -381,9 +418,6 @@ export default function VerificationPage() {
                 {existingDoc ? (
                   <View style={styles.documentStatus}>
                     {renderStatusBadge(existingDoc.verification_status)}
-                    {existingDoc.rejection_reason && (
-                      <Text style={styles.rejectionReason}>{existingDoc.rejection_reason}</Text>
-                    )}
                   </View>
                 ) : (
                   <TouchableOpacity

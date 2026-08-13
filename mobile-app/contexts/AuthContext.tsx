@@ -138,6 +138,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         console.log('Auth state change:', event, session?.user?.email);
 
+        // Repasser en chargement pendant la résolution du profil actif, sinon
+        // index.tsx voit isAuthenticated=true mais profileId/activeRole encore
+        // nuls et renvoie l'utilisateur vers /auth/login juste après la connexion.
+        if (event === 'SIGNED_IN') setLoading(true);
+
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -178,10 +183,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setAvailableProfiles([]);
         }
 
-        if (!initialized) {
-          initialized = true;
-          setLoading(false);
-        }
+        initialized = true;
+        setLoading(false);
       }
     );
 

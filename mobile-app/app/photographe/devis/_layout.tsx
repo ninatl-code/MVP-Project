@@ -12,14 +12,7 @@ export default function PhotographeDevisLayout() {
         name="devis-list" 
         options={{ 
           title: 'Mes Devis',
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#5C6BC0',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerShown: false,
         }} 
       />
       <Stack.Screen 

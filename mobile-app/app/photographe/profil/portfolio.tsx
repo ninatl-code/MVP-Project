@@ -72,9 +72,15 @@ export default function PortfolioScreen() {
 
       if (profilError) throw profilError;
 
-      if (profil?.portfolio_photos) {
-        setPhotos(profil.portfolio_photos);
-      }
+      // portfolio_photos est un text[] (simples URLs) en base ; on l'enrichit
+      // côté client avec les métadonnées (non persistées faute de colonne dédiée)
+      const urls: string[] = profil?.portfolio_photos || [];
+      setPhotos(urls.map((url, index) => ({
+        id: index.toString(),
+        url,
+        ordre: index,
+        created_at: new Date().toISOString(),
+      })));
     } catch (error: any) {
       console.error('❌ Erreur chargement portfolio:', error);
       Alert.alert('Erreur', 'Impossible de charger le portfolio');
@@ -147,10 +153,10 @@ export default function PortfolioScreen() {
       const updatedPhotos = [...photos, newPhoto];
       setPhotos(updatedPhotos);
 
-      // Sauvegarder dans la DB
+      // Sauvegarder dans la DB (portfolio_photos = text[] d'URLs uniquement)
       await supabase
         .from('profils_prestataire')
-        .update({ portfolio_photos: updatedPhotos })
+        .update({ portfolio_photos: updatedPhotos.map((p) => p.url) })
         .eq('id', user?.id);
 
       Alert.alert('Succès', 'Photo ajoutée au portfolio');
@@ -178,7 +184,7 @@ export default function PortfolioScreen() {
 
               await supabase
                 .from('profils_prestataire')
-                .update({ portfolio_photos: updatedPhotos })
+                .update({ portfolio_photos: updatedPhotos.map((p) => p.url) })
                 .eq('id', user?.id);
 
               Alert.alert('Succès', 'Photo supprimée');
@@ -195,26 +201,16 @@ export default function PortfolioScreen() {
   const updatePhotoDetails = async () => {
     if (!selectedPhoto) return;
 
-    try {
-      const updatedPhotos = photos.map((p) =>
-        p.id === selectedPhoto.id
-          ? { ...p, description, categorie }
-          : p
-      );
+    // description/categorie ne sont pas persistées : portfolio_photos ne stocke
+    // que les URLs (text[]) en base, il n'y a pas de colonne pour ces métadonnées
+    const updatedPhotos = photos.map((p) =>
+      p.id === selectedPhoto.id
+        ? { ...p, description, categorie }
+        : p
+    );
 
-      setPhotos(updatedPhotos);
-
-      await supabase
-        .from('profils_prestataire')
-        .update({ portfolio_photos: updatedPhotos })
-        .eq('id', user?.id);
-
-      setModalVisible(false);
-      Alert.alert('Succès', 'Photo mise à jour');
-    } catch (error: any) {
-      console.error('❌ Erreur mise à jour photo:', error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour la photo');
-    }
+    setPhotos(updatedPhotos);
+    setModalVisible(false);
   };
 
   const openPhotoModal = (photo: PhotoPortfolio) => {
@@ -238,7 +234,7 @@ export default function PortfolioScreen() {
 
     await supabase
       .from('profils_prestataire')
-      .update({ portfolio_photos: reorderedPhotos })
+      .update({ portfolio_photos: reorderedPhotos.map((p) => p.url) })
       .eq('id', user?.id);
   };
 

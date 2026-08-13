@@ -218,20 +218,22 @@ export async function getDemandeDevis(demandeId: string): Promise<Devis[]> {
   try {
     const { data, error } = await supabase
       .from('devis')
-      .select(`
-        *,
-        prestataire:profiles!devis_prestataire_id_fkey(
-          id,
-          nom,
-          avatar_url,
-          ville
-        )
-      `)
+      .select('*')
       .eq('demande_id', demandeId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    if (!data || data.length === 0) return [];
+
+    // Pas de relation FK reconnue entre devis.prestataire_id et profiles :
+    // on récupère les profils séparément et on les rattache côté client.
+    const prestataireIds = [...new Set(data.map((d) => d.prestataire_id).filter(Boolean))];
+    const { data: prestataires } = prestataireIds.length
+      ? await supabase.from('profiles').select('id, nom, avatar_url, ville').in('id', prestataireIds)
+      : { data: [] as any[] };
+    const prestataireMap = new Map((prestataires || []).map((p: any) => [p.id, p]));
+
+    return data.map((d) => ({ ...d, prestataire: prestataireMap.get(d.prestataire_id) || null }));
   } catch (error: any) {
     console.error('❌ Erreur récupération devis demande:', error);
     throw new Error(error.message || 'Erreur lors de la récupération des devis');
@@ -248,7 +250,6 @@ export async function getDevisById(devisId: string): Promise<Devis> {
       .select(`
         *,
         demande:demandes_client(*),
-        prestataire:profiles!devis_prestataire_id_fkey(*),
         client:profiles!devis_client_id_fkey(*)
       `)
       .eq('id', devisId)
@@ -256,6 +257,18 @@ export async function getDevisById(devisId: string): Promise<Devis> {
 
     if (error) throw error;
     if (!data) throw new Error('Devis non trouvé');
+
+    // Pas de relation FK reconnue entre devis.prestataire_id et profiles :
+    // on récupère le profil séparément.
+    let prestataire = null;
+    if (data.prestataire_id) {
+      const { data: presta } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.prestataire_id)
+        .maybeSingle();
+      prestataire = presta;
+    }
 
     // Marquer comme lu si c'est la première lecture
     if (!data.lu_le) {
@@ -268,7 +281,7 @@ export async function getDevisById(devisId: string): Promise<Devis> {
         .eq('id', devisId);
     }
 
-    return data;
+    return { ...data, prestataire };
   } catch (error: any) {
     console.error('❌ Erreur récupération devis:', error);
     throw new Error(error.message || 'Erreur lors de la récupération du devis');
