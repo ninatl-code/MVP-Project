@@ -232,7 +232,7 @@ export default function DemandeDetailScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Devis reçus ({devis.length})</Text>
               {devis.length > 1 && (
-                <TouchableOpacity onPress={() => router.push(`/client/devis/devis-comparaison?demande=${demandeId}` as any)}>
+                <TouchableOpacity onPress={() => router.push('/client/devis/devis-list' as any)}>
                   <Text style={styles.compareLink}>Comparer</Text>
                 </TouchableOpacity>
               )}

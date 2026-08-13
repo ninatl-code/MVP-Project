@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -119,7 +120,7 @@ export default function NotificationsPrestataire() {
         return '/photographe/profil/profil';
       case 'payment':
       case 'paiement_recu':
-        return '/photographe/leads/invoices-list';
+        return '/photographe/invoices/invoices-list';
       default:
         return null;
     }

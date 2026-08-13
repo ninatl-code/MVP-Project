@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getClientDemandes, annulerDemande } from '@/lib/demandeService';
@@ -71,7 +71,7 @@ export default function MesDemandesScreen() {
 
   useEffect(() => {
     loadDemandes();
-  }, []);
+  }, [profileId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

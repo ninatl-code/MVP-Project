@@ -5,13 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabaseClient';
@@ -198,7 +198,7 @@ export default function CheckoutPage() {
       }
 
       // Rediriger vers la page de succès
-      router.replace(`/paiement/success?reservation_id=${reservation.id}&montant=${reservation.montant}`);
+      router.replace(`/shared/paiement/success?reservation_id=${reservation.id}&montant=${reservation.montant}`);
     } catch (error) {
       console.error('Erreur paiement:', error);
       Alert.alert('Erreur', 'Le paiement a échoué. Veuillez réessayer.');

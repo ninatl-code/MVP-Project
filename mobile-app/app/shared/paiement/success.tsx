@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -86,7 +87,7 @@ export default function PaymentSuccess() {
           {/* Actions */}
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => router.push('/particuliers/reservations')}
+            onPress={() => router.push('/client/reservations/reservations')}
           >
             <Text style={styles.primaryButtonText}>Voir mes réservations</Text>
             <Ionicons name="arrow-forward" size={20} color={COLORS.background} />
@@ -94,7 +95,7 @@ export default function PaymentSuccess() {
 
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.push('/particuliers/menu')}
+            onPress={() => router.push('/client/menu')}
           >
             <Text style={styles.secondaryButtonText}>Retour à l'accueil</Text>
           </TouchableOpacity>

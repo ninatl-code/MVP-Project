@@ -63,7 +63,7 @@ export default function ClientMenu() {
       const { count: avisCount } = await supabase
         .from('reviews_presta')
         .select('*', { count: 'exact', head: true })
-        .eq('auteur_id', profileId);
+        .eq('client_id', profileId);
 
       setStats({
         demandes: demandesCount || 0,
@@ -275,7 +275,7 @@ export default function ClientMenu() {
 
             <TouchableOpacity
               style={styles.compactMenuItem}
-              onPress={() => router.push('/client/reservations/reservations-list' as any)}
+              onPress={() => router.push('/client/reservations/reservations' as any)}
             >
               <View style={styles.compactIconContainer}>
                 <Ionicons name="calendar-outline" size={22} color="#130183" />
@@ -290,7 +290,7 @@ export default function ClientMenu() {
 
             <TouchableOpacity
               style={styles.compactMenuItem}
-              onPress={() => router.push('/client/Avis/avis-list' as any)}
+              onPress={() => router.push('/client/Avis/mes-avis' as any)}
             >
               <View style={styles.compactIconContainer}>
                 <Ionicons name="star-outline" size={22} color="#130183" />

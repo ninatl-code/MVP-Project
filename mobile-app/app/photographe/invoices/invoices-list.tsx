@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -130,7 +131,7 @@ export default function InvoicesList() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mes Factures</Text>
           <TouchableOpacity 
-            onPress={() => router.push('/photographe/leads/invoice-create' as any)}
+            onPress={() => router.push('/photographe/invoices/invoice-create' as any)}
             style={styles.addButton}
           >
             <Ionicons name="add-circle" size={28} color="#fff" />
@@ -149,7 +150,7 @@ export default function InvoicesList() {
             <Text style={styles.emptySubtext}>Créez votre première facture</Text>
             <TouchableOpacity 
               style={styles.createButton}
-              onPress={() => router.push('/photographe/leads/invoice-create' as any)}
+              onPress={() => router.push('/photographe/invoices/invoice-create' as any)}
             >
               <Ionicons name="add" size={20} color="#fff" />
               <Text style={styles.createButtonText}>Créer une facture</Text>
@@ -160,7 +161,7 @@ export default function InvoicesList() {
             <TouchableOpacity
               key={invoice.id}
               style={styles.invoiceCard}
-              onPress={() => router.push(`/photographe/leads/invoice?id=${invoice.id}` as any)}
+              onPress={() => router.push(`/photographe/invoices/invoice?id=${invoice.id}` as any)}
             >
               <View style={styles.invoiceHeader}>
                 <View style={styles.invoiceInfo}>

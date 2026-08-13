@@ -7,8 +7,8 @@ import {
   ActivityIndicator,
   Dimensions,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -69,6 +69,25 @@ export default function AnalyticsDashboardScreen() {
     loadAnalytics();
   }, [selectedPeriod]);
 
+  const getPeriodStartDate = (period: string): Date => {
+    const now = new Date();
+    switch (period) {
+      case 'daily':
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      case 'weekly': {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dayOfWeek = (start.getDay() + 6) % 7; // lundi = 0
+        start.setDate(start.getDate() - dayOfWeek);
+        return start;
+      }
+      case 'yearly':
+        return new Date(now.getFullYear(), 0, 1);
+      case 'monthly':
+      default:
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+  };
+
   const loadAnalytics = async () => {
     try {
       setLoading(true);
@@ -78,6 +97,8 @@ export default function AnalyticsDashboardScreen() {
         return;
       }
       setProviderId(user.id);
+
+      const periodStart = getPeriodStartDate(selectedPeriod).toISOString().split('T')[0];
 
       // Get latest analytics from statistiques_avis and reservations
       const { data: statsData, error: statsError } = await supabase
@@ -90,11 +111,12 @@ export default function AnalyticsDashboardScreen() {
         console.log('Stats data not found, will use defaults');
       }
 
-      // Get reservations for revenue calculation
+      // Get reservations for revenue calculation (filtrées sur la période sélectionnée)
       const { data: reservations, error: reservationsError } = await supabase
         .from('reservations')
         .select('*')
-        .eq('prestataire_id', user.id);
+        .eq('prestataire_id', user.id)
+        .gte('date', periodStart);
 
       if (reservationsError) {
         throw reservationsError;
@@ -131,6 +153,7 @@ export default function AnalyticsDashboardScreen() {
         .from('reservations')
         .select('demande_id, montant_total')
         .eq('prestataire_id', user.id)
+        .gte('date', periodStart)
         .order('created_at', { ascending: false });
 
       if (servicesError && servicesError.code !== 'PGRST116') {
@@ -163,7 +186,6 @@ export default function AnalyticsDashboardScreen() {
   const formatCurrency = (amount: number) => {
     return `$${(amount || 0).toFixed(2)}`;
   };
-
   const formatPercentage = (value: number) => {
     return `${(value || 0).toFixed(1)}%`;
   };

@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabaseClient';
+import { base64ToUint8Array } from '@/lib/base64';
 import { COLORS, TYPOGRAPHY, BORDER_RADIUS, SPACING, SHADOWS, ICON_SIZES } from '@/lib/constants';
 import { Button, LoadingSpinner } from './index';
 
@@ -79,12 +80,7 @@ export default function ImagePickerComponent({
       });
 
       // Convert base64 to blob
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
+      const byteArray = base64ToUint8Array(base64);
 
       // Upload to Supabase
       const { data, error } = await supabase.storage

@@ -18,6 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import { supabase } from '../../../lib/supabaseClient'
 import { COLORS } from '../../../constants/Colors'
 import { useRouter } from 'expo-router'
+import { base64ToUint8Array } from '../../../lib/base64'
 import { Ionicons } from '@expo/vector-icons'
 import FooterPresta from '../../../components/photographe/FooterPresta'
 
@@ -373,7 +374,6 @@ export default function ProfilComplet() {
           ville: emptyToNull(profile.ville),
         })
         .eq('id', user.id)
-        .eq('role', 'photographe')
 
       if (profileError) console.error('Erreur profiles:', profileError)
 
@@ -443,42 +443,47 @@ export default function ProfilComplet() {
     kind: 'avatar',
     aspect: [number, number] ,
   ) => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect,
-      quality: 0.85,
-    })
-    if (result.canceled) return
-
-    setUploading(kind)
     try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', "Nous avons besoin de la permission d'accéder à vos photos")
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect,
+        quality: 0.85,
+      })
+      if (result.canceled) return
+
+      setUploading(kind)
+
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) throw new Error('Non authentifié')
 
       const uri = result.assets[0].uri
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
-      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+      const byteArray = base64ToUint8Array(base64)
       const fileName = `${kind}_${session.user.id}_${Date.now()}.jpg`
       const filePath = `${kind === 'avatar' ? 'photos' : 'documents'}/${fileName}`
 
       const { data, error } = await supabase.storage
         .from('photos')
-        .upload(filePath, byteArray, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false })
+        .upload(filePath, byteArray, { contentType: 'image/jpeg', cacheControl: '3600', upsert: true })
 
       if (error || !data) throw new Error(error?.message || "Échec de l'upload")
 
       const { data: publicUrlData } = supabase.storage.from('photos').getPublicUrl(filePath)
       const url = publicUrlData.publicUrl
 
-      
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ avatar_url: url })
-          .eq('id', session.user.id)
-          .eq('role', 'photographe')
-        if (updateError) throw updateError
-        setProfilePhotoUri(url)
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: url })
+        .eq('id', session.user.id)
+      if (updateError) throw updateError
+      setProfilePhotoUri(url)
 
       Alert.alert('Succès', 'Photo mise à jour')
     } catch (error: any) {
@@ -510,7 +515,7 @@ export default function ProfilComplet() {
 
       const uri = result.assets[0].uri
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
-      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+      const byteArray = base64ToUint8Array(base64)
       const fileName = `${docType}_${session.user.id}_${Date.now()}.jpg`
       const filePath = `documents/${fileName}`
 
@@ -560,7 +565,7 @@ export default function ProfilComplet() {
 
       const uri = result.assets[0].uri
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
-      const byteArray = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+      const byteArray = base64ToUint8Array(base64)
       const fileName = `portfolio_${session.user.id}_${Date.now()}.jpg`
       const filePath = `photos/${fileName}`
 

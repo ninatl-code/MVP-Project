@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabaseClient';
 import FooterPresta from '@/components/photographe/FooterPresta';
 import { Ionicons } from '@expo/vector-icons';
@@ -154,19 +155,28 @@ export default function CalendrierPrestataire() {
       };
     });
 
-    // Mapper les créneaux bloqués
-    const blockedEvents: Event[] = (blockedSlots || []).map(b => {
-      const dateObj = new Date(b.date);
-      const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-      
-      return {
-        id: b.id,
-        date: dateStr,
-        title: 'Période bloquée',
-        type: 'blocked' as const,
-        motif: b.motif || 'Indisponible',
-        isFullDay: true
-      };
+    // Mapper les créneaux bloqués (un événement par jour couvert par la période bloquée)
+    const blockedEvents: Event[] = (blockedSlots || []).flatMap((b: any) => {
+      const start = new Date(b.start_datetime);
+      const end = new Date(b.end_datetime);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+
+      const days: Event[] = [];
+      const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      while (cursor <= lastDay) {
+        const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+        days.push({
+          id: `${b.id}-${dateStr}`,
+          date: dateStr,
+          title: 'Période bloquée',
+          type: 'blocked' as const,
+          motif: b.reason || 'Indisponible',
+          isFullDay: true
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return days;
     });
 
     const allEvents = [...reservationEvents, ...blockedEvents];

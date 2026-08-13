@@ -159,7 +159,8 @@ export default function ChatConversationScreen() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          const incoming = payload.new as Message;
+          setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
           setTimeout(() => scrollToBottom(), 100);
         }
       )
@@ -180,16 +181,25 @@ export default function ChatConversationScreen() {
       // Upload attachments if any
       const uploadedAttachments = await uploadAttachments();
 
-      const { error } = await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        sender_id: currentUserId,
-        receiver_id: conversation.client_id === currentUserId ? conversation.prestataire_id : conversation.client_id,
-        contenu: newMessage.trim(),
-        attachments: uploadedAttachments,
-        lu: false,
-      });
+      const { data: inserted, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: currentUserId,
+          receiver_id: conversation.client_id === currentUserId ? conversation.prestataire_id : conversation.client_id,
+          contenu: newMessage.trim(),
+          attachments: uploadedAttachments,
+          lu: false,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Afficher le message immédiatement sans attendre l'événement realtime
+      if (inserted) {
+        setMessages((prev) => (prev.some((m) => m.id === inserted.id) ? prev : [...prev, inserted as Message]));
+      }
 
       // Mettre à jour le dernier message de la conversation
       await supabase

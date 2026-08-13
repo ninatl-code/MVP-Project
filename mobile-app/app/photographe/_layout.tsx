@@ -17,8 +17,8 @@ export default function PrestataireLayout() {
       {/* Devis */}
       <Stack.Screen name="devis" options={{ title: 'Devis' }} />
       
-      {/* Leads (Invoices) */}
-      <Stack.Screen name="leads" options={{ title: 'Factures' }} />
+      {/* Invoices */}
+      <Stack.Screen name="invoices" options={{ title: 'Factures' }} />
       
       {/* Réservations */}
       <Stack.Screen name="reservations" options={{ title: 'Réservations' }} />

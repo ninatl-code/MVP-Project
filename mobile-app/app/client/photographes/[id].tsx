@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, SafeAreaView, Image, Alert, Dimensions
+  ActivityIndicator, Image, Alert, Dimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -58,14 +59,13 @@ export default function PhotographePublicProfile() {
 
       setProfile(base && extra ? { ...base, ...extra } : base);
 
-      const [{ data: packs }, { data: portf }, { data: revs }] = await Promise.all([
-        supabase.from('packages_types').select('*').eq('prestataire_id', id).eq('actif', true).order('prix_fixe', { ascending: true }),
-        supabase.from('portfolio').select('*').eq('prestataire_id', id).order('created_at', { ascending: false }).limit(12),
-        supabase.from('reviews_presta').select('*, auteur:profiles!reviews_presta_auteur_id_fkey(nom, avatar_url)').eq('prestataire_id', id).order('created_at', { ascending: false }).limit(20),
+      const [{ data: packs }, { data: revs }] = await Promise.all([
+        supabase.from('packages_types').select('*').eq('photographe_id', id).eq('actif', true).order('prix_fixe', { ascending: true }),
+        supabase.from('reviews_presta').select('*, auteur:profiles!reviews_presta_client_id_fkey(nom, avatar_url)').eq('prestataire_id', id).order('created_at', { ascending: false }).limit(20),
       ]);
 
       setPackages(packs || []);
-      setPortfolio(portf || []);
+      setPortfolio((extra?.portfolio_photos || []).map((url: string, index: number) => ({ id: String(index), url })));
       setReviews(revs || []);
     } catch (err) {
       console.error(err);

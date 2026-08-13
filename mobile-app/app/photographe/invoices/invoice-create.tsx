@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -265,7 +266,7 @@ export default function InvoiceCreate() {
         [
           {
             text: 'Voir la facture',
-            onPress: () => router.replace(`/photographe/leads/invoice?id=${data.id}` as any)
+            onPress: () => router.replace(`/photographe/invoices/invoice?id=${data.id}` as any)
           },
           {
             text: 'Retour à la liste',

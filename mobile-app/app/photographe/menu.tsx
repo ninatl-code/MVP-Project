@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, SafeAreaView, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'expo-router';
@@ -320,7 +321,7 @@ export default function MenuPrestataire() {
 
                     <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/photographe/leads/invoices-list')}
+            onPress={() => router.push('/photographe/invoices/invoices-list')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#DBEAFE' }]}>
               <Ionicons name="receipt" size={24} color={COLORS.info} />

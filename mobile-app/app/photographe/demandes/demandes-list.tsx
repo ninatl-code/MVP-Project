@@ -8,14 +8,15 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getRecommendedDemandesForPhotographe } from '@/lib/matchingService';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -297,6 +298,7 @@ export default function DemandesListScreen() {
           }
         />
       )}
+      <FooterPresta />
     </SafeAreaView>
   );
 }
@@ -376,6 +378,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 100,
   },
   card: {
     backgroundColor: COLORS.background,

@@ -15,6 +15,12 @@ export default function AnnoncesLayout() {
         }}
       />
       <Stack.Screen
+        name="mes-avis"
+        options={{
+          title: 'Mes avis'
+        }}
+      />
+      <Stack.Screen
         name="[id]/avis"
         options={{
           title: 'Avis clients',

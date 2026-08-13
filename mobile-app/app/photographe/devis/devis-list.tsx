@@ -8,10 +8,13 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getPhotographeDevis, Devis } from '@/lib/devisService';
 import { Ionicons } from '@expo/vector-icons';
+import FooterPresta from '@/components/photographe/FooterPresta';
 
 export default function PhotographeDevisListScreen() {
   const { user } = useAuth();
@@ -20,7 +23,7 @@ export default function PhotographeDevisListScreen() {
   const [devis, setDevis] = useState<Devis[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<'tous' | 'envoye' | 'accepte' | 'refuse'>('tous');
+  const [filter, setFilter] = useState<'tous' | 'envoye' | 'accepte' | 'refuse' | 'expire'>('tous');
 
   useEffect(() => {
     loadDevis();
@@ -44,9 +47,16 @@ export default function PhotographeDevisListScreen() {
     loadDevis();
   };
 
+  const isDevisExpired = (d: Devis) => {
+    if (d.statut === 'expire') return true;
+    if (!d.date_expiration) return false;
+    return (d.statut === 'envoye' || d.statut === 'lu') && new Date(d.date_expiration).getTime() < Date.now();
+  };
+
   const getFilteredDevis = () => {
     if (filter === 'tous') return devis;
-    return devis.filter((d) => d.statut === filter);
+    if (filter === 'expire') return devis.filter(isDevisExpired);
+    return devis.filter((d) => d.statut === filter && !isDevisExpired(d));
   };
 
   const getStatutColor = (statut: string) => {
@@ -172,18 +182,27 @@ export default function PhotographeDevisListScreen() {
     envoyes: devis.filter((d) => d.statut === 'envoye' || d.statut === 'lu').length,
     acceptes: devis.filter((d) => d.statut === 'accepte').length,
     refuses: devis.filter((d) => d.statut === 'refuse').length,
+    expires: devis.filter(isDevisExpired).length,
   };
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#5C6BC0" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <LinearGradient colors={['#5C6BC0', '#130183']} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Mes devis</Text>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
       {/* Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
@@ -238,6 +257,14 @@ export default function PhotographeDevisListScreen() {
             Refusés
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'expire' && styles.filterButtonActive]}
+          onPress={() => setFilter('expire')}
+        >
+          <Text style={[styles.filterText, filter === 'expire' && styles.filterTextActive]}>
+            Expirés
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Liste */}
@@ -251,7 +278,8 @@ export default function PhotographeDevisListScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#5C6BC0']} />
         }
       />
-    </View>
+      <FooterPresta />
+    </SafeAreaView>
   );
 }
 
@@ -264,6 +292,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -315,6 +361,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 100,
   },
   devisCard: {
     backgroundColor: '#fff',

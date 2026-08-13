@@ -1,9 +1,12 @@
-﻿import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+﻿import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -44,6 +47,7 @@ export default function InvoiceDetail() {
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
@@ -103,8 +107,114 @@ export default function InvoiceDetail() {
     Alert.alert('Info', 'Le suivi du statut de paiement sera bientôt disponible.');
   };
 
-  const handleDownloadPDF = () => {
-    Alert.alert('Téléchargement PDF', 'Fonctionnalité en développement');
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    setGeneratingPdf(true);
+    try {
+      const fmt = (n?: number) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DH';
+      const fmtDate = (s?: string) => (s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—');
+
+      const rows = (invoice.lignes || [])
+        .map(
+          (l) => `
+            <tr>
+              <td>${l.description || ''}</td>
+              <td style="text-align:center;">${l.quantite || 0}</td>
+              <td style="text-align:right;">${fmt(l.prix_unitaire)}</td>
+              <td style="text-align:right;">${fmt((l.quantite || 0) * (l.prix_unitaire || 0))}</td>
+            </tr>`
+        )
+        .join('');
+
+      const html = `
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              body { font-family: Helvetica, Arial, sans-serif; color: #222; padding: 24px; }
+              .header { background: #130183; color: #fff; padding: 24px; border-radius: 8px; }
+              .header h1 { margin: 0; font-size: 28px; }
+              .header p { margin: 4px 0 0; font-size: 12px; }
+              .section { margin-top: 24px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+              th, td { padding: 8px; border-bottom: 1px solid #EBEBEB; font-size: 12px; }
+              th { text-align: left; background: #F7F7F7; }
+              .totals { margin-top: 16px; width: 100%; }
+              .totals td { border: none; padding: 4px 8px; }
+              .totals .label { text-align: right; color: #717171; }
+              .totals .value { text-align: right; font-weight: bold; width: 120px; }
+              .grand-total { font-size: 16px; color: #130183; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>FACTURE</h1>
+              <p>N&deg; ${invoice.numero || '—'}</p>
+              <p>Émise le ${fmtDate(invoice.date_emission)}</p>
+              ${invoice.date_echeance ? `<p>Échéance le ${fmtDate(invoice.date_echeance)}</p>` : ''}
+            </div>
+
+            <div class="section">
+              <strong>Facturé à :</strong><br/>
+              ${invoice.client?.nom || 'Client'}<br/>
+              ${invoice.client?.email || ''}<br/>
+              ${invoice.client?.adresse ? invoice.client.adresse + '<br/>' : ''}
+              ${[invoice.client?.code_postal, invoice.client?.ville].filter(Boolean).join(' ')}
+            </div>
+
+            <div class="section">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th style="text-align:center;">Qté</th>
+                    <th style="text-align:right;">Prix unitaire</th>
+                    <th style="text-align:right;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows || '<tr><td colspan="4" style="text-align:center;color:#999;">Aucune ligne</td></tr>'}
+                </tbody>
+              </table>
+
+              <table class="totals">
+                <tr>
+                  <td class="label">Total HT</td>
+                  <td class="value">${fmt(invoice.montant_ht)}</td>
+                </tr>
+                <tr>
+                  <td class="label">TVA</td>
+                  <td class="value">${fmt(invoice.montant_tva)}</td>
+                </tr>
+                <tr>
+                  <td class="label grand-total">Total TTC</td>
+                  <td class="value grand-total">${fmt(invoice.montant_total)}</td>
+                </tr>
+              </table>
+            </div>
+
+            ${invoice.notes ? `<div class="section"><strong>Notes :</strong><p>${invoice.notes}</p></div>` : ''}
+          </body>
+        </html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Facture ${invoice.numero || ''}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('PDF généré', `Le fichier a été enregistré : ${uri}`);
+      }
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      Alert.alert('Erreur', 'Impossible de générer le PDF de la facture');
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -163,8 +273,12 @@ export default function InvoiceDetail() {
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Facture {invoice.numero}</Text>
-        <TouchableOpacity onPress={handleDownloadPDF} style={styles.downloadButton}>
-          <Ionicons name="download-outline" size={24} color="#FFF" />
+        <TouchableOpacity onPress={handleDownloadPDF} style={styles.downloadButton} disabled={generatingPdf}>
+          {generatingPdf ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Ionicons name="download-outline" size={24} color="#FFF" />
+          )}
         </TouchableOpacity>
       </LinearGradient>
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -41,7 +42,7 @@ export default function PaymentCancel() {
 
   const handleRetry = () => {
     if (reservation_id) {
-      router.push(`/paiement/checkout?reservation_id=${reservation_id}`);
+      router.push(`/shared/paiement/checkout?reservation_id=${reservation_id}`);
     }
   };
 
@@ -113,14 +114,14 @@ export default function PaymentCancel() {
 
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.push('/particuliers/reservations')}
+            onPress={() => router.push('/client/reservations/reservations')}
           >
             <Text style={styles.secondaryButtonText}>Voir mes réservations</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.tertiaryButton}
-            onPress={() => router.push('/particuliers/menu')}
+            onPress={() => router.push('/client/menu')}
           >
             <Text style={styles.tertiaryButtonText}>Retour à l'accueil</Text>
           </TouchableOpacity>

@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
-  SafeAreaView,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
+import { base64ToUint8Array } from '@/lib/base64';
 
 const COLORS = {
   primary: '#5C6BC0',
@@ -226,12 +227,7 @@ export default function ClientProfil() {
         });
 
         // Convert base64 to Uint8Array
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
+        const byteArray = base64ToUint8Array(base64);
 
         // Upload to Supabase Storage
         const fileName = `profile_${profileId}_${Date.now()}.jpg`;
@@ -545,7 +541,7 @@ export default function ClientProfil() {
 
             <TouchableOpacity
               style={styles.actionItem}
-              onPress={() => router.push('/client/Avis/avis-list' as any)}
+              onPress={() => router.push('/client/Avis/mes-avis' as any)}
             >
               <View style={styles.actionLeft}>
                 <View style={[styles.actionIconContainer, { backgroundColor: '#FFF3E0' }]}>

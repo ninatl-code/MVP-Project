@@ -101,48 +101,70 @@ export default function SearchPhotographes() {
 
   const loadPhotographes = async () => {
     try {
-     // Après
-  let query = supabase
-    .from('profils_prestataire')
-    .select(`
-      id,
-      bio,
-      specialisations,
-      rayon_deplacement_km,
-      tarif_horaire_min,
-      note_moyenne,
-      nb_avis,
-      statut_validation,
-      portfolio_photos,
-      photographe_profile:profiles!profils_prestataire_id_fkey (
-        nom,
-        prenom,
-        ville,
-        avatar_url,
-        suspendu
-      )
-    `)
-    .eq('photographe_profile.suspendu', false);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          nom,
+          prenom,
+          ville,
+          avatar_url,
+          profils_prestataire (
+            bio,
+            specialisations,
+            rayon_deplacement_km,
+            tarif_horaire_min,
+            note_moyenne,
+            nb_avis,
+            statut_validation,
+            portfolio_photos
+          )
+        `)
+        .eq('role', 'photographe');
+
+      if (error) throw error;
+
+      // Ne garder que les prestataires ayant complété leur profil et non suspendus
+      let formattedData = (data || [])
+        .map((p: any) => {
+          const presta = Array.isArray(p.profils_prestataire) ? p.profils_prestataire[0] : p.profils_prestataire;
+          if (!presta) return null;
+          return {
+            id: p.id,
+            bio: presta.bio,
+            specialisations: presta.specialisations || [],
+            rayon_deplacement_km: presta.rayon_deplacement_km,
+            tarif_horaire_min: presta.tarif_horaire_min,
+            note_moyenne: presta.note_moyenne || 0,
+            nb_avis: presta.nb_avis || 0,
+            statut_validation: presta.statut_validation,
+            portfolio_photos: presta.portfolio_photos || [],
+            photographe_profile: {
+              nom: p.nom,
+              prenom: p.prenom,
+              ville: p.ville,
+              avatar_url: p.avatar_url,
+            },
+          };
+        })
+        .filter((p: any): p is NonNullable<typeof p> => !!p && p.statut_validation !== 'suspendu');
 
       // Filtre par catégorie
       if (selectedCategorie) {
-        query = query.contains('specialisations', [selectedCategorie]);
+        formattedData = formattedData.filter((p) => p.specialisations?.includes(selectedCategorie));
       }
 
       // Filtre par budget
       if (budgetMax) {
-        query = query.lte('tarif_horaire_min', parseFloat(budgetMax));
+        formattedData = formattedData.filter((p) => (p.tarif_horaire_min || 0) <= parseFloat(budgetMax));
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Formater les données
-      const formattedData = (data || []).map((p: any) => ({
-        ...p,
-        nom: p.profiles?.nom || 'Photographe',
-      }));
+      // Filtre par ville
+      if (villeFilter) {
+        formattedData = formattedData.filter((p) =>
+          p.photographe_profile?.ville?.toLowerCase().includes(villeFilter.toLowerCase())
+        );
+      }
 
       // Tri
       let sortedData = [...formattedData];
@@ -160,12 +182,12 @@ export default function SearchPhotographes() {
 
       // Recherche textuelle
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
+        const search = searchQuery.toLowerCase();
         sortedData = sortedData.filter(
           (p) =>
-            p.nom.toLowerCase().includes(query) ||
-            p.bio?.toLowerCase().includes(query) ||
-            p.specialisations?.some((s: string) => s.toLowerCase().includes(query))
+            `${p.photographe_profile?.prenom || ''} ${p.photographe_profile?.nom || ''}`.toLowerCase().includes(search) ||
+            p.bio?.toLowerCase().includes(search) ||
+            p.specialisations?.some((s: string) => s.toLowerCase().includes(search))
         );
       }
 
@@ -203,9 +225,37 @@ export default function SearchPhotographes() {
     return icons[category] || 'camera';
   };
 
-  const handleContactPhotographe = (photographeId: string) => {
-    // Navigation vers la conversation
-    router.push(`/client/messages/conversation?photographe=${photographeId}` as any);
+  const handleContactPhotographe = async (photographeId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth/login' as any);
+        return;
+      }
+
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('client_id', user.id)
+        .eq('prestataire_id', photographeId)
+        .maybeSingle();
+
+      let conversationId = existing?.id;
+      if (!conversationId) {
+        const { data: created, error } = await supabase
+          .from('conversations')
+          .insert({ client_id: user.id, prestataire_id: photographeId })
+          .select('id')
+          .single();
+        if (error) throw error;
+        conversationId = created?.id;
+      }
+
+      router.push(`/shared/messages/chat-conversation?id=${conversationId}` as any);
+    } catch (error) {
+      console.error('Erreur lors de la création de la conversation:', error);
+      router.push('/shared/messages/messages-list' as any);
+    }
   };
 
   const renderPhotographeCard = ({ item }: { item: Photographe }) => {
@@ -214,7 +264,7 @@ export default function SearchPhotographes() {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => router.push(`/client/particuliers/photographe-profile?id=${item.id}` as any)}
+        onPress={() => router.push(`/client/photographes/${item.id}` as any)}
       >
         <View style={styles.cardHeader}>
           <Image
