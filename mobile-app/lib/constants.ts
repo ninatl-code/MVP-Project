@@ -1,5 +1,5 @@
-// Shooty Design System Constants
-// Based on photo-app color scheme and modern mobile app standards
+// Bricool Design System Constants
+// Palette unifiée avec web-app (référence fonctionnelle et visuelle)
 
 export const COLORS = {
   // Brand Colors (from photo-app)
@@ -9,7 +9,7 @@ export const COLORS = {
   background: '#F8F9FB',    // Light gray - main background
   
   // Semantic Colors
-  success: '#10B981',       // Green for success states
+  success: '#22c55e',       // Green for success states
   warning: '#F59E0B',       // Orange for warnings
   error: '#EF4444',         // Red for errors
   info: '#3B82F6',          // Blue for info

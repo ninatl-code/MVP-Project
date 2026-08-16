@@ -85,20 +85,17 @@ export function calculateMatchScore(
   }
 
   // 2. Localisation (30 points)
-  if (demande.lieu_latitude && demande.lieu_longitude && photographe.latitude && photographe.longitude) {
-    const distance = calculateDistance(
-      photographe.latitude,
-      photographe.longitude,
-      demande.lieu_latitude,
-      demande.lieu_longitude
-    );
-
-    if (distance <= photographe.rayon_deplacement_km) {
-      const proximityScore = Math.max(0, 30 - (distance / photographe.rayon_deplacement_km) * 30);
-      score += proximityScore;
-      reasons.push(`À ${Math.round(distance)} km (rayon: ${photographe.rayon_deplacement_km} km)`);
+  if (photographe.latitude && photographe.longitude) {
+    // La demande n'a pas de coordonnées GPS dans le schéma actuel.
+    // On se base sur la ville du prestataire pour un score de proximité partiel.
+    if (demande.ville && photographe.ville && demande.ville === photographe.ville) {
+      score += 30;
+      reasons.push(`Même ville (${demande.ville})`);
+    } else {
+      score += 10;
+      reasons.push('Zone géographique à confirmer');
     }
-  } else if (isInProximity(photographe.code_postal, demande.lieu_code_postal)) {
+  } else if (isInProximity(photographe.code_postal || '', demande.ville || '')) {
     score += 20;
     reasons.push('Zone géographique proche');
   }
@@ -207,7 +204,7 @@ export async function notifyMatchingPhotographes(
         // Envoyer une notification push
         await sendPushNotification(match.photographe.id, {
           title: '📸 Nouvelle demande correspondant à votre profil',
-          body: `${demande.titre} - ${demande.lieu_ville} (Score: ${Math.round(match.score)}%)`,
+          body: `${demande.titre} - ${demande.ville} (Score: ${Math.round(match.score)}%)`,
           data: {
             type: 'new_demande',
             demandeId: demande.id,
@@ -220,25 +217,10 @@ export async function notifyMatchingPhotographes(
           user_id: match.photographe.id,
           type: 'new_demande',
           titre: 'Nouvelle demande',
-          contenu: `${demande.titre} - ${demande.lieu_ville}`,
-          lien: `/photographe/demandes/${demande.id}`,
-          metadata: {
-            demande_id: demande.id,
-            score: match.score,
-            reasons: match.reasons,
-          },
+          contenu: `${demande.titre} - ${demande.ville}`,
+          demande_id: demande.id,
+          prestataire_id: match.photographe.id,
         });
-
-        // Ajouter le photographe à la liste des notifiés
-        const currentNotifies = demande.photographes_notifies || [];
-        if (!currentNotifies.includes(match.photographe.id)) {
-          await supabase
-            .from('demandes_client')
-            .update({
-              photographes_notifies: [...currentNotifies, match.photographe.id],
-            })
-            .eq('id', demande.id);
-        }
 
         notifiedCount++;
       } catch (notifError) {
@@ -293,9 +275,13 @@ export async function getRecommendedDemandesForPhotographe(
     }
 
     // Filtrer les demandes où le photographe a déjà envoyé un devis
-    const demandesSansDevis = demandes.filter(
-      (demande) => !demande.photographes_interesses?.includes(photographeId)
-    );
+    const { data: devisExistants } = await supabase
+      .from('devis')
+      .select('demande_id')
+      .eq('prestataire_id', photographeId);
+
+    const demandesAvecDevis = new Set((devisExistants || []).map((d: any) => d.demande_id));
+    const demandesSansDevis = demandes.filter((demande) => !demandesAvecDevis.has(demande.id));
 
     // Calculer le score pour chaque demande
     const matches: MatchResult[] = demandesSansDevis

@@ -31,7 +31,7 @@ interface Reservation {
   heure: string;
   lieu: string;
   montant: number;
-  statut: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  statut: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
   created_at: string;
   notes?: string;
 }
@@ -40,7 +40,7 @@ export default function ReservationsParticulier() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'>('all');
   const router = useRouter();
 
   useEffect(() => {
@@ -94,7 +94,9 @@ export default function ReservationsParticulier() {
       const formattedData = data.map((r: any) => {
         const dateObj = new Date(r.date);
         const dateStr = dateObj.toLocaleDateString('fr-FR');
-        const heureStr = r.heure_debut || '00:00';
+        const heureStr = r.heure_debut
+          ? new Date(r.heure_debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+          : '00:00';
 
         return {
           id: r.id,
@@ -160,6 +162,8 @@ export default function ReservationsParticulier() {
         return { label: 'En attente', color: COLORS.warning, icon: 'time-outline' };
       case 'confirmed':
         return { label: 'Confirmée', color: COLORS.success, icon: 'checkmark-circle-outline' };
+      case 'in_progress':
+        return { label: 'En cours', color: COLORS.info, icon: 'play-circle-outline' };
       case 'completed':
         return { label: 'Terminée', color: COLORS.info, icon: 'checkmark-done-outline' };
       case 'cancelled':

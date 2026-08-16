@@ -1,5 +1,4 @@
 ﻿import { supabase } from './supabaseClient';
-import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Canonical notification types
@@ -20,6 +19,7 @@ export const NOTIFICATION_TYPES = {
   COMPTE_SUSPENDU:        'compte_suspendu',
   COMPTE_REACTIVE:        'compte_reactive',
   DEMANDE_MASQUEE:        'demande_masquee',
+  DEMANDE_ACTIVEE:        'demande_activee',
   AVIS_MASQUE:            'avis_masque',
   AVERTISSEMENT:          'avertissement',
   SIGNALEMENT_CLOTURE:    'signalement_cloture',
@@ -250,7 +250,7 @@ export const notifyDevisRejected = async (photographeId, devisId, demandeId) => 
     type: NOTIFICATION_TYPES.DEVIS_REFUSE,
     titre: '📌Devis non retenu',
     contenu: `Votre devis n'a pas été accepté cette fois-ci. D'autres opportunités vous attendent.`,
-    data: { devisId: devisId },
+    devisId: devisId,
     demandeId: demandeId,
     prestataireId: photographeId,
   });
@@ -274,14 +274,14 @@ export const notifyReservationConfirmed = async (clientId, datePrestation, reser
 /**
  * Notify of reservation cancellation
  */
-export const notifyReservationCancelled = async ({userId,role, reservationId, cancelledByName,demandeId}) => { 
+export const notifyReservationCancelled = async ({userId, role, reservationId, cancelledByName, demandeId}) => { 
   return createNotification({
     userId,
     type: NOTIFICATION_TYPES.RESERVATION_ANNULEE,
     titre: '❌ Réservation annulée',
-    contenu: `La réservation du ${new Date(reservation.date_prestation).toLocaleDateString('fr-FR')} a été annulée par ${cancelledByName}. Consultez les détails ou contactez le prestataire pour plus d'informations`,
-    reservation_id : reservationId,
-    demande_id: demandeId,
+    contenu: `Votre réservation a été annulée par ${cancelledByName}. Consultez les détails ou contactez le prestataire pour plus d'informations`,
+    reservationId: reservationId,
+    demandeId: demandeId,
   });
 };
 
@@ -427,15 +427,14 @@ export const unsubscribeFromNotifications = (channel) => {
 		titre: 'Votre avis a été masqué',
 		contenu: `Votre avis a été masqué par notre équipe.` + motif,
 		avisId : avis_id,
-		prestataireId: photographeId,
 	  });
 	};
 	
-	export const notifyAvertissement = async (user_id, reason,avertissement_id) => {
+	export const notifyAvertissement = async (user_id, reason, avertissement_id) => {
 	  return createNotification({
 		userId: user_id,
 		type: NOTIFICATION_TYPES.AVERTISSEMENT,
-		titre: `⚠️ Avertissement'}`,
+		titre: '⚠️ Avertissement',
 		contenu: `Vous avez reçu un avertissement concernant le respect des règles de la plateforme.` + reason,
 		avertissementId: avertissement_id,
 	  });

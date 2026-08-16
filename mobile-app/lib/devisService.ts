@@ -1,6 +1,6 @@
 /**
- * Service pour gérer les devis des photographes
- * Table devis avec informations détaillées
+ * Service pour gérer les devis des prestataires
+ * Aligné sur le schéma Supabase réel (table devis)
  */
 
 import { supabase } from './supabaseClient';
@@ -13,7 +13,7 @@ export interface Devis {
   titre: string;
   description: string;
   message_personnalise?: string;
-  
+
   // Tarifs
   tarif_base: number;
   frais_deplacement?: number;
@@ -22,73 +22,45 @@ export interface Devis {
   remise_percent?: number;
   montant_total: number;
   monnaie?: string;
-  
+
   // Prestation
   duree_prestation_heures: number;
-  nb_photos_livrees: number;
-  nb_videos_livrees?: number;
-  delai_livraison_jours: number;
-  
-  // Retouches
-  retouches_incluses?: number;
-  niveau_retouche?: string;
-  
-  // Livraison
-  modes_livraison_inclus?: string[];
-  plateforme_livraison?: string;
-  duree_acces_galerie_jours?: number;
-  livraison_usb_incluse?: boolean;
-  type_usb?: string;
-  frais_livraison_physique?: number;
-  
-  // Formats
-  formats_fichiers_livres?: string[];
-  resolution_fichiers?: string;
-  
-  // Tirages
-  tirages_inclus?: boolean;
-  nb_tirages_inclus?: number;
-  format_tirages_inclus?: string[];
-  type_papier?: string;
-  encadrement_inclus?: boolean;
-  style_encadrement?: string;
-  cadre_description?: string;
-  frais_tirages?: number;
-  frais_encadrement?: number;
-  
-  // Options
-  droit_usage_commercial?: boolean;
-  type_licence?: string;
-  frais_licence?: number;
-  clause_exclusivite?: boolean;
-  duree_exclusivite_jours?: number;
-  assurance_incluse?: boolean;
-  materiel_supplementaire?: any;
-  
+  options_supplementaires?: any;
+
   // Paiement
-  acompte_requis_montant?: number;
-  acompte_requis_percent?: number;
+  acompte_percent?: number;
+  acompte_montant?: number;
+  modalites_paiement?: string[];
   echeancier_paiement?: any;
   conditions_annulation?: string;
   penalites_annulation?: any;
-  
+
+  // Disponibilités
+  dates_disponibles?: string[];
+  horaires_proposes?: any;
+
+  // Documents
+  devis_pdf_url?: string;
+  contrat_url?: string;
+
   // Validité
-  validite_jours?: number;
+  duree_validite_jours?: number;
   date_expiration?: string;
-  conditions_particulieres?: string;
-  
+
   // Statut
-  statut: 'envoye' | 'lu' | 'accepte' | 'refuse' | 'expire';
-  created_at: string;
-  lu_le?: string;
-  decision_le?: string;
-  
+  statut: 'envoye' | 'accepte' | 'refuse' | 'expire';
+  lu_at?: string;
+  accepte_at?: string;
+  refuse_at?: string;
+  reponse_client?: string;
+  raison_refus?: string;
+
   created_at: string;
   updated_at: string;
-  
+
   // Relations jointes
   demande?: any;
-  photographe?: any;
+  prestataire?: any;
   client?: any;
 }
 
@@ -98,27 +70,24 @@ export interface CreateDevisData {
   titre: string;
   description: string;
   message_personnalise?: string;
-  
+
   // Tarifs (obligatoires)
   tarif_base: number;
   montant_total: number;
   duree_prestation_heures: number;
-  nb_photos_livrees: number;
-  delai_livraison_jours: number;
-  
+
   // Optionnels
   frais_deplacement?: number;
   frais_additionnels?: any;
   remise_montant?: number;
   remise_percent?: number;
-  nb_videos_livrees?: number;
-  retouches_incluses?: number;
-  niveau_retouche?: string;
-  modes_livraison_inclus?: string[];
-  formats_fichiers_livres?: string[];
-  validite_jours?: number;
-  acompte_requis_percent?: number;
-  conditions_particulieres?: string;
+  options_supplementaires?: any;
+  acompte_percent?: number;
+  acompte_montant?: number;
+  modalites_paiement?: string[];
+  conditions_annulation?: string;
+  dates_disponibles?: string[];
+  duree_validite_jours?: number;
 }
 
 /**
@@ -129,7 +98,7 @@ export async function createDevis(
   data: CreateDevisData
 ): Promise<Devis> {
   try {
-    const validiteJours = data.validite_jours || 30;
+    const validiteJours = data.duree_validite_jours || 15;
     const expireLe = new Date();
     expireLe.setDate(expireLe.getDate() + validiteJours);
 
@@ -142,7 +111,7 @@ export async function createDevis(
         titre: data.titre,
         description: data.description,
         message_personnalise: data.message_personnalise || null,
-        
+
         tarif_base: data.tarif_base,
         frais_deplacement: data.frais_deplacement || 0,
         frais_additionnels: data.frais_additionnels || {},
@@ -150,26 +119,20 @@ export async function createDevis(
         remise_percent: data.remise_percent || 0,
         montant_total: data.montant_total,
         monnaie: 'MAD',
-        
+
         duree_prestation_heures: data.duree_prestation_heures,
-        nb_photos_livrees: data.nb_photos_livrees,
-        nb_videos_livrees: data.nb_videos_livrees || 0,
-        delai_livraison_jours: data.delai_livraison_jours,
-        
-        retouches_incluses: data.retouches_incluses || null,
-        niveau_retouche: data.niveau_retouche || null,
-        
-        modes_livraison_inclus: data.modes_livraison_inclus || [],
-        formats_fichiers_livres: data.formats_fichiers_livres || ['JPEG'],
-        
-        validite_jours: validiteJours,
-        date_expiration: expireLe.toISOString(),
-        conditions_particulieres: data.conditions_particulieres || null,
-        
-        acompte_requis_percent: data.acompte_requis_percent || 30,
-        
+        options_supplementaires: data.options_supplementaires || [],
+
+        acompte_percent: data.acompte_percent || 30,
+        acompte_montant: data.acompte_montant || null,
+        modalites_paiement: data.modalites_paiement || [],
+        conditions_annulation: data.conditions_annulation || null,
+        dates_disponibles: data.dates_disponibles || null,
+
+        duree_validite_jours: validiteJours,
+        date_expiration: expireLe.toISOString().split('T')[0],
+
         statut: 'envoye',
-        created_at: new Date().toISOString(),
       })
       .select(`
         *,
@@ -271,12 +234,11 @@ export async function getDevisById(devisId: string): Promise<Devis> {
     }
 
     // Marquer comme lu si c'est la première lecture
-    if (!data.lu_le) {
+    if (!data.lu_at) {
       await supabase
         .from('devis')
-        .update({ 
-          lu_le: new Date().toISOString(),
-          statut: 'lu'
+        .update({
+          lu_at: new Date().toISOString(),
         })
         .eq('id', devisId);
     }
@@ -296,10 +258,10 @@ export async function accepterDevis(devisId: string, demandeId: string): Promise
     // 1. Accepter le devis sélectionné
     const { error: acceptError } = await supabase
       .from('devis')
-      .update({ 
+      .update({
         statut: 'accepte',
-        decision_le: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        accepte_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', devisId);
 
@@ -308,21 +270,21 @@ export async function accepterDevis(devisId: string, demandeId: string): Promise
     // 2. Refuser tous les autres devis de cette demande
     const { error: refuseError } = await supabase
       .from('devis')
-      .update({ 
+      .update({
         statut: 'refuse',
-        decision_le: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        refuse_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('demande_id', demandeId)
       .neq('id', devisId)
-      .in('statut', ['envoye', 'lu']);
+      .in('statut', ['envoye']);
 
     if (refuseError) throw refuseError;
 
     // 3. Marquer la demande comme pourvue
     const { error: demandeError } = await supabase
       .from('demandes_client')
-      .update({ statut: 'pourvue' })
+      .update({ statut: 'pourvue', pourvue_at: new Date().toISOString() })
       .eq('id', demandeId);
 
     if (demandeError) throw demandeError;
@@ -341,10 +303,10 @@ export async function refuserDevis(devisId: string): Promise<void> {
   try {
     const { error } = await supabase
       .from('devis')
-      .update({ 
+      .update({
         statut: 'refuse',
-        decision_le: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        refuse_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', devisId);
 

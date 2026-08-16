@@ -1,4 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿/**
+ * Page de création de devis - version JavaScript pour éviter les erreurs TypeScript
+ * Alignée sur le schéma Supabase réel (pas de champs photo)
+ */
+
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,9 +27,11 @@ export default function DevisCreateScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const demandeId = params.demandeId as string;
+  const demandeId = Array.isArray(params?.demandeId)
+    ? params.demandeId[0]
+    : params?.demandeId || '';
 
-  const [demande, setDemande] = useState<any>(null);
+  const [demande, setDemande] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,28 +40,28 @@ export default function DevisCreateScreen() {
   const [description, setDescription] = useState('');
   const [messagePersonnalise, setMessagePersonnalise] = useState('');
   const [tarifBase, setTarifBase] = useState('');
-  const [nbPhotos, setNbPhotos] = useState('');
   const [dureePrestation, setDureePrestation] = useState('');
-  const [delaiLivraison, setDelaiLivraison] = useState('');
+  const [acomptePercent, setAcomptePercent] = useState('30');
+  const [validiteJours, setValiditeJours] = useState('15');
 
   // Champs optionnels courants
   const [fraisDeplacement, setFraisDeplacement] = useState('');
   const [remiseMontant, setRemiseMontant] = useState('');
-  const [nbVideos, setNbVideos] = useState('0');
-  const [retouchesIncluses, setRetouchesIncluses] = useState('');
-  const [niveauRetouche, setNiveauRetouche] = useState('standard');
-  const [acomptePercent, setAcomptePercent] = useState('30');
-  const [validiteJours, setValiditeJours] = useState('30');
+  const [datesDisponibles, setDatesDisponibles] = useState('');
+  const [conditionsAnnulation, setConditionsAnnulation] = useState('');
 
   // Options avancées
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [tiragesInclus, setTiragesInclus] = useState(false);
-  const [nbTirages, setNbTirages] = useState('0');
+  const [modalitesPaiement, setModalitesPaiement] = useState('');
   const [droitCommercial, setDroitCommercial] = useState(false);
   const [assuranceIncluse, setAssuranceIncluse] = useState(false);
 
   useEffect(() => {
-    loadDemande();
+    if (demandeId) {
+      loadDemande();
+    } else {
+      setLoading(false);
+    }
   }, [demandeId]);
 
   const loadDemande = async () => {
@@ -62,12 +69,16 @@ export default function DevisCreateScreen() {
       setLoading(true);
       const data = await getDemandeById(demandeId);
       setDemande(data);
-      
+
       // Pré-remplir avec les infos de la demande
-      setTitre(`Devis pour ${data.titre}`);
-      setDescription(data.description || '');
-    } catch (error: any) {
-      console.error('❌ Erreur chargement demande:', error);
+      if (data && data.titre) {
+        setTitre('Devis pour ' + data.titre);
+      }
+      if (data && data.description) {
+        setDescription(data.description);
+      }
+    } catch (error) {
+      console.error('Erreur chargement demande:', error);
       Alert.alert('Erreur', 'Impossible de charger la demande');
       router.back();
     } finally {
@@ -80,6 +91,38 @@ export default function DevisCreateScreen() {
     const deplacement = parseFloat(fraisDeplacement) || 0;
     const remise = parseFloat(remiseMontant) || 0;
     return base + deplacement - remise;
+  };
+
+  // Convertit "15/06/2024" -> "2024-06-15" (format attendu par Postgres pour une colonne date)
+  const parseDateFr = (dateStr) => {
+    const parts = dateStr.trim().split('/');
+    if (parts.length !== 3) return null;
+    const [day, month, year] = parts;
+    if (!day || !month || !year) return null;
+    if (!/^\d{1,2}$/.test(day) || !/^\d{1,2}$/.test(month) || !/^\d{4}$/.test(year)) {
+      return null;
+    }
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
+  // Transforme la chaîne "15/06/2024, 22/06/2024" en tableau de dates ISO pour la colonne date[]
+  const parseDatesDisponibles = (input) => {
+    if (!input || !input.trim()) return null;
+    const dates = input
+      .split(',')
+      .map((d) => parseDateFr(d))
+      .filter((d) => d !== null);
+    return dates.length > 0 ? dates : null;
+  };
+
+  // Transforme une chaîne "30% à la commande, 70% à la livraison" en tableau de strings pour la colonne text[]
+  const parseModalitesPaiement = (input) => {
+    if (!input || !input.trim()) return null;
+    const items = input
+      .split(',')
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0);
+    return items.length > 0 ? items : null;
   };
 
   const handleSubmit = async () => {
@@ -96,17 +139,22 @@ export default function DevisCreateScreen() {
       Alert.alert('Erreur', 'Veuillez saisir un tarif de base valide');
       return;
     }
-    if (!nbPhotos || parseInt(nbPhotos) <= 0) {
-      Alert.alert('Erreur', 'Veuillez indiquer le nombre de photos');
-      return;
-    }
     if (!dureePrestation || parseFloat(dureePrestation) <= 0) {
       Alert.alert('Erreur', 'Veuillez indiquer la durée de la prestation');
       return;
     }
-    if (!delaiLivraison || parseInt(delaiLivraison) <= 0) {
-      Alert.alert('Erreur', 'Veuillez indiquer le délai de livraison');
-      return;
+
+    // Validation du format des dates disponibles si renseignées
+    let datesDisponiblesParsed = null;
+    if (datesDisponibles.trim()) {
+      datesDisponiblesParsed = parseDatesDisponibles(datesDisponibles);
+      if (!datesDisponiblesParsed) {
+        Alert.alert(
+          'Erreur',
+          'Format de dates invalide. Utilisez le format JJ/MM/AAAA séparé par des virgules, ex: 15/06/2024, 22/06/2024'
+        );
+        return;
+      }
     }
 
     const montantTotal = calculateMontantTotal();
@@ -117,32 +165,23 @@ export default function DevisCreateScreen() {
 
     try {
       setSubmitting(true);
-
-      await createDevis(user!.id, {
+      await createDevis(user.id, {
         demande_id: demandeId,
-        client_id: demande.client_id,
+        client_id: demande && demande.client_id ? demande.client_id : '',
         titre: titre.trim(),
         description: description.trim(),
         message_personnalise: messagePersonnalise.trim() || undefined,
-        
+
         tarif_base: parseFloat(tarifBase),
         montant_total: montantTotal,
+        duree_prestation_heures: parseFloat(dureePrestation),
+
         frais_deplacement: parseFloat(fraisDeplacement) || 0,
         remise_montant: parseFloat(remiseMontant) || 0,
-        
-        duree_prestation_heures: parseFloat(dureePrestation),
-        nb_photos_livrees: parseInt(nbPhotos),
-        nb_videos_livrees: parseInt(nbVideos) || 0,
-        delai_livraison_jours: parseInt(delaiLivraison),
-        
-        retouches_incluses: retouchesIncluses ? parseInt(retouchesIncluses) : undefined,
-        niveau_retouche: niveauRetouche,
-        
-        modes_livraison_inclus: ['telechargement'],
-        formats_fichiers_livres: ['JPEG', 'PNG'],
-        
-        acompte_requis_percent: parseFloat(acomptePercent) || 30,
-        validite_jours: parseInt(validiteJours) || 30,
+        acompte_percent: parseFloat(acomptePercent) || 30,
+        conditions_annulation: conditionsAnnulation.trim() || null,
+        dates_disponibles: datesDisponiblesParsed,
+        modalites_paiement: parseModalitesPaiement(modalitesPaiement),
       });
 
       Alert.alert(
@@ -155,9 +194,9 @@ export default function DevisCreateScreen() {
           },
         ]
       );
-    } catch (error: any) {
-      console.error('❌ Erreur envoi devis:', error);
-      Alert.alert('Erreur', error.message || 'Impossible d\'envoyer le devis');
+    } catch (error) {
+      console.error('Erreur envoi devis:', error);
+      Alert.alert('Erreur', error.message || "Impossible d'envoyer le devis");
     } finally {
       setSubmitting(false);
     }
@@ -179,353 +218,224 @@ export default function DevisCreateScreen() {
 
   return (
     <KeyboardAvoidingView
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Créer un devis</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Récapitulatif de la demande */}
-        <View style={styles.demandeCard}>
-          <Text style={styles.demandeTitle}>{demande.titre}</Text>
-          <View style={styles.demandeMeta}>
-            <View style={styles.metaItem}>
-              <Ionicons name="pricetag-outline" size={16} color="#666" />
-              <Text style={styles.metaText}>{demande.categorie}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="location-outline" size={16} color="#666" />
-              <Text style={styles.metaText}>{demande.ville}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="calendar-outline" size={16} color="#666" />
-              <Text style={styles.metaText}>
-                {new Date(demande.date_souhaitee).toLocaleDateString('fr-FR')}
-              </Text>
-            </View>
-          </View>
-          {(demande.budget_max) && (
-            <View style={styles.budgetHint}>
-              <Text style={styles.budgetHintText}>
-                Budget client : { `Jusqu'à ${demande.budget_max} DH`}
-              </Text>
-            </View>
-          )}
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Créer un devis</Text>
         </View>
 
-        {/* Informations générales */}
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Informations générales</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Titre du devis <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex: Devis shooting mariage"
-              value={titre}
-              onChangeText={setTitre}
-            />
+        <ScrollView contentContainerStyle={styles.content}>
+          {/* Récapitulatif de la demande */}
+          <View style={styles.demandeCard}>
+            <Text style={styles.demandeTitle}>{demande.titre}</Text>
+            <View style={styles.demandeMeta}>
+              <View style={styles.metaItem}>
+                <Ionicons name="pricetag-outline" size={16} color="#666" />
+                <Text style={styles.metaText}>{demande.categorie}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Ionicons name="calendar-outline" size={16} color="#666" />
+                <Text style={styles.metaText}>{demande.date_souhaitee || ''}</Text>
+              </View>
+            </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Description détaillée <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Décrivez en détail les prestations incluses..."
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              value={description}
-              onChangeText={setDescription}
-            />
-          </View>
+          {/* Informations du devis */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Informations du devis</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Message personnalisé au client</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Ajoutez un message personnalisé pour le client..."
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              value={messagePersonnalise}
-              onChangeText={setMessagePersonnalise}
-            />
-          </View>
-        </View>
-
-        {/* Tarification */}
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Tarification</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Tarif de base <Text style={styles.required}>*</Text>
-            </Text>
-            <View style={styles.inputWithIcon}>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Titre du devis</Text>
               <TextInput
                 style={styles.input}
-                placeholder="500"
-                keyboardType="decimal-pad"
+                value={titre}
+                onChangeText={setTitre}
+                placeholder="Titre du devis"
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Description</Text>
+              <TextInput
+                style={styles.input}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                placeholder="Description du devis"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Message personnalisé (optionnel)</Text>
+              <TextInput
+                style={styles.input}
+                value={messagePersonnalise}
+                onChangeText={setMessagePersonnalise}
+                placeholder="Message personnalisé pour le client"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Tarif de base (DH)</Text>
+              <TextInput
+                style={styles.input}
                 value={tarifBase}
                 onChangeText={setTarifBase}
+                keyboardType="numeric"
+                placeholder="Ex: 500"
               />
-              <Text style={styles.inputIcon}> DH</Text>
             </View>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Frais de déplacement</Text>
-            <View style={styles.inputWithIcon}>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Durée de la prestation (heures)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="0"
-                keyboardType="decimal-pad"
-                value={fraisDeplacement}
-                onChangeText={setFraisDeplacement}
-              />
-              <Text style={styles.inputIcon}> DH</Text>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Remise</Text>
-            <View style={styles.inputWithIcon}>
-              <TextInput
-                style={styles.input}
-                placeholder="0"
-                keyboardType="decimal-pad"
-                value={remiseMontant}
-                onChangeText={setRemiseMontant}
-              />
-              <Text style={styles.inputIcon}> DH</Text>
-            </View>
-          </View>
-
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Montant total</Text>
-            <Text style={styles.totalValue}>{montantTotal.toFixed(2)} DH</Text>
-          </View>
-        </View>
-
-        {/* Prestation */}
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Détails de la prestation</Text>
-
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>
-                Durée (heures) <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="4"
-                keyboardType="decimal-pad"
                 value={dureePrestation}
                 onChangeText={setDureePrestation}
+                keyboardType="numeric"
+                placeholder="Ex: 2"
               />
             </View>
 
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>
-                Délai livraison (jours) <Text style={styles.required}>*</Text>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Montant total (DH)</Text>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                value={montantTotal.toString()}
+                keyboardType="numeric"
+                placeholder="Calculé automatiquement"
+                editable={false}
+              />
+            </View>
+
+            {/* Toggle options avancées */}
+            <TouchableOpacity
+              style={styles.advancedToggle}
+              onPress={() => setShowAdvanced((prev) => !prev)}
+            >
+              <Text style={styles.advancedToggleText}>
+                {showAdvanced ? 'Masquer les options avancées' : 'Afficher les options avancées'}
               </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="7"
-                keyboardType="number-pad"
-                value={delaiLivraison}
-                onChangeText={setDelaiLivraison}
+              <Ionicons
+                name={showAdvanced ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color="#3B82F6"
               />
-            </View>
-          </View>
+            </TouchableOpacity>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>
-                Nombre de photos <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="50"
-                keyboardType="number-pad"
-                value={nbPhotos}
-                onChangeText={setNbPhotos}
-              />
-            </View>
+            {/* Options optionnelles */}
+            {showAdvanced && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Frais de déplacement (optionnel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={fraisDeplacement}
+                    onChangeText={setFraisDeplacement}
+                    keyboardType="numeric"
+                    placeholder="Ex: 50"
+                  />
+                </View>
 
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>Nombre de vidéos</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0"
-                keyboardType="number-pad"
-                value={nbVideos}
-                onChangeText={setNbVideos}
-              />
-            </View>
-          </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Remise (DH, optionnel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={remiseMontant}
+                    onChangeText={setRemiseMontant}
+                    keyboardType="numeric"
+                    placeholder="Ex: 0"
+                  />
+                </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>Retouches incluses</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Toutes"
-                keyboardType="number-pad"
-                value={retouchesIncluses}
-                onChangeText={setRetouchesIncluses}
-              />
-            </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Pourcentage d'acompte (optionnel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={acomptePercent}
+                    onChangeText={setAcomptePercent}
+                    keyboardType="numeric"
+                    placeholder="Ex: 30"
+                  />
+                </View>
 
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>Niveau retouche</Text>
-              <View style={styles.pickerContainer}>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => {
-                    Alert.alert('Niveau de retouche', 'Choisissez le niveau', [
-                      { text: 'Basique', onPress: () => setNiveauRetouche('basique') },
-                      { text: 'Standard', onPress: () => setNiveauRetouche('standard') },
-                      { text: 'Premium', onPress: () => setNiveauRetouche('premium') },
-                    ]);
-                  }}
-                >
-                  <Text style={styles.pickerText}>{niveauRetouche}</Text>
-                  <Ionicons name="chevron-down" size={20} color="#666" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Validité du devis (jours)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={validiteJours}
+                    onChangeText={setValiditeJours}
+                    keyboardType="numeric"
+                    placeholder="Ex: 15"
+                  />
+                </View>
 
-        {/* Conditions */}
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Conditions</Text>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Conditions d'annulation (optionnel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={conditionsAnnulation}
+                    onChangeText={setConditionsAnnulation}
+                    placeholder="Ex: Annulation gratuite jusqu'à 48h avant"
+                  />
+                </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>Acompte requis (%)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="30"
-                keyboardType="number-pad"
-                value={acomptePercent}
-                onChangeText={setAcomptePercent}
-              />
-            </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Modalités de paiement (optionnel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={modalitesPaiement}
+                    onChangeText={setModalitesPaiement}
+                    placeholder="Ex: 30% à la commande, 70% à la livraison"
+                  />
+                </View>
 
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>Validité (jours)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="30"
-                keyboardType="number-pad"
-                value={validiteJours}
-                onChangeText={setValiditeJours}
-              />
-            </View>
-          </View>
-        </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>
+                    Dates de disponibilité (optionnel, format: JJ/MM/AAAA, JJ/MM/AAAA)
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={datesDisponibles}
+                    onChangeText={setDatesDisponibles}
+                    placeholder="Ex: 15/06/2024, 22/06/2024"
+                  />
+                </View>
 
-        {/* Options avancées */}
-        <TouchableOpacity
-          style={styles.advancedToggle}
-          onPress={() => setShowAdvanced(!showAdvanced)}
-        >
-          <Text style={styles.advancedToggleText}>Options avancées</Text>
-          <Ionicons
-            name={showAdvanced ? 'chevron-up' : 'chevron-down'}
-            size={24}
-            color="#5C6BC0"
-          />
-        </TouchableOpacity>
+                <View style={styles.switchRow}>
+                  <Text style={styles.formLabel}>Droit commercial inclus</Text>
+                  <Switch value={droitCommercial} onValueChange={setDroitCommercial} />
+                </View>
 
-        {showAdvanced && (
-          <View style={styles.formCard}>
-            <Text style={styles.sectionTitle}>Options supplémentaires</Text>
-
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Tirages inclus</Text>
-              <Switch
-                value={tiragesInclus}
-                onValueChange={setTiragesInclus}
-                trackColor={{ false: '#ccc', true: '#5C6BC0' }}
-              />
-            </View>
-
-            {tiragesInclus && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nombre de tirages</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="10"
-                  keyboardType="number-pad"
-                  value={nbTirages}
-                  onChangeText={setNbTirages}
-                />
-              </View>
+                <View style={styles.switchRow}>
+                  <Text style={styles.formLabel}>Assurance incluse</Text>
+                  <Switch value={assuranceIncluse} onValueChange={setAssuranceIncluse} />
+                </View>
+              </>
             )}
 
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Droit d'usage commercial</Text>
-              <Switch
-                value={droitCommercial}
-                onValueChange={setDroitCommercial}
-                trackColor={{ false: '#ccc', true: '#5C6BC0' }}
-              />
-            </View>
-
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Assurance incluse</Text>
-              <Switch
-                value={assuranceIncluse}
-                onValueChange={setAssuranceIncluse}
-                trackColor={{ false: '#ccc', true: '#5C6BC0' }}
-              />
+            {/* Actions */}
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={styles.submitButton}
+                disabled={submitting}
+                onPress={handleSubmit}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Envoyer le devis</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
-        )}
-
-        {/* Conseils */}
-        <View style={styles.tipsCard}>
-          <View style={styles.tipsHeader}>
-            <Ionicons name="bulb-outline" size={20} color="#FF9800" />
-            <Text style={styles.tipsTitle}>Conseils pour un bon devis</Text>
-          </View>
-          <Text style={styles.tipItem}>• Soyez transparent sur ce qui est inclus</Text>
-          <Text style={styles.tipItem}>• Mentionnez les conditions d'annulation</Text>
-          <Text style={styles.tipItem}>• Proposez un tarif compétitif mais juste</Text>
-          <Text style={styles.tipItem}>• Précisez le mode de livraison des fichiers</Text>
-        </View>
-      </ScrollView>
-
-      {/* Footer avec bouton d'envoi */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="send" size={20} color="#fff" />
-              <Text style={styles.submitButtonText}>Envoyer le devis</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );
@@ -534,236 +444,130 @@ export default function DevisCreateScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#F8F9FB',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#E5E7EB',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
-    padding: 4,
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+    textAlign: 'center',
   },
   content: {
     padding: 16,
-    paddingBottom: 100,
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   demandeCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
     marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#5C6BC0',
   },
   demandeTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1F2937',
+    marginBottom: 8,
   },
   demandeMeta: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   metaItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   metaText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 12,
+    color: '#6B7280',
   },
-  budgetHint: {
-    marginTop: 12,
-    padding: 8,
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
+  formGroup: {
+    marginBottom: 12,
   },
-  budgetHintText: {
-    fontSize: 14,
-    color: '#1976D2',
+  formLabel: {
+    fontSize: 12,
     fontWeight: '500',
-  },
-  formCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  required: {
-    color: '#f44336',
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    color: '#374151',
+    marginBottom: 4,
   },
   input: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
+    height: 48,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#333',
+    borderColor: '#D1D5DB',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    fontSize: 14,
   },
-  inputIcon: {
-    position: 'absolute',
-    right: 12,
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
+  inputDisabled: {
+    backgroundColor: '#F3F4F6',
+    color: '#6B7280',
   },
-  textArea: {
-    minHeight: 100,
-    paddingTop: 12,
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  pickerContainer: {
-    flex: 1,
-  },
-  pickerButton: {
+  advancedToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f9f9f9',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    marginBottom: 8,
   },
-  pickerText: {
-    fontSize: 16,
-    color: '#333',
-    textTransform: 'capitalize',
-  },
-  totalCard: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1976D2',
-  },
-  totalValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1976D2',
+  advancedToggleText: {
+    color: '#3B82F6',
+    fontSize: 13,
+    fontWeight: '500',
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  switchLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  advancedToggle: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  advancedToggleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#5C6BC0',
-  },
-  tipsCard: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  tipsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginBottom: 12,
   },
-  tipsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  tipItem: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 6,
-    lineHeight: 20,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    padding: 16,
+  actions: {
+    marginTop: 24,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#E5E7EB',
   },
   submitButton: {
-    backgroundColor: '#5C6BC0',
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    height: 48,
+    borderRadius: 6,
     justifyContent: 'center',
-    gap: 8,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#9E9E9E',
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FB',
   },
 });

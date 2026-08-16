@@ -6,11 +6,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 const COLORS = {
-  primary: '#5C6BC0',
+  primary: '#E8EAF6',
+  secondary: '#5C6BC0',
   accent: '#130183',
   text: '#1C1C1E',
   white: '#FFFFFF',
-  error: '#EF4444',
+  error: '#ef4444',
   border: '#E5E7EB',
 };
 
@@ -31,7 +32,7 @@ export default function FooterParti() {
         .from('conversations')
         .select('*', { count: 'exact', head: true })
         .eq('client_id', profileId)
-        .eq('lu_client', false);
+        .gt('unread_count_client', 0);
 
       // Compter les notifications non lues
       const { count: unreadNotifs } = await supabase
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -10,
-    backgroundColor: '#DC2626',
+    backgroundColor: COLORS.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,

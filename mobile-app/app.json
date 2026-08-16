@@ -1,25 +1,25 @@
 {
   "expo": {
-    "name": "Wedoria",
-    "slug": "wedoria",
+    "name": "Bricool",
+    "slug": "bricool",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/shooty-logo.png",
-    "scheme": "monappmobile",
+    "icon": "./assets/images/Bricool-logo.png",
+    "scheme": "bricool",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.wedoria.app",
+      "bundleIdentifier": "com.bricool.app",
       "config": {
         "googleMapsApiKey": "VOTRE_CLE_GOOGLE_MAPS_IOS"
       }
     },
     "android": {
-      "package": "com.wedoria.app",
+      "package": "com.bricool.app",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/shooty-logo.png"
+        "foregroundImage": "./assets/images/Bricool-logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -31,7 +31,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/shooty-logo.png"
+      "favicon": "./assets/images/Bricool-logo.png"
     },
     "plugins": [
       "expo-router",

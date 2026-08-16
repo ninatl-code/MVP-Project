@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient';
 
 /**
  * Service pour gérer les demandes clients
- * Nouveau modèle: Le client crée une demande, les photographes répondent avec des devis
+ * Aligné sur le schéma Supabase réel (table demandes_client)
  */
 
 export interface DemandeClient {
@@ -11,22 +11,25 @@ export interface DemandeClient {
   titre: string;
   description: string;
   categorie: string;
+  nb_personnes?: number;
+  est_public?: boolean;
+  lieu: string;
+  ville: string;
   date_souhaitee: string;
-  heure_souhaitee?: string;
+  heure_debut?: string;
   duree_estimee_heures?: number;
-  lieu_ville: string;
-  lieu_code_postal: string;
-  lieu_adresse?: string;
-  lieu_latitude?: number;
-  lieu_longitude?: number;
+  type_prestation: string[];
   budget_max?: number;
+  monnaie?: string;
+  langues_souhaitees?: string[];
+  instructions_speciales?: string;
   statut: 'ouverte' | 'en_cours' | 'pourvue' | 'annulee' | 'expiree';
-  nombre_devis_recus: number;
-  photographes_notifies: string[];
-  photographes_interesses: string[];
+  date_limite_reponse?: string;
+  date_expiration?: string;
+  criteres_matching?: any;
+  details?: string[];
   created_at: string;
   updated_at: string;
-  date_expiration?: string;
 }
 
 export interface CreateDemandeData {
@@ -34,14 +37,16 @@ export interface CreateDemandeData {
   description: string;
   categorie: string;
   date_souhaitee: string;
-  heure_souhaitee?: string;
+  heure_debut?: string;
   duree_estimee_heures?: number;
-  lieu_ville: string;
-  lieu_code_postal: string;
-  lieu_adresse?: string;
-  lieu_latitude?: number;
-  lieu_longitude?: number;
+  lieu: string;
+  ville: string;
   budget_max?: number;
+  nb_personnes?: number;
+  type_prestation?: string[];
+  langues_souhaitees?: string[];
+  instructions_speciales?: string;
+  details?: string[];
 }
 
 export interface UpdateDemandeData {
@@ -49,14 +54,14 @@ export interface UpdateDemandeData {
   description?: string;
   categorie?: string;
   date_souhaitee?: string;
-  heure_souhaitee?: string;
+  heure_debut?: string;
   duree_estimee_heures?: number;
-  lieu_ville?: string;
-  lieu_code_postal?: string;
-  lieu_adresse?: string;
-  lieu_latitude?: number;
-  lieu_longitude?: number;
+  lieu?: string;
+  ville?: string;
   budget_max?: number;
+  nb_personnes?: number;
+  type_prestation?: string[];
+  instructions_speciales?: string;
   statut?: 'ouverte' | 'en_cours' | 'pourvue' | 'annulee' | 'expiree';
 }
 
@@ -73,12 +78,22 @@ export async function createDemande(userId: string, data: CreateDemandeData): Pr
       .from('demandes_client')
       .insert({
         client_id: userId,
-        ...data,
+        titre: data.titre,
+        description: data.description,
+        categorie: data.categorie,
+        date_souhaitee: data.date_souhaitee,
+        heure_debut: data.heure_debut || null,
+        duree_estimee_heures: data.duree_estimee_heures || null,
+        lieu: data.lieu,
+        ville: data.ville || data.lieu,
+        budget_max: data.budget_max || null,
+        nb_personnes: data.nb_personnes || null,
+        type_prestation: data.type_prestation || [],
+        langues_souhaitees: data.langues_souhaitees || [],
+        instructions_speciales: data.instructions_speciales || null,
+        details: data.details || [],
         statut: 'ouverte',
-        nombre_devis_recus: 0,
-        photographes_notifies: [],
-        photographes_interesses: [],
-        date_expiration: expireDate.toISOString(),
+        date_expiration: expireDate.toISOString().split('T')[0],
       })
       .select()
       .single();
@@ -98,7 +113,7 @@ export async function getClientDemandes(clientId: string): Promise<DemandeClient
   try {
     const { data, error } = await supabase
       .from('demandes_client')
-      .select('*')
+      .select('*, devis(count)')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false });
 
@@ -119,7 +134,7 @@ export async function getDemandeById(demandeId: string): Promise<DemandeClient |
       .from('demandes_client')
       .select('*')
       .eq('id', demandeId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;
@@ -157,7 +172,14 @@ export async function updateDemande(demandeId: string, updates: UpdateDemandeDat
  */
 export async function markDemandePourvue(demandeId: string): Promise<void> {
   try {
-    await updateDemande(demandeId, { statut: 'pourvue' });
+    await supabase
+      .from('demandes_client')
+      .update({
+        statut: 'pourvue',
+        pourvue_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', demandeId);
   } catch (error: any) {
     console.error('❌ Erreur marquage demande pourvue:', error);
     throw error;
@@ -169,7 +191,14 @@ export async function markDemandePourvue(demandeId: string): Promise<void> {
  */
 export async function annulerDemande(demandeId: string): Promise<void> {
   try {
-    await updateDemande(demandeId, { statut: 'annulee' });
+    await supabase
+      .from('demandes_client')
+      .update({
+        statut: 'annulee',
+        fermee_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', demandeId);
   } catch (error: any) {
     console.error('❌ Erreur annulation demande:', error);
     throw error;
@@ -177,84 +206,27 @@ export async function annulerDemande(demandeId: string): Promise<void> {
 }
 
 /**
- * Ajouter un photographe à la liste des photographes notifiés
+ * Rechercher les demandes ouvertes correspondant aux critères d'un prestataire
+ * @param specialisations Spécialisations du prestataire
+ * @param budgetMin Budget minimum du prestataire
  */
-export async function addPhotographeNotified(demandeId: string, photographeId: string): Promise<void> {
-  try {
-    const demande = await getDemandeById(demandeId);
-    if (!demande) throw new Error('Demande non trouvée');
-
-    const photographesNotifies = [...(demande.photographes_notifies || [])];
-    if (!photographesNotifies.includes(photographeId)) {
-      photographesNotifies.push(photographeId);
-
-      await supabase
-        .from('demandes_client')
-        .update({ photographes_notifies: photographesNotifies })
-        .eq('id', demandeId);
-    }
-  } catch (error: any) {
-    console.error('❌ Erreur ajout photographe notifié:', error);
-    throw error;
-  }
-}
-
-/**
- * Ajouter un photographe à la liste des photographes intéressés (a envoyé un devis)
- */
-export async function addPhotographeInteresse(demandeId: string, photographeId: string): Promise<void> {
-  try {
-    const demande = await getDemandeById(demandeId);
-    if (!demande) throw new Error('Demande non trouvée');
-
-    const photographesInteresses = [...(demande.photographes_interesses || [])];
-    if (!photographesInteresses.includes(photographeId)) {
-      photographesInteresses.push(photographeId);
-
-      // Incrémenter le nombre de devis reçus
-      await supabase
-        .from('demandes_client')
-        .update({
-          photographes_interesses: photographesInteresses,
-          nombre_devis_recus: demande.nombre_devis_recus + 1,
-        })
-        .eq('id', demandeId);
-    }
-  } catch (error: any) {
-    console.error('❌ Erreur ajout photographe intéressé:', error);
-    throw error;
-  }
-}
-
-/**
- * Rechercher les demandes ouvertes correspondant aux critères d'un photographe
- * @param photographeId ID du photographe
- * @param location Location du photographe (ville, code postal)
- * @param rayonKm Rayon de déplacement du photographe
- * @param specialisations Spécialisations du photographe
- * @param budgetMin Budget minimum du photographe
- */
-export async function searchDemandesForPhotographe(
-  photographeId: string,
-  location: { ville: string; codePostal: string },
-  rayonKm: number,
+export async function searchDemandesForPrestataire(
   specialisations: string[],
   budgetMin?: number
 ): Promise<DemandeClient[]> {
   try {
-    // Récupérer toutes les demandes ouvertes
     let query = supabase
       .from('demandes_client')
       .select('*')
       .eq('statut', 'ouverte')
-      .gt('date_expiration', new Date().toISOString());
+      .eq('actif', true);
 
-    // Filtrer par catégorie (si le photographe a des spécialisations)
+    // Filtrer par catégorie (si le prestataire a des spécialisations)
     if (specialisations && specialisations.length > 0) {
       query = query.in('categorie', specialisations);
     }
 
-    // Filtrer par budget (si le photographe a un budget minimum)
+    // Filtrer par budget (si le prestataire a un budget minimum)
     if (budgetMin) {
       query = query.or(`budget_max.gte.${budgetMin},budget_max.is.null`);
     }
@@ -262,47 +234,10 @@ export async function searchDemandesForPhotographe(
     const { data: demandes, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
-
-    // Filtrer par proximité géographique (simple filtre par code postal pour l'instant)
-    // TODO: Implémenter calcul de distance géographique précis avec lat/lng
-    const filteredDemandes = demandes?.filter((demande) => {
-      // Vérifier si le photographe a déjà été notifié ou est déjà intéressé
-      if (demande.photographes_notifies?.includes(photographeId)) {
-        return true; // Inclure si déjà notifié (pour afficher dans sa liste)
-      }
-
-      // Filtrer par département (2 premiers chiffres du code postal)
-      const photographeDept = location.codePostal.substring(0, 2);
-      const demandeDept = demande.lieu_code_postal.substring(0, 2);
-
-      // Simple filtre: même département ou départements limitrophes
-      // TODO: Implémenter calcul de distance réel
-      return photographeDept === demandeDept;
-    });
-
-    return filteredDemandes || [];
+    return demandes || [];
   } catch (error: any) {
-    console.error('❌ Erreur recherche demandes pour photographe:', error);
+    console.error('❌ Erreur recherche demandes pour prestataire:', error);
     throw new Error(error.message || 'Erreur lors de la recherche des demandes');
-  }
-}
-
-/**
- * Récupérer les demandes d'un photographe (demandes où il a envoyé un devis)
- */
-export async function getPhotographeDemandes(photographeId: string): Promise<DemandeClient[]> {
-  try {
-    const { data, error } = await supabase
-      .from('demandes_client')
-      .select('*')
-      .contains('photographes_interesses', [photographeId])
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error: any) {
-    console.error('❌ Erreur récupération demandes photographe:', error);
-    throw new Error(error.message || 'Erreur lors de la récupération des demandes');
   }
 }
 
@@ -311,11 +246,11 @@ export async function getPhotographeDemandes(photographeId: string): Promise<Dem
  */
 export async function checkExpiredDemandes(): Promise<void> {
   try {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString().split('T')[0];
 
     await supabase
       .from('demandes_client')
-      .update({ statut: 'expiree' })
+      .update({ statut: 'expiree', fermee_at: new Date().toISOString() })
       .eq('statut', 'ouverte')
       .lt('date_expiration', now);
   } catch (error: any) {

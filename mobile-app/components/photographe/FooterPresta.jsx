@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabaseClient';
-import { ShootyLogoSimple } from '@/components/ui/ShootyLogo';
 
 const COLORS = {
-  primary: '#5C6BC0',
+  primary: '#E8EAF6',
+  secondary: '#5C6BC0',
   accent: '#130183',
   text: '#1C1C1E',
   white: '#FFFFFF',
-  error: '#EF4444',
+  error: '#ef4444',
   border: '#E5E7EB',
 };
 
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -10,
-    backgroundColor: '#DC2626',
+    backgroundColor: COLORS.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
