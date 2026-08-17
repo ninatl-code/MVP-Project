@@ -14,21 +14,21 @@ export default function Headerhomepage() {
             className="text-sm font-medium transition-colors hover:opacity-80"
             style={{ color: 'var(--text)' }}
           >
-            Comment ça marche
+            How It Works
           </a>
           <a 
             href="home#categories" 
             className="text-sm font-medium transition-colors hover:opacity-80"
             style={{ color: 'var(--text)' }}
           >
-            Prestations
+            Services
           </a>
           <a 
             href="/homepage" 
             className="text-sm font-medium transition-colors hover:opacity-80"
             style={{ color: 'var(--text)' }}
           >
-            Abonnement prestataire
+            Subscription
           </a>
           <button
             className="cursor-pointer px-6 py-2.5 rounded-xl font-semibold border-2 transition-all hover:opacity-90"
@@ -38,7 +38,7 @@ export default function Headerhomepage() {
             }}
             onClick={() => router.push("/login")}
           >
-            Connexion
+            Log in
           </button>
           <button
             className="cursor-pointer px-6 py-2.5 rounded-xl font-semibold text-white transition-all hover:opacity-90 shadow-sm"
@@ -47,7 +47,7 @@ export default function Headerhomepage() {
             }}
             onClick={() => router.push("/signup")}
           >
-            Inscription
+            Sign up
           </button>
         </nav>
       </div>

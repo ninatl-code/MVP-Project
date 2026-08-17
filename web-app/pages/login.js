@@ -6,15 +6,15 @@ import { Mail, Lock, AlertCircle, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
 import { useAuth } from '../contexts/AuthContext';
 
-// Palette Bricool
+// Bricool palette
 const COLORS = {
-  primary: '#E8EAF6',     // Violet
-  secondary: '#5C6BC0',   // Jaune doré
-  accent: '#130183',      // Orange
-  background: '#F8F9FB',  // Gris clair
-  text: '#1C1C1E',        // Noir
-  error: '#ef4444',       // Rouge
-  success: '#10b981'      // Vert
+  primary: '#E8EAF6',
+  secondary: '#5C6BC0',
+  accent: '#130183',
+  background: '#F8F9FB',
+  text: '#1C1C1E',
+  error: '#ef4444',
+  success: '#10b981'
 };
 
 function Login() {
@@ -69,22 +69,22 @@ function Login() {
 
       if (error) {
         if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-          setErrorMsg('La connexion est trop lente. Vérifiez votre connexion et réessayez.')
+          setErrorMsg('Connection is too slow. Check your connection and try again.')
         } else if (error.message === 'Invalid login credentials') {
-          setErrorMsg('Email ou mot de passe incorrect. Veuillez réessayer.')
+          setErrorMsg('Incorrect email or password. Please try again.')
         } else if (error.message === 'Email not confirmed') {
-          setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
+          setErrorMsg('Please confirm your email before logging in.')
         } else if (error.message.includes('Too many')) {
-          setErrorMsg('Trop de tentatives. Veuillez patienter quelques minutes.')
+          setErrorMsg('Too many attempts. Please wait a few minutes.')
         } else {
-          setErrorMsg(`Erreur: ${error.message}`)
+          setErrorMsg(`Error: ${error.message}`)
         }
         setLoading(false)
         return
       }
 
       if (!data?.user) {
-        setErrorMsg('Erreur de connexion. Veuillez réessayer.')
+        setErrorMsg('Login error. Please try again.')
         setLoading(false)
         return
       }
@@ -108,10 +108,10 @@ function Login() {
     } catch (err) {
       clearTimeout(timeout)
       if (err.name === 'AbortError') {
-        setErrorMsg('La connexion est trop lente. Vérifiez votre connexion et réessayez.')
+        setErrorMsg('Connection is too slow. Check your connection and try again.')
       } else {
-        console.error('Erreur login:', err)
-        setErrorMsg('Une erreur inattendue s\'est produite. Veuillez réessayer.')
+        console.error('Login error:', err)
+        setErrorMsg('An unexpected error occurred. Please try again.')
       }
       setLoading(false)
     }
@@ -162,14 +162,14 @@ function Login() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
           }}>
-            Connexion
+            Sign In
           </h1>
           <p style={{ 
             fontSize: 14, 
             color: COLORS.text + 'AA', 
             marginBottom: 32 
           }}>
-            Accédez à votre espace Bricool
+            Access your Bricool account
           </p>
 
           {errorMsg && (
@@ -216,7 +216,7 @@ function Login() {
                 }} />
                 <input
                   type="email"
-                  placeholder="votre.email@exemple.com"
+                placeholder="your.email@example.com"
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e) }}
@@ -246,7 +246,7 @@ function Login() {
                 fontWeight: 600,
                 color: COLORS.text 
               }}>
-                Mot de passe
+                Password
               </label>
               <div style={{ position: 'relative' }}>
                 <Lock style={{
@@ -355,24 +355,24 @@ function Login() {
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }} />
-                  Connexion en cours...
+                  Signing in...
                 </>
               ) : (
                 <>
                   <LogIn style={{ width: '20px', height: '20px' }} />
-                  Se connecter
+                  Sign In
                 </>
               )}
             </button>
           </form>
 
-          {/* Lien vers inscription */}
+          {/* Sign up link */}
           <div style={{ 
             marginTop: 24, 
             fontSize: 14, 
             color: COLORS.text + 'AA' 
           }}>
-            Pas encore de compte ?{' '}
+            Don't have an account?{' '}
             <a 
               href="/signup" 
               style={{ 
@@ -389,7 +389,7 @@ function Login() {
                 e.target.style.borderBottomColor = COLORS.accent + '40';
               }}
             >
-              Créer un compte
+              Create an account
             </a>
           </div>
         </main>

@@ -5,7 +5,7 @@ import { useCameraSplashNavigation } from '../components/CameraSplash';
 
 import Headerhomepage from '../components/Headerhomepage';
 
-// Couleurs Bricool
+// Bricool colors
 const COLORS = {
   primary: '#E8EAF6',
   secondary: '#5C6BC0',
@@ -53,12 +53,12 @@ export default function Homepage() {
       const { data, error } = await Promise.race([query, timeout]);
 
       if (error) {
-        setStepMsg("Erreur : " + error.message);
+        setStepMsg("Error: " + error.message);
       } else {
         setSearchResults(data || []);
       }
     } catch (err) {
-      setStepMsg(err.message || "Une erreur est survenue.");
+      setStepMsg(err.message || "An error occurred.");
     } finally {
       setLoading(false);
     }
@@ -127,7 +127,7 @@ export default function Homepage() {
               fontSize: 32,
               background: "#ededed"
             }}>
-              Pas de photo
+              No photos
             </div>
           )}
         </div>
@@ -138,7 +138,7 @@ export default function Homepage() {
           borderBottomRightRadius: 22
         }}>
           <div style={{fontSize:15, color:'#888', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Prestataire :</b> {prestation.nom_entreprise || '-'}
+            <b style={{color: COLORS.primary}}>Provider :</b> {prestation.nom_entreprise || '-'}
           </div>
           <div style={{fontSize:15, color:'#888', marginBottom:6}}>
             <b style={{color: COLORS.primary}}>Date :</b> {prestation.created_at ? new Date(prestation.created_at).toLocaleDateString('fr-FR') : ''}
@@ -147,10 +147,10 @@ export default function Homepage() {
             {prestation.nom_entreprise}
           </div>
           <div style={{fontSize:16, color:'#444', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Spécialité :</b> {(prestation.categories || []).map(id => getCategorieNom(id)).join(', ')}
+            <b style={{color: COLORS.primary}}>Category :</b> {(prestation.categories || []).map(id => getCategorieNom(id)).join(', ')}
           </div>
           <div style={{fontSize:16, color:'#444', marginBottom:6}}>
-            <b style={{color: COLORS.primary}}>Tarif :</b> {prestation.tarif_horaire_min ? prestation.tarif_horaire_min + ' MAD/h' : '-'}
+            <b style={{color: COLORS.primary}}>Rate:</b> {prestation.tarif_horaire_min ? prestation.tarif_horaire_min + ' MAD/h' : '-'}
           </div>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function Homepage() {
             className="text-4xl md:text-5xl font-extrabold max-w-2xl mx-auto"
             style={{color: COLORS.text}}
           >
-            Réservez votre prestataire idéal en quelques clics
+            Book your ideal service provider in just a few clicks
           </h1>
           <p 
             initial={{ opacity: 0, y: 20 }} 
@@ -182,7 +182,7 @@ export default function Homepage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-6 text-lg text-gray-600 max-w-xl mx-auto"
           >
-            Trouvez des prestataires compétents, découvrez leurs portfolios, comparez les tarifs et réservez votre prestation facilement.
+            Find qualified service providers, browse their portfolios, compare rates, and easily book your service.
           </p>
           <div className="mt-10 flex space-x-4 justify-center">
             <button
@@ -191,9 +191,9 @@ export default function Homepage() {
               style={{borderColor: COLORS.accent, color: COLORS.accent, backgroundColor: 'transparent'}}
               onMouseEnter={e => {e.target.style.backgroundColor = COLORS.primary; e.target.style.color = COLORS.accent}}
               onMouseLeave={e => {e.target.style.backgroundColor = 'transparent'; e.target.style.color = COLORS.accent}}
-              onClick={() => navigateWithSplash("/signup", "Redirection vers l'inscription...")}
+              onClick={() => navigateWithSplash("/signup", "Redirecting to signup...")}
             >
-              Rejoindre en tant que prestataire
+              Join as a service provider
             </button>
             <button
               className="text-white px-6 py-3 text-lg rounded-2xl shadow-lg transition font-semibold"
@@ -207,7 +207,7 @@ export default function Homepage() {
                 }
               }}
             >
-              Découvrir les prestataires
+              Discover service providers
             </button>
           </div>
         </div>
@@ -245,17 +245,17 @@ export default function Homepage() {
                 >
                   <h2 className="text-xl font-semibold">{cat.nom}</h2>
                   <p className="mt-2" style={{color: selectedCategory === cat.id ? '#6B7280' : '#6B7280'}}>
-                    Découvrez des prestataires spécialisés en {cat.nom.toLowerCase()}.
+                    Discover service providers specializing in {cat.nom.toLowerCase()}.
                   </p>
                 </div>
               </div>
             ))}
           </div>
           {categoriesLoading && (
-            <div className="col-span-full text-center font-semibold py-4" style={{color: COLORS.secondary}}>Chargement des catégories...</div>
+            <div className="col-span-full text-center font-semibold py-4" style={{color: COLORS.secondary}}>Loading categories...</div>
           )}
           {loading && (
-            <div className="col-span-full text-center font-semibold py-8" style={{color: COLORS.primary}}>Chargement des prestataires...</div>
+            <div className="col-span-full text-center font-semibold py-8" style={{color: COLORS.primary}}>Loading service providers...</div>
           )}
           {stepMsg && (
             <div className="col-span-full text-center font-semibold py-4" style={{color: COLORS.accent}}>{stepMsg}</div>
@@ -263,7 +263,7 @@ export default function Homepage() {
           <div className="col-span-full flex flex-wrap">
             {selectedCategory && !loading && searchResults.length === 0 && (
               <div className="w-full text-center py-12 font-semibold text-lg" style={{color: COLORS.accent}}>
-                OUPS, aucun prestataire n'est disponible dans cette catégorie pour le moment.
+                OOPS, no service providers are available in this category at the moment.
               </div>
             )}
             {searchResults.map(prestation => (
@@ -284,7 +284,7 @@ export default function Homepage() {
                   </div>
                   <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Créez votre compte</h2>
                   <p className="text-neutral-600">
-                    Inscrivez-vous gratuitement en quelques minutes
+                    Sign up for free in just a few minutes
                   </p>
                 </div>
               </div>
@@ -293,9 +293,9 @@ export default function Homepage() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.accent}}>
                     <span className="text-white text-3xl font-bold">2</span>
                   </div>
-                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Trouvez un prestataire</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Find a service provider</h2>
                   <p className="text-neutral-600">
-                    Publiez votre demande ou choisissez directement un prestataire
+                    Post your request or choose a service provider directly
                   </p>
                 </div>
               </div>
@@ -304,9 +304,9 @@ export default function Homepage() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: COLORS.accent}}>
                     <span className="text-white text-3xl font-bold">3</span>
                   </div>
-                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Réservez en toute sécurité</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{color: COLORS.text}}>Book securely</h2>
                   <p className="text-neutral-600">
-                    Validez le devis et votre prestataire est réservé pour votre événement
+                    Confirm the quote and your service provider is booked for your event
                   </p>
                 </div>
               </div>
@@ -319,21 +319,21 @@ export default function Homepage() {
           <h2 className="text-2xl font-bold mb-6" style={{color: COLORS.text}}>Questions fréquentes</h2>
           <div className="space-y-4">
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
-              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Comment puis-je contacter un prestataire ?</h2>
+              <h2 className="font-semibold" style={{color: COLORS.text}}>Q: How can I contact a service provider?</h2>
               <p className="text-neutral-600">
-                R : Vous pouvez contacter un prestataire directement via notre plateforme en cliquant sur le bouton "Contacter" sur son profil.
+                A: You can contact a service provider directly through our platform by clicking the "Contact" button on their profile.
               </p>
             </div>
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
-              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Les paiements sont-ils sécurisés ?</h2>
+              <h2 className="font-semibold" style={{color: COLORS.text}}>Q: Are payments secure?</h2>
               <p className="text-neutral-600">
-                R : Oui, tous les paiements sont traités de manière sécurisée via notre partenaire de paiement.
+                A: Yes, all payments are securely processed through our payment partner.
               </p>
             </div>
             <div className="p-4 rounded-lg shadow" style={{backgroundColor: COLORS.background}}>
-              <h2 className="font-semibold" style={{color: COLORS.text}}>Q : Puis-je annuler ma prestation ?</h2>
+              <h2 className="font-semibold" style={{color: COLORS.text}}>Q: Can I cancel my service?</h2>
               <p className="text-neutral-600">
-                R : Oui, vous pouvez annuler votre prestation sous certaines conditions. Veuillez consulter la politique d'annulation de votre prestataire pour plus de détails.
+                A: Yes, you can cancel your service under certain conditions. Please refer to your service provider's cancellation policy for more details.
               </p>
             </div>
           </div>
@@ -345,7 +345,7 @@ export default function Homepage() {
         <div className="max-w-7xl mx-auto px-12">
           <div className="flex flex-wrap gap-8">
             <div className="w-full md:w-1/3">
-              <h3 className="text-lg font-semibold mb-4" style={{color: COLORS.secondary}}>Liens utiles</h3>
+              <h3 className="text-lg font-semibold mb-4" style={{color: COLORS.secondary}}>Useful links</h3>
               <ul className="space-y-2">
                 <li>
                   <a href="#how" className="hover:underline" style={{color: '#E5E7EB'}}>Comment ça marche</a>
@@ -354,20 +354,20 @@ export default function Homepage() {
                   <a href="#categories" className="hover:underline" style={{color: '#E5E7EB'}}>Prestataires</a>
                 </li>
                 <li>
-                  <a href="#faq" className="hover:underline" style={{color: '#E5E7EB'}}>Aide</a>
+                  <a href="#faq" className="hover:underline" style={{color: '#E5E7EB'}}>Help</a>
                 </li>
                 <li>
-                  <a href="/login" className="hover:underline" style={{color: '#E5E7EB'}}>Connexion</a>
+                  <a href="/login" className="hover:underline" style={{color: '#E5E7EB'}}>Log in</a>
                 </li>
                 <li>
-                  <a href="/signup" className="hover:underline" style={{color: '#E5E7EB'}}>S'inscrire</a>
+                  <a href="/signup" className="hover:underline" style={{color: '#E5E7EB'}}>Sign up</a>
                 </li>
               </ul>
             </div>
             <div className="w-full md:w-1/3">
               <h3 className="text-lg font-semibold mb-4" style={{color: COLORS.secondary}}>Contact</h3>
               <p className="text-neutral-200 mb-2">
-                Vous avez des questions ? N'hésitez pas à nous contacter.
+                Do you have any questions? Feel free to contact us.
               </p>
               <a
                 href="mailto:contact@bricool.fr"
@@ -378,7 +378,7 @@ export default function Homepage() {
               </a>
             </div>
             <div className="w-full md:w-1/3">
-              <h3 className="text-lg font-semibold mb-4" style={{color: COLORS.secondary}}>Suivez-nous</h3>
+              <h3 className="text-lg font-semibold mb-4" style={{color: COLORS.secondary}}>Follow us</h3>
               <div className="flex gap-4">
                 <a href="#" className="text-white transition" style={{color: '#E5E7EB'}} onMouseEnter={e => e.target.style.color = COLORS.secondary} onMouseLeave={e => e.target.style.color = '#E5E7EB'}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -400,7 +400,7 @@ export default function Homepage() {
           </div>
           <div className="mt-8 border-t border-neutral-700 pt-4 text-center">
             <p className="text-sm text-neutral-300">
-              &copy; 2026 Bricool. Tous droits réservés.
+              &copy; 2026 Bricool. All rights reserved.
             </p>
           </div>
         </div>

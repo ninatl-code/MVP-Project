@@ -6,15 +6,15 @@ import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
 import { useCameraSplashNavigation } from '../components/CameraSplash';
 import * as photographerService from  '../lib/photographerService';
 
-// Palette Bricool
+// Bricool palette
 const COLORS = {
-  primary: '#E8EAF6',     // Violet
-  secondary: '#5C6BC0',   // Jaune doré
-  accent: '#130183',      // Orange
-  background: '#F8F9FB',  // Gris clair
-  text: '#1C1C1E',        // Noir
-  error: '#ef4444',       // Rouge
-  success: '#10b981'      // Vert
+  primary: '#E8EAF6',
+  secondary: '#5C6BC0',
+  accent: '#130183',
+  background: '#F8F9FB',
+  text: '#1C1C1E',
+  error: '#ef4444',
+  success: '#10b981'
 };
 
 export default function Signup() {
@@ -29,7 +29,7 @@ export default function Signup() {
 
   const handleSignup = async () => {
     if (!telephone) {
-      alert("Le numéro de téléphone est obligatoire")
+      alert("Phone number is required")
       return
     }
 
@@ -47,7 +47,7 @@ export default function Signup() {
 
     if (error) {
       if (error.message?.toLowerCase().includes('email rate') || error.status === 429) {
-        alert("Trop de tentatives d'inscription. Veuillez réessayer dans quelques minutes.")
+        alert("Too many signup attempts. Please try again in a few minutes.")
       } else {
         alert(error.message)
       }
@@ -68,7 +68,7 @@ export default function Signup() {
         })
 
       if (profileError) {
-        console.error('Erreur création profil:', profileError)
+        console.error('Error creating profile:', profileError)
       }
 
       // Créer le profil photographe étendu si nécessaire
@@ -76,12 +76,12 @@ export default function Signup() {
         const { error: photoProfileError } = await photographerService.upsertPhotographerProfile(data.user.id, {});
 
         if (photoProfileError) {
-          console.error('Erreur création profil photographe:', photoProfileError)
+        console.error('Error creating provider profile:', photoProfileError)
         }
       }
     }
 
-    alert('Inscription réussie ! Vérifiez votre mail pour confirmer votre compte.')
+    alert('Registration successful! Check your email to confirm your account.')
   }
 
   return (
@@ -99,13 +99,13 @@ export default function Signup() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
       }}>
-              Inscription </h1>
+              Sign Up </h1>
       <p style={{ 
             fontSize: 14, 
             color: COLORS.text + 'AA', 
             marginBottom: 32 
           }}>
-            Créez votre espace Bricool
+            Create your Bricool account
       </p>
       <input
         type="email"
@@ -117,7 +117,7 @@ export default function Signup() {
       /><br />
 
       <input
-        placeholder="Nom et Prénom"
+        placeholder="Full Name"
         value={nom}
         onChange={e => setNom(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleSignup() }}
@@ -126,7 +126,7 @@ export default function Signup() {
 
       <input
         type="password"
-        placeholder="Mot de passe"
+        placeholder="Password"
         value={password}
         onChange={e => setPassword(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleSignup() }}
@@ -135,7 +135,7 @@ export default function Signup() {
 
       <input
         type="text"
-        placeholder="Téléphone"
+        placeholder="Phone"
         value={telephone}
         onChange={e => setTelephone(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleSignup() }}
@@ -144,16 +144,16 @@ export default function Signup() {
       /><br />
 
       <div style={{ marginBottom: 18, textAlign: "left" }}>
-        <label style={{ fontWeight: 500, marginBottom: 6, display: "block" }}>Je suis :</label>
+        <label style={{ fontWeight: 500, marginBottom: 6, display: "block" }}>I am:</label>
         <select
           value={role}
           onChange={e => setRole(e.target.value)}
           style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #eee" }}
           required
         >
-          <option value="">Sélectionner...</option>
-          <option value="photographe">Prestataire</option>
-          <option value="particulier">Particulier</option>
+          <option value="">Select...</option>
+          <option value="photographe">Provider</option>
+          <option value="particulier">Client</option>
         </select>
       </div>
 
@@ -177,7 +177,7 @@ export default function Signup() {
           gap: '8px'
         }}
       >
-        S'inscrire
+        Sign Up
       </button>
     </main>
     }
