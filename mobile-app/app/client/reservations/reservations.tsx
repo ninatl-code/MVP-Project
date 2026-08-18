@@ -103,7 +103,7 @@ export default function ReservationsParticulier() {
           package_id: r.package_id,
           package_titre: packageMap.get(r.package_id)?.titre || 'Package',
           prestataire_id: r.prestataire_id,
-          prestataire_nom: prestataireMap.get(r.prestataire_id)?.nom || 'Prestataire',
+          prestataire_nom: prestataireMap.get(r.prestataire_id)?.nom || 'Provider',
           date: dateStr,
           heure: heureStr,
           lieu: r.lieu || '',
@@ -127,12 +127,12 @@ export default function ReservationsParticulier() {
 
   const handleCancelReservation = (reservation: Reservation) => {
     Alert.alert(
-      'Annuler la réservation',
-      `Êtes-vous sûr de vouloir annuler votre réservation pour "${reservation.package_titre}" ?`,
+      'Cancel booking',
+      `Are you sure you want to cancel your booking for "${reservation.package_titre}"?`,
       [
-        { text: 'Non', style: 'cancel' },
+        { text: 'No', style: 'cancel' },
         {
-          text: 'Oui, annuler',
+          text: 'Yes, cancel',
           style: 'destructive',
           onPress: async () => {
             const { error } = await supabase
@@ -141,9 +141,9 @@ export default function ReservationsParticulier() {
               .eq('id', reservation.id);
 
             if (error) {
-              Alert.alert('Erreur', 'Impossible d\'annuler la réservation');
+              Alert.alert('Error', 'Unable to cancel the booking');
             } else {
-              Alert.alert('Succès', 'Réservation annulée');
+              Alert.alert('Success', 'Booking cancelled');
               fetchReservations();
             }
           }
@@ -159,15 +159,15 @@ export default function ReservationsParticulier() {
   const getStatusInfo = (status: string) => {
     switch (status) {
       case 'pending':
-        return { label: 'En attente', color: COLORS.warning, icon: 'time-outline' };
+        return { label: 'Pending', color: COLORS.warning, icon: 'time-outline' };
       case 'confirmed':
-        return { label: 'Confirmée', color: COLORS.success, icon: 'checkmark-circle-outline' };
+        return { label: 'Confirmed', color: COLORS.success, icon: 'checkmark-circle-outline' };
       case 'in_progress':
-        return { label: 'En cours', color: COLORS.info, icon: 'play-circle-outline' };
+        return { label: 'In progress', color: COLORS.info, icon: 'play-circle-outline' };
       case 'completed':
-        return { label: 'Terminée', color: COLORS.info, icon: 'checkmark-done-outline' };
+        return { label: 'Completed', color: COLORS.info, icon: 'checkmark-done-outline' };
       case 'cancelled':
-        return { label: 'Annulée', color: COLORS.error, icon: 'close-circle-outline' };
+        return { label: 'Cancelled', color: COLORS.error, icon: 'close-circle-outline' };
       default:
         return { label: status, color: COLORS.textLight, icon: 'help-circle-outline' };
     }
@@ -217,8 +217,8 @@ export default function ReservationsParticulier() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Mes réservations</Text>
-          <Text style={styles.headerSubtitle}>{filteredReservations.length} réservation{filteredReservations.length > 1 ? 's' : ''}</Text>
+          <Text style={styles.headerTitle}>My bookings</Text>
+          <Text style={styles.headerSubtitle}>{filteredReservations.length} booking{filteredReservations.length > 1 ? 's' : ''}</Text>
         </LinearGradient>
 
         {/* Filtres */}
@@ -229,7 +229,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('all')}
             >
               <Text style={[styles.filterChipText, filter === 'all' && styles.filterChipTextActive]}>
-                Toutes ({reservations.length})
+                All ({reservations.length})
               </Text>
             </TouchableOpacity>
 
@@ -238,7 +238,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('pending')}
             >
               <Text style={[styles.filterChipText, filter === 'pending' && styles.filterChipTextActive]}>
-                En attente ({reservations.filter(r => r.statut === 'pending').length})
+                Pending ({reservations.filter(r => r.statut === 'pending').length})
               </Text>
             </TouchableOpacity>
 
@@ -247,7 +247,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('confirmed')}
             >
               <Text style={[styles.filterChipText, filter === 'confirmed' && styles.filterChipTextActive]}>
-                Confirmées ({reservations.filter(r => r.statut === 'confirmed').length})
+                Confirmed ({reservations.filter(r => r.statut === 'confirmed').length})
               </Text>
             </TouchableOpacity>
 
@@ -256,7 +256,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('completed')}
             >
               <Text style={[styles.filterChipText, filter === 'completed' && styles.filterChipTextActive]}>
-                Terminées ({reservations.filter(r => r.statut === 'completed').length})
+                Completed ({reservations.filter(r => r.statut === 'completed').length})
               </Text>
             </TouchableOpacity>
 
@@ -265,7 +265,7 @@ export default function ReservationsParticulier() {
               onPress={() => setFilter('cancelled')}
             >
               <Text style={[styles.filterChipText, filter === 'cancelled' && styles.filterChipTextActive]}>
-                Annulées ({reservations.filter(r => r.statut === 'cancelled').length})
+                Cancelled ({reservations.filter(r => r.statut === 'cancelled').length})
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -275,17 +275,17 @@ export default function ReservationsParticulier() {
         {filteredReservations.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="calendar-outline" size={64} color={COLORS.textLight} />
-            <Text style={styles.emptyStateTitle}>Aucune réservation</Text>
+            <Text style={styles.emptyStateTitle}>No bookings</Text>
             <Text style={styles.emptyStateText}>
               {filter === 'all' 
-                ? 'Vous n\'avez pas encore de réservation'
-                : `Aucune réservation ${getStatusInfo(filter).label.toLowerCase()}`}
+                ? 'You don\'t have any bookings yet'
+                : `No ${getStatusInfo(filter).label.toLowerCase()} bookings`}
             </Text>
             <TouchableOpacity 
               style={styles.emptyStateButton}
               onPress={() => router.push('/client/search/search' as any)}
             >
-              <Text style={styles.emptyStateButtonText}>Explorer les annonces</Text>
+              <Text style={styles.emptyStateButtonText}>Browse listings</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -330,7 +330,7 @@ export default function ReservationsParticulier() {
 
                   {/* Montant */}
                   <View style={styles.amountContainer}>
-                    <Text style={styles.amountLabel}>Montant</Text>
+                  <Text style={styles.amountLabel}>Amount</Text>
                     <Text style={styles.amountValue}>{formatCurrency(reservation.montant)}</Text>
                   </View>
 
@@ -341,7 +341,7 @@ export default function ReservationsParticulier() {
                       onPress={() => handleContactPrestataire(reservation)}
                     >
                       <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-                      <Text style={styles.actionButtonSecondaryText}>Contacter</Text>
+                      <Text style={styles.actionButtonSecondaryText}>Contact</Text>
                     </TouchableOpacity>
 
                     {(reservation.statut === 'pending' || reservation.statut === 'confirmed') && (
@@ -350,7 +350,7 @@ export default function ReservationsParticulier() {
                         onPress={() => handleCancelReservation(reservation)}
                       >
                         <Ionicons name="close-circle-outline" size={18} color={COLORS.error} />
-                        <Text style={styles.actionButtonDangerText}>Annuler</Text>
+                        <Text style={styles.actionButtonDangerText}>Cancel</Text>
                       </TouchableOpacity>
                     )}
                   </View>

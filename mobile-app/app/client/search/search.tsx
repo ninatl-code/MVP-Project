@@ -20,52 +20,36 @@ import { useRouter } from 'expo-router';
 const { width } = Dimensions.get('window');
 
 const CATEGORIES = [
-  { label: 'Toutes', value: '' },
-  
-  // Événements
-  { label: 'Mariage', value: 'Mariage' },
-  { label: 'Événementiel', value: 'Événementiel' },
-  { label: 'Traiteur', value: 'Traiteur' },
-  { label: 'DJ & Musique', value: 'DJ & Musique' },
-  
-  // Photo & Vidéo
-  { label: 'Photographie', value: 'Photographie' },
-  { label: 'Vidéographie', value: 'Vidéographie' },
-  
-  // Maison & Réparations
-  { label: 'Ménage', value: 'Ménage' },
-  { label: 'Plomberie', value: 'Plomberie' },
-  { label: 'Électricité', value: 'Électricité' },
-  { label: 'Jardinage', value: 'Jardinage' },
-  { label: 'Peinture', value: 'Peinture' },
-  
-  // Construction
-  { label: 'Maçonnerie', value: 'Maçonnerie' },
-  { label: 'Menuiserie', value: 'Menuiserie' },
-  { label: 'Rénovation', value: 'Rénovation' },
-  
-  // Beauté
-  { label: 'Coiffure', value: 'Coiffure' },
-  { label: 'Maquillage', value: 'Maquillage' },
-  
-  // Services pro
-  { label: 'Développement web', value: 'Développement web' },
+  { label: 'All', value: '' },
+  { label: 'Wedding', value: 'Mariage' },
+  { label: 'Events', value: 'Événementiel' },
+  { label: 'Catering', value: 'Traiteur' },
+  { label: 'DJ & Music', value: 'DJ & Musique' },
+  { label: 'Photography', value: 'Photographie' },
+  { label: 'Videography', value: 'Vidéographie' },
+  { label: 'Cleaning', value: 'Ménage' },
+  { label: 'Plumbing', value: 'Plomberie' },
+  { label: 'Electrical', value: 'Électricité' },
+  { label: 'Gardening', value: 'Jardinage' },
+  { label: 'Painting', value: 'Peinture' },
+  { label: 'Masonry', value: 'Maçonnerie' },
+  { label: 'Carpentry', value: 'Menuiserie' },
+  { label: 'Renovation', value: 'Rénovation' },
+  { label: 'Hairdressing', value: 'Coiffure' },
+  { label: 'Makeup', value: 'Maquillage' },
+  { label: 'Web Development', value: 'Développement web' },
   { label: 'Design', value: 'Design' },
   { label: 'Marketing', value: 'Marketing' },
-  
-  // Transport
-  { label: 'Déménagement', value: 'Déménagement' },
-  { label: 'Livraison', value: 'Livraison' },
-  
-  // Autres
-  { label: 'Cours particuliers', value: 'Cours particuliers' },
+  { label: 'Moving', value: 'Déménagement' },
+  { label: 'Delivery', value: 'Livraison' },
+  { label: 'Private Tutoring', value: 'Cours particuliers' },
   { label: 'Coaching', value: 'Coaching' },
 ];
 
 const SORT_OPTIONS = [
-  { label: 'Note', value: 'note' },
-  { label: 'Tarif', value: 'tarif' },
-  { label: 'Nouveaux', value: 'recent' },
+  { label: 'Rating', value: 'note' },
+  { label: 'Price', value: 'tarif' },
+  { label: 'Newest', value: 'recent' },
 ];
 
 interface Photographe {
@@ -99,10 +83,23 @@ export default function SearchPhotographes() {
   const [budgetMax, setBudgetMax] = useState('');
   const [villeFilter, setVilleFilter] = useState('');
   const [noteMin, setNoteMin] = useState('');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 10;
 
-  const loadPhotographes = async () => {
+  const loadPhotographes = async (append = false) => {
     try {
-      const { data, error } = await supabase
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const from = append ? page * PAGE_SIZE : 0;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error, count } = await supabase
         .from('profiles')
         .select(`
           id,
@@ -120,12 +117,13 @@ export default function SearchPhotographes() {
             statut_validation,
             portfolio_photos
           )
-        `)
-        .eq('role', 'photographe');
+        `, { count: 'exact' })
+        .eq('role', 'photographe')
+        .range(from, to);
 
       if (error) throw error;
 
-      // Ne garder que les prestataires ayant complété leur profil et non suspendus
+      // Only keep providers who have completed their profile and are not suspended
       let formattedData = (data || [])
         .map((p: any) => {
           const presta = Array.isArray(p.profils_prestataire) ? p.profils_prestataire[0] : p.profils_prestataire;
@@ -150,29 +148,29 @@ export default function SearchPhotographes() {
         })
         .filter((p: any): p is NonNullable<typeof p> => !!p && p.statut_validation !== 'suspendu');
 
-      // Filtre par catégorie
+      // Filter by category
       if (selectedCategorie) {
         formattedData = formattedData.filter((p) => p.specialisations?.includes(selectedCategorie));
       }
 
-      // Filtre par budget
+      // Filter by budget
       if (budgetMax) {
         formattedData = formattedData.filter((p) => (p.tarif_horaire_min || 0) <= parseFloat(budgetMax));
       }
 
-      // Filtre par ville
+      // Filter by city
       if (villeFilter) {
         formattedData = formattedData.filter((p) =>
           p.photographe_profile?.ville?.toLowerCase().includes(villeFilter.toLowerCase())
         );
       }
 
-      // Filtre par note minimum
+      // Filter by minimum rating
       if (noteMin) {
         formattedData = formattedData.filter((p) => (p.note_moyenne || 0) >= parseFloat(noteMin));
       }
 
-      // Tri
+      // Sort
       let sortedData = [...formattedData];
       switch (sortBy) {
         case 'note':
@@ -186,7 +184,7 @@ export default function SearchPhotographes() {
           break;
       }
 
-      // Recherche textuelle
+      // Text search
       if (searchQuery.trim()) {
         const search = searchQuery.toLowerCase();
         sortedData = sortedData.filter(
@@ -197,23 +195,41 @@ export default function SearchPhotographes() {
         );
       }
 
-      setPhotographes(sortedData);
+      if (append) {
+        setPhotographes(prev => [...prev, ...sortedData]);
+        setPage(prev => prev + 1);
+      } else {
+        setPhotographes(sortedData);
+        setPage(1);
+      }
+      setHasMore(sortedData.length >= PAGE_SIZE && (count || 0) > (append ? (page + 1) * PAGE_SIZE : PAGE_SIZE));
     } catch (error: any) {
-      console.error('❌ Erreur chargement photographes:', error);
+      console.error('Error loading providers:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    loadPhotographes();
+    setPage(0);
+    setHasMore(true);
+    loadPhotographes(false);
   }, [selectedCategorie, sortBy, budgetMax, villeFilter, noteMin, searchQuery]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadPhotographes();
+    setPage(0);
+    setHasMore(true);
+    loadPhotographes(false);
   }, [selectedCategorie, sortBy, budgetMax, villeFilter, noteMin, searchQuery]);
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      loadPhotographes(true);
+    }
+  };
 
   const getCategoryIcon = (category: string): any => {
     const icons: { [key: string]: any } = {
@@ -259,7 +275,7 @@ export default function SearchPhotographes() {
 
       router.push(`/shared/messages/chat-conversation?id=${conversationId}` as any);
     } catch (error) {
-      console.error('Erreur lors de la création de la conversation:', error);
+      console.error('Error creating conversation:', error);
       router.push('/shared/messages/messages-list' as any);
     }
   };
@@ -284,7 +300,7 @@ export default function SearchPhotographes() {
           <View style={styles.headerContent}>
             <View style={styles.nameRow}>
               <Text style={styles.name}>
-                {item.photographe_profile?.prenom || ''} {item.photographe_profile?.nom || 'Photographe'}
+                {item.photographe_profile?.prenom || ''} {item.photographe_profile?.nom || 'Provider'}
               </Text>
               {item.statut_validation === 'valide' && (
                 <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
@@ -324,7 +340,7 @@ export default function SearchPhotographes() {
           <View style={styles.infoRow}>
             <Ionicons name="cash-outline" size={16} color="#666" />
             <Text style={styles.infoText}>
-              À partir de {item.tarif_horaire_min} DH
+              From {item.tarif_horaire_min} MAD
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -343,23 +359,58 @@ export default function SearchPhotographes() {
           }}
         >
           <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-          <Text style={styles.contactButtonText}>Contacter</Text>
+          <Text style={styles.contactButtonText}>Contact</Text>
         </TouchableOpacity>
       </TouchableOpacity>
     );
   };
 
-  if (loading) {
+  const renderSkeleton = () => (
+    <View style={styles.skeletonCard}>
+      <View style={styles.skeletonHeader}>
+        <View style={styles.skeletonAvatar} />
+        <View style={styles.skeletonTextGroup}>
+          <View style={styles.skeletonName} />
+          <View style={styles.skeletonRating} />
+        </View>
+      </View>
+      <View style={styles.skeletonImage} />
+      <View style={styles.skeletonBio} />
+      <View style={styles.skeletonChips}>
+        <View style={styles.skeletonChip} />
+        <View style={styles.skeletonChip} />
+        <View style={styles.skeletonChip} />
+      </View>
+    </View>
+  );
+
+  if (loading && !refreshing) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#5C6BC0" />
+      <View style={styles.container}>
+        <LinearGradient colors={['#130183', '#5C6BC0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerGradient}>
+          <View style={styles.headerContentWrapper}>
+            <View style={styles.headerTop}>
+              <View>
+                <Text style={styles.welcomeText}>Welcome</Text>
+                <Text style={styles.title}>Find your provider</Text>
+              </View>
+            </View>
+            <View style={styles.searchBarHeader}>
+              <Ionicons name="search-outline" size={20} color="#666" />
+              <TextInput style={styles.searchInput} placeholder="Search by name or specialty..." placeholderTextColor="#999" />
+            </View>
+          </View>
+        </LinearGradient>
+        <ScrollView contentContainerStyle={styles.skeletonContainer}>
+          {[1, 2, 3].map(i => <View key={i}>{renderSkeleton()}</View>)}
+        </ScrollView>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header avec gradient */}
+      {/* Header with gradient */}
       <LinearGradient
         colors={['#130183', '#5C6BC0']}
         start={{ x: 0, y: 0 }}
@@ -369,17 +420,17 @@ export default function SearchPhotographes() {
         <View style={styles.headerContentWrapper}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.welcomeText}>Bienvenue</Text>
-              <Text style={styles.title}>Trouvez votre prestataire</Text>
+              <Text style={styles.welcomeText}>Welcome</Text>
+              <Text style={styles.title}>Find your provider</Text>
             </View>
           </View>
 
-          {/* Barre de recherche dans le header */}
+          {/* Search bar in header */}
           <View style={styles.searchBarHeader}>
             <Ionicons name="search-outline" size={20} color="#666" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Rechercher par nom ou spécialité..."
+              placeholder="Search by name or specialty..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor="#999"
@@ -393,9 +444,9 @@ export default function SearchPhotographes() {
         </View>
       </LinearGradient>
 
-      {/* Catégories rapides */}
+      {/* Quick categories */}
       <View style={styles.quickCategoriesSection}>
-        <Text style={styles.sectionTitle}>Catégories populaires</Text>
+        <Text style={styles.sectionTitle}>Popular categories</Text>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
@@ -428,7 +479,7 @@ export default function SearchPhotographes() {
         </ScrollView>
       </View>
 
-      {/* Filtres avancés */}
+      {/* Advanced filters */}
       <View style={styles.filtersBar}>
         <TouchableOpacity
           style={styles.filterButtonNew}
@@ -439,7 +490,7 @@ export default function SearchPhotographes() {
             size={20}
             color="#fff"
           />
-          <Text style={styles.filterButtonText}>Filtres</Text>
+          <Text style={styles.filterButtonText}>Filters</Text>
         </TouchableOpacity>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortOptionsScroll}>
@@ -459,7 +510,7 @@ export default function SearchPhotographes() {
 
       {showFilters && (
         <View style={styles.advancedFilters}>
-          <Text style={styles.filterLabel}>Ville</Text>
+          <Text style={styles.filterLabel}>City</Text>
           <TextInput
             style={styles.budgetInput}
             placeholder="Ex: Casablanca"
@@ -468,7 +519,7 @@ export default function SearchPhotographes() {
             placeholderTextColor="#999"
           />
 
-          <Text style={[styles.filterLabel, { marginTop: 12 }]}>Budget max (MAD)</Text>
+          <Text style={[styles.filterLabel, { marginTop: 12 }]}>Max budget (MAD)</Text>
           <TextInput
             style={styles.budgetInput}
             placeholder="Ex: 800"
@@ -478,7 +529,7 @@ export default function SearchPhotographes() {
             placeholderTextColor="#999"
           />
 
-          <Text style={[styles.filterLabel, { marginTop: 12 }]}>Note minimum</Text>
+          <Text style={[styles.filterLabel, { marginTop: 12 }]}>Minimum rating</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {['', '3', '4', '4.5'].map((val) => (
               <TouchableOpacity
@@ -487,7 +538,7 @@ export default function SearchPhotographes() {
                 onPress={() => setNoteMin(val)}
               >
                 <Text style={[styles.sortChipText, noteMin === val && styles.sortChipTextSelected]}>
-                  {val === '' ? 'Toutes' : `${val}+ ⭐`}
+                  {val === '' ? 'All' : `${val}+ ⭐`}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -496,7 +547,7 @@ export default function SearchPhotographes() {
       )}
 
       <Text style={styles.resultCount}>
-        {photographes.length} prestataire{photographes.length > 1 ? 's' : ''} disponible{photographes.length > 1 ? 's' : ''}
+        {photographes.length} provider{photographes.length > 1 ? 's' : ''} available
       </Text>
 
       {photographes.length === 0 ? (
@@ -504,22 +555,20 @@ export default function SearchPhotographes() {
           <View style={styles.emptyIllustration}>
             <Ionicons name="camera-outline" size={80} color="#E8EAF6" />
           </View>
-          <Text style={styles.emptyTitle}>Aucun prestataire trouvé</Text>
+          <Text style={styles.emptyTitle}>No providers found</Text>
           <Text style={styles.emptyText}>
             {selectedCategorie 
-              ? `Aucun prestataire disponible pour la catégorie "${selectedCategorie}"`
-              : "Essayez de modifier vos critères de recherche"
+              ? `No providers available for the "${selectedCategorie}" category`
+              : "Try modifying your search criteria"
             }
           </Text>
-          
-
           
           {selectedCategorie && (
             <TouchableOpacity
               style={styles.resetButton}
               onPress={() => setSelectedCategorie('')}
             >
-              <Text style={styles.resetButtonText}>Afficher tous les prestataires</Text>
+              <Text style={styles.resetButtonText}>Show all providers</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -549,8 +598,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
-  // Header avec gradient
   headerGradient: {
     paddingTop: 50,
     paddingBottom: 20,
@@ -594,8 +641,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 8,
   },
-  
-  // Catégories rapides
   quickCategoriesSection: {
     backgroundColor: '#fff',
     paddingVertical: 20,
@@ -639,8 +684,6 @@ const styles = StyleSheet.create({
   quickCategoryTextSelected: {
     color: '#fff',
   },
-  
-  // Filtres
   filtersBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -716,8 +759,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     fontWeight: '500',
   },
-  
-  // Liste
   listContent: {
     padding: 16,
   },
@@ -837,8 +878,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
-  
-  // Empty state amélioré
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -868,8 +907,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 32,
   },
-  
-  // Guide
   guideSection: {
     width: '100%',
     backgroundColor: '#fff',
@@ -941,5 +978,71 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  skeletonContainer: {
+    padding: 16,
+  },
+  skeletonCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  skeletonAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E0E0E0',
+  },
+  skeletonTextGroup: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  skeletonName: {
+    width: '60%',
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 8,
+  },
+  skeletonRating: {
+    width: '40%',
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: '#E0E0E0',
+  },
+  skeletonImage: {
+    width: '100%',
+    height: 220,
+    borderRadius: 8,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 12,
+  },
+  skeletonBio: {
+    width: '90%',
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 12,
+  },
+  skeletonChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  skeletonChip: {
+    width: 80,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E0E0E0',
   },
 });

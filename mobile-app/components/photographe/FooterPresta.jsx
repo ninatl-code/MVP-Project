@@ -87,12 +87,12 @@ export default function FooterPresta() {
               </View>
             )}
           </View>
-          <Text style={styles.label}>Notifs</Text>
+          <Text style={styles.label}>Alerts</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.tab} onPress={() => router.push('/photographe/profil/profil')}>
           <Ionicons name="person-outline" size={22} color={COLORS.accent} />
-          <Text style={styles.label}>Profil</Text>
+          <Text style={styles.label}>Profile</Text>
         </TouchableOpacity>
       </View>
     </View>

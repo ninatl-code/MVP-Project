@@ -1,47 +1,58 @@
 import { supabase } from './supabaseClient';
-import * as photographerService from  './photographerService';
+
 /**
- * Create a new service request (demande)
+ * Client Request Service (demandeService.js)
+ * -------------------------------------------
+ * Handles CRUD operations for photo service requests (demandes_client table).
+ *
+ * Payload cible (photographe uniquement):
+ * - type_evenement_id, date_souhaitee, lieu, ville,
+ *   latitude_evenement, longitude_evenement, nb_personnes,
+ *   duree_estimee_heures, budget_max, style_photo_id, commentaire
+ *
+ * Professional profiles are read from `photographe` (never `profils_prestataire`).
+ * Event types come from `types_evenements_photo`, styles from `styles_photo`.
+ */
+
+/**
+ * Créer une nouvelle demande photo.
  */
 export const createDemande = async ({
   clientId,
-  titre,
-  description,
-  categorie,
+  type_evenement_id,
   date_souhaitee,
-  heure_debut,
   lieu,
   ville,
-  budget_max,
+  latitude_evenement,
+  longitude_evenement,
+  nb_personnes,
   duree_estimee_heures,
-  type_prestation = [],
-  langues_souhaitees = [],
-  nb_personnes = '1',
-  monnaie = 'MAD',
-  instructions_speciales,
-  details = [],
+  budget_max,
+  style_photo_id,
+  commentaire,
 }) => {
   try {
+    // Calculer la date d'expiration (30 jours par défaut)
+    const expireDate = new Date();
+    expireDate.setDate(expireDate.getDate() + 30);
+
     const { data, error } = await supabase
       .from('demandes_client')
       .insert({
         client_id: clientId,
-        titre,
-        description,
-        categorie,
+        type_evenement_id,
         date_souhaitee,
-        heure_debut: heure_debut || null,
         lieu,
         ville: ville || lieu,
-        budget_max,
-        duree_estimee_heures,
-        type_prestation,
-        langues_souhaitees,
+        latitude_evenement: latitude_evenement || null,
+        longitude_evenement: longitude_evenement || null,
+        nb_personnes: nb_personnes || null,
+        duree_estimee_heures: duree_estimee_heures || null,
+        budget_max: budget_max || null,
+        style_photo_id: style_photo_id || null,
+        commentaire: commentaire || null,
         statut: 'ouverte',
-        nb_personnes,
-        monnaie,
-        instructions_speciales,
-        details,
+        date_expiration: expireDate.toISOString().split('T')[0],
       })
       .select('id')
       .single();
@@ -57,7 +68,7 @@ export const createDemande = async ({
 /**
  * Get all demandes for a client
  */
-export const getClientDemandes = async (clientId,limit=20) => {
+export const getClientDemandes = async (clientId, limit = 20) => {
   try {
     const { data, error } = await supabase
       .from('demandes_client')
@@ -216,19 +227,20 @@ export const expireDemande = async (demandeId) => {
 };
 
 /**
- * Get active demandes for service providers (matching)
+ * Get active demandes for photographers (matching)
+ * Professional profile read from `photographe`, filtering by compatible styles.
  */
 export const getActiveDemandesForPhotographer = async (photographeId, filters = {}) => {
   try {
-    // First get service provider's profile for matching
+    // Récupérer le profil photographe (table `photographe`)
     const { data: photographe, error: profError } = await supabase
-      .from('profils_prestataire')
-      .select('specialisations, rayon_deplacement_km, tarif_horaire_min')
+      .from('photographe')
+      .select('id, prix_minimum, rayon_deplacement_km, statut_validation')
       .eq('id', photographeId)
       .single();
 
     if (profError) {
-      console.warn('No service provider profile found, fetching all active demandes');
+      console.warn('No photographer profile found, fetching all active demandes');
     }
 
     let query = supabase
@@ -240,9 +252,9 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
       .eq('statut', 'ouverte')
       .order('created_at', { ascending: false });
 
-    // Apply filters
-    if (filters.categorie) {
-      query = query.eq('categorie', filters.categorie);
+    // Filtrer par type d'événement si fourni
+    if (filters.type_evenement_id) {
+      query = query.eq('type_evenement_id', filters.type_evenement_id);
     }
     if (filters.budget_max) {
       query = query.lte('budget_max', filters.budget_max);
@@ -252,6 +264,9 @@ export const getActiveDemandesForPhotographer = async (photographeId, filters = 
     }
     if (filters.date_to) {
       query = query.lte('date_souhaitee', filters.date_to);
+    }
+    if (filters.style_photo_id) {
+      query = query.eq('style_photo_id', filters.style_photo_id);
     }
 
     const { data, error } = await query;
@@ -270,7 +285,6 @@ export const getStatusDemandes = async (status, limit = 100) => {
       .from('demandes_client')
       .select('*', { count: 'exact', head: true })
       .eq('statut', status)
-      .single()
       .limit(limit);
 
     if (error) throw error;
@@ -280,6 +294,7 @@ export const getStatusDemandes = async (status, limit = 100) => {
     return { data: null, error };
   }
 };
+
 /**
  * Get demande statistics for a client
  */
@@ -296,7 +311,7 @@ export const getDemandeStats = async (clientId) => {
       total: data?.length || 0,
       active: data?.filter(d => d.statut === 'ouverte').length || 0,
       fulfilled: data?.filter(d => d.statut === 'pourvue').length || 0,
-      cancelled: data?.filter(d => d.statut === 'fermee').length || 0,
+      cancelled: data?.filter(d => d.statut === 'annulee').length || 0,
     };
 
     return { stats, error: null };
@@ -306,7 +321,6 @@ export const getDemandeStats = async (clientId) => {
   }
 };
 
-
 export default {
   createDemande,
   getClientDemandes,
@@ -314,6 +328,8 @@ export default {
   updateDemande,
   fulfillDemande,
   cancelDemande,
+  reactivateDemande,
+  expireDemande,
   getStatusDemandes,
   getActiveDemandesForPhotographer,
   getDemandeStats,

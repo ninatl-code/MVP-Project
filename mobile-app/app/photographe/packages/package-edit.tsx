@@ -1,4 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿/**
+ * Page d'édition de package - alignée sur le schéma Supabase réel
+ * Champs : titre, description, prix_fixe, prix_barre, duree_minutes,
+ *          services_inclus, options_disponibles, conditions, categorie, specialite
+ */
+
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,7 +30,7 @@ const COLORS = {
   text: '#222222',
   textLight: '#717171',
   border: '#EBEBEB',
-  success: '#10B981',
+  success: '#22c55e',
   warning: '#F59E0B',
   error: '#EF4444',
 };
@@ -32,7 +38,7 @@ const COLORS = {
 export default function PackageEditScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const packageId = params.id as string;
+  const packageId = params && params.id ? params.id : '';
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,13 +46,19 @@ export default function PackageEditScreen() {
     titre: '',
     description: '',
     prix_fixe: '',
+    prix_barre: '',
     duree_minutes: '',
-    nb_photos_incluses: '',
-    delai_livraison_jours: '',
+    services_inclus: '',
+    options_disponibles: '',
+    conditions: '',
+    categorie: '',
+    specialite: '',
   });
 
   useEffect(() => {
-    loadPackage();
+    if (packageId) {
+      loadPackage();
+    }
   }, [packageId]);
 
   const loadPackage = async () => {
@@ -61,12 +73,18 @@ export default function PackageEditScreen() {
 
       if (data) {
         setForm({
-          titre: data.titre,
+          titre: data.titre || '',
           description: data.description || '',
-          prix_fixe: data.prix_fixe.toString(),
-          duree_minutes: data.duree_minutes.toString(),
-          nb_photos_incluses: data.nb_photos_incluses.toString(),
-          delai_livraison_jours: data.delai_livraison_jours.toString(),
+          prix_fixe: data.prix_fixe ? data.prix_fixe.toString() : '',
+          prix_barre: data.prix_barre ? data.prix_barre.toString() : '',
+          duree_minutes: data.duree_minutes ? data.duree_minutes.toString() : '',
+          services_inclus: data.services_inclus || '',
+          options_disponibles: Array.isArray(data.options_disponibles)
+            ? data.options_disponibles.join(', ')
+            : (data.options_disponibles || ''),
+          conditions: data.conditions || '',
+          categorie: data.categorie || '',
+          specialite: data.specialite || '',
         });
       }
     } catch (error) {
@@ -77,7 +95,7 @@ export default function PackageEditScreen() {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -94,14 +112,6 @@ export default function PackageEditScreen() {
       Alert.alert('Erreur', 'La durée est requise et doit être un nombre');
       return false;
     }
-    if (!form.nb_photos_incluses || isNaN(parseInt(form.nb_photos_incluses))) {
-      Alert.alert('Erreur', 'Le nombre de photos est requis');
-      return false;
-    }
-    if (!form.delai_livraison_jours || isNaN(parseInt(form.delai_livraison_jours))) {
-      Alert.alert('Erreur', 'Le délai de livraison est requis');
-      return false;
-    }
     return true;
   };
 
@@ -116,9 +126,15 @@ export default function PackageEditScreen() {
           titre: form.titre,
           description: form.description || null,
           prix_fixe: parseFloat(form.prix_fixe),
+          prix_barre: form.prix_barre ? parseFloat(form.prix_barre) : null,
           duree_minutes: parseInt(form.duree_minutes),
-          nb_photos_incluses: parseInt(form.nb_photos_incluses),
-          delai_livraison_jours: parseInt(form.delai_livraison_jours),
+          services_inclus: form.services_inclus || null,
+          options_disponibles: form.options_disponibles
+            ? form.options_disponibles.split(',').map(o => o.trim()).filter(o => o)
+            : [],
+          conditions: form.conditions || null,
+          categorie: form.categorie || null,
+          specialite: form.specialite || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', packageId);
@@ -169,7 +185,7 @@ export default function PackageEditScreen() {
             <Text style={styles.label}>Titre du package *</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex: Séance portrait 1h"
+              placeholder="Ex: Forfait Essentiel"
               value={form.titre}
               onChangeText={value => handleInputChange('titre', value)}
             />
@@ -204,6 +220,19 @@ export default function PackageEditScreen() {
             </View>
 
             <View style={[styles.formGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Prix barré (MAD)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0.00"
+                value={form.prix_barre}
+                onChangeText={value => handleInputChange('prix_barre', value)}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.twoColumn}>
+            <View style={[styles.formGroup, { flex: 1 }]}>
               <Text style={styles.label}>Durée (min) *</Text>
               <TextInput
                 style={styles.input}
@@ -213,60 +242,73 @@ export default function PackageEditScreen() {
                 keyboardType="number-pad"
               />
             </View>
+
+            <View style={[styles.formGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Services inclus</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: 3 rapports, 5 livrables"
+                value={form.services_inclus}
+                onChangeText={value => handleInputChange('services_inclus', value)}
+              />
+            </View>
           </View>
 
-          <View style={styles.twoColumn}>
-            <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Photos incluses *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="10"
-                value={form.nb_photos_incluses}
-                onChangeText={value => handleInputChange('nb_photos_incluses', value)}
-                keyboardType="number-pad"
-              />
-            </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Options disponibles (séparées par des virgules)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex: Retouche, Livraison express, USB"
+              value={form.options_disponibles}
+              onChangeText={value => handleInputChange('options_disponibles', value)}
+            />
+          </View>
 
-            <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Délai livraison (j) *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="7"
-                value={form.delai_livraison_jours}
-                onChangeText={value => handleInputChange('delai_livraison_jours', value)}
-                keyboardType="number-pad"
-              />
-            </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Conditions</Text>
+            <TextInput
+              style={[styles.input, styles.multilineInput]}
+              placeholder="Conditions particulières du package"
+              value={form.conditions}
+              onChangeText={value => handleInputChange('conditions', value)}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Catégorie</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex: Photographie, Développement..."
+              value={form.categorie}
+              onChangeText={value => handleInputChange('categorie', value)}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Spécialité</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex: Portrait, Web..."
+              value={form.specialite}
+              onChangeText={value => handleInputChange('specialite', value)}
+            />
           </View>
         </View>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      <View style={styles.bottomButtons}>
         <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={() => router.back()}
-          disabled={saving}
-        >
-          <Text style={styles.cancelButtonText}>Annuler</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.saveButton]}
+          style={styles.saveButton}
           onPress={handleSave}
           disabled={saving}
         >
           {saving ? (
             <ActivityIndicator color="white" />
           ) : (
-            <>
-              <Ionicons name="checkmark" size={20} color="white" />
-              <Text style={styles.saveButtonText}>Enregistrer</Text>
-            </>
+            <Text style={styles.saveButtonText}>Enregistrer les modifications</Text>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <FooterPresta />
     </SafeAreaView>
@@ -278,18 +320,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.backgroundLight,
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingTop: 16,
+    paddingVertical: 12,
   },
   headerTitle: {
     fontSize: 18,
@@ -297,29 +333,33 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    padding: 16,
+    paddingBottom: 100,
   },
   section: {
-    marginBottom: 24,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 12,
-  },
-  formGroup: {
     marginBottom: 16,
   },
+  formGroup: {
+    marginBottom: 12,
+  },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: COLORS.background,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 8,
@@ -327,45 +367,31 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: COLORS.text,
+    backgroundColor: COLORS.backgroundLight,
   },
   multilineInput: {
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   twoColumn: {
     flexDirection: 'row',
     gap: 12,
   },
-  bottomButtons: {
-    position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  cancelButton: {
-    backgroundColor: COLORS.border,
-  },
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
   saveButton: {
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
   },
   saveButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

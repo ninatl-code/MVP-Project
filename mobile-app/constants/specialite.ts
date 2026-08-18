@@ -1,354 +1,309 @@
 export const SPECIALITES_MAP = {
   'services-domicile': [
-    'Plomberie',
-    'Électricité',
-    'Ménage',
-    'Bricolage'
+    'Plumbing',
+    'Electrical',
+    'Cleaning',
+    'Handyman'
   ],
 
-
   'evenementiel': [
-    'Photographe',
-    'Vidéaste',
-    'Décorateur',
-    'Traiteur',
-    'Animateur',
-    'DJ / Musicien',
-    "Organisateur d'événements",
-    'Fleuriste'
+    'Photographer',
+    'Videographer',
+    'Decorator',
+    'Caterer',
+    'Host / MC',
+    'DJ / Musician',
+    'Event Organizer',
+    'Florist'
   ],
 
   'transport': [
     'Chauffeur',
-    'Livraison',
-    'Déménagement'
-    
+    'Delivery',
+    'Moving'
   ],
 
   'digital': [
-    'Développement',
+    'Development',
     'Design',
     'Marketing'
   ]
 };
 
 export const TEMPLATES_PAR_SPECIALITE = {
-  // Services à domicile
-  'Plomberie': {
-    titre: 'Intervention plombier à domicile',
-    description: 'Je recherche un plombier pour intervenir à mon domicile. Le problème concerne : [décrivez ici, ex : fuite sous évier, robinet défectueux, installation d\'un nouvel équipement]. Merci d\'indiquer votre disponibilité et votre tarif.',
-    exigences: 'Merci de préciser votre certification et votre assurance. Intervention souhaitée en semaine / week-end : []. Accès facile / code immeuble : [].',
+  // Home Services
+  'Plumbing': {
+    titre: 'Plumber home intervention',
+    description: 'I am looking for a plumber to intervene at my home. The issue concerns: [describe here, e.g.: leak under sink, faulty faucet, new equipment installation]. Please indicate your availability and rate.',
+    exigences: 'Please specify your certification and insurance. Intervention desired on weekdays / weekends: []. Easy access / building code: [].',
   },
 
-  'Électricité': {
-    titre: 'Intervention électricien à domicile',
-    description: 'Je recherche un électricien qualifié pour : [décrivez ici, ex : installation prise / interrupteur, mise aux normes, dépannage panne électrique]. Précisez si vous êtes habilité et assuré.',
-    exigences: 'Habilitation électrique requise. Merci d\'apporter votre propre matériel de base. Disponibilité urgente souhaitée : [oui / non].',
+  'Electrical': {
+    titre: 'Electrician home intervention',
+    description: 'I am looking for a qualified electrician for: [describe here, e.g.: outlet/switch installation, compliance upgrade, electrical failure repair]. Please specify if you are certified and insured.',
+    exigences: 'Electrical certification required. Please bring your own basic tools. Urgent availability desired: [yes / no].',
   },
 
-  'Ménage': {
-    titre: 'Prestation de ménage à domicile',
-    description: 'Je recherche une personne sérieuse pour effectuer le ménage de mon logement. Surface approximative : [ex : 80m²]. Prestations souhaitées : [ex : aspiration, lavage des sols, salle de bain, cuisine]. Fréquence : [ponctuel / hebdomadaire / mensuel].',
-    exigences: 'Produits ménagers : [fournis par le client / par le prestataire]. Présence du client pendant la prestation : [oui / non]. Animal de compagnie dans le logement : [oui / non].',
+  'Cleaning': {
+    titre: 'Home cleaning service',
+    description: 'I am looking for a reliable person to clean my home. Approximate surface area: [e.g.: 80m²]. Services desired: [e.g.: vacuuming, floor washing, bathroom, kitchen]. Frequency: [one-time / weekly / monthly].',
+    exigences: 'Cleaning products: [provided by client / by provider]. Client presence during service: [yes / no]. Pets in the home: [yes / no].',
   },
 
-  'Bricolage': {
-    titre: 'Aide bricolage / petits travaux',
-    description: 'J\'ai besoin d\'un bricoleur expérimenté pour : [décrivez ici, ex : montage de meubles, fixation d\'étagères, petites réparations]. Merci de préciser les outils que vous apportez.',
-    exigences: 'Merci d\'apporter vos propres outils. Matériaux : [fournis par le client / à prévoir par le prestataire]. Expérience avec [type de travaux] souhaitée.',
+  'Handyman': {
+    titre: 'Handyman help / small repairs',
+    description: 'I need an experienced handyman for: [describe here, e.g.: furniture assembly, shelf mounting, small repairs]. Please specify the tools you bring.',
+    exigences: 'Please bring your own tools. Materials: [provided by client / to be provided by provider]. Experience with [type of work] desired.',
   },
 
-  // Événementiel
-  'Photographe': {
-    titre: 'Photographe pour [type d\'événement]',
-    description: 'Je recherche un photographe professionnel pour couvrir mon événement. Type : [ex : mariage, anniversaire, séance corporate]. Nombre de personnes attendues : []. Style souhaité : [ex : reportage naturel, portraits posés, photos dynamiques]. Remise des photos souhaitée sous : [ex : 2 semaines].',
-    exigences: 'Matériel professionnel requis (reflex / hybride). Retouches incluses souhaitées : [oui / non]. Galerie en ligne pour partage des photos : [oui / non]. Tenue vestimentaire souhaitée : [ex : tenue de soirée, casual].',
+  // Events
+  'Photographer': {
+    titre: 'Photographer for [event type]',
+    description: 'I am looking for a professional photographer to cover my event. Type: [e.g.: wedding, birthday, corporate session]. Expected number of people: []. Desired style: [e.g.: natural reportage, posed portraits, dynamic photos]. Photo delivery desired within: [e.g.: 2 weeks].',
+    exigences: 'Professional equipment required (DSLR / mirrorless). Retouching included desired: [yes / no]. Online gallery for photo sharing: [yes / no]. Desired dress code: [e.g.: evening wear, casual].',
   },
 
-  'Vidéaste': {
-    titre: 'Vidéaste pour [type d\'événement]',
-    description: 'Je recherche un vidéaste pour filmer et monter une vidéo de mon événement. Type : [ex : mariage, séminaire]. Durée du film final souhaitée : [ex : 3-5 min]. Format de rendu : [ex : MP4 HD]. Drone souhaité : [oui / non].',
-    exigences: 'Stabilisateur (gimbal) requis : [oui / non]. Drone requis : [oui / non]. Musique libre de droits sur la vidéo finale : [oui / non]. Sous-titres souhaités : [oui / non].',
+  'Videographer': {
+    titre: 'Videographer for [event type]',
+    description: 'I am looking for a videographer to film and edit a video of my event. Type: [e.g.: wedding, seminar]. Desired final video length: [e.g.: 3-5 min]. Output format: [e.g.: MP4 HD]. Drone desired: [yes / no].',
+    exigences: 'Gimbal stabilizer required: [yes / no]. Drone required: [yes / no]. Royalty-free music on final video: [yes / no]. Subtitles desired: [yes / no].',
   },
 
-  'Décorateur': {
-    titre: 'Décoration événementielle pour [type d\'événement]',
-    description: 'Je recherche un décorateur pour mettre en scène mon événement. Thème / ambiance souhaitée : [ex : bohème, élégant, marocain traditionnel]. Espace à décorer : [ex : salle 200m², terrasse]. Budget déco inclus dans l\'offre ou fourni par le client : [à préciser].',
-    exigences: 'Montage et démontage inclus : [oui / non]. Location du matériel de décoration incluse dans l\'offre : [oui / non]. Visite préalable du lieu souhaitée : [oui / non].',
+  'Decorator': {
+    titre: 'Event decoration for [event type]',
+    description: 'I am looking for a decorator to stage my event. Desired theme / ambiance: [e.g.: bohemian, elegant, traditional Moroccan]. Space to decorate: [e.g.: 200m² hall, terrace]. Decor budget included in the offer or provided by client: [to specify].',
+    exigences: 'Setup and teardown included: [yes / no]. Decoration equipment rental included in the offer: [yes / no]. Prior site visit desired: [yes / no].',
   },
 
-  'Traiteur': {
-    titre: 'Prestation traiteur pour [type d\'événement]',
-    description: 'Je recherche un traiteur pour mon événement. Nombre de convives : []. Type de repas : [ex : buffet, dîner assis, cocktail]. Contraintes alimentaires à respecter : [ex : halal, végétarien]. Service en salle inclus : [oui / non].',
-    exigences: 'Cuisine halal obligatoire : [oui / non]. Allergènes à éviter : [ex : gluten, fruits à coque]. Vaisselle et matériel de service : [fournis par le traiteur / sur place]. Dégustation préalable possible : [oui / non].',
+  'Caterer': {
+    titre: 'Catering service for [event type]',
+    description: 'I am looking for a caterer for my event. Number of guests: []. Meal type: [e.g.: buffet, seated dinner, cocktail]. Dietary restrictions to respect: [e.g.: halal, vegetarian]. Table service included: [yes / no].',
+    exigences: 'Halal cuisine mandatory: [yes / no]. Allergens to avoid: [e.g.: gluten, nuts]. Dishes and service equipment: [provided by caterer / on site]. Prior tasting possible: [yes / no].',
   },
 
-  'Animateur': {
-    titre: 'Animateur pour [type d\'événement]',
-    description: 'Je recherche un animateur pour assurer l\'animation de mon événement. Public : [ex : adultes, enfants, mixte]. Type d\'animation souhaitée : [ex : jeux, quiz, magie, mascotte]. Durée de l\'animation : [ex : 2h].',
-    exigences: 'Matériel d\'animation apporté par le prestataire : [oui / non]. Langue d\'animation : [arabe / français / darija]. Expérience avec le public concerné requise : [ex : enfants moins de 10 ans].',
+  'Host / MC': {
+    titre: 'Host / MC for [event type]',
+    description: 'I am looking for a host to run the entertainment for my event. Audience: [e.g.: adults, children, mixed]. Type of entertainment desired: [e.g.: games, quiz, magic, mascot]. Entertainment duration: [e.g.: 2h].',
+    exigences: 'Entertainment equipment brought by provider: [yes / no]. Entertainment language: [Arabic / French / Darija]. Experience with the target audience required: [e.g.: children under 10].',
   },
 
-  'DJ / Musicien': {
-    titre: 'DJ / Musicien pour [type d\'événement]',
-    description: 'Je recherche un DJ ou musicien pour animer mon événement. Style musical souhaité : [ex : oriental, pop, chaabi, lounge]. Matériel son et lumière : [fourni par le prestataire / sur place]. Durée de la prestation : [ex : 18h - 23h].',
-    exigences: 'Matériel son et lumières apporté par le prestataire : [oui / non]. Playlist à valider à l\'avance : [oui / non]. Pauses souhaitées : [ex : 1 pause de 15 min par heure]. Tenue vestimentaire : [ex : costume, tenue traditionnelle].',
+  'DJ / Musician': {
+    titre: 'DJ / Musician for [event type]',
+    description: 'I am looking for a DJ or musician to entertain my event. Desired music style: [e.g.: oriental, pop, chaabi, lounge]. Sound and lighting equipment: [provided by provider / on site]. Performance duration: [e.g.: 6pm - 11pm].',
+    exigences: 'Sound and lighting equipment brought by provider: [yes / no]. Playlist to be approved in advance: [yes / no]. Desired breaks: [e.g.: 1 x 15 min break per hour]. Dress code: [e.g.: suit, traditional attire].',
   },
 
-  "Organisateur d'événements": {
-    titre: 'Organisation complète de [type d\'événement]',
-    description: 'Je recherche un organisateur d\'événements pour prendre en charge mon projet de A à Z. Type d\'événement : [ex : mariage, anniversaire, séminaire]. Nombre d\'invités : []. Services attendus : [ex : coordination prestataires, logistique, décoration, traiteur]. Budget global estimé : [ex : 30 000 DH].',
-    exigences: 'Coordination de tous les prestataires incluse : [oui / non]. Présence le jour J obligatoire : [oui / non]. Rapports d\'avancement réguliers souhaités : [oui / non]. Expérience avec ce type d\'événement requise.',
+  'Event Organizer': {
+    titre: 'Full organization of [event type]',
+    description: 'I am looking for an event organizer to handle my project from A to Z. Event type: [e.g.: wedding, birthday, seminar]. Number of guests: []. Expected services: [e.g.: provider coordination, logistics, decoration, catering]. Estimated overall budget: [e.g.: 30,000 MAD].',
+    exigences: 'Coordination of all providers included: [yes / no]. Presence on D-Day mandatory: [yes / no]. Regular progress reports desired: [yes / no]. Experience with this type of event required.',
   },
 
-  'Fleuriste': {
-    titre: 'Compositions florales pour [type d\'événement]',
-    description: 'Je recherche un fleuriste pour créer les compositions florales de mon événement. Fleurs préférées : [ex : roses, pivoines, eucalyptus]. Coloris : [ex : blanc et doré, tons pastel]. Pièces souhaitées : [ex : centre de table x10, bouquet mariée, arche florale].',
-    exigences: 'Livraison et installation sur place incluses : [oui / non]. Récupération des compositions après l\'événement : [oui / non]. Fleurs fraîches obligatoires (pas artificielles) : [oui / non].',
+  'Florist': {
+    titre: 'Floral arrangements for [event type]',
+    description: 'I am looking for a florist to create the floral arrangements for my event. Preferred flowers: [e.g.: roses, peonies, eucalyptus]. Colors: [e.g.: white and gold, pastel tones]. Desired pieces: [e.g.: centerpiece x10, bridal bouquet, floral arch].',
+    exigences: 'Delivery and on-site installation included: [yes / no]. Arrangement pickup after the event: [yes / no]. Fresh flowers mandatory (no artificial): [yes / no].',
   },
 
   // Transport
   'Chauffeur': {
-    titre: 'Chauffeur privé pour [type de trajet]',
-    description: 'Je recherche un chauffeur privé pour effectuer un trajet. Trajet : [départ] → [arrivée]. Date et heure : []. Nombre de passagers : []. Véhicule souhaité : [ex : berline, monospace, SUV]. Aller simple ou aller-retour : [].',
-    exigences: 'Permis de conduire valide et véhicule assuré obligatoire. Bouteille d’eau à bord souhaitée : [oui / non]. Aide avec les bagages : [oui / non]. Ponctualité critique : merci de confirmer 30 min avant.',
+    titre: 'Private driver for [trip type]',
+    description: 'I am looking for a private driver for a trip. Route: [departure] → [arrival]. Date and time: []. Number of passengers: []. Desired vehicle: [e.g.: sedan, minivan, SUV]. One-way or round trip: [].',
+    exigences: 'Valid driver\'s license and insured vehicle mandatory. Water bottle on board desired: [yes / no]. Luggage assistance: [yes / no]. Punctuality critical: please confirm 30 min before.',
   },
 
-  'Livraison': {
-    titre: 'Livraison de [type de colis]',
-    description: 'J\'ai besoin d\'un service de livraison. Contenu du colis : [ex : documents, colis léger, marchandise]. Poids approximatif : []. Adresse de prise en charge : []. Adresse de livraison : []. Délai souhaité : [ex : même jour, lendemain].',
-    exigences: 'Confirmation de livraison par photo souhaitée : [oui / non]. Signature du destinataire requise : [oui / non]. Manutention avec soin (colis fragile) : [oui / non].',
+  'Delivery': {
+    titre: 'Delivery of [package type]',
+    description: 'I need a delivery service. Package contents: [e.g.: documents, light parcel, goods]. Approximate weight: []. Pickup address: []. Delivery address: []. Desired timeframe: [e.g.: same day, next day].',
+    exigences: 'Delivery confirmation by photo desired: [yes / no]. Recipient signature required: [yes / no]. Careful handling (fragile package): [yes / no].',
   },
 
-  'Déménagement': {
-    titre: 'Déménagement [ville départ] → [ville arrivée]',
-    description: 'Je recherche une équipe pour mon déménagement. Volume estimé : [ex : studio, F2, F3, maison]. Étage départ : []. Étage arrivée : []. Ascenseur disponible : [oui / non]. Montage / démontage meubles souhaité : [oui / non]. Emballage inclus : [oui / non].',
-    exigences: 'Couverture / protection des meubles requise. Objets fragiles à signaler : [oui / non]. Démontage / remontage des meubles inclus : [oui / non]. Camion de quelle taille : [ex : 20m³]. Nombre de déménageurs souhaité : [ex : 2 personnes].',
+  'Moving': {
+    titre: 'Moving [departure city] → [arrival city]',
+    description: 'I am looking for a team for my move. Estimated volume: [e.g.: studio, 2-room, 3-room, house]. Departure floor: []. Arrival floor: []. Elevator available: [yes / no]. Furniture assembly / disassembly desired: [yes / no]. Packing included: [yes / no].',
+    exigences: 'Furniture covers / protection required. Fragile items to report: [yes / no]. Furniture disassembly / reassembly included: [yes / no]. Truck size: [e.g.: 20m³]. Number of movers desired: [e.g.: 2 people].',
   },
 
   // Digital
-  'Développement': {
-    titre: 'Développement [type de projet]',
-    description: 'Je recherche un développeur pour réaliser : [ex : site vitrine, application mobile, e-commerce, API]. Technologies souhaitées si connues : [ex : React, Laravel, Flutter]. Fonctionnalités principales : [listez les 3-5 features clés]. Délai souhaité : [ex : 4 semaines]. Maquettes disponibles : [oui / non].',
-    exigences: 'Code source livré et commenté : [oui / non]. Hébergement et déploiement inclus : [oui / non]. Maintenance post-livraison souhaitée : [oui / non]. Tests et documentation fournis : [oui / non]. NDA / confidentialité requise : [oui / non].',
+  'Development': {
+    titre: 'Development [project type]',
+    description: 'I am looking for a developer to build: [e.g.: showcase website, mobile app, e-commerce, API]. Desired technologies if known: [e.g.: React, Laravel, Flutter]. Main features: [list 3-5 key features]. Desired deadline: [e.g.: 4 weeks]. Mockups available: [yes / no].',
+    exigences: 'Source code delivered and commented: [yes / no]. Hosting and deployment included: [yes / no]. Post-delivery maintenance desired: [yes / no]. Tests and documentation provided: [yes / no]. NDA / confidentiality required: [yes / no].',
   },
 
   'Design': {
-    titre: 'Création graphique / design pour [projet]',
-    description: 'Je recherche un designer pour : [ex : logo, charte graphique, flyers, mockup application]. Style souhaité : [ex : moderne et épuré, coloré et dynamique, traditionnel]. Formats de fichiers attendus : [ex : AI, PDF, PNG]. Nombre de propositions souhaitées : [ex : 2-3 concepts].',
-    exigences: 'Fichiers sources livrés (AI, PSD) : [oui / non]. Nombre de révisions incluses : [ex : 2 révisions]. Droits de propriété intellectuelle cédés : [oui / non]. Respect d\'une charte graphique existante : [oui / non].',
+    titre: 'Graphic creation / design for [project]',
+    description: 'I am looking for a designer for: [e.g.: logo, brand guidelines, flyers, app mockup]. Desired style: [e.g.: modern and clean, colorful and dynamic, traditional]. Expected file formats: [e.g.: AI, PDF, PNG]. Number of proposals desired: [e.g.: 2-3 concepts].',
+    exigences: 'Source files delivered (AI, PSD): [yes / no]. Number of revisions included: [e.g.: 2 revisions]. Intellectual property rights transferred: [yes / no]. Compliance with existing brand guidelines: [yes / no].',
   },
 
   'Marketing': {
-    titre: 'Prestation marketing pour [objectif]',
-    description: 'Je recherche un expert marketing pour : [ex : gestion réseaux sociaux, campagne publicitaire, stratégie de contenu, SEO]. Plateformes concernées : [ex : Instagram, Facebook, Google Ads]. Objectif principal : [ex : notoriété, génération de leads, ventes]. Budget publicitaire mensuel alloué : [ex : 2000 DH].',
-    exigences: 'Rapport de performance mensuel souhaité : [oui / non]. Accès aux comptes existants à fournir. Création de contenus visuels incluse : [oui / non]. Réunion de suivi hebdomadaire : [oui / non].',
+    titre: 'Marketing service for [objective]',
+    description: 'I am looking for a marketing expert for: [e.g.: social media management, advertising campaign, content strategy, SEO]. Platforms concerned: [e.g.: Instagram, Facebook, Google Ads]. Main objective: [e.g.: awareness, lead generation, sales]. Monthly advertising budget allocated: [e.g.: 2,000 MAD].',
+    exigences: 'Monthly performance report desired: [yes / no]. Access to existing accounts to be provided. Visual content creation included: [yes / no]. Weekly follow-up meeting: [yes / no].',
   },
 };
-
-
 
 export const DEVIS_TEMPLATES = {
   'plomberie': {
     prestations: (duree) => [
-      `- Diagnostic et évaluation sur place`,
-      `- Intervention plomberie (${duree}h)`,
-      `- Fourniture du matériel courant`,
-      `- Test et vérification après intervention`,
-      `- Nettoyage du chantier`,
+      `- On-site diagnosis and assessment`,
+      `- Plumbing intervention (${duree}h)`,
+      `- Supply of standard materials`,
+      `- Testing and verification after intervention`,
+      `- Site cleanup`,
     ],
   },
   'électricité': {
     prestations: (duree) => [
-      `- Diagnostic électrique sur place`,
-      `- Intervention et travaux électriques (${duree}h)`,
-      `- Fourniture du matériel courant`,
-      `- Test de conformité après intervention`,
-      `- Nettoyage du chantier`,
+      `- On-site electrical diagnosis`,
+      `- Electrical intervention and work (${duree}h)`,
+      `- Supply of standard materials`,
+      `- Compliance testing after intervention`,
+      `- Site cleanup`,
     ],
   },
   'ménage': {
     prestations: (duree) => [
-      `- Nettoyage complet du logement (${duree}h)`,
-      `- Aspiration et lavage des sols`,
-      `- Nettoyage salle de bain et cuisine`,
-      `- Dépoussiérage des surfaces`,
-      `- Produits ménagers fournis`,
+      `- Complete home cleaning (${duree}h)`,
+      `- Vacuuming and floor washing`,
+      `- Bathroom and kitchen cleaning`,
+      `- Surface dusting`,
+      `- Cleaning products provided`,
     ],
   },
   'bricolage': {
     prestations: (duree) => [
-      `- Évaluation et préparation (${duree}h)`,
-      `- Réalisation des travaux demandés`,
-      `- Outillage fourni`,
-      `- Vérification et finitions`,
+      `- Assessment and preparation (${duree}h)`,
+      `- Execution of requested work`,
+      `- Tools provided`,
+      `- Verification and finishing`,
     ],
   },
   'photographe': {
     prestations: (duree) => [
-      `- Séance photo de ${duree}h`,
-      `- Prise de vue professionnelle (tous les moments clés)`,
-      `- Sélection et retouche des meilleures photos`,
-      `- Livraison en galerie en ligne sécurisée`,
-      `- Droits d'utilisation personnelle inclus`,
+      `- Photo session of ${duree}h`,
+      `- Professional shooting (all key moments)`,
+      `- Selection and retouching of best photos`,
+      `- Delivery via secure online gallery`,
+      `- Personal use rights included`,
     ],
   },
   'vidéaste': {
     prestations: (duree) => [
-      `- Tournage de ${duree}h`,
-      `- Captation professionnelle multi-angles`,
-      `- Montage vidéo et étalonnage couleur`,
-      `- Habillage sonore et musique libre de droits`,
-      `- Livraison en format HD (MP4)`,
+      `- Filming of ${duree}h`,
+      `- Professional multi-angle capture`,
+      `- Video editing and color grading`,
+      `- Royalty-free music`,
+      `- Delivery in HD format`,
     ],
   },
   'décorateur': {
     prestations: (duree) => [
-      `- Consultation et planification`,
-      `- Décoration complète selon le thème choisi`,
-      `- Montage sur place (${duree}h)`,
-      `- Démontage après événement`,
-      `- Matériel de décoration inclus`,
+      `- Decoration setup (${duree}h)`,
+      `- Supply of decorative elements`,
+      `- Themed staging`,
+      `- On-site coordination`,
+      `- Teardown included`,
     ],
   },
   'traiteur': {
-    prestations: (duree, data) => [
-      `- Préparation des plats (menu validé ensemble)`,
-      `- Service sur place pour ${data?.nb_personnes || '...'} personnes`,
-      `- Vaisselle et matériel de service inclus`,
-      `- Respect des contraintes alimentaires`,
-      `- Nettoyage après prestation`,
+    prestations: (duree) => [
+      `- Catering service (${duree}h)`,
+      `- Menu preparation`,
+      `- Table service`,
+      `- Dishes and equipment provided`,
+      `- Post-event cleanup`,
     ],
   },
   'animateur': {
     prestations: (duree) => [
-      `- Animation de ${duree}h`,
-      `- Programme adapté au public`,
-      `- Matériel d'animation fourni`,
-      `- Interaction et jeux inclus`,
+      `- Entertainment of ${duree}h`,
+      `- Games and activities`,
+      `- Sound equipment`,
+      `- Interaction with audience`,
+      `- Adapted to all ages`,
     ],
   },
-  'dj / musicien': {
+  'dj': {
     prestations: (duree) => [
-      `- Animation musicale de ${duree}h`,
-      `- Matériel son et lumières fourni`,
-      `- Playlist personnalisée selon vos goûts`,
-      `- Installation et désinstallation incluses`,
+      `- DJ set of ${duree}h`,
+      `- Professional sound system`,
+      `- Lighting`,
+      `- Custom playlist`,
+      `- Setup and teardown included`,
     ],
   },
-  "organisateur d'événements": {
+  'organisateur': {
     prestations: (duree) => [
-      `- Coordination complète de l'événement`,
-      `- Gestion des prestataires`,
-      `- Présence le jour J (${duree}h)`,
-      `- Suivi et reporting`,
-      `- Gestion des imprévus`,
+      `- Complete organization (${duree}h})`,
+      `- Provider coordination`,
+      `- Logistics management`,
+      `- On-site presence`,
+      `- Progress reports`,
     ],
   },
   'fleuriste': {
     prestations: (duree) => [
-      `- Création des compositions florales`,
-      `- Fleurs fraîches de saison`,
-      `- Livraison et installation sur place`,
-      `- Récupération après événement`,
+      `- Floral creation (${duree}h)`,
+      `- Fresh flowers`,
+      `- Delivery and installation`,
+      `- Custom arrangements`,
+      `- Teardown included`,
     ],
   },
   'chauffeur': {
     prestations: (duree) => [
-      `- Prise en charge à l'adresse convenue`,
-      `- Transport sécurisé et ponctuel`,
-      `- Aide avec les bagages`,
-      `- Véhicule propre et confortable`,
+      `- Private transport (${duree}h)`,
+      `- High-end vehicle`,
+      `- Bottled water on board`,
+      `- Luggage assistance`,
+      `- Punctuality guaranteed`,
     ],
   },
   'livraison': {
     prestations: (duree) => [
-      `- Enlèvement du colis à l'adresse de départ`,
-      `- Transport soigné`,
-      `- Livraison à l'adresse de destination`,
-      `- Confirmation de livraison par photo`,
+      `- Delivery service (${duree}h)`,
+      `- Package pickup`,
+      `- Secure transport`,
+      `- Delivery confirmation`,
+      `- Careful handling`,
     ],
   },
   'déménagement': {
     prestations: (duree) => [
-      `- Emballage et protection des meubles`,
-      `- Chargement et transport`,
-      `- Déchargement et installation`,
-      `- Démontage / remontage des meubles`,
-      `- Camion et équipe inclus`,
+      `- Moving service (${duree}h)`,
+      `- Furniture protection`,
+      `- Disassembly / reassembly`,
+      `- Truck provided`,
+      `- Professional team`,
     ],
   },
   'développement': {
     prestations: (duree) => [
-      `- Analyse des besoins et spécifications`,
-      `- Développement selon les technologies choisies`,
-      `- Tests et corrections`,
-      `- Livraison du code source commenté`,
-      `- Documentation technique`,
+      `- Development (${duree}h)`,
+      `- Source code delivered`,
+      `- Testing and QA`,
+      `- Documentation`,
+      `- Deployment included`,
     ],
   },
   'design': {
     prestations: (duree) => [
-      `- Brief créatif et moodboard`,
-      `- 2 propositions de design`,
-      `- Révisions incluses`,
-      `- Livraison des fichiers sources (AI, PDF, PNG)`,
-      `- Droits de propriété cédés`,
+      `- Design creation (${duree}h)`,
+      `- Multiple concepts`,
+      `- Revisions included`,
+      `- Source files delivered`,
+      `- Rights transferred`,
     ],
   },
   'marketing': {
     prestations: (duree) => [
-      `- Audit et analyse de la situation`,
-      `- Stratégie et plan d'action`,
-      `- Création des contenus`,
-      `- Mise en place et suivi des campagnes`,
-      `- Rapport de performance mensuel`,
+      `- Marketing service (${duree}h)`,
+      `- Strategy definition`,
+      `- Content creation`,
+      `- Performance tracking`,
+      `- Monthly report`,
     ],
   },
-};
-
-// Fallback par catégorie si spécialité non trouvée
-export const DEVIS_TEMPLATES_CATEGORIE = {
-  'services-domicile': (duree) => [
-    `- Intervention à domicile (${duree}h)`,
-    `- Déplacement inclus`,
-    `- Matériel fourni`,
-    `- Vérification après intervention`,
-  ],
-  'evenementiel': (duree) => [
-    `- Couverture complète de l'événement (${duree}h)`,
-    `- Gestion professionnelle sur place`,
-    `- Livraison des contenus`,
-  ],
-  'transport': (duree) => [
-    `- Prise en charge ponctuelle`,
-    `- Transport sécurisé`,
-    `- Respect des horaires`,
-  ],
-  'digital': (duree) => [
-    `- Analyse des besoins`,
-    `- Réalisation complète`,
-    `- Livraison et accompagnement`,
-  ],
-};
-
-// Fonction utilitaire pour résoudre le bon template
-export const getDevisTemplate = (specialite, categorie, duree, data) => {
-  const specKey = Object.keys(DEVIS_TEMPLATES).find(k =>
-    specialite?.toLowerCase().includes(k) || k.includes(specialite?.toLowerCase())
-  );
-
-  if (specKey) {
-    return DEVIS_TEMPLATES[specKey].prestations(duree, data).join('\n');
-  }
-
-  const catKey = Object.keys(DEVIS_TEMPLATES_CATEGORIE).find(k =>
-    categorie?.toLowerCase().includes(k)
-  );
-
-  if (catKey) {
-    return DEVIS_TEMPLATES_CATEGORIE[catKey](duree).join('\n');
-  }
-
-  return [`- Prestation de ${duree}h`, `- Déplacement sur place`].join('\n');
 };

@@ -25,20 +25,20 @@ const STATUT_COLORS = {
 };
 
 const STATUT_LABELS = {
-  ouverte: 'Ouverte',
-  en_cours: 'En cours',
-  pourvue: 'Pourvue',
-  annulee: 'Annulée',
-  expiree: 'Expirée',
+  ouverte: 'Open',
+  en_cours: 'In progress',
+  pourvue: 'Fulfilled',
+  annulee: 'Cancelled',
+  expiree: 'Expired',
 };
 
 const CATEGORIES = [
-  { label: 'Toutes', value: '' },
-  { label: 'Mariage', value: 'Mariage' },
+  { label: 'All', value: '' },
+  { label: 'Wedding', value: 'Mariage' },
   { label: 'Portrait', value: 'Portrait' },
-  { label: 'Événementiel', value: 'Événementiel' },
+  { label: 'Events', value: 'Événementiel' },
   { label: 'Corporate', value: 'Corporate' },
-  { label: 'Produit', value: 'Produit' },
+  { label: 'Product', value: 'Produit' },
   { label: 'Architecture', value: 'Architecture' },
 ];
 
@@ -61,8 +61,8 @@ export default function MesDemandesScreen() {
       const data = await getClientDemandes(profileId);
       setDemandes(data);
     } catch (error: any) {
-      console.error('❌ Erreur chargement demandes:', error);
-      Alert.alert('Erreur', 'Impossible de charger vos demandes');
+      console.error('Error loading requests:', error);
+      Alert.alert('Error', 'Unable to load your requests');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,12 +80,12 @@ export default function MesDemandesScreen() {
 
   const handleCancelDemande = async (demandeId: string, titre: string) => {
     Alert.alert(
-      'Annuler la demande',
-      `Êtes-vous sûr de vouloir annuler "${titre}" ?`,
+      'Cancel request',
+      `Are you sure you want to cancel "${titre}"?`,
       [
-        { text: 'Non', style: 'cancel' },
+        { text: 'No', style: 'cancel' },
         {
-          text: 'Oui',
+          text: 'Yes',
           style: 'destructive',
           onPress: async () => {
             // Optimistic update — UI instantanée
@@ -97,7 +97,7 @@ export default function MesDemandesScreen() {
             } catch (error: any) {
               // Rollback si erreur
               loadDemandes();
-              Alert.alert('Erreur', error.message || 'Impossible d\'annuler la demande');
+              Alert.alert('Error', error.message || 'Unable to cancel the request');
             }
           },
         },
@@ -172,20 +172,20 @@ export default function MesDemandesScreen() {
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={18} color="#5C6BC0" />
               <Text style={styles.statValue}>{item.photographes_notifies?.length || 0}</Text>
-              <Text style={styles.statLabel}>notifiés</Text>
+              <Text style={styles.statLabel}>notified</Text>
             </View>
 
             <View style={styles.statItem}>
               <Ionicons name="document-text-outline" size={18} color="#5C6BC0" />
               <Text style={styles.statValue}>{item.nombre_devis_recus || 0}</Text>
-              <Text style={styles.statLabel}>devis</Text>
+              <Text style={styles.statLabel}>quotes</Text>
             </View>
 
             {isOuverte && daysRemaining > 0 && (
               <View style={styles.statItem}>
                 <Ionicons name="time-outline" size={18} color="#FF9800" />
                 <Text style={styles.statValue}>{daysRemaining}</Text>
-                <Text style={styles.statLabel}>jours restants</Text>
+              <Text style={styles.statLabel}>days left</Text>
               </View>
             )}
           </View>
@@ -201,7 +201,7 @@ export default function MesDemandesScreen() {
               }}
             >
               <Ionicons name="create-outline" size={18} color="#5C6BC0" />
-              <Text style={styles.editButtonText}>Modifier</Text>
+              <Text style={styles.editButtonText}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.cancelButton}
@@ -211,7 +211,7 @@ export default function MesDemandesScreen() {
               }}
             >
               <Ionicons name="close-circle-outline" size={18} color="#F44336" />
-              <Text style={styles.cancelButtonText}>Annuler</Text>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -230,11 +230,11 @@ export default function MesDemandesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Mes demandes</Text>
+        <Text style={styles.title}>My requests</Text>
       </View>
 
       <View style={styles.filtersContainer}>
-        <Text style={styles.filterLabel}>Statut :</Text>
+        <Text style={styles.filterLabel}>Status:</Text>
         <View style={styles.filterChips}>
           {['', 'ouverte', 'en_cours', 'pourvue', 'annulee', 'expiree'].map((statut) => (
             <TouchableOpacity
@@ -251,7 +251,7 @@ export default function MesDemandesScreen() {
                   selectedStatut === statut && styles.filterChipTextSelected,
                 ]}
               >
-                {statut === '' ? 'Toutes' : STATUT_LABELS[statut as keyof typeof STATUT_LABELS]}
+                {statut === '' ? 'All' : STATUT_LABELS[statut as keyof typeof STATUT_LABELS]}
               </Text>
             </TouchableOpacity>
           ))}
@@ -262,12 +262,12 @@ export default function MesDemandesScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="document-text-outline" size={64} color="#ccc" />
           <Text style={styles.emptyTitle}>
-            {demandes.length === 0 ? 'Aucune demande' : 'Aucune demande correspondante'}
+            {demandes.length === 0 ? 'No requests' : 'No matching requests'}
           </Text>
           <Text style={styles.emptyText}>
             {demandes.length === 0
-              ? 'Créez votre première demande pour trouver un prestataire'
-              : 'Essayez de modifier vos filtres'}
+              ? 'Create your first request to find a provider'
+              : 'Try modifying your filters'}
           </Text>
           {demandes.length === 0 && (
             <TouchableOpacity
@@ -275,7 +275,7 @@ export default function MesDemandesScreen() {
               onPress={() => router.push('/client/demandes/nouvelle-demande' as any)}
             >
               <Ionicons name="add-circle-outline" size={20} color="#fff" />
-              <Text style={styles.ctaButtonText}>Créer une demande</Text>
+              <Text style={styles.ctaButtonText}>Create a request</Text>
             </TouchableOpacity>
           )}
         </View>

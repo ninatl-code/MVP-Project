@@ -14,11 +14,11 @@ export default function Index() {
         if (isAuthenticated && activeRole && profileId) {
           setRedirecting(true);
           
-          // Rediriger vers le menu spécifique au rôle actif
+          // Redirect to the menu specific to the active role
           if (activeRole === 'photographe') {
             router.replace('/photographe/menu');
           } else {
-            // Pour les clients, rediriger vers le tableau de bord
+            // For clients, redirect to the dashboard
             router.replace('/client/menu');
           }
         } else if (!loading) {

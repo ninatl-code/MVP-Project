@@ -22,11 +22,9 @@ import { base64ToUint8Array } from '../../../lib/base64'
 import { Ionicons } from '@expo/vector-icons'
 import FooterPresta from '../../../components/photographe/FooterPresta'
 
-// ⚠️ Ces trois imports doivent pointer vers des copies EXACTES des fichiers
-// web pour garantir que les valeurs de categories/specialisations/villes
-// soient strictement identiques des deux côtés.
-import { categories } from '../../../constants/categories'
-import { SPECIALITES_MAP } from '../../../constants/specialite'
+// Taxonomie photo : types d'événements et styles viennent de Supabase
+import { getEventTypes, getPhotoStyles, PhotoEventType, PhotoStyle } from '../../../lib/photoTaxonomyService'
+import { getPhotographerStyles, setPhotographerStyles, getPhotographerEventTypes, setPhotographerEventTypes } from '../../../lib/photographerService'
 import { VILLES_MAROC } from '../../../constants/villes'
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -243,6 +241,26 @@ export default function ProfilComplet() {
   const [autreSpecInput, setAutreSpecInput] = useState('')
   const prevExistsRef = useRef(false)
 
+  // Taxonomie et associations photographe
+  const [eventTypes, setEventTypes] = useState<PhotoEventType[]>([])
+  const [photoStyles, setPhotoStyles] = useState<PhotoStyle[]>([])
+  const [selectedStyleIds, setSelectedStyleIds] = useState<string[]>([])
+  const [selectedEventTypeIds, setSelectedEventTypeIds] = useState<string[]>([])
+
+  // Charger la taxonomie au montage
+  useEffect(() => {
+    const loadTaxo = async () => {
+      try {
+        const [types, styles] = await Promise.all([getEventTypes(), getPhotoStyles()])
+        setEventTypes(types)
+        setPhotoStyles(styles)
+      } catch (error) {
+        console.error('Erreur chargement taxonomie:', error)
+      }
+    }
+    loadTaxo()
+  }, [])
+
   useEffect(() => {
     loadProfile()
   }, [])
@@ -276,11 +294,11 @@ export default function ProfilComplet() {
       }
 
       const { data: photoData, error: photoError } = baseProfile?.id
-        ? await supabase.from('profils_prestataire').select('*').eq('id', baseProfile.id).maybeSingle()
+        ? await supabase.from('photographe').select('*').eq('id', baseProfile.id).maybeSingle()
         : { data: null, error: null }
 
       if (photoError) {
-        console.error('Erreur profils_prestataire:', photoError)
+        console.error('Erreur photographe:', photoError)
       }
 
       prevExistsRef.current = !!photoData
@@ -344,6 +362,20 @@ export default function ProfilComplet() {
 
       setProfile(merged)
       if (baseProfile?.avatar_url) setProfilePhotoUri(baseProfile.avatar_url)
+
+      // Charger les associations styles / types d'événements du photographe
+      if (baseProfile?.id) {
+        try {
+          const [styles, types] = await Promise.all([
+            getPhotographerStyles(baseProfile.id),
+            getPhotographerEventTypes(baseProfile.id),
+          ])
+          setSelectedStyleIds(styles)
+          setSelectedEventTypeIds(types)
+        } catch (err) {
+          console.error('Erreur chargement associations photographe:', err)
+        }
+      }
     } catch (error) {
       console.error('Erreur chargement profil:', error)
     } finally {
@@ -379,20 +411,13 @@ export default function ProfilComplet() {
       if (profileError) console.error('Erreur profiles:', profileError)
 
       const { error: photoError } = await supabase
-        .from('profils_prestataire')
+        .from('photographe')
         .upsert({
-          id: profileId, // profils_prestataire.id === profiles.id (pas auth_user_id)
+          id: profileId, // photographe.id === profiles.id (pas auth_user_id)
           bio: emptyToNull(profile.bio),
-          nom_entreprise: emptyToNull(profile.nom_entreprise),
+          entreprise: emptyToNull(profile.nom_entreprise),
           site_web: emptyToNull(profile.site_web),
           instagram: emptyToNull(profile.instagram),
-          facebook: emptyToNull(profile.facebook),
-          linkedin: emptyToNull(profile.linkedin),
-          video_presentation_url: emptyToNull(profile.video_presentation_url),
-
-          categories: profile.categories,
-          specialisations: profile.specialisations,
-          details: Object.keys(profile.details || {}).length > 0 ? [profile.details] : null,
 
           equipe: profile.equipe,
           materiel: profile.materiel.trim() ? profile.materiel.split('\n').map(s => s.trim()).filter(Boolean) : [],
@@ -412,23 +437,18 @@ export default function ProfilComplet() {
           conditions_annulation: emptyToNull(profile.conditions_annulation),
           delai_annulation_jours: profile.delai_annulation_jours || 7,
           modalites_paiement: profile.modalites_paiement,
-          services_additionnels: profile.services_additionnels,
 
           siret: emptyToNull(profile.siret),
           numero_tva: emptyToNull(profile.numero_tva),
           statut_pro: profile.statut_pro,
           statut_validation: profile.statut_validation || 'en_attente',
-
-          portfolio_photos: profile.portfolio_photos,
-
-          document_identite_recto_url: profile.document_identite_recto_url,
-          document_identite_verso_url: profile.document_identite_verso_url,
-          documents_siret: profile.documents_siret,
-          documents_kbis: profile.documents_kbis,
-          documents_assurance: profile.documents_assurance,
         })
 
       if (profileError || photoError) throw (photoError || profileError)
+
+      // Sauvegarder les liaisons styles / types d'événements (photographe_styles, photographe_types_evenements)
+      await setPhotographerStyles(profileId, selectedStyleIds)
+      await setPhotographerEventTypes(profileId, selectedEventTypeIds)
 
       Alert.alert('Succès', 'Profil mis à jour')
       router.push('/photographe/profil/profil')
@@ -543,7 +563,7 @@ export default function ProfilComplet() {
 
       if (profileId) {
         await supabase
-          .from('profils_prestataire')
+          .from('photographe')
           .update({ [column]: docUrl, statut_validation: 'en_attente' })
           .eq('id', profileId)
       }
@@ -580,7 +600,7 @@ export default function ProfilComplet() {
       set('portfolio_photos', newPhotos)
 
       if (profileId) {
-        await supabase.from('profils_prestataire').update({ portfolio_photos: newPhotos }).eq('id', profileId)
+        await supabase.from('photographe').update({ portfolio_photos: newPhotos }).eq('id', profileId)
       }
     } catch (error: any) {
       Alert.alert('Erreur', error.message || "Impossible d'ajouter la photo")
@@ -591,7 +611,7 @@ export default function ProfilComplet() {
     const newPhotos = profile.portfolio_photos.filter((_, i) => i !== index)
     set('portfolio_photos', newPhotos)
     if (profileId) {
-      await supabase.from('profils_prestataire').update({ portfolio_photos: newPhotos }).eq('id', profileId)
+      await supabase.from('photographe').update({ portfolio_photos: newPhotos }).eq('id', profileId)
     }
   }
 
@@ -752,140 +772,57 @@ export default function ProfilComplet() {
         {/* ── SPÉCIALITÉS ── */}
         {activeTab === 'specialites' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Catégorie principale</Text>
-            <Text style={styles.subLabel}>Sélectionnez votre domaine d'activité (un seul choix)</Text>
+            <Text style={styles.sectionTitle}>Styles photo</Text>
+            <Text style={styles.subLabel}>Sélectionnez les styles photo que vous proposez (styles_photo)</Text>
             <View style={styles.gridContainer}>
-              {categories.map((cat: any) => {
-                const isSelected = profileCategories[0] === cat.id
-                return (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[styles.chip, isSelected && styles.chipSelected]}
-                    onPress={() => {
-                      set('categories', [cat.id])
-                      set('specialisations', [])
-                    }}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{cat.label}</Text>
-                  </TouchableOpacity>
-                )
-              })}
+              {photoStyles.length === 0 ? (
+                <Text style={styles.hint}>Aucun style photo disponible</Text>
+              ) : (
+                photoStyles.map((style) => {
+                  const isSelected = selectedStyleIds.includes(style.id)
+                  return (
+                    <TouchableOpacity
+                      key={style.id}
+                      style={[styles.chip, isSelected && styles.chipSelected]}
+                      onPress={() => {
+                        const next = isSelected
+                          ? selectedStyleIds.filter(s => s !== style.id)
+                          : [...selectedStyleIds, style.id]
+                        setSelectedStyleIds(next)
+                      }}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{style.nom}</Text>
+                    </TouchableOpacity>
+                  )
+                })
+              )}
             </View>
 
-            {profileCategories.length > 0 && SPECIALITES_MAP[profileCategories[0]] && (
-              <>
-                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Spécialisations</Text>
-                <Text style={styles.subLabel}>
-                  Vos spécialisations dans {categories.find((c: any) => c.id === profileCategories[0])?.label || profileCategories[0]}
-                </Text>
-                <View style={styles.gridContainer}>
-                  {SPECIALITES_MAP[profileCategories[0]].map((spec: string) => {
-                    const isSelected = profileSpecialisations.includes(spec)
-                    return (
-                      <TouchableOpacity
-                        key={spec}
-                        style={[styles.chip, isSelected && styles.chipSelected]}
-                        onPress={() => {
-                          const next = isSelected
-                            ? profileSpecialisations.filter(s => s !== spec)
-                            : [...profileSpecialisations, spec]
-                          set('specialisations', next)
-                        }}
-                      >
-                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{spec}</Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                  {(() => {
-                    const autreSelected = profileSpecialisations.includes('Autre')
-                    return (
-                      <TouchableOpacity
-                        style={[styles.chip, autreSelected && styles.chipSelected]}
-                        onPress={() => {
-                          const next = autreSelected
-                            ? profileSpecialisations.filter(s => s !== 'Autre')
-                            : [...profileSpecialisations, 'Autre']
-                          set('specialisations', next)
-                        }}
-                      >
-                        <Text style={[styles.chipText, autreSelected && styles.chipTextSelected]}>Autre</Text>
-                      </TouchableOpacity>
-                    )
-                  })()}
-                </View>
-
-                {profileSpecialisations.includes('Autre') && (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={styles.subLabel}>Précisez vos autres spécialités</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                      <TextInput
-                        style={[styles.input, { flex: 1 }]}
-                        value={autreSpecInput}
-                        onChangeText={setAutreSpecInput}
-                        placeholder="Ex: Jardinage, Baby-sitting..."
-                      />
-                      <TouchableOpacity
-                        style={styles.smallAddButton}
-                        onPress={() => {
-                          const val = autreSpecInput.trim()
-                          if (val && val !== 'Autre' && !profileSpecialisations.includes(val)) {
-                            set('specialisations', [...profileSpecialisations, val])
-                          }
-                          setAutreSpecInput('')
-                        }}
-                      >
-                        <Text style={{ color: 'white', fontWeight: '600' }}>Ajouter</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.gridContainer}>
-                      {profileSpecialisations.filter(s => s !== 'Autre').map((spec, i) => (
-                        <View key={i} style={styles.tagChip}>
-                          <Text style={styles.tagChipText}>{spec}</Text>
-                          <TouchableOpacity onPress={() => set('specialisations', profileSpecialisations.filter(s => s !== spec))}>
-                            <Ionicons name="close" size={14} color={COLORS.primary} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </>
-            )}
-
-            {/* Champs conditionnels — alignés sur le web */}
-            {profileSpecialisations.includes('Développement') && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Langages de développement (optionnel)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={profile.details?.langages || ''}
-                  onChangeText={t => set('details', { ...profile.details, langages: t })}
-                  placeholder="Ex : JavaScript, Python, React, Node.js..."
-                />
-              </View>
-            )}
-            {profileSpecialisations.includes('Cours particuliers') && (
-              <>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Matière (optionnel)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={profile.details?.matiere || ''}
-                    onChangeText={t => set('details', { ...profile.details, matiere: t })}
-                    placeholder="Ex : Mathématiques, Français..."
-                  />
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Niveau (optionnel)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={profile.details?.niveau || ''}
-                    onChangeText={t => set('details', { ...profile.details, niveau: t })}
-                    placeholder="Ex : Collège, Lycée, Université..."
-                  />
-                </View>
-              </>
-            )}
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Types d'événements</Text>
+            <Text style={styles.subLabel}>Sélectionnez les événements que vous couvrez (types_evenements_photo)</Text>
+            <View style={styles.gridContainer}>
+              {eventTypes.length === 0 ? (
+                <Text style={styles.hint}>Aucun type d'événement disponible</Text>
+              ) : (
+                eventTypes.map((et) => {
+                  const isSelected = selectedEventTypeIds.includes(et.id)
+                  return (
+                    <TouchableOpacity
+                      key={et.id}
+                      style={[styles.chip, isSelected && styles.chipSelected]}
+                      onPress={() => {
+                        const next = isSelected
+                          ? selectedEventTypeIds.filter(t => t !== et.id)
+                          : [...selectedEventTypeIds, et.id]
+                        setSelectedEventTypeIds(next)
+                      }}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{et.nom}</Text>
+                    </TouchableOpacity>
+                  )
+                })
+              )}
+            </View>
 
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Configuration équipe</Text>
             <Text style={styles.subLabel}>Comment travaillez-vous ?</Text>

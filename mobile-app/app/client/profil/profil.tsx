@@ -70,12 +70,12 @@ export default function ClientProfil() {
 
   const handleLogout = async () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      'Sign Out',
+      'Are you sure you want to sign out?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
             await signOut();
@@ -90,19 +90,16 @@ export default function ClientProfil() {
     try {
       if (!profileId) return;
 
-      // Get reservations for stats
       const { data: reservations } = await supabase
         .from('reservations')
         .select('id, montant_total, status')
         .eq('client_id', profileId);
 
-      // Get avis for stats
       const { data: avis } = await supabase
         .from('reviews_presta')
         .select('id')
         .eq('reviewer_id', profileId);
 
-      // Get demandes (service requests)
       const { data: demandes } = await supabase
         .from('demandes_client')
         .select('id')
@@ -122,7 +119,7 @@ export default function ClientProfil() {
         totalAvis: avis?.length || 0
       });
     } catch (error) {
-      console.error('Erreur lors du chargement des stats:', error);
+      console.error('Error loading stats:', error);
     }
   };
 
@@ -161,8 +158,8 @@ export default function ClientProfil() {
         setVilleNom(data.ville || '');
       }
     } catch (error) {
-      console.error('Erreur chargement profil:', error);
-      Alert.alert('Erreur', 'Impossible de charger le profil');
+      console.error('Error loading profile:', error);
+      Alert.alert('Error', 'Unable to load profile');
     } finally {
       setLoading(false);
     }
@@ -184,12 +181,12 @@ export default function ClientProfil() {
 
       if (error) throw error;
 
-      Alert.alert('Succès', 'Profil mis à jour avec succès');
+      Alert.alert('Success', 'Profile updated successfully');
       setEditMode(false);
       fetchProfile();
     } catch (error) {
-      console.error('Erreur sauvegarde:', error);
-      Alert.alert('Erreur', 'Impossible de sauvegarder le profil');
+      console.error('Error saving:', error);
+      Alert.alert('Error', 'Unable to save profile');
     } finally {
       setSaving(false);
     }
@@ -199,7 +196,7 @@ export default function ClientProfil() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission requise', 'Nous avons besoin de votre permission pour accéder à vos photos.');
+        Alert.alert('Permission required', 'We need your permission to access your photos.');
         return;
       }
 
@@ -214,15 +211,12 @@ export default function ClientProfil() {
         setUploadingPhoto(true);
         const imageUri = result.assets[0].uri;
         
-        // Convert to base64
         const base64 = await FileSystem.readAsStringAsync(imageUri, {
           encoding: 'base64',
         });
 
-        // Convert base64 to Uint8Array
         const byteArray = base64ToUint8Array(base64);
 
-        // Upload to Supabase Storage
         const fileName = `profile_${profileId}_${Date.now()}.jpg`;
         const filePath = `photos/${fileName}`;
 
@@ -233,23 +227,20 @@ export default function ClientProfil() {
             upsert: true
           });
 
-        // Ne sauvegarder QUE si l'upload a réussi
         if (uploadError || !data) {
-          throw new Error(uploadError?.message || 'Échec de l\'upload vers le stockage cloud');
+          throw new Error(uploadError?.message || 'Failed to upload to cloud storage');
         }
 
-        // Get public URL
         const { data: publicUrlData } = supabase.storage
           .from('photos')
           .getPublicUrl(filePath);
         
         if (!publicUrlData?.publicUrl) {
-          throw new Error('Impossible d\'obtenir l\'URL publique');
+          throw new Error('Unable to get public URL');
         }
 
         const photoUrl = publicUrlData.publicUrl;
 
-        // Update profile with new photo URL
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ avatar_url: photoUrl })
@@ -257,15 +248,15 @@ export default function ClientProfil() {
 
         if (updateError) throw updateError;
 
-        Alert.alert('Succès', 'Photo de profil mise à jour');
+        Alert.alert('Success', 'Profile photo updated');
         fetchProfile();
       }
     } catch (error) {
-      console.error('Erreur upload photo:', error);
+      console.error('Error uploading photo:', error);
       Alert.alert(
-        'Erreur d\'upload', 
-        'Impossible d\'enregistrer votre photo. Vérifiez votre connexion internet et réessayez.\n\n' + 
-        (error.message || 'Erreur inconnue')
+        'Upload error', 
+        'Unable to save your photo. Check your internet connection and try again.\n\n' + 
+        (error.message || 'Unknown error')
       );
     } finally {
       setUploadingPhoto(false);
@@ -285,7 +276,7 @@ export default function ClientProfil() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header avec gradient */}
+        {/* Header with gradient */}
         <LinearGradient
           colors={[COLORS.primary, COLORS.accent]}
           start={{ x: 0, y: 0 }}
@@ -317,7 +308,7 @@ export default function ClientProfil() {
 
               <View style={styles.nameSection}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.userName}>{profile?.nom || 'Utilisateur'}</Text>
+                  <Text style={styles.userName}>{profile?.nom || 'User'}</Text>
                   <View style={styles.roleBadge}>
                     <Text style={styles.roleBadgeText}>Client</Text>
                   </View>
@@ -326,18 +317,18 @@ export default function ClientProfil() {
                 <View style={styles.infoRow}>
                   <View style={styles.infoItem}>
                     <Ionicons name="location" size={14} color="white" />
-                    <Text style={styles.infoText}>{villeNom || 'Localisation'}</Text>
+                    <Text style={styles.infoText}>{villeNom || 'Location'}</Text>
                   </View>
                   <View style={styles.infoItem}>
                     <Ionicons name="calendar" size={14} color="white" />
-                    <Text style={styles.infoText}>{stats.totalReservations} réservations</Text>
+                    <Text style={styles.infoText}>{stats.totalReservations} bookings</Text>
                   </View>
                 </View>
 
                 {!editMode ? (
                   <TouchableOpacity style={styles.editButton} onPress={() => setEditMode(true)}>
                     <Ionicons name="create" size={16} color="white" />
-                    <Text style={styles.editButtonText}>Modifier mon profil</Text>
+                    <Text style={styles.editButtonText}>Edit my profile</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
@@ -346,7 +337,7 @@ export default function ClientProfil() {
                     ) : (
                       <>
                         <Ionicons name="checkmark-circle" size={16} color="white" />
-                        <Text style={styles.saveButtonText}>Sauvegarder</Text>
+                        <Text style={styles.saveButtonText}>Save</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -356,45 +347,45 @@ export default function ClientProfil() {
           </View>
         </LinearGradient>
 
-        {/* Statistiques */}
+        {/* Statistics */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="stats-chart" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Mes statistiques</Text>
+            <Text style={styles.sectionTitle}>My statistics</Text>
           </View>
 
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { borderColor: '#6366F1' }]}>
               <Ionicons name="calendar" size={20} color="#6366F1" />
               <Text style={styles.statValue}>{stats.totalReservations}</Text>
-              <Text style={styles.statLabel}>Réservations</Text>
+              <Text style={styles.statLabel}>Bookings</Text>
             </View>
 
             <View style={[styles.statCard, { borderColor: COLORS.success }]}>
               <Ionicons name="document-text" size={20} color={COLORS.success} />
               <Text style={styles.statValue}>{stats.totalDemandes}</Text>
-              <Text style={styles.statLabel}>Demandes déposées</Text>
+              <Text style={styles.statLabel}>Requests submitted</Text>
             </View>
 
             <View style={[styles.statCard, { borderColor: '#F59E0B' }]}>
               <Ionicons name="cash" size={20} color="#F59E0B" />
               <Text style={[styles.statValue, { fontSize: 14 }]}>{formatCurrency(stats.totalDepenses)}</Text>
-              <Text style={styles.statLabel}>Dépensé</Text>
+              <Text style={styles.statLabel}>Spent</Text>
             </View>
 
             <View style={[styles.statCard, { borderColor: COLORS.textLight }]}>
               <Ionicons name="star" size={20} color={COLORS.textLight} />
               <Text style={styles.statValue}>{stats.totalAvis}</Text>
-              <Text style={styles.statLabel}>Avis donnés</Text>
+              <Text style={styles.statLabel}>Reviews given</Text>
             </View>
           </View>
         </View>
 
-        {/* Informations personnelles */}
+        {/* Personal information */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="person" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Informations personnelles</Text>
+            <Text style={styles.sectionTitle}>Personal information</Text>
           </View>
 
           <View style={styles.card}>
@@ -404,23 +395,23 @@ export default function ClientProfil() {
                   <Ionicons name="mail" size={20} color={COLORS.primary} />
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Email</Text>
-                    <Text style={styles.infoValue}>{formData.email || 'Non renseigné'}</Text>
+                    <Text style={styles.infoValue}>{formData.email || 'Not provided'}</Text>
                   </View>
                 </View>
 
                 <View style={styles.infoCard}>
                   <Ionicons name="call" size={20} color={COLORS.primary} />
                   <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Téléphone</Text>
-                    <Text style={styles.infoValue}>{profile?.telephone || 'Non renseigné'}</Text>
+                    <Text style={styles.infoLabel}>Phone</Text>
+                    <Text style={styles.infoValue}>{profile?.telephone || 'Not provided'}</Text>
                   </View>
                 </View>
 
                 <View style={styles.infoCard}>
                   <Ionicons name="location" size={20} color={COLORS.primary} />
                   <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Ville</Text>
-                    <Text style={styles.infoValue}>{villeNom || 'Non renseignée'}</Text>
+                    <Text style={styles.infoLabel}>City</Text>
+                    <Text style={styles.infoValue}>{villeNom || 'Not provided'}</Text>
                   </View>
                 </View>
               </View>
@@ -432,7 +423,7 @@ export default function ClientProfil() {
                     style={styles.input}
                     value={formData.nom}
                     onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                    placeholder="Nom complet"
+                    placeholder="Full name"
                     placeholderTextColor={COLORS.textLight}
                   />
                 </View>
@@ -453,7 +444,7 @@ export default function ClientProfil() {
                     style={styles.input}
                     value={formData.telephone}
                     onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                    placeholder="Téléphone"
+                    placeholder="Phone"
                     placeholderTextColor={COLORS.textLight}
                     keyboardType="phone-pad"
                   />
@@ -463,17 +454,17 @@ export default function ClientProfil() {
           </View>
         </View>
 
-        {/* À propos */}
+        {/* About me */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="information-circle" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>À propos de moi</Text>
+            <Text style={styles.sectionTitle}>About me</Text>
           </View>
 
           <View style={styles.card}>
             {!editMode ? (
               <Text style={styles.bioText}>
-                {profile?.description || "Aucune description disponible. Cliquez sur 'Modifier mon profil' pour ajouter une présentation."}
+                {profile?.description || "No description available. Click 'Edit my profile' to add a presentation."}
               </Text>
             ) : (
               <View>
@@ -481,24 +472,24 @@ export default function ClientProfil() {
                   style={styles.bioInput}
                   value={formData.bio}
                   onChangeText={(text) => setFormData({ ...formData, bio: text })}
-                  placeholder="Parlez de vous, vos préférences, ce que vous recherchez..."
+                  placeholder="Tell us about yourself, your preferences, what you're looking for..."
                   placeholderTextColor={COLORS.textLight}
                   multiline
                   numberOfLines={6}
                 />
                 <Text style={styles.bioHint}>
-                  Une bonne présentation aide les prestataires à mieux comprendre vos attentes.
+                  A good presentation helps providers better understand your expectations.
                 </Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* Actions rapides */}
+        {/* Quick actions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="grid" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Mes espaces</Text>
+            <Text style={styles.sectionTitle}>My spaces</Text>
           </View>
 
           <View style={styles.card}>
@@ -510,7 +501,7 @@ export default function ClientProfil() {
                 <View style={[styles.actionIconContainer, { backgroundColor: '#EDE7F6' }]}>
                   <Ionicons name="document-text" size={24} color={COLORS.primary} />
                 </View>
-                <Text style={styles.actionText}>Mes demandes</Text>
+                <Text style={styles.actionText}>My requests</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
             </TouchableOpacity>
@@ -525,7 +516,7 @@ export default function ClientProfil() {
                 <View style={[styles.actionIconContainer, { backgroundColor: '#E8F5E9' }]}>
                   <Ionicons name="calendar" size={24} color={COLORS.success} />
                 </View>
-                <Text style={styles.actionText}>Mes réservations</Text>
+                <Text style={styles.actionText}>My bookings</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
             </TouchableOpacity>
@@ -540,18 +531,18 @@ export default function ClientProfil() {
                 <View style={[styles.actionIconContainer, { backgroundColor: '#FFF3E0' }]}>
                   <Ionicons name="star" size={24} color={COLORS.warning} />
                 </View>
-                <Text style={styles.actionText}>Mes avis</Text>
+                <Text style={styles.actionText}>My reviews</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Section Paramètres */}
+        {/* Settings section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="settings-outline" size={20} color={COLORS.textLight} />
-            <Text style={styles.sectionTitle}>Paramètres</Text>
+            <Text style={styles.sectionTitle}>Settings</Text>
           </View>
 
           <View style={styles.card}>
@@ -564,8 +555,8 @@ export default function ClientProfil() {
                   <Ionicons name="lock-closed-outline" size={24} color={COLORS.primary} />
                 </View>
                 <View>
-                  <Text style={styles.actionText}>Changer le mot de passe</Text>
-                  <Text style={styles.logoutSubtitle}>Modifier votre mot de passe</Text>
+                  <Text style={styles.actionText}>Change password</Text>
+                  <Text style={styles.logoutSubtitle}>Modify your password</Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
@@ -579,8 +570,8 @@ export default function ClientProfil() {
                   <Ionicons name="log-out-outline" size={24} color={COLORS.warning} />
                 </View>
                 <View>
-                  <Text style={styles.logoutTitle}>Se déconnecter</Text>
-                  <Text style={styles.logoutSubtitle}>Vous pourrez vous reconnecter à tout moment</Text>
+                  <Text style={styles.logoutTitle}>Sign out</Text>
+                  <Text style={styles.logoutSubtitle}>You can sign back in at any time</Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
@@ -610,8 +601,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-
-  // Header avec gradient
   headerGradient: {
     paddingTop: 60,
     paddingBottom: 30,
@@ -732,8 +721,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: 6,
   },
-
-  // Statistiques
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -765,8 +752,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-
-  // Sections
   section: {
     paddingHorizontal: 20,
     marginTop: 24,
@@ -782,8 +767,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginLeft: 8,
   },
-
-  // Cards
   card: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -794,8 +777,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-
-  // Info cards (view mode)
   infoList: {
     gap: 12,
   },
@@ -822,8 +803,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '500',
   },
-
-  // Form (edit mode)
   formGroup: {
     gap: 12,
   },
@@ -843,8 +822,6 @@ const styles = StyleSheet.create({
   inputDisabled: {
     color: COLORS.textLight,
   },
-
-  // Bio section
   bioText: {
     fontSize: 14,
     lineHeight: 22,
@@ -866,8 +843,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontStyle: 'italic',
   },
-
-  // Actions
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -892,8 +867,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: COLORS.text,
   },
-
-  // Logout
   logoutContainer: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -32,12 +32,12 @@ const COLORS = {
 };
 
 const CATEGORIES = [
-  { label: 'Toutes', value: '' },
-  { label: 'Mariage', value: 'Mariage' },
+  { label: 'All', value: '' },
+  { label: 'Wedding', value: 'Mariage' },
   { label: 'Portrait', value: 'Portrait' },
-  { label: 'Événementiel', value: 'Événementiel' },
+  { label: 'Events', value: 'Événementiel' },
   { label: 'Corporate', value: 'Corporate' },
-  { label: 'Produit', value: 'Produit' },
+  { label: 'Product', value: 'Produit' },
   { label: 'Architecture', value: 'Architecture' },
 ];
 
@@ -64,8 +64,8 @@ export default function DemandesListScreen() {
       const data = await getRecommendedDemandesForPhotographe(user!.id);
       setDemandes(data);
     } catch (error: any) {
-      console.error('❌ Erreur chargement demandes:', error);
-      Alert.alert('Erreur', 'Impossible de charger les demandes');
+      console.error('Error loading requests:', error);
+      Alert.alert('Error', 'Unable to load requests');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -219,12 +219,12 @@ export default function DemandesListScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Demandes disponibles</Text>
+        <Text style={styles.headerTitle}>Available requests</Text>
         <View style={styles.spacer} />
       </LinearGradient>
 
       <View style={styles.filtersContainer}>
-        <Text style={styles.filterLabel}>Catégorie :</Text>
+        <Text style={styles.filterLabel}>Category:</Text>
         <View style={styles.filterChips}>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
@@ -247,7 +247,7 @@ export default function DemandesListScreen() {
           ))}
         </View>
 
-        <Text style={styles.filterLabel}>Trier par :</Text>
+        <Text style={styles.filterLabel}>Sort by:</Text>
         <View style={styles.filterChips}>
           {SORT_OPTIONS.map((option) => (
             <TouchableOpacity
@@ -271,18 +271,18 @@ export default function DemandesListScreen() {
       {filteredAndSortedDemandes.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="document-text-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyTitle}>Aucune demande disponible</Text>
+          <Text style={styles.emptyTitle}>No requests available</Text>
           <Text style={styles.emptyText}>
             {demandes.length === 0
-              ? 'Il n\'y a actuellement aucune demande correspondant à votre profil'
-              : 'Essayez de modifier vos filtres'}
+              ? 'There are currently no requests matching your profile'
+              : 'Try modifying your filters'}
           </Text>
           {demandes.length === 0 && (
             <View style={styles.infoCard}>
               <Ionicons name="information-circle-outline" size={20} color="#5C6BC0" />
               <Text style={styles.infoText}>
-                Assurez-vous d'avoir complété votre profil (spécialisations, rayon de déplacement, etc.)
-                pour recevoir des demandes adaptées.
+                Make sure you have completed your profile (specializations, travel radius, etc.)
+                to receive relevant requests.
               </Text>
             </View>
           )}

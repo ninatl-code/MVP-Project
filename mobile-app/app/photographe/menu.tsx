@@ -60,36 +60,36 @@ export default function MenuPrestataire() {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erreur vérification profil:', error);
+        console.error('Error checking profile:', error);
         return;
       }
 
       const missing: string[] = [];
 
       if (!profilPhoto) {
-        missing.push('Créer votre profil prestataire');
+        missing.push('Create your provider profile');
       } else {
         if (!profilPhoto.bio || profilPhoto.bio.length < 50) {
-          missing.push('Compléter votre biographie (min. 50 caractères)');
+          missing.push('Complete your bio (min. 50 characters)');
         }
         if (!profilPhoto.specialisations || profilPhoto.specialisations.length === 0) {
-          missing.push('Sélectionner vos spécialisations');
+          missing.push('Select your specializations');
         }
         if (!profilPhoto.portfolio_photos || profilPhoto.portfolio_photos.length < 3) {
-          missing.push('Ajouter au moins 3 photos à votre portfolio');
+          missing.push('Add at least 3 photos to your portfolio');
         }
         if (!profilPhoto.rayon_deplacement_km || profilPhoto.rayon_deplacement_km <= 0) {
-          missing.push('Définir votre rayon de déplacement');
+          missing.push('Set your travel radius');
         }
         if (!profilPhoto.tarifs_indicatifs || Object.keys(profilPhoto.tarifs_indicatifs).length === 0) {
-          missing.push('Renseigner vos tarifs indicatifs');
+          missing.push('Fill in your indicative rates');
         }
       }
 
       setProfileComplete(missing.length === 0);
       setMissingSteps(missing);
     } catch (error) {
-      console.error('Erreur checkProfileCompleteness:', error);
+      console.error('Error checkProfileCompleteness:', error);
     }
   };
 
@@ -180,7 +180,7 @@ export default function MenuPrestataire() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header avec gradient */}
+        {/* Header with gradient */}
         <LinearGradient
           colors={[COLORS.primary, COLORS.accent]}
           start={{ x: 0, y: 0 }}
@@ -189,8 +189,8 @@ export default function MenuPrestataire() {
         >
           <View style={styles.headerTop}>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.greeting}>Tableau de bord</Text>
-              <Text style={styles.userName} numberOfLines={2}>{profile?.nom || 'Prestataire'}</Text>
+              <Text style={styles.greeting}>Dashboard</Text>
+              <Text style={styles.userName} numberOfLines={2}>{profile?.nom || 'Provider'}</Text>
             </View>
             {hasMultipleProfiles && (
               <TouchableOpacity 
@@ -198,13 +198,13 @@ export default function MenuPrestataire() {
                 onPress={() => setShowSwitchModal(true)}
               >
                 <Ionicons name="swap-horizontal" size={20} color="white" />
-                <Text style={styles.switchButtonText}>Passer en mode Client</Text>
+                <Text style={styles.switchButtonText}>Switch to Client mode</Text>
               </TouchableOpacity>
             )}
           </View>
         </LinearGradient>
 
-        {/* Section profil incomplet */}
+        {/* Incomplete profile section */}
         {!profileComplete && missingSteps.length > 0 && (
           <LinearGradient
             colors={['#FFF3CD', '#FFE8A3']}
@@ -214,10 +214,10 @@ export default function MenuPrestataire() {
           >
             <View style={styles.warningHeader}>
               <Ionicons name="warning" size={24} color={COLORS.warning} />
-              <Text style={styles.warningTitle}>Profil incomplet</Text>
+              <Text style={styles.warningTitle}>Incomplete profile</Text>
             </View>
             <Text style={styles.warningSubtitle}>
-              Complétez votre profil pour recevoir plus de demandes
+              Complete your profile to receive more requests
             </Text>
             <View style={styles.missingSteps}>
               {missingSteps.map((step, index) => (
@@ -231,13 +231,13 @@ export default function MenuPrestataire() {
               style={styles.completeButton}
               onPress={() => router.push('/photographe/profil/profil-complet')}
             >
-              <Text style={styles.completeButtonText}>Compléter mon profil</Text>
+              <Text style={styles.completeButtonText}>Complete my profile</Text>
               <Ionicons name="arrow-forward" size={16} color={COLORS.warning} />
             </TouchableOpacity>
           </LinearGradient>
         )}
 
-        {/* Statistiques en cartes */}
+        {/* Statistics cards */}
         <View style={styles.statsSection}>
           <TouchableOpacity
             style={[styles.statCard, { backgroundColor: '#E8F5E9', borderColor: COLORS.success }]}
@@ -247,7 +247,7 @@ export default function MenuPrestataire() {
               <Ionicons name="calendar" size={24} color={COLORS.success} />
             </View>
             <Text style={styles.statValue}>{stats.reservations}</Text>
-            <Text style={styles.statLabel}>Réservations</Text>
+            <Text style={styles.statLabel}>Bookings</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -258,7 +258,7 @@ export default function MenuPrestataire() {
               <Ionicons name="mail" size={24} color={COLORS.info} />
             </View>
             <Text style={styles.statValue}>{stats.demandes_vues}</Text>
-            <Text style={styles.statLabel}>Demandes client</Text>
+            <Text style={styles.statLabel}>Client requests</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -269,7 +269,7 @@ export default function MenuPrestataire() {
               <Ionicons name="document-text" size={24} color={COLORS.warning} />
             </View>
             <Text style={styles.statValue}>{stats.devis_envoyes}</Text>
-            <Text style={styles.statLabel}>Devis envoyés</Text>
+            <Text style={styles.statLabel}>Quotes sent</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -280,7 +280,7 @@ export default function MenuPrestataire() {
               <Ionicons name="calendar-outline" size={24} color={COLORS.purple} />
             </View>
             <Text style={styles.statValue}>{stats.devis_acceptes}</Text>
-            <Text style={styles.statLabel}>Planning</Text>
+            <Text style={styles.statLabel}>Schedule</Text>
           </TouchableOpacity>
         </View>
 
@@ -294,16 +294,16 @@ export default function MenuPrestataire() {
           >
             <View style={styles.caHeader}>
               <Ionicons name="trending-up" size={28} color="white" />
-              <Text style={styles.caTitle}>Chiffre d'affaires</Text>
+              <Text style={styles.caTitle}>Revenue</Text>
             </View>
             <Text style={styles.caValue}>{formatCurrency(stats.chiffreAffaires)}</Text>
-            <Text style={styles.caSubtitle}>Total des réservations payées</Text>
+            <Text style={styles.caSubtitle}>Total paid bookings</Text>
           </LinearGradient>
         </View>
 
         {/* Section Gestion */}
         <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Gestion</Text>
+          <Text style={styles.sectionTitle}>Management</Text>
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomWidth: 0 }]}
@@ -313,8 +313,8 @@ export default function MenuPrestataire() {
               <Ionicons name="star" size={24} color={COLORS.warning} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Avis clients</Text>
-              <Text style={styles.menuSubtitle}>Gérer ma réputation</Text>
+              <Text style={styles.menuTitle}>Client reviews</Text>
+              <Text style={styles.menuSubtitle}>Manage my reputation</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
@@ -327,8 +327,8 @@ export default function MenuPrestataire() {
               <Ionicons name="receipt" size={24} color={COLORS.info} />
             </View>
             <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>Factures</Text>
-              <Text style={styles.menuSubtitle}>Générer et consulter</Text>
+              <Text style={styles.menuTitle}>Invoices</Text>
+              <Text style={styles.menuSubtitle}>Generate and view</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
@@ -344,7 +344,7 @@ export default function MenuPrestataire() {
         onNotificationCountChange={setNotificationCount}
       />
 
-      {/* Modal de confirmation de changement de profil */}
+      {/* Profile switch confirmation modal */}
       <Modal
         visible={showSwitchModal}
         transparent={true}
@@ -355,20 +355,20 @@ export default function MenuPrestataire() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Ionicons name="swap-horizontal" size={32} color={COLORS.accent} />
-              <Text style={styles.modalTitle}>Changer de profil</Text>
+              <Text style={styles.modalTitle}>Switch profile</Text>
             </View>
             <Text style={styles.modalText}>
-              Voulez-vous passer en mode Client ?
+              Do you want to switch to Client mode?
             </Text>
             <Text style={styles.modalSubtext}>
-              Vous pourrez revenir en mode Prestataire à tout moment.
+              You can switch back to Provider mode at any time.
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => setShowSwitchModal(false)}
               >
-                <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm]}
@@ -378,7 +378,7 @@ export default function MenuPrestataire() {
                 }}
               >
                 <Ionicons name="checkmark" size={20} color="white" style={{ marginRight: 6 }} />
-                <Text style={styles.modalButtonTextConfirm}>Confirmer</Text>
+                <Text style={styles.modalButtonTextConfirm}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>

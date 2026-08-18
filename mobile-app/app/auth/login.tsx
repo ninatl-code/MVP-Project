@@ -32,28 +32,28 @@ export default function Login() {
 
       if (error) {
         if (error.message === 'Invalid login credentials') {
-          setErrorMsg('Email ou mot de passe incorrect. Veuillez réessayer.')
+          setErrorMsg('Incorrect email or password. Please try again.')
         } else if (error.message === 'Email not confirmed') {
-          setErrorMsg('Veuillez confirmer votre email avant de vous connecter.')
+          setErrorMsg('Please confirm your email before logging in.')
         } else if (error.message.includes('Too many')) {
-          setErrorMsg('Trop de tentatives de connexion. Veuillez patienter quelques minutes.')
+          setErrorMsg('Too many login attempts. Please wait a few minutes.')
         } else {
-          setErrorMsg(`Erreur: ${error.message}`)
+          setErrorMsg(`Error: ${error.message}`)
         }
         setLoading(false)
         return
       }
 
       if (!data.user) {
-        setErrorMsg('Erreur de connexion. Aucun utilisateur trouvé.')
+        setErrorMsg('Login error. No user found.')
         setLoading(false)
         return
       }
 
-      // Laisser index.tsx gérer la redirection selon le rôle
+      // Let index.tsx handle role-based redirection
       router.replace('/')
     } catch (err) {
-      setErrorMsg('Une erreur inattendue s\'est produite. Veuillez réessayer.')
+      setErrorMsg('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
   }
@@ -66,13 +66,13 @@ export default function Login() {
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FB" translucent={false} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.main}>
-          {/* Logo/Icône */}
+          {/* Logo/Icon */}
           <View style={styles.iconContainer}>
             <Ionicons name="log-in-outline" size={32} color="white" />
           </View>
 
-          <Text style={styles.title}>Connexion</Text>
-          <Text style={styles.subtitle}>Accédez à votre espace Shooty</Text>
+          <Text style={styles.title}>Sign In</Text>
+          <Text style={styles.subtitle}>Access your Bricool account</Text>
 
           {errorMsg && (
             <View style={styles.errorBox}>
@@ -87,7 +87,7 @@ export default function Login() {
             <View style={styles.inputWrapper}>
               <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
-                placeholder="votre.email@exemple.com"
+                placeholder="your.email@example.com"
                 value={form.email}
                 onChangeText={(text) => setForm({ ...form, email: text })}
                 style={styles.input}
@@ -100,7 +100,7 @@ export default function Login() {
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mot de passe</Text>
+            <Text style={styles.label}>Password</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
@@ -129,16 +129,16 @@ export default function Login() {
               <Ionicons name="log-in-outline" size={20} color="white" style={{ marginRight: 8 }} />
             )}
             <Text style={styles.buttonText}>
-              {loading ? 'Connexion en cours...' : 'Se connecter'}
+              {loading ? 'Signing in...' : 'Sign In'}
             </Text>
           </TouchableOpacity>
 
-          {/* Lien vers inscription */}
+          {/* Sign up link */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Pas encore de compte ? </Text>
+            <Text style={styles.footerText}>Don't have an account? </Text>
             <Link href="/auth/signup" asChild>
               <TouchableOpacity>
-                <Text style={styles.footerLink}>S'inscrire</Text>
+                <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
             </Link>
           </View>

@@ -50,7 +50,7 @@ export default function PhotographeDevisListScreen() {
   const isDevisExpired = (d: Devis) => {
     if (d.statut === 'expire') return true;
     if (!d.date_expiration) return false;
-    return (d.statut === 'envoye' || d.statut === 'lu') && new Date(d.date_expiration).getTime() < Date.now();
+    return d.statut === 'envoye' && new Date(d.date_expiration).getTime() < Date.now();
   };
 
   const getFilteredDevis = () => {
@@ -139,13 +139,19 @@ export default function PhotographeDevisListScreen() {
           <Text style={styles.detailValue}>{item.montant_total} DH</Text>
         </View>
         <View style={styles.detailItem}>
-          <Ionicons name="images-outline" size={18} color="#5C6BC0" />
-          <Text style={styles.detailValue}>{item.nb_photos_livrees} photos</Text>
-        </View>
-        <View style={styles.detailItem}>
           <Ionicons name="time-outline" size={18} color="#5C6BC0" />
-          <Text style={styles.detailValue}>{item.delai_livraison_jours}j</Text>
+          <Text style={styles.detailValue}>{item.duree_prestation_heures}h</Text>
         </View>
+        {item.options_supplementaires && (
+          <View style={styles.detailItem}>
+            <Ionicons name="list-outline" size={18} color="#5C6BC0" />
+            <Text style={styles.detailValue} numberOfLines={1}>
+              {Array.isArray(item.options_supplementaires)
+                ? item.options_supplementaires.join(', ')
+                : item.options_supplementaires}
+            </Text>
+          </View>
+        )}
       </View>
 
       {item.message_personnalise && (
@@ -179,7 +185,7 @@ export default function PhotographeDevisListScreen() {
 
   const stats = {
     total: devis.length,
-    envoyes: devis.filter((d) => d.statut === 'envoye' || d.statut === 'lu').length,
+    envoyes: devis.filter((d) => d.statut === 'envoye').length,
     acceptes: devis.filter((d) => d.statut === 'accepte').length,
     refuses: devis.filter((d) => d.statut === 'refuse').length,
     expires: devis.filter(isDevisExpired).length,

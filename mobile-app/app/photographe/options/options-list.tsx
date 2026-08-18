@@ -1,7 +1,6 @@
-﻿/**
- * Liste des packages - alignée sur le schéma Supabase réel
- * Champs : titre, description, prix_fixe, prix_barre, duree_minutes,
- *          services_inclus, options_disponibles, conditions, categorie, specialite
+/**
+ * Liste des options photographe - table `options_photographe`
+ * Champs : nom, description, prix, monnaie, actif
  */
 
 import React, { useState, useEffect } from 'react';
@@ -35,46 +34,46 @@ const COLORS = {
   error: '#EF4444',
 };
 
-export default function PackagesListScreen() {
+export default function OptionsListScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const [packages, setPackages] = useState([]);
+  const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadPackages();
+    loadOptions();
   }, []);
 
-  const loadPackages = async () => {
+  const loadOptions = async () => {
     try {
+      setLoading(true);
+      setError(null);
       if (!user?.id) {
         Alert.alert('Erreur', 'Utilisateur non authentifié');
         return;
       }
 
       const { data, error } = await supabase
-        .from('packages_types')
+        .from('options_photographe')
         .select('*')
-        .eq('prestataire_id', user.id)
+        .eq('photographe_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erreur chargement packages:', error);
-        Alert.alert('Erreur', 'Impossible de charger vos packages');
-        return;
-      }
+      if (error) throw error;
 
-      setPackages(data || []);
+      setOptions(data || []);
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur chargement options:', error);
+      setError('Impossible de charger vos options');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeletePackage = async (id) => {
+  const handleDeleteOption = async (id) => {
     Alert.alert(
-      'Supprimer ce package?',
+      'Supprimer cette option?',
       'Cette action est irréversible',
       [
         { text: 'Annuler', onPress: () => {} },
@@ -83,16 +82,16 @@ export default function PackagesListScreen() {
           onPress: async () => {
             try {
               const { error } = await supabase
-                .from('packages_types')
+                .from('options_photographe')
                 .delete()
                 .eq('id', id);
 
               if (error) throw error;
 
-              setPackages(packages.filter(p => p.id !== id));
-              Alert.alert('Succès', 'Package supprimé');
+              setOptions(options.filter(o => o.id !== id));
+              Alert.alert('Succès', 'Option supprimée');
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer le package');
+              Alert.alert('Erreur', 'Impossible de supprimer l\'option');
             }
           },
         },
@@ -100,18 +99,18 @@ export default function PackagesListScreen() {
     );
   };
 
-  const togglePackageActive = async (pkg) => {
+  const toggleOptionActive = async (option) => {
     try {
       const { error } = await supabase
-        .from('packages_types')
-        .update({ actif: !pkg.actif })
-        .eq('id', pkg.id);
+        .from('options_photographe')
+        .update({ actif: !option.actif })
+        .eq('id', option.id);
 
       if (error) throw error;
 
-      setPackages(packages.map(p => p.id === pkg.id ? { ...p, actif: !p.actif } : p));
+      setOptions(options.map(o => o.id === option.id ? { ...o, actif: !o.actif } : o));
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de modifier le package');
+      Alert.alert('Erreur', 'Impossible de modifier l\'option');
     }
   };
 
@@ -136,7 +135,7 @@ export default function PackagesListScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={28} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mes Packages</Text>
+        <Text style={styles.headerTitle}>Mes Options</Text>
         <View style={{ width: 28 }} />
       </LinearGradient>
 
@@ -144,66 +143,55 @@ export default function PackagesListScreen() {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle" size={24} color={COLORS.primary} />
           <Text style={styles.infoText}>
-            Les packages permettent à vos clients de réserver rapidement vos services avec des conditions pré-définies
+            Les options permettent à vos clients de personnaliser leur prestation (ex: album, séance supplémentaire...)
           </Text>
         </View>
 
-        {packages.length === 0 ? (
+        {error ? (
           <View style={styles.emptyState}>
-            <Ionicons name="cube-outline" size={64} color={COLORS.border} />
-            <Text style={styles.emptyTitle}>Aucun package créé</Text>
+            <Ionicons name="alert-circle-outline" size={64} color={COLORS.error} />
+            <Text style={styles.emptyText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={loadOptions}>
+              <Text style={styles.retryBtnText}>Réessayer</Text>
+            </TouchableOpacity>
+          </View>
+        ) : options.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="options-outline" size={64} color={COLORS.border} />
+            <Text style={styles.emptyTitle}>Aucune option créée</Text>
             <Text style={styles.emptyText}>
-              Créez votre premier package pour permettre à vos clients de réserver rapidement
+              Créez votre première option pour enrichir vos formules
             </Text>
           </View>
         ) : (
-          <View style={styles.packagesList}>
-            {packages.map(pkg => (
-              <View key={pkg.id} style={styles.packageCard}>
-                <View style={styles.packageHeader}>
-                  <View style={styles.packageTitle}>
-                    <Text style={styles.packageName}>{pkg.titre}</Text>
+          <View style={styles.optionsList}>
+            {options.map(option => (
+              <View key={option.id} style={styles.optionCard}>
+                <View style={styles.optionHeader}>
+                  <View style={styles.optionTitle}>
+                    <Text style={styles.optionName}>{option.nom}</Text>
                     <View
                       style={[
                         styles.statusBadge,
-                        { backgroundColor: pkg.actif ? '#D1FAE5' : '#FEE2E2' },
+                        { backgroundColor: option.actif ? '#D1FAE5' : '#FEE2E2' },
                       ]}
                     >
-                      <Text style={[styles.statusText, { color: pkg.actif ? COLORS.success : COLORS.error }]}>
-                        {pkg.actif ? 'Actif' : 'Inactif'}
+                      <Text style={[styles.statusText, { color: option.actif ? COLORS.success : COLORS.error }]}>
+                        {option.actif ? 'Active' : 'Inactive'}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.packagePrice}>{pkg.prix_fixe} DH</Text>
+                  <Text style={styles.optionPrice}>{option.prix} {option.monnaie || 'DH'}</Text>
                 </View>
 
-                {pkg.description && (
-                  <Text style={styles.packageDescription}>{pkg.description}</Text>
+                {option.description && (
+                  <Text style={styles.optionDescription}>{option.description}</Text>
                 )}
 
-                <View style={styles.packageDetails}>
-                  <View style={styles.detailItem}>
-                    <Ionicons name="time-outline" size={16} color={COLORS.textLight} />
-                    <Text style={styles.detailText}>{pkg.duree_minutes}min</Text>
-                  </View>
-                  {pkg.services_inclus && (
-                    <View style={styles.detailItem}>
-                      <Ionicons name="briefcase-outline" size={16} color={COLORS.textLight} />
-                      <Text style={styles.detailText}>{pkg.services_inclus}</Text>
-                    </View>
-                  )}
-                  {pkg.categorie && (
-                    <View style={styles.detailItem}>
-                      <Ionicons name="pricetag-outline" size={16} color={COLORS.textLight} />
-                      <Text style={styles.detailText}>{pkg.categorie}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.packageActions}>
+                <View style={styles.optionActions}>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.editBtn]}
-                    onPress={() => router.push({ pathname: '/photographe/packages/package-edit', params: { id: pkg.id } })}
+                    onPress={() => router.push({ pathname: '/photographe/options/option-edit' as any, params: { id: option.id } })}
                   >
                     <Ionicons name="pencil" size={18} color="white" />
                     <Text style={styles.actionBtnText}>Modifier</Text>
@@ -211,15 +199,15 @@ export default function PackagesListScreen() {
 
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.toggleBtn]}
-                    onPress={() => togglePackageActive(pkg)}
+                    onPress={() => toggleOptionActive(option)}
                   >
-                    <Ionicons name={pkg.actif ? 'eye-off' : 'eye'} size={18} color="white" />
-                    <Text style={styles.actionBtnText}>{pkg.actif ? 'Désactiver' : 'Activer'}</Text>
+                    <Ionicons name={option.actif ? 'eye-off' : 'eye'} size={18} color="white" />
+                    <Text style={styles.actionBtnText}>{option.actif ? 'Désactiver' : 'Activer'}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.deleteBtn]}
-                    onPress={() => handleDeletePackage(pkg.id)}
+                    onPress={() => handleDeleteOption(option.id)}
                   >
                     <Ionicons name="trash" size={18} color="white" />
                   </TouchableOpacity>
@@ -235,7 +223,7 @@ export default function PackagesListScreen() {
       <View style={styles.floatingButtonContainer}>
         <TouchableOpacity
           style={styles.floatingButton}
-          onPress={() => router.push('/photographe/packages/package-create')}
+          onPress={() => router.push('/photographe/options/option-edit' as any)}
         >
           <Ionicons name="add" size={28} color="white" />
         </TouchableOpacity>
@@ -306,29 +294,40 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 40,
   },
-  packagesList: {
+  retryBtn: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  optionsList: {
     gap: 12,
   },
-  packageCard: {
+  optionCard: {
     backgroundColor: COLORS.background,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  packageHeader: {
+  optionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 8,
   },
-  packageTitle: {
+  optionTitle: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  packageName: {
+  optionName: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
@@ -342,31 +341,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  packagePrice: {
+  optionPrice: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.primary,
   },
-  packageDescription: {
+  optionDescription: {
     fontSize: 13,
     color: COLORS.textLight,
     marginBottom: 12,
   },
-  packageDetails: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 12,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-  },
-  packageActions: {
+  optionActions: {
     flexDirection: 'row',
     gap: 8,
     borderTopWidth: 1,

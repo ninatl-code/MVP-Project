@@ -44,6 +44,9 @@ export default function PrestataireLayout() {
       {/* Packages */}
       <Stack.Screen name="packages" options={{ title: 'Packages' }} />
       
+      {/* Options */}
+      <Stack.Screen name="options" options={{ title: 'Options' }} />
+      
       {/* Autres */}
       <Stack.Screen name="remboursements" options={{ title: 'Remboursements' }} />
       <Stack.Screen name="cancellation-policies" options={{ title: 'Politiques' }} />

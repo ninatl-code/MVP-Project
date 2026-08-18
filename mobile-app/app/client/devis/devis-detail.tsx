@@ -324,59 +324,44 @@ export default function ClientDevisDetailScreen() {
                   {selectedDevis.duree_prestation_heures}h
                 </Text>
               </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="camera-outline" size={20} color="#5C6BC0" />
-                <Text style={styles.detailLabel}>Photos</Text>
-                <Text style={styles.detailValue}>{selectedDevis.nb_photos_livrees}</Text>
-              </View>
-              {selectedDevis.nb_videos_livrees > 0 && (
+              {selectedDevis.options_supplementaires && selectedDevis.options_supplementaires.length > 0 && (
                 <View style={styles.detailItem}>
-                  <Ionicons name="videocam-outline" size={20} color="#5C6BC0" />
-                  <Text style={styles.detailLabel}>Vidéos</Text>
-                  <Text style={styles.detailValue}>{selectedDevis.nb_videos_livrees}</Text>
+                  <Ionicons name="list-outline" size={20} color="#5C6BC0" />
+                  <Text style={styles.detailLabel}>Options</Text>
+                  <Text style={styles.detailValue}>
+                    {Array.isArray(selectedDevis.options_supplementaires)
+                      ? selectedDevis.options_supplementaires.join(', ')
+                      : selectedDevis.options_supplementaires}
+                  </Text>
                 </View>
               )}
-              <View style={styles.detailItem}>
-                <Ionicons name="calendar-outline" size={20} color="#5C6BC0" />
-                <Text style={styles.detailLabel}>Livraison</Text>
-                <Text style={styles.detailValue}>
-                  {selectedDevis.delai_livraison_jours}j
-                </Text>
-              </View>
             </View>
           </View>
 
-          {/* Retouches */}
-          {(selectedDevis.retouches_incluses || selectedDevis.niveau_retouche) && (
+          {/* Disponibilités */}
+          {selectedDevis.dates_disponibles && selectedDevis.dates_disponibles.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Retouches</Text>
-              <View style={styles.infoRow}>
-                <Ionicons name="brush-outline" size={20} color="#666" />
-                <View style={styles.infoContent}>
-                  {selectedDevis.retouches_incluses && (
-                    <Text style={styles.infoText}>
-                      {selectedDevis.retouches_incluses} retouches incluses
-                    </Text>
-                  )}
-                  {selectedDevis.niveau_retouche && (
-                    <Text style={styles.infoTextSecondary}>
-                      Niveau : {selectedDevis.niveau_retouche}
-                    </Text>
-                  )}
+              <Text style={styles.sectionTitle}>Disponibilités proposées</Text>
+              {selectedDevis.dates_disponibles.map((date, index) => (
+                <View key={index} style={styles.infoRow}>
+                  <Ionicons name="calendar-outline" size={20} color="#666" />
+                  <Text style={styles.infoText}>
+                    {new Date(date).toLocaleDateString('fr-FR')}
+                  </Text>
                 </View>
-              </View>
+              ))}
             </View>
           )}
 
           {/* Paiement */}
-          {selectedDevis.acompte_requis_percent > 0 && (
+          {selectedDevis.acompte_percent > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Conditions de paiement</Text>
               <View style={styles.infoRow}>
                 <Ionicons name="card-outline" size={20} color="#666" />
                 <Text style={styles.infoText}>
-                  Acompte de {selectedDevis.acompte_requis_percent}% requis (
-                  {((selectedDevis.montant_total * selectedDevis.acompte_requis_percent) / 100).toFixed(2)} DH)
+                  Acompte de {selectedDevis.acompte_percent}% requis (
+                  {((selectedDevis.montant_total * selectedDevis.acompte_percent) / 100).toFixed(2)} DH)
                 </Text>
               </View>
             </View>

@@ -1,26 +1,32 @@
 export const categories = [
   {
     id: 'services-domicile',
-    label: 'Services à domicile',
+    label: 'Home Services',
     icon: '🏠',
-    description: 'Plomberie, électricité, ménage, jardinage...'
+    description: 'Plumbing, electrical, cleaning, gardening...'
   },
   {
     id: 'evenementiel',
-    label: 'Événementiel',
+    label: 'Events',
     icon: '🎉',
-    description: 'Mariages, anniversaires, séminaires, événements privés...'
+    description: 'Weddings, birthdays, seminars, private events...'
   },
   {
     id: 'transport',
     label: 'Transport',
     icon: '🚗',
-    description: 'Déménagement, livraison, chauffeur...'
+    description: 'Moving, delivery, chauffeur...'
   },
   {
     id: 'digital',
     label: 'Digital',
     icon: '💻',
-    description: 'Développement web, design, marketing digital...'
+    description: 'Web development, design, digital marketing...'
+  },
+  {
+    id: 'education',
+    label: 'Education',
+    icon: '📚',
+    description: 'Private tutoring, coaching, training...'
   },
 ];

@@ -72,7 +72,7 @@ export default function ClientMenu() {
         avis: avisCount || 0,
       });
     } catch (error) {
-      console.error('Erreur lors du chargement des stats:', error);
+      console.error('Error loading stats:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -121,7 +121,7 @@ export default function ClientMenu() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#130183']} />
         }
       >
-        {/* Header compact avec gradient */}
+        {/* Compact header with gradient */}
         <LinearGradient
           colors={['#130183', '#5C6BC0']}
           start={{ x: 0, y: 0 }}
@@ -130,8 +130,8 @@ export default function ClientMenu() {
         >
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.welcomeText}>Bonjour 👋</Text>
-              <Text style={styles.headerTitle}>Mon espace Client</Text>
+              <Text style={styles.welcomeText}>Hello 👋</Text>
+              <Text style={styles.headerTitle}>My Client Space</Text>
             </View>
             
             <View style={styles.headerButtons}>
@@ -146,66 +146,66 @@ export default function ClientMenu() {
             </View>
           </View>
 
-          {/* Stats compactes */}
+          {/* Compact stats */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.demandes}</Text>
-              <Text style={styles.statLabel}>Demandes</Text>
+              <Text style={styles.statLabel}>Requests</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.devis}</Text>
-              <Text style={styles.statLabel}>Devis</Text>
+              <Text style={styles.statLabel}>Quotes</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{stats.reservations}</Text>
-              <Text style={styles.statLabel}>Réservations</Text>
+              <Text style={styles.statLabel}>Bookings</Text>
             </View>
           </View>
         </LinearGradient>
 
-        {/* Section "Comment trouver un prestataire" */}
+        {/* "How to find a provider" section */}
         <View style={styles.howItWorksSection}>
-          <Text style={styles.howItWorksTitle}>💡 Comment trouver un prestataire ?</Text>
-          <Text style={styles.howItWorksSubtitle}>Choisissez la méthode qui vous convient</Text>
+          <Text style={styles.howItWorksTitle}>💡 How to find a provider?</Text>
+          <Text style={styles.howItWorksSubtitle}>Choose the method that suits you</Text>
           
-          {/* Option 1 - Poster une demande (Recommandé) */}
+          {/* Option 1 - Post a request (Recommended) */}
           <TouchableOpacity
             style={styles.primaryOptionCard}
             onPress={() => router.push('/client/demandes/nouvelle-demande' as any)}
             activeOpacity={0.9}
           >
             <View style={styles.recommendedBadge}>
-              <Text style={styles.recommendedBadgeText}>⭐ Recommandé</Text>
+              <Text style={styles.recommendedBadgeText}>⭐ Recommended</Text>
             </View>
             <View style={styles.optionHeader}>
               <View style={styles.primaryIconCircle}>
                 <Ionicons name="megaphone" size={26} color="#fff" />
               </View>
               <View style={styles.optionTextContainer}>
-                <Text style={styles.primaryOptionTitle}>Poster une demande</Text>
-                <Text style={styles.primaryOptionSubtitle}>Recevez plusieurs devis</Text>
+                <Text style={styles.primaryOptionTitle}>Post a request</Text>
+                <Text style={styles.primaryOptionSubtitle}>Receive multiple quotes</Text>
               </View>
               <Ionicons name="arrow-forward-circle" size={32} color="#fff" />
             </View>
             <View style={styles.optionBenefits}>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.benefitText}>Gratuit et sans engagement</Text>
+                <Text style={styles.benefitText}>Free and no commitment</Text>
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.benefitText}>Les prestataires viennent à vous</Text>
+                <Text style={styles.benefitText}>Providers come to you</Text>
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.benefitText}>Comparez facilement les offres</Text>
+                <Text style={styles.benefitText}>Easily compare offers</Text>
               </View>
             </View>
           </TouchableOpacity>
 
-          {/* Option 2 - Rechercher */}
+          {/* Option 2 - Search */}
           <TouchableOpacity
             style={styles.secondaryOptionCard}
             onPress={() => router.push('/client/search/search' as any)}
@@ -216,31 +216,31 @@ export default function ClientMenu() {
                 <Ionicons name="search" size={24} color="#130183" />
               </View>
               <View style={styles.optionTextContainer}>
-                <Text style={styles.secondaryOptionTitle}>Rechercher activement</Text>
-                <Text style={styles.secondaryOptionSubtitle}>Parcourez les profils</Text>
+                <Text style={styles.secondaryOptionTitle}>Search actively</Text>
+                <Text style={styles.secondaryOptionSubtitle}>Browse profiles</Text>
               </View>
               <Ionicons name="arrow-forward-circle" size={32} color="#130183" />
             </View>
             <View style={styles.optionBenefits}>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#5C6BC0" />
-                <Text style={[styles.benefitText, { color: '#333' }]}>Consultez les portfolios</Text>
+                <Text style={[styles.benefitText, { color: '#333' }]}>View portfolios</Text>
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#5C6BC0" />
-                <Text style={[styles.benefitText, { color: '#333' }]}>Filtres détaillés (budget, lieu...)</Text>
+                <Text style={[styles.benefitText, { color: '#333' }]}>Detailed filters (budget, location...)</Text>
               </View>
               <View style={styles.benefitRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#5C6BC0" />
-                <Text style={[styles.benefitText, { color: '#333' }]}>Contactez directement</Text>
+                <Text style={[styles.benefitText, { color: '#333' }]}>Contact directly</Text>
               </View>
             </View>
           </TouchableOpacity>
         </View>
 
-        {/* Menu rapide compact */}
+        {/* Quick menu compact */}
         <View style={styles.quickMenuSection}>
-          <Text style={styles.sectionTitle}>Mes espaces</Text>
+          <Text style={styles.sectionTitle}>My spaces</Text>
           
           <View style={styles.compactGrid}>
             <TouchableOpacity
@@ -255,7 +255,7 @@ export default function ClientMenu() {
                   </View>
                 )}
               </View>
-              <Text style={styles.compactMenuText}>Demandes</Text>
+              <Text style={styles.compactMenuText}>Requests</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -270,7 +270,7 @@ export default function ClientMenu() {
                   </View>
                 )}
               </View>
-              <Text style={styles.compactMenuText}>Devis</Text>
+              <Text style={styles.compactMenuText}>Quotes</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -285,7 +285,7 @@ export default function ClientMenu() {
                   </View>
                 )}
               </View>
-              <Text style={styles.compactMenuText}>Réservations</Text>
+              <Text style={styles.compactMenuText}>Bookings</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -307,7 +307,7 @@ export default function ClientMenu() {
         
       </ScrollView>
 
-      {/* Modal de changement de profil */}
+      {/* Profile switch modal */}
       <Modal
         visible={showSwitchModal}
         transparent={true}
@@ -318,34 +318,34 @@ export default function ClientMenu() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Ionicons name="swap-horizontal" size={32} color="#130183" />
-              <Text style={styles.modalTitle}>Changer de profil</Text>
+              <Text style={styles.modalTitle}>Switch profile</Text>
             </View>
             <Text style={styles.modalText}>
-              Voulez-vous passer en mode Prestataire ?
+              Do you want to switch to Provider mode?
             </Text>
             <Text style={styles.modalSubtext}>
-              Vous pourrez accéder aux demandes, créer des devis et gérer vos réservations.
+              You will be able to access requests, create quotes and manage your bookings.
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => setShowSwitchModal(false)}
               >
-                <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm]}
                 onPress={handleSwitchProfile}
               >
                 <Ionicons name="checkmark" size={20} color="white" style={{ marginRight: 6 }} />
-                <Text style={styles.modalButtonTextConfirm}>Confirmer</Text>
+                <Text style={styles.modalButtonTextConfirm}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Modal de déconnexion */}
+      {/* Logout modal */}
       <Modal
         visible={showLogoutModal}
         transparent={true}
@@ -356,23 +356,23 @@ export default function ClientMenu() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Ionicons name="log-out" size={32} color="#EF5350" />
-              <Text style={styles.modalTitle}>Déconnexion</Text>
+              <Text style={styles.modalTitle}>Sign Out</Text>
             </View>
             <Text style={styles.modalText}>
-              Êtes-vous sûr de vouloir vous déconnecter ?
+              Are you sure you want to sign out?
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => setShowLogoutModal(false)}
               >
-                <Text style={styles.modalButtonTextCancel}>Annuler</Text>
+                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: '#EF5350' }]}
                 onPress={handleLogout}
               >
-                <Text style={styles.modalButtonTextConfirm}>Déconnexion</Text>
+                <Text style={styles.modalButtonTextConfirm}>Sign Out</Text>
               </TouchableOpacity>
             </View>
           </View>
